@@ -1,0 +1,108 @@
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/user_notification.dart';
+
+class NotificationsProvider with ChangeNotifier {
+  final SupabaseClient _supabase = Supabase.instance.client;
+
+  bool _loading = false;
+  String? _error;
+  final List<UserNotificationItem> _inbox = [];
+
+  bool get isLoading => _loading;
+  String? get error => _error;
+  List<UserNotificationItem> get inbox => List.unmodifiable(_inbox);
+  int get unreadCount => _inbox.where((n) => n.readAt == null).length;
+
+  Future<void> loadInbox() async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final res = await _supabase
+          .from('user_notifications')
+          .select(
+            'id, user_id, delivered_at, read_at, notifications ( id, title, body, type, data, created_at )',
+          )
+          .order('delivered_at', ascending: false);
+
+      _inbox
+        ..clear()
+        ..addAll(
+          (res as List)
+              .where((row) => row['notifications'] != null)
+              .map<UserNotificationItem>(
+                (row) => UserNotificationItem.fromJoinedMap(row, user.id),
+              ),
+        );
+
+      _loading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> markAsRead(String userNotificationId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      await _supabase
+          .from('user_notifications')
+          .update({'read_at': DateTime.now().toIso8601String()})
+          .eq('id', userNotificationId)
+          .eq('user_id', user.id);
+
+      final idx = _inbox.indexWhere((n) => n.id == userNotificationId);
+      if (idx != -1) {
+        final item = _inbox[idx];
+        _inbox[idx] = UserNotificationItem(
+          id: item.id,
+          userId: item.userId,
+          deliveredAt: item.deliveredAt,
+          readAt: DateTime.now(),
+          notification: item.notification,
+        );
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('markAsRead error: $e');
+      }
+    }
+  }
+
+  Future<void> deleteNotification(String userNotificationId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      await _supabase
+          .from('user_notifications')
+          .delete()
+          .eq('id', userNotificationId)
+          .eq('user_id', user.id);
+
+      _inbox.removeWhere((n) => n.id == userNotificationId);
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('deleteNotification error: $e');
+      }
+    }
+  }
+
+  void clearError() {
+    _error = null;
+    notifyListeners();
+  }
+}

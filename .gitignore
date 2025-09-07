@@ -1,0 +1,84 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+**/GeneratedPluginRegistrant.*
+flutter_*.png
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/**/captures/
+**/android/**/gradle-wrapper.jar
+**/android/**/gradlew
+**/android/**/gradlew.bat
+**/android/**/gradle/
+**/android/app/profile/
+**/android/app/release/
+**/android/app/debug/
+**/android/key.properties
+**/*.keystore
+**/*.jks
+
+# iOS/macOS (if present)
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/ephemeral/
+**/ios/ServiceDefinitions.json
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/ephemeral/
+
+# Web
+**/web/.dart_tool/
+
+# VS Code
+.vscode/
+!.vscode/launch.json
+!.vscode/settings.json
+
+# IntelliJ
+*.iml
+.idea/
+
+# Logs
+*.log
+**/logs/
+
+# Env/Secrets
+.env
+.env.*
+**/.env
+**/.env.*
+**/secrets.*
+**/config/*.secret.*
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+supabase/.cache/
+.supabase/
+
+# Firebase (if any)
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Coverage
+coverage/
+
+# Misc
+.DS_Store
+Thumbs.db
+
+# Node (if any tooling)
+node_modules/
+
+# Flutter build artifacts
+**/flutter_export_environment.sh
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.metadata

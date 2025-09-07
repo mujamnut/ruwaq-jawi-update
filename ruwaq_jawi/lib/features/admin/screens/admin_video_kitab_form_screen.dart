@@ -1,0 +1,1201 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:pdfx/pdfx.dart' as pdfx;
+import 'package:http/http.dart' as http;
+import '../../../config/youtube_api.dart';
+import '../../../core/models/video_kitab.dart';
+import '../../../core/services/admin_category_service.dart';
+import '../../../core/services/video_kitab_service.dart';
+import '../../../core/services/video_episode_service.dart';
+import '../../../core/models/video_episode.dart';
+import 'admin_episode_form_screen.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../core/theme/app_theme.dart';
+
+class AdminVideoKitabFormScreen extends StatefulWidget {
+  final String? videoKitabId; // null untuk tambah baru
+  final VideoKitab? videoKitab; // data untuk edit
+
+  const AdminVideoKitabFormScreen({
+    super.key, 
+    this.videoKitabId, 
+    this.videoKitab
+  });
+
+  @override
+  State<AdminVideoKitabFormScreen> createState() => _AdminVideoKitabFormScreenState();
+}
+
+class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
+    with SingleTickerProviderStateMixin {
+  final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
+  final _authorController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _totalPagesController = TextEditingController();
+  final _sortOrderController = TextEditingController();
+
+  late AdminCategoryService _categoryService;
+  late TabController _tabController;
+
+  bool _isPremium = true;
+  bool _isActive = true;
+  bool _isLoading = false;
+  String? _selectedCategoryId;
+  String? _thumbnailUrl;
+  String? _pdfUrl;
+  File? _selectedThumbnail;
+  File? _selectedPdf;
+
+  List<Map<String, dynamic>> _categories = [];
+  List<VideoEpisode> _episodes = [];
+  
+  // Track the current video kitab ID (can be updated when creating new kitab)
+  String? _currentVideoKitabId;
+
+  bool get _isEditing => widget.videoKitabId != null;
+  String? get _effectiveVideoKitabId => _currentVideoKitabId ?? widget.videoKitabId;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _categoryService = AdminCategoryService(SupabaseService.client);
+    
+    // Initialize current video kitab ID
+    _currentVideoKitabId = widget.videoKitabId;
+
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    await Future.wait([
+      _loadCategories(), 
+      if (_isEditing) _loadVideoKitabData()
+    ]);
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _categoryService.getAllCategories(
+        isActive: true,
+      );
+      setState(() {
+        _categories = categories;
+      });
+    } catch (e) {
+      _showSnackBar('Ralat memuatkan kategori: ${e.toString()}', isError: true);
+    }
+  }
+
+  Future<void> _loadVideoKitabData() async {
+    if (widget.videoKitab != null) {
+      final data = widget.videoKitab!;
+      _titleController.text = data.title;
+      _authorController.text = data.author ?? '';
+      _descriptionController.text = data.description ?? '';
+      _totalPagesController.text = data.totalPages?.toString() ?? '';
+      _sortOrderController.text = data.sortOrder.toString();
+      _selectedCategoryId = data.categoryId;
+      _isPremium = data.isPremium;
+      _isActive = data.isActive;
+      _thumbnailUrl = data.thumbnailUrl;
+      _pdfUrl = data.pdfUrl;
+
+      // Load episodes jika ada
+      if (widget.videoKitabId != null) {
+        await _loadEpisodes();
+      }
+    }
+  }
+
+  Future<void> _loadEpisodes() async {
+    final videoKitabId = _effectiveVideoKitabId;
+    if (videoKitabId == null) {
+      setState(() {
+        _episodes = [];
+      });
+      return;
+    }
+    
+    try {
+      final episodes = await VideoEpisodeService.getEpisodesForVideoKitab(
+        videoKitabId,
+        orderBy: 'part_number',
+        ascending: true,
+      );
+      setState(() {
+        _episodes = episodes;
+      });
+    } catch (e) {
+      // Don't show error for episodes - just log it
+      print('Could not load episodes: $e');
+      setState(() {
+        _episodes = [];
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _authorController.dispose();
+    _descriptionController.dispose();
+    _totalPagesController.dispose();
+    _sortOrderController.dispose();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  // =====================================================
+  // HELPER METHODS 
+  // =====================================================
+
+  // YouTube helper methods
+  Future<void> _detectVideoDurationFromYouTube(String youTubeUrl) async {
+    // Check if YouTube API is configured
+    if (!YouTubeApiConfig.isEnabled) {
+      return; // Silently skip if not configured
+    }
+
+    try {
+      // Extract video ID from YouTube URL
+      final videoId = _extractYouTubeVideoId(youTubeUrl);
+      if (videoId == null) {
+        return; // Invalid URL, skip silently
+      }
+
+      // Call YouTube Data API to get video duration
+      final url = YouTubeApiConfig.getVideoDetailsUrl(videoId);
+      
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['items'] != null && data['items'].isNotEmpty) {
+          final duration = data['items'][0]['contentDetails']['duration'];
+          final durationInMinutes = _parseDurationToMinutes(duration);
+          
+          // Update duration field if found in episode form
+          _showSnackBar('Durasi video: $durationInMinutes minit', isError: false);
+        }
+      }
+    } catch (e) {
+      // Silently fail - don't bother user with API errors in video kitab form
+      print('Could not detect video duration: $e');
+    }
+  }
+
+  String? _extractYouTubeVideoId(String url) {
+    // Handle different YouTube URL formats
+    final patterns = [
+      RegExp(r'(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})'),
+      RegExp(r'(?:youtu\.be/)([a-zA-Z0-9_-]{11})'),
+      RegExp(r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})'),
+    ];
+    
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+    }
+    return null;
+  }
+
+  int _parseDurationToMinutes(String duration) {
+    // Parse ISO 8601 duration format (PT#M#S)
+    final regex = RegExp(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?');
+    final match = regex.firstMatch(duration);
+    
+    if (match != null) {
+      final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
+      final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
+      final seconds = int.tryParse(match.group(3) ?? '0') ?? 0;
+      
+      return hours * 60 + minutes + (seconds > 0 ? 1 : 0); // Round up if has seconds
+    }
+    return 0;
+  }
+
+  // PDF helper methods
+  Future<void> _detectPdfPageCount(File pdfFile) async {
+    try {
+      // Use pdfx package to read PDF and get page count
+      final document = await pdfx.PdfDocument.openFile(pdfFile.path);
+      final pageCount = document.pagesCount;
+      
+      setState(() {
+        _totalPagesController.text = pageCount.toString();
+      });
+      
+      _showSnackBar('Jumlah halaman PDF: $pageCount', isError: false);
+      
+      // Close the document to free memory
+      await document.close();
+    } catch (e) {
+      _showSnackBar('Tidak dapat mengira halaman PDF secara automatik. Sila masukkan secara manual.', isError: false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: AppBar(
+        title: Text(_isEditing ? 'Edit Video Kitab' : 'Tambah Video Kitab Baru'),
+        backgroundColor: AppTheme.primaryColor,
+        foregroundColor: AppTheme.textLightColor,
+        actions: [
+          if (_isLoading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            )
+          else
+            TextButton(
+              onPressed: _currentVideoKitabId != null && !_isEditing 
+                  ? () => Navigator.of(context).pop(true) 
+                  : _saveVideoKitab,
+              child: Text(
+                _currentVideoKitabId != null && !_isEditing 
+                    ? 'Selesai' 
+                    : (_isEditing ? 'Kemaskini' : 'Simpan'),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          indicatorColor: Colors.white,
+          tabs: const [
+            Tab(text: 'Maklumat Asas', icon: Icon(Icons.info_outline)),
+            Tab(text: 'Media', icon: Icon(Icons.perm_media)),
+            Tab(text: 'Episode', icon: Icon(Icons.video_library)),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildBasicInfoTab(),
+          _buildMediaTab(),
+          _buildEpisodeTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBasicInfoTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title Field
+            _buildSectionTitle('Maklumat Asas'),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _titleController,
+              decoration: const InputDecoration(
+                labelText: 'Tajuk Video Kitab *',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.title),
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Tajuk tidak boleh kosong';
+                }
+                return null;
+              },
+              maxLines: 2,
+            ),
+            const SizedBox(height: 16),
+
+            // Author Field
+            TextFormField(
+              controller: _authorController,
+              decoration: const InputDecoration(
+                labelText: 'Pengarang',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.person),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Category Dropdown
+            DropdownButtonFormField<String>(
+              value: _selectedCategoryId,
+              decoration: const InputDecoration(
+                labelText: 'Kategori *',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.category),
+              ),
+              items: _categories.map((category) {
+                return DropdownMenuItem<String>(
+                  value: category['id'] as String,
+                  child: Text(category['name'] as String),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategoryId = value;
+                });
+              },
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Sila pilih kategori';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            // Description Field
+            TextFormField(
+              controller: _descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Penerangan',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.description),
+                alignLabelWithHint: true,
+              ),
+              maxLines: 4,
+            ),
+            const SizedBox(height: 24),
+
+            // Settings Section
+            _buildSectionTitle('Tetapan'),
+            const SizedBox(height: 16),
+
+            // Premium Toggle
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.star, color: Colors.amber),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Status Premium',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _isPremium ? 'Video kitab premium' : 'Video kitab percuma',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _isPremium,
+                    onChanged: (value) {
+                      setState(() {
+                        _isPremium = value;
+                      });
+                    },
+                    activeColor: AppTheme.primaryColor,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Active Toggle
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isActive ? Icons.visibility : Icons.visibility_off,
+                    color: _isActive ? Colors.green : Colors.grey,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Status Aktif',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          _isActive ? 'Ditunjukkan kepada pengguna' : 'Tersembunyi dari pengguna',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Switch(
+                    value: _isActive,
+                    onChanged: (value) {
+                      setState(() {
+                        _isActive = value;
+                      });
+                    },
+                    activeColor: AppTheme.primaryColor,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Sort Order Field
+            TextFormField(
+              controller: _sortOrderController,
+              decoration: const InputDecoration(
+                labelText: 'Urutan Paparan',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.sort),
+                hintText: 'Contoh: 1, 2, 3... (semakin kecil, semakin atas)',
+              ),
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value != null && value.isNotEmpty) {
+                  final intValue = int.tryParse(value);
+                  if (intValue == null) {
+                    return 'Sila masukkan nombor yang sah';
+                  }
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMediaTab() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thumbnail Section
+          _buildSectionTitle('Gambar Kecil'),
+          const SizedBox(height: 16),
+          _buildThumbnailSection(),
+          const SizedBox(height: 24),
+
+          // PDF Section
+          _buildSectionTitle('Dokumen PDF'),
+          const SizedBox(height: 16),
+          _buildPdfSection(),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeTab() {
+    return Column(
+      children: [
+        // Episode List Header
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Episode Video (${_episodes.length})',
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: _effectiveVideoKitabId != null ? _addNewEpisode : null,
+                icon: const Icon(Icons.add),
+                label: const Text('Tambah Episode'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+        
+        // Episodes List
+        Expanded(
+          child: _episodes.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.video_library_outlined,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _effectiveVideoKitabId != null
+                            ? 'Belum ada episode video.\nTambah episode untuk video kitab ini.'
+                            : 'Simpan video kitab terlebih dahulu\nuntuk menambah episode.',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  itemCount: _episodes.length,
+                  itemBuilder: (context, index) {
+                    final episode = _episodes[index];
+                    return _buildEpisodeCard(episode, index);
+                  },
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(
+      title,
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: AppTheme.primaryColor,
+      ),
+    );
+  }
+
+  Widget _buildThumbnailSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.image, color: Colors.blue),
+              const SizedBox(width: 8),
+              Text(
+                'Gambar Kecil Video Kitab',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Current thumbnail preview
+          if (_selectedThumbnail != null || _thumbnailUrl != null) ...[
+            Container(
+              height: 120,
+              width: 160,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: _selectedThumbnail != null
+                    ? Image.file(_selectedThumbnail!, fit: BoxFit.cover)
+                    : (_thumbnailUrl != null
+                        ? Image.network(_thumbnailUrl!, fit: BoxFit.cover)
+                        : const Icon(Icons.image, size: 48)),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Upload buttons
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _pickThumbnailImage,
+                icon: const Icon(Icons.upload),
+                label: const Text('Pilih Gambar'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.secondaryColor,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              if (_selectedThumbnail != null || _thumbnailUrl != null) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _removeThumbnail,
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  label: const Text('Buang', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPdfSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.picture_as_pdf, color: Colors.red),
+              const SizedBox(width: 8),
+              Text(
+                'Dokumen PDF',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (_selectedPdf != null || _pdfUrl != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.picture_as_pdf, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _selectedPdf?.path.split('/').last ?? 'PDF tersedia',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        if (_totalPagesController.text.isNotEmpty)
+                          Text('${_totalPagesController.text} halaman'),
+                      ],
+                    ),
+                  ),
+                  if (_pdfUrl != null)
+                    TextButton(
+                      onPressed: _openPdf,
+                      child: const Text('Lihat'),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Total Pages Field
+          TextFormField(
+            controller: _totalPagesController,
+            decoration: const InputDecoration(
+              labelText: 'Jumlah Halaman PDF',
+              border: OutlineInputBorder(),
+              prefixIcon: Icon(Icons.pages),
+              hintText: 'Auto-dikesan apabila PDF dipilih',
+              helperText: 'Akan cuba mengesan bilangan halaman secara automatik',
+            ),
+            keyboardType: TextInputType.number,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                final intValue = int.tryParse(value);
+                if (intValue == null) {
+                  return 'Sila masukkan nombor yang sah';
+                }
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 16),
+
+          // Upload buttons
+          Row(
+            children: [
+              ElevatedButton.icon(
+                onPressed: _pickPdfFile,
+                icon: const Icon(Icons.upload_file),
+                label: const Text('Pilih PDF'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              if (_selectedPdf != null || _pdfUrl != null) ...[
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: _removePdf,
+                  icon: const Icon(Icons.delete, color: Colors.red),
+                  label: const Text('Buang', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeCard(VideoEpisode episode, int index) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: episode.isActive ? AppTheme.primaryColor : Colors.grey,
+          child: Text(
+            episode.partNumber.toString(),
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+        ),
+        title: Text(
+          episode.title,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: episode.isActive ? AppTheme.textPrimaryColor : AppTheme.textSecondaryColor,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${episode.durationMinutes} minit${episode.isActive ? '' : ' • Tidak aktif'}'),
+            if (episode.isPreview)
+              Container(
+                margin: const EdgeInsets.only(top: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'PREVIEW',
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.play_circle_outline),
+              onPressed: () => _previewEpisode(episode),
+              tooltip: 'Preview video',
+            ),
+            PopupMenuButton<String>(
+              onSelected: (value) => _handleEpisodeAction(episode, value),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit),
+                      SizedBox(width: 8),
+                      Text('Edit'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: episode.isActive ? 'deactivate' : 'activate',
+                  child: Row(
+                    children: [
+                      Icon(episode.isActive ? Icons.visibility_off : Icons.visibility),
+                      SizedBox(width: 8),
+                      Text(episode.isActive ? 'Nyahaktif' : 'Aktifkan'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Padam', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _previewEpisode(VideoEpisode episode) async {
+    final youtubeUrl = VideoEpisodeService.getYouTubeWatchUrl(episode.youtubeVideoId);
+    final uri = Uri.parse(youtubeUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      _showSnackBar('Tidak dapat membuka video YouTube', isError: true);
+    }
+  }
+
+  // =====================================================
+  // FILE PICKER METHODS
+  // =====================================================
+
+  Future<void> _pickThumbnailImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 600,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedThumbnail = File(image.path);
+          _thumbnailUrl = null; // Clear existing URL when new file is selected
+        });
+      }
+    } catch (e) {
+      _showSnackBar('Ralat memilih gambar: $e', isError: true);
+    }
+  }
+
+  Future<void> _pickPdfFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final pdfFile = File(result.files.single.path!);
+        setState(() {
+          _selectedPdf = pdfFile;
+          _pdfUrl = null; // Clear existing URL when new file is selected
+        });
+        
+        // Auto-detect PDF page count
+        await _detectPdfPageCount(pdfFile);
+      }
+    } catch (e) {
+      _showSnackBar('Ralat memilih PDF: ${e.toString()}', isError: true);
+    }
+  }
+
+  void _removeThumbnail() {
+    setState(() {
+      _selectedThumbnail = null;
+      _thumbnailUrl = null;
+    });
+  }
+
+  void _removePdf() {
+    setState(() {
+      _selectedPdf = null;
+      _pdfUrl = null;
+    });
+  }
+
+  Future<void> _openPdf() async {
+    if (_pdfUrl != null) {
+      final uri = Uri.parse(_pdfUrl!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    }
+  }
+
+  // =====================================================
+  // EPISODE MANAGEMENT METHODS
+  // =====================================================
+
+  void _addNewEpisode() {
+    final videoKitabId = _effectiveVideoKitabId;
+    if (videoKitabId == null) {
+      _showSnackBar('Sila simpan video kitab terlebih dahulu sebelum menambah episode', isError: true);
+      return;
+    }
+    
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => AdminEpisodeFormScreen(
+          videoKitabId: videoKitabId,
+          videoKitabTitle: _titleController.text.trim().isEmpty 
+              ? 'Video Kitab' 
+              : _titleController.text.trim(),
+        ),
+      ),
+    ).then((result) {
+      if (result == true) {
+        _loadEpisodes(); // Refresh episodes list
+      }
+    });
+  }
+
+  void _handleEpisodeAction(VideoEpisode episode, String action) async {
+    switch (action) {
+      case 'edit':
+        final videoKitabId = _effectiveVideoKitabId;
+        if (videoKitabId == null) return;
+        
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => AdminEpisodeFormScreen(
+              videoKitabId: videoKitabId,
+              episode: episode,
+              videoKitabTitle: _titleController.text.trim().isEmpty 
+                  ? 'Video Kitab' 
+                  : _titleController.text.trim(),
+            ),
+          ),
+        ).then((result) {
+          if (result == true) {
+            _loadEpisodes();
+          }
+        });
+        break;
+      case 'activate':
+      case 'deactivate':
+        try {
+          await VideoEpisodeService.toggleEpisodeStatus(episode.id, !episode.isActive);
+          _showSnackBar('Status episode berjaya dikemaskini');
+          _loadEpisodes();
+        } catch (e) {
+          _showSnackBar('Ralat mengemas kini status: $e', isError: true);
+        }
+        break;
+      case 'delete':
+        final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Padam Episode'),
+            content: Text('Adakah anda pasti untuk memadam episode "${episode.title}"?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                child: const Text('Padam'),
+              ),
+            ],
+          ),
+        );
+        
+        if (confirmed == true) {
+          try {
+            await VideoEpisodeService.deleteEpisode(episode.id);
+            _showSnackBar('Episode berjaya dipadam');
+            _loadEpisodes();
+          } catch (e) {
+            _showSnackBar('Ralat memadam episode: $e', isError: true);
+          }
+        }
+        break;
+    }
+  }
+
+  // =====================================================
+  // SAVE METHODS
+  // =====================================================
+
+  Future<void> _saveVideoKitab() async {
+    if (!_formKey.currentState!.validate()) {
+      _tabController.animateTo(0); // Go to basic info tab
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Upload files if selected
+      String? uploadedThumbnailUrl = _thumbnailUrl;
+      String? uploadedPdfUrl = _pdfUrl;
+      String? uploadedPdfStoragePath;
+      int? uploadedPdfFileSize;
+      
+      print('DEBUG: Starting file upload process...');
+      
+      // Upload thumbnail if new file selected
+      if (_selectedThumbnail != null) {
+        try {
+          print('DEBUG: Starting thumbnail upload...');
+          final fileName = 'video_kitab_thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final storagePath = 'thumbnails/$fileName';
+          
+          print('DEBUG: Uploading thumbnail to: $storagePath');
+          await SupabaseService.client.storage
+              .from('video-kitab-files')
+              .upload(storagePath, _selectedThumbnail!);
+          
+          uploadedThumbnailUrl = SupabaseService.client.storage
+              .from('video-kitab-files')
+              .getPublicUrl(storagePath);
+          print('DEBUG: Thumbnail uploaded successfully: $uploadedThumbnailUrl');
+        } catch (e) {
+          print('DEBUG: Thumbnail upload error: $e');
+          _showSnackBar('Ralat upload thumbnail: $e', isError: true);
+          // Don't stop execution - continue with PDF upload
+        }
+      }
+      
+      // Upload PDF if new file selected
+      if (_selectedPdf != null) {
+        try {
+          print('DEBUG: Starting PDF upload...');
+          final fileName = 'video_kitab_${DateTime.now().millisecondsSinceEpoch}.pdf';
+          final storagePath = 'pdfs/$fileName';
+          
+          print('DEBUG: Uploading PDF to: $storagePath');
+          await SupabaseService.client.storage
+              .from('video-kitab-files')
+              .upload(storagePath, _selectedPdf!);
+          
+          uploadedPdfUrl = SupabaseService.client.storage
+              .from('video-kitab-files')
+              .getPublicUrl(storagePath);
+          uploadedPdfStoragePath = storagePath;
+          uploadedPdfFileSize = await _selectedPdf!.length();
+          print('DEBUG: PDF uploaded successfully: $uploadedPdfUrl, Size: $uploadedPdfFileSize bytes');
+        } catch (e) {
+          print('DEBUG: PDF upload error: $e');
+          _showSnackBar('Ralat upload PDF: $e', isError: true);
+          // Don't stop execution - continue with save
+        }
+      }
+
+      print('DEBUG: Preparing video kitab data...');
+      final videoKitabData = {
+        'title': _titleController.text.trim(),
+        'author': _authorController.text.trim().isEmpty 
+            ? null 
+            : _authorController.text.trim(),
+        'description': _descriptionController.text.trim().isEmpty 
+            ? null 
+            : _descriptionController.text.trim(),
+        'category_id': _selectedCategoryId,
+        'thumbnail_url': uploadedThumbnailUrl,
+        'pdf_url': uploadedPdfUrl,
+        'pdf_storage_path': uploadedPdfStoragePath,
+        'pdf_file_size': uploadedPdfFileSize,
+        'total_pages': _totalPagesController.text.trim().isEmpty 
+            ? null 
+            : int.tryParse(_totalPagesController.text.trim()),
+        'sort_order': _sortOrderController.text.trim().isEmpty 
+            ? 0 
+            : int.tryParse(_sortOrderController.text.trim()) ?? 0,
+        'is_premium': _isPremium,
+        'is_active': _isActive,
+      };
+      print('DEBUG: Video kitab data: $videoKitabData');
+
+      if (_isEditing) {
+        // Update existing video kitab
+        print('DEBUG: Updating existing video kitab with ID: ${widget.videoKitabId}');
+        await VideoKitabService.updateVideoKitab(
+          widget.videoKitabId!,
+          videoKitabData,
+        );
+        print('DEBUG: Update successful');
+        _showSnackBar('Video Kitab berjaya dikemaskini!');
+      } else {
+        // Create new video kitab
+        print('DEBUG: Creating new video kitab...');
+        final createdVideoKitab = await VideoKitabService.createVideoKitab(videoKitabData);
+        print('DEBUG: Created video kitab with ID: ${createdVideoKitab.id}');
+        
+        // Update our state with the new video kitab ID so episodes can be managed
+        setState(() {
+          _currentVideoKitabId = createdVideoKitab.id;
+        });
+        
+        _showSnackBar('Video Kitab baru berjaya ditambah! Anda kini boleh menambah episode.');
+        
+        // Don't pop immediately for new video kitabs - allow user to add episodes
+        return;
+      }
+
+      if (mounted) {
+        Navigator.of(context).pop(true); // Return true to indicate success
+      }
+    } catch (e) {
+      print('DEBUG: Save error: $e');
+      print('DEBUG: Error type: ${e.runtimeType}');
+      _showSnackBar('Ralat menyimpan video kitab: ${e.toString()}', isError: true);
+    } finally {
+      print('DEBUG: Save operation completed, setting loading to false');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: isError ? Colors.red : Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+}
