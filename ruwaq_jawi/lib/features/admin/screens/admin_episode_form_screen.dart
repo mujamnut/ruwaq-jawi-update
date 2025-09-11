@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import '../../../config/youtube_api.dart';
@@ -274,7 +275,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.video_library, color: AppTheme.primaryColor),
+                      HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: AppTheme.primaryColor),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -301,7 +302,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Tajuk Episode *',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.title),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
                   hintText: 'Contoh: Pengenalan Bacaan Jawi',
                 ),
                 validator: (value) {
@@ -323,7 +324,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Nombor Bahagian *',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.numbers),
+                        prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedTextNumberSign, color: Colors.grey),
                         hintText: 'Contoh: 1',
                       ),
                       keyboardType: TextInputType.number,
@@ -346,7 +347,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Durasi (minit)',
                         border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.access_time),
+                        prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Colors.grey),
                         hintText: 'Auto-dikesan dari URL YouTube',
                         helperText: 'Akan cuba mengesan durasi secara automatik',
                       ),
@@ -372,7 +373,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Penerangan Episode',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.description),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
                   alignLabelWithHint: true,
                   hintText: 'Penerangan ringkas tentang kandungan episode ini...',
                 ),
@@ -389,7 +390,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 decoration: const InputDecoration(
                   labelText: 'URL atau ID Video YouTube *',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.video_call),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedCameraVideo, color: Colors.grey),
                   hintText: 'https://www.youtube.com/watch?v=... atau ID video',
                 ),
                 onChanged: _onYouTubeUrlChanged,
@@ -418,7 +419,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.preview, color: Colors.blue),
+                          const HugeIcon(icon: HugeIcons.strokeRoundedView, color: Colors.blue),
                           const SizedBox(width: 8),
                           Text(
                             'Preview Video',
@@ -429,7 +430,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                           const Spacer(),
                           ElevatedButton.icon(
                             onPressed: _previewVideo,
-                            icon: const Icon(Icons.play_arrow),
+                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlay, color: Colors.white),
                             label: const Text('Tonton'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
@@ -457,7 +458,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     color: Colors.grey.shade200,
-                                    child: const Icon(Icons.error, color: Colors.grey),
+                                    child: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.grey),
                                   );
                                 },
                               ),
@@ -507,7 +508,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      _isActive ? Icons.visibility : Icons.visibility_off,
+                      _isActive ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
                       color: _isActive ? Colors.green : Colors.grey,
                     ),
                     const SizedBox(width: 12),
@@ -556,7 +557,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      _isPreview ? Icons.preview : Icons.lock,
+                      _isPreview ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedLockPassword,
                       color: _isPreview ? Colors.orange : AppTheme.primaryColor,
                     ),
                     const SizedBox(width: 12),

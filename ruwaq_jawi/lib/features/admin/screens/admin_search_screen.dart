@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/kitab.dart';
@@ -112,13 +113,13 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
             fontSize: 14,
           ),
           prefixIcon: Icon(
-            Icons.search,
+            HugeIcons.strokeRoundedSearch01,
             color: AppTheme.textSecondaryColor,
-            size: 20,
+            size: 20.0,
           ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.clear, size: 18),
+                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedCancel01, size: 18, color: Colors.grey),
                   onPressed: () {
                     _searchController.clear();
                     _performSearch('');
@@ -165,8 +166,8 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.error_outline,
-              size: 64,
+              HugeIcons.strokeRoundedAlert02,
+              size: 64.0,
               color: Colors.red,
             ),
             const SizedBox(height: 16),
@@ -195,8 +196,8 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.search,
-              size: 64,
+              HugeIcons.strokeRoundedSearch01,
+              size: 64.0,
               color: AppTheme.textSecondaryColor,
             ),
             const SizedBox(height: 16),
@@ -225,8 +226,8 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.search_off,
-              size: 64,
+              HugeIcons.strokeRoundedSearch01,
+              size: 64.0,
               color: AppTheme.textSecondaryColor,
             ),
             const SizedBox(height: 16),

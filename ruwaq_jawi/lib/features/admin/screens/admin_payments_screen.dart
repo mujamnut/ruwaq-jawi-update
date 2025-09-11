@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/supabase_service.dart';
@@ -102,17 +103,17 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return const Icon(
-                                  Icons.person,
+                                  HugeIcons.strokeRoundedUser,
                                   color: Colors.white,
-                                  size: 20,
+                                  size: 20.0,
                                 );
                               },
                             ),
                           )
                         : const Icon(
-                            Icons.person,
+                            HugeIcons.strokeRoundedUser,
                             color: Colors.white,
-                            size: 20,
+                            size: 20.0,
                           ),
                   ),
                 ),
@@ -136,7 +137,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Ralat',
@@ -194,25 +195,25 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
             _buildStatCard(
               'Jumlah Transaksi',
               _stats['totalPayments'].toString(),
-              Icons.receipt,
+              HugeIcons.strokeRoundedInvoice01,
               Colors.blue,
             ),
             _buildStatCard(
               'Berjaya',
               _stats['successfulPayments'].toString(),
-              Icons.check_circle,
+              HugeIcons.strokeRoundedCheckmarkCircle02,
               Colors.green,
             ),
             _buildStatCard(
               'Pending',
               _stats['pendingPayments'].toString(),
-              Icons.pending,
+              HugeIcons.strokeRoundedClock01,
               Colors.orange,
             ),
             _buildStatCard(
               'Jumlah Hasil',
               'RM ${_stats['totalRevenue'].toStringAsFixed(2)}',
-              Icons.attach_money,
+              HugeIcons.strokeRoundedMoney04,
               Colors.purple,
             ),
           ],
@@ -268,8 +269,8 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.receipt_long,
-                      size: 48,
+                      HugeIcons.strokeRoundedInvoice01,
+                      size: 48.0,
                       color: Colors.grey[400],
                     ),
                     const SizedBox(height: 16),
@@ -309,7 +310,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                     child: Icon(
                       _getStatusIcon(payment['status']),
                       color: Colors.white,
-                      size: 20,
+                      size: 20.0,
                     ),
                   ),
                   title: Text(
@@ -380,15 +381,15 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
     switch (status?.toLowerCase()) {
       case 'succeeded':
       case 'completed':
-        return Icons.check;
+        return HugeIcons.strokeRoundedCheckmarkCircle02;
       case 'pending':
       case 'processing':
-        return Icons.access_time;
+        return HugeIcons.strokeRoundedClock01;
       case 'failed':
       case 'canceled':
-        return Icons.close;
+        return HugeIcons.strokeRoundedCancel01;
       default:
-        return Icons.help;
+        return HugeIcons.strokeRoundedHelpCircle;
     }
   }
 

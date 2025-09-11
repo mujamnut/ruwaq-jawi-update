@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'dart:convert';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/user_profile.dart';
@@ -181,15 +182,15 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   IconData _getErrorIcon(String error) {
     if (error.contains('sambungan internet') || error.contains('sambungan rangkaian')) {
-      return Icons.wifi_off;
+      return HugeIcons.strokeRoundedWifiDisconnected02;
     } else if (error.contains('sesi') || error.contains('log masuk')) {
-      return Icons.lock_outline;
+      return HugeIcons.strokeRoundedLockPassword;
     } else if (error.contains('pelayan') || error.contains('server')) {
-      return Icons.dns_outlined;
+      return HugeIcons.strokeRoundedCloud;
     } else if (error.contains('masa terlalu lama') || error.contains('timeout')) {
-      return Icons.access_time;
+      return HugeIcons.strokeRoundedClock01;
     }
-    return Icons.error_outline;
+    return HugeIcons.strokeRoundedAlert02;
   }
 
   String _getErrorTitle(String error) {
@@ -257,7 +258,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
         tooltip: 'Tambah Admin',
-        child: const Icon(Icons.admin_panel_settings),
+        child: const HugeIcon(icon: HugeIcons.strokeRoundedUserSettings01, color: Colors.white),
       ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
     );
@@ -265,15 +266,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Memuatkan pengguna...'),
-          ],
-        ),
+      return Column(
+        children: [
+          _buildSearchAndFilters(),
+          _buildStatsBar(),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: 6, // Show 6 skeleton items
+              itemBuilder: (context, index) => _buildUserSkeleton(),
+            ),
+          ),
+        ],
       );
     }
 
@@ -298,7 +302,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
                 child: Icon(
                   _getErrorIcon(_error!),
-                  size: 48,
+                  size: 48.0,
                   color: Colors.red,
                 ),
               ),
@@ -334,7 +338,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    icon: const Icon(Icons.refresh, size: 20),
+                    icon: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 20, color: Colors.white),
                     label: const Text('Cuba Lagi'),
                   ),
                 ],
@@ -364,7 +368,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           TextField(
             decoration: InputDecoration(
               hintText: 'Cari nama atau email pengguna...',
-              prefixIcon: const Icon(Icons.search),
+              prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25),
                 borderSide: BorderSide.none,
@@ -462,9 +466,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.people_outline,
-              size: 64,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedUserMultiple,
+              size: 64.0,
               color: AppTheme.textSecondaryColor,
             ),
             const SizedBox(height: 16),
@@ -528,8 +532,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     backgroundColor: user.isAdmin
                         ? Colors.purple.withOpacity(0.1)
                         : AppTheme.primaryColor.withOpacity(0.1),
-                    child: Icon(
-                      user.isAdmin ? Icons.admin_panel_settings : Icons.person,
+                    child: HugeIcon(
+                      icon: user.isAdmin ? HugeIcons.strokeRoundedUserSettings01 : HugeIcons.strokeRoundedUser,
                       color: user.isAdmin
                           ? Colors.purple
                           : AppTheme.primaryColor,
@@ -558,8 +562,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     ),
                   ),
                   PopupMenuButton(
-                    icon: Icon(
-                      Icons.more_vert,
+                    icon: HugeIcon(
+                      icon: HugeIcons.strokeRoundedMoreVertical,
                       color: AppTheme.textSecondaryColor,
                     ),
                     onSelected: (value) => _handleUserAction(user, value),
@@ -568,7 +572,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         value: 'view',
                         child: Row(
                           children: [
-                            Icon(Icons.visibility),
+                            HugeIcon(icon: HugeIcons.strokeRoundedView, color: Colors.blue),
                             SizedBox(width: 8),
                             Text('Lihat Detail'),
                           ],
@@ -581,10 +585,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                               : 'activate',
                           child: Row(
                             children: [
-                              Icon(
-                                hasActiveSubscription
-                                    ? Icons.cancel
-                                    : Icons.check_circle,
+                              HugeIcon(
+                                icon: hasActiveSubscription
+                                    ? HugeIcons.strokeRoundedCancel01
+                                    : HugeIcons.strokeRoundedCheckmarkCircle02,
+                                color: hasActiveSubscription ? Colors.red : Colors.green,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -599,7 +604,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           value: 'promote',
                           child: Row(
                             children: [
-                              Icon(Icons.admin_panel_settings),
+                              HugeIcon(icon: HugeIcons.strokeRoundedUserSettings01, color: Colors.green),
                               SizedBox(width: 8),
                               Text('Jadikan Admin'),
                             ],
@@ -725,7 +730,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         title: const Text('Aktifkan Langganan'),
         content: const Text('Fungsi ini akan tersedia tidak lama lagi.'),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('OK'),
           ),
@@ -747,7 +752,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Batalkan'),
           ),
         ],
@@ -779,6 +787,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
             ),
             child: const Text('Jadikan Admin'),
           ),
@@ -829,7 +838,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Nama Penuh',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.person),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.grey),
                 ),
               ),
               const SizedBox(height: 16),
@@ -838,7 +847,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedMail01, color: Colors.grey),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -848,7 +857,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Kata Laluan',
                   border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedLockPassword, color: Colors.grey),
                 ),
                 obscureText: true,
               ),
@@ -861,7 +870,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
                 child: const Row(
                   children: [
-                    Icon(Icons.info, color: Colors.blue, size: 20),
+                    HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.blue, size: 20),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -962,5 +971,98 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildUserSkeleton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 200,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 60,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 100,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                width: 80,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }

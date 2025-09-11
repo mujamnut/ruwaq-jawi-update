@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:convert';
-import 'dart:async';
-
-import '../../../core/theme/app_theme.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/services/supabase_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../auth/screens/login_screen.dart';
+import 'admin_users_screen.dart';
+import 'admin_ebook_list_screen.dart';
+import 'admin_category_form_screen.dart';
+import 'admin_analytics_real_screen.dart';
 import '../widgets/admin_bottom_nav.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -108,84 +113,44 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   void _showNotifications() {
-    showModalBottomSheet(
+    showShadSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
+      builder: (context) => ShadSheet(
+        title: const Text('Notifikasi'),
+        description: const Text('Aktiviti dan update terkini sistem'),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(20),
-                  topRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Notifikasi',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
+            _buildNotificationCard(
+              icon: HugeIcons.strokeRoundedCreditCard,
+              iconColor: Colors.green,
+              title: 'Pembayaran Baharu',
+              subtitle: 'Pengguna telah membuat pembayaran premium',
+              time: '2 minit lalu',
             ),
-            // Notification list
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  _buildNotificationItem(
-                    icon: Icons.payment,
-                    iconColor: Colors.green,
-                    title: 'Pembayaran Baharu',
-                    subtitle: 'Pengguna telah membuat pembayaran premium',
-                    time: '2 minit lalu',
-                  ),
-                  _buildNotificationItem(
-                    icon: Icons.book,
-                    iconColor: AppTheme.primaryColor,
-                    title: 'Kitab Baharu Ditambah',
-                    subtitle: 'Kitab "Fiqh Muamalat" telah ditambah',
-                    time: '1 jam lalu',
-                  ),
-                  _buildNotificationItem(
-                    icon: Icons.person_add,
-                    iconColor: Colors.blue,
-                    title: 'Pengguna Baharu',
-                    subtitle: '5 pengguna baharu mendaftar hari ini',
-                    time: '3 jam lalu',
-                  ),
-                  _buildNotificationItem(
-                    icon: Icons.system_update,
-                    iconColor: Colors.orange,
-                    title: 'Sistem Update',
-                    subtitle: 'Sistem telah dikemas kini ke versi 2.1.0',
-                    time: '1 hari lalu',
-                  ),
-                ],
-              ),
+            const SizedBox(height: 12),
+            _buildNotificationCard(
+              icon: HugeIcons.strokeRoundedBook02,
+              iconColor: AppTheme.primaryColor,
+              title: 'Kitab Baharu Ditambah',
+              subtitle: 'Kitab "Fiqh Muamalat" telah ditambah',
+              time: '1 jam lalu',
+            ),
+            const SizedBox(height: 12),
+            _buildNotificationCard(
+              icon: HugeIcons.strokeRoundedUserAdd01,
+              iconColor: Colors.blue,
+              title: 'Pengguna Baharu',
+              subtitle: '5 pengguna baharu mendaftar hari ini',
+              time: '3 jam lalu',
+            ),
+            const SizedBox(height: 12),
+            _buildNotificationCard(
+              icon: HugeIcons.strokeRoundedSystemUpdate02,
+              iconColor: Colors.orange,
+              title: 'Sistem Update',
+              subtitle: 'Sistem telah dikemas kini ke versi 2.1.0',
+              time: '1 hari lalu',
             ),
           ],
         ),
@@ -193,7 +158,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
-  Widget _buildNotificationItem({
+  Widget _buildNotificationCard({
     required IconData icon,
     required Color iconColor,
     required String title,
@@ -201,49 +166,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     required String time,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: iconColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: HugeIcon(icon: icon, color: iconColor, size: 20.0),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   time,
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey[500],
-                    fontSize: 11,
                   ),
                 ),
               ],
@@ -405,10 +364,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             IconButton(
                               icon: Stack(
                                 children: [
-                                  const Icon(
-                                    Icons.notifications_outlined,
+                                  const HugeIcon(
+                                    icon: HugeIcons.strokeRoundedNotification03,
                                     color: Colors.white,
-                                    size: 24,
+                                    size: 24.0,
                                   ),
                                   Positioned(
                                     right: 0,
@@ -465,17 +424,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                                 height: 36,
                                                 fit: BoxFit.cover,
                                                 errorBuilder: (context, error, stackTrace) =>
-                                                    const Icon(
-                                                  Icons.person,
+                                                    const HugeIcon(
+                                                  icon: HugeIcons.strokeRoundedUser,
                                                   color: Colors.white,
-                                                  size: 20,
+                                                  size: 20.0,
                                                 ),
                                               ),
                                             )
-                                          : const Icon(
-                                              Icons.person,
+                                          : const HugeIcon(
+                                              icon: HugeIcons.strokeRoundedUser,
                                               color: Colors.white,
-                                              size: 20,
+                                              size: 20.0,
                                             ),
                                     ),
                                   ),
@@ -517,7 +476,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Ralat Dashboard',
@@ -532,7 +491,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton(
+            ShadButton(
               onPressed: _loadDashboardData,
               child: const Text('Cuba Lagi'),
             ),
@@ -565,7 +524,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   Widget _buildWelcomeSection() {
     return Container(
-      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -575,25 +533,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             AppTheme.primaryColor.withOpacity(0.8),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
+      padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Selamat Datang, Admin!',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: Colors.white,
-              fontSize: 24,
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             'Urus kandungan dan pengguna aplikasi Ruwaq Jawi',
-            style: TextStyle(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Colors.white.withOpacity(0.9),
-              fontSize: 16,
             ),
           ),
         ],
@@ -613,25 +577,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         _buildStatCard(
           'Jumlah Pengguna',
           '${_stats['totalUsers'] ?? 0}',
-          Icons.people,
+          HugeIcons.strokeRoundedUserMultiple,
           Colors.blue,
         ),
         _buildStatCard(
           'Jumlah Kitab',
           '${_stats['totalKitabs'] ?? 0}',
-          Icons.book,
+          HugeIcons.strokeRoundedBook02,
           Colors.green,
         ),
         _buildStatCard(
           'Kategori',
           '${_stats['totalCategories'] ?? 0}',
-          Icons.category,
+          HugeIcons.strokeRoundedGrid,
           Colors.orange,
         ),
         _buildStatCard(
           'Premium Users',
           '${_stats['premiumUsers'] ?? 0}',
-          Icons.star,
+          HugeIcons.strokeRoundedStar,
           Colors.purple,
         ),
       ],
@@ -640,14 +604,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
+            color: color.withOpacity(0.1),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -659,22 +623,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(icon, color: color, size: 24),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: HugeIcon(icon: icon, color: color, size: 24.0),
+              ),
               Text(
                 value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   color: color,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -704,25 +674,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           children: [
             _buildActionButton(
               'Tambah Kategori',
-              Icons.add_circle,
+              HugeIcons.strokeRoundedPlusSignCircle,
               Colors.blue,
               _navigateToAddCategory,
             ),
             _buildActionButton(
               'Tambah Kitab',
-              Icons.library_add,
+              HugeIcons.strokeRoundedLibrary,
               Colors.green,
               _navigateToAddKitab,
             ),
             _buildActionButton(
               'Urus Pengguna',
-              Icons.manage_accounts,
+              HugeIcons.strokeRoundedUserSettings01,
               Colors.orange,
               () => context.go('/admin/users'),
             ),
             _buildActionButton(
               'Laporan',
-              Icons.analytics,
+              HugeIcons.strokeRoundedAnalytics01,
               Colors.purple,
               () => context.go('/admin/reports'),
             ),
@@ -733,35 +703,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildActionButton(String title, IconData icon, Color color, VoidCallback onTap) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(0.3)),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: color, size: 24),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
-                ),
+    return ShadButton(
+      onPressed: onTap,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HugeIcon(icon: icon, color: color, size: 20.0),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: color,
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -808,59 +766,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   Widget _buildActivityItem(Map<String, dynamic> activity) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(color: Colors.grey.shade200),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: AppTheme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              Icons.history,
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedTime04,
               color: AppTheme.primaryColor,
-              size: 20,
+              size: 20.0,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   activity['title'] ?? 'Aktiviti',
-                  style: const TextStyle(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   activity['description'] ?? '',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   activity['time'] ?? '',
-                  style: TextStyle(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey[500],
-                    fontSize: 11,
                   ),
                 ),
               ],

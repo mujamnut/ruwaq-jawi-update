@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -67,7 +68,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         actions: [
           IconButton(
             onPressed: _saveSettings,
-            icon: const Icon(Icons.save),
+            icon: const HugeIcon(icon: HugeIcons.strokeRoundedFloppyDisk, color: Colors.white),
           ),
         ],
       ),
@@ -199,13 +200,13 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Harga Langganan Bulanan'),
               subtitle: Text('RM ${settings.monthlyPrice.toStringAsFixed(2)}'),
-              trailing: const Icon(Icons.edit),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
               onTap: () => _showPriceDialog('monthly', settings.monthlyPrice),
             ),
             ListTile(
               title: const Text('Harga Langganan Tahunan'),
               subtitle: Text('RM ${settings.yearlyPrice.toStringAsFixed(2)}'),
-              trailing: const Icon(Icons.edit),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
               onTap: () => _showPriceDialog('yearly', settings.yearlyPrice),
             ),
             const Divider(),
@@ -258,7 +259,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Saiz Maksimum Fail'),
               subtitle: Text('${settings.maxFileSize} MB'),
-              trailing: const Icon(Icons.edit),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
               onTap: () => _showFileSizeDialog(settings.maxFileSize),
             ),
             const Divider(),
@@ -357,7 +358,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Masa Session (minit)'),
               subtitle: Text('${settings.sessionTimeoutMinutes} minit'),
-              trailing: const Icon(Icons.edit),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
               onTap: () => _showTimeoutDialog(settings.sessionTimeoutMinutes),
             ),
             const Divider(),
@@ -456,22 +457,22 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Bersihkan Cache'),
               subtitle: const Text('Kosongkan cache aplikasi'),
-              trailing: const Icon(Icons.cleaning_services),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedDelete01, color: Colors.grey),
               onTap: () => _showClearCacheDialog(),
             ),
             const Divider(),
             ListTile(
               title: const Text('Reset Tetapan'),
               subtitle: const Text('Kembalikan semua tetapan kepada default'),
-              trailing: const Icon(Icons.restore),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Colors.grey),
               onTap: () => _showResetDialog(),
             ),
             const Divider(),
             ListTile(
               title: const Text('Log Keluar'),
               subtitle: const Text('Keluar dari akaun admin'),
-              leading: const Icon(Icons.logout, color: Colors.red),
-              trailing: const Icon(Icons.arrow_forward_ios),
+              leading: const HugeIcon(icon: HugeIcons.strokeRoundedLogout01, color: Colors.red),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, color: Colors.grey),
               onTap: () => _showLogoutDialog(),
             ),
           ],
@@ -497,16 +498,16 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Buat Sandaran'),
               subtitle: const Text('Sandaran data dan tetapan'),
-              leading: const Icon(Icons.backup, color: Colors.blue),
-              trailing: const Icon(Icons.arrow_forward_ios),
+              leading: const HugeIcon(icon: HugeIcons.strokeRoundedCloudUpload, color: Colors.blue),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, color: Colors.grey),
               onTap: () => _createBackup(),
             ),
             const Divider(),
             ListTile(
               title: const Text('Pulihkan dari Sandaran'),
               subtitle: const Text('Pulihkan data dari fail sandaran'),
-              leading: const Icon(Icons.restore, color: Colors.orange),
-              trailing: const Icon(Icons.arrow_forward_ios),
+              leading: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Colors.orange),
+              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, color: Colors.grey),
               onTap: () => _restoreBackup(),
             ),
             const Divider(),

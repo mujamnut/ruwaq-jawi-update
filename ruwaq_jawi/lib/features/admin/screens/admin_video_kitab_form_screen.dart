@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -287,9 +288,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           tabs: const [
-            Tab(text: 'Maklumat Asas', icon: Icon(Icons.info_outline)),
-            Tab(text: 'Media', icon: Icon(Icons.perm_media)),
-            Tab(text: 'Episode', icon: Icon(Icons.video_library)),
+            Tab(text: 'Maklumat Asas', icon: HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.grey)),
+            Tab(text: 'Media', icon: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.grey)),
+            Tab(text: 'Episode', icon: HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: Colors.grey)),
           ],
         ),
       ),
@@ -320,7 +321,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Tajuk Video Kitab *',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.title),
+                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -338,7 +339,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Pengarang',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
+                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.grey),
               ),
             ),
             const SizedBox(height: 16),
@@ -349,7 +350,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Kategori *',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.category),
+                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedGrid, color: Colors.grey),
               ),
               items: _categories.map((category) {
                 return DropdownMenuItem<String>(
@@ -377,7 +378,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Penerangan',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.description),
+                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
                 alignLabelWithHint: true,
               ),
               maxLines: 4,
@@ -397,7 +398,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.star, color: Colors.amber),
+                  const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -442,7 +443,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               child: Row(
                 children: [
                   Icon(
-                    _isActive ? Icons.visibility : Icons.visibility_off,
+                    _isActive ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
                     color: _isActive ? Colors.green : Colors.grey,
                   ),
                   const SizedBox(width: 12),
@@ -485,7 +486,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Urutan Paparan',
                 border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.sort),
+                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSortingAZ01, color: Colors.grey),
                 hintText: 'Contoh: 1, 2, 3... (semakin kecil, semakin atas)',
               ),
               keyboardType: TextInputType.number,
@@ -546,7 +547,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               ),
               ElevatedButton.icon(
                 onPressed: _effectiveVideoKitabId != null ? _addNewEpisode : null,
-                icon: const Icon(Icons.add),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
                 label: const Text('Tambah Episode'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
@@ -565,8 +566,8 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        Icons.video_library_outlined,
-                        size: 64,
+                        HugeIcons.strokeRoundedVideo01,
+                        size: 64.0,
                         color: Colors.grey.shade400,
                       ),
                       const SizedBox(height: 16),
@@ -617,7 +618,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.image, color: Colors.blue),
+              const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.blue),
               const SizedBox(width: 8),
               Text(
                 'Gambar Kecil Video Kitab',
@@ -644,7 +645,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                     ? Image.file(_selectedThumbnail!, fit: BoxFit.cover)
                     : (_thumbnailUrl != null
                         ? Image.network(_thumbnailUrl!, fit: BoxFit.cover)
-                        : const Icon(Icons.image, size: 48)),
+                        : const HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 48, color: Colors.grey)),
               ),
             ),
             const SizedBox(height: 12),
@@ -655,7 +656,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             children: [
               ElevatedButton.icon(
                 onPressed: _pickThumbnailImage,
-                icon: const Icon(Icons.upload),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedUpload01, color: Colors.white),
                 label: const Text('Pilih Gambar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.secondaryColor,
@@ -666,7 +667,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _removeThumbnail,
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedDelete01, color: Colors.red),
                   label: const Text('Buang', style: TextStyle(color: Colors.red)),
                 ),
               ],
@@ -689,7 +690,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         children: [
           Row(
             children: [
-              const Icon(Icons.picture_as_pdf, color: Colors.red),
+              const HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.red),
               const SizedBox(width: 8),
               Text(
                 'Dokumen PDF',
@@ -711,7 +712,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.picture_as_pdf, color: Colors.red),
+                  const HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.red),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -743,7 +744,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             decoration: const InputDecoration(
               labelText: 'Jumlah Halaman PDF',
               border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.pages),
+              prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
               hintText: 'Auto-dikesan apabila PDF dipilih',
               helperText: 'Akan cuba mengesan bilangan halaman secara automatik',
             ),
@@ -765,7 +766,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             children: [
               ElevatedButton.icon(
                 onPressed: _pickPdfFile,
-                icon: const Icon(Icons.upload_file),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedUpload01, color: Colors.white),
                 label: const Text('Pilih PDF'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
@@ -776,7 +777,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _removePdf,
-                  icon: const Icon(Icons.delete, color: Colors.red),
+                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedDelete01, color: Colors.red),
                   label: const Text('Buang', style: TextStyle(color: Colors.red)),
                 ),
               ],
@@ -832,7 +833,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.play_circle_outline),
+              icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlayCircle, color: Colors.blue),
               onPressed: () => _previewEpisode(episode),
               tooltip: 'Preview video',
             ),
@@ -843,7 +844,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit),
+                      HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.blue),
                       SizedBox(width: 8),
                       Text('Edit'),
                     ],
@@ -853,7 +854,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                   value: episode.isActive ? 'deactivate' : 'activate',
                   child: Row(
                     children: [
-                      Icon(episode.isActive ? Icons.visibility_off : Icons.visibility),
+                      Icon(episode.isActive ? HugeIcons.strokeRoundedViewOff : HugeIcons.strokeRoundedView),
                       SizedBox(width: 8),
                       Text(episode.isActive ? 'Nyahaktif' : 'Aktifkan'),
                     ],

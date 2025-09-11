@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
@@ -281,7 +282,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft02, color: Colors.white),
           onPressed: () => context.go('/admin/ebooks'),
         ),
       ),
@@ -323,7 +324,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.menu_book, color: Colors.blue, size: 24),
+              HugeIcon(icon: HugeIcons.strokeRoundedBook02, color: Colors.blue, size: 24),
               const SizedBox(width: 8),
               Text(
                 'E-book Khusus',
@@ -364,7 +365,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Tajuk E-book *',
             border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.title),
+            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
           ),
           validator: (value) {
             if (value?.trim().isEmpty ?? true) {
@@ -379,7 +380,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Pengarang',
             border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.person),
+            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.grey),
           ),
         ),
         const SizedBox(height: 16),
@@ -388,7 +389,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Kategori',
             border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.category),
+            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedGrid, color: Colors.grey),
           ),
           items: _categories.map((category) {
             return DropdownMenuItem<String>(
@@ -409,7 +410,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Penerangan',
             border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.description),
+            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
           ),
         ),
         const SizedBox(height: 16),
@@ -419,7 +420,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Jumlah Muka Surat',
             border: OutlineInputBorder(),
-            prefixIcon: Icon(Icons.pages),
+            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
             hintText: 'Auto-dikesan apabila PDF dipilih',
             helperText: 'Akan cuba mengesan bilangan halaman secara automatik',
           ),
@@ -453,7 +454,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.picture_as_pdf, color: Colors.red),
+                  HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.red),
                   const SizedBox(width: 8),
                   Text(
                     'Fail PDF E-book *',
@@ -489,7 +490,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: _pickPdfFile,
-                icon: const Icon(Icons.upload_file),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedUpload01, color: Colors.white),
                 label: Text(_selectedPdfFile != null || _uploadedPdfUrl != null 
                     ? 'Tukar PDF' 
                     : 'Pilih PDF'),
@@ -517,7 +518,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.image, color: Colors.purple),
+                  HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.purple),
                   const SizedBox(width: 8),
                   Text(
                     'Gambar Thumbnail (Opsional)',
@@ -553,7 +554,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: _pickThumbnailFile,
-                icon: const Icon(Icons.image),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white),
                 label: Text(_selectedThumbnailFile != null || _uploadedThumbnailUrl != null 
                     ? 'Tukar Thumbnail' 
                     : 'Pilih Thumbnail'),
@@ -608,7 +609,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const Icon(Icons.save),
+            : const HugeIcon(icon: HugeIcons.strokeRoundedFloppyDisk, color: Colors.white),
         label: Text(_isLoading 
             ? 'Menyimpan...' 
             : (widget.ebookId != null ? 'Kemaskini E-book' : 'Simpan E-book')),

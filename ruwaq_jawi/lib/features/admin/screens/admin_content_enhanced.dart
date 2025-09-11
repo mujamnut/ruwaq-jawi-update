@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../../core/theme/app_theme.dart';
@@ -168,7 +169,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
                     controller: _searchController,
                     decoration: InputDecoration(
                       hintText: 'Cari kitab...',
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -210,7 +211,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.error, size: 64, color: Colors.red),
+                              const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
                               const SizedBox(height: 16),
                               Text('Ralat: $_error'),
                               const SizedBox(height: 16),
@@ -226,7 +227,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.inbox, size: 64, color: Colors.grey),
+                                  HugeIcon(icon: HugeIcons.strokeRoundedInbox, size: 64.0, color: Colors.grey),
                                   SizedBox(height: 16),
                                   Text('Tiada kitab dijumpai'),
                                 ],
@@ -250,7 +251,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
       floatingActionButton: FloatingActionButton(
         onPressed: _createNewKitab,
         backgroundColor: AppTheme.primaryColor,
-        child: const Icon(Icons.add, color: Colors.white),
+        child: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
       ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
     );
@@ -440,9 +441,9 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(
-                          kitab.isActive ? Icons.check_circle : Icons.cancel,
-                          size: 16,
+                        HugeIcon(
+                          icon: kitab.isActive ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCancel01,
+                          size: 16.0,
                           color: kitab.isActive ? Colors.green : Colors.red,
                         ),
                         const SizedBox(width: 4),
@@ -455,9 +456,9 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
                           ),
                         ),
                         const Spacer(),
-                        Icon(
-                          kitab.isPremium ? Icons.star : Icons.lock_open,
-                          size: 16,
+                        HugeIcon(
+                          icon: kitab.isPremium ? HugeIcons.strokeRoundedStar : HugeIcons.strokeRoundedLock,
+                          size: 16.0,
                           color: kitab.isPremium ? Colors.amber : Colors.blue,
                         ),
                         const SizedBox(width: 4),
@@ -500,9 +501,9 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.video_library,
-            size: 32,
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedVideo01,
+            size: 32.0,
             color: AppTheme.primaryColor.withOpacity(0.6),
           ),
           const SizedBox(height: 8),

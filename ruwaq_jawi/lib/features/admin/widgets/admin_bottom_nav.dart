@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminBottomNav extends StatelessWidget {
@@ -17,50 +19,100 @@ class AdminBottomNav extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.05),
+            blurRadius: 24,
+            offset: const Offset(0, -8),
+            spreadRadius: 0,
           ),
         ],
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: AppTheme.primaryColor,
-        unselectedItemColor: Colors.grey[600],
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
+        border: Border(
+          top: BorderSide(
+            color: AppTheme.borderColor.withOpacity(0.3),
+            width: 1,
+          ),
         ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.normal,
-          fontSize: 12,
-        ),
-        currentIndex: currentIndex,
-        onTap: (index) => _onNavTap(context, index),
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.library_books),
-            label: 'Kandungan',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: 'E-book',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.people),
-            label: 'Pengguna',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics),
-            label: 'Analitik',
-          ),
-        ],
       ),
+      child: SafeArea(
+        child: BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          selectedItemColor: AppTheme.primaryColor,
+          unselectedItemColor: Colors.grey[600],
+          selectedLabelStyle: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            color: AppTheme.primaryColor,
+          ),
+          unselectedLabelStyle: TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 11,
+            color: Colors.grey[600],
+          ),
+          currentIndex: currentIndex,
+          onTap: (index) => _onNavTap(context, index),
+          items: [
+            _buildNavItem(
+              HugeIcons.strokeRoundedDashboardSquare01,
+              'Dashboard',
+              0,
+            ),
+            _buildNavItem(
+              HugeIcons.strokeRoundedLibrary,
+              'Kandungan',
+              1,
+            ),
+            _buildNavItem(
+              HugeIcons.strokeRoundedBook02,
+              'E-book',
+              2,
+            ),
+            _buildNavItem(
+              HugeIcons.strokeRoundedUserMultiple,
+              'Pengguna',
+              3,
+            ),
+            _buildNavItem(
+              HugeIcons.strokeRoundedAnalytics01,
+              'Analitik',
+              4,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  BottomNavigationBarItem _buildNavItem(
+    IconData icon,
+    String label,
+    int index,
+  ) {
+    final isSelected = currentIndex == index;
+    return BottomNavigationBarItem(
+      icon: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: HugeIcon(
+          icon: icon,
+          size: 22.0,
+          color: isSelected 
+              ? AppTheme.primaryColor 
+              : Colors.grey.shade600,
+        ),
+      ),
+      label: label,
     );
   }
 

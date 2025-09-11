@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/services/admin_category_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -188,7 +190,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
                       controller: _nameController,
                       label: 'Nama Kategori',
                       hint: 'Contoh: Akidah, Fiqh, Sejarah',
-                      icon: Icons.category,
+                      icon: HugeIcons.strokeRoundedGrid,
                       isRequired: true,
                     ),
                     const SizedBox(height: 16),
@@ -198,7 +200,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
                       controller: _descriptionController,
                       label: 'Deskripsi (Opsional)',
                       hint: 'Penerangan ringkas tentang kategori ini',
-                      icon: Icons.description,
+                      icon: HugeIcons.strokeRoundedFile01,
                       maxLines: 3,
                     ),
                     const SizedBox(height: 16),
@@ -208,7 +210,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
                       controller: _sortOrderController,
                       label: 'Susunan (Opsional)',
                       hint: 'Nombor untuk urutan paparan',
-                      icon: Icons.sort,
+                      icon: HugeIcons.strokeRoundedSortingAZ01,
                       keyboardType: TextInputType.number,
                     ),
                     const SizedBox(height: 24),
@@ -239,7 +241,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         
         GestureDetector(
           onTap: _pickIcon,
@@ -247,9 +249,13 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
             height: 120,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.borderColor),
+              border: Border.all(
+                color: AppTheme.borderColor,
+                style: BorderStyle.solid,
+                width: 2,
+              ),
             ),
             child: _buildIconDisplay(),
           ),
@@ -258,9 +264,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
         const SizedBox(height: 8),
         Text(
           'Ketuk untuk pilih icon (opsional)',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.textSecondaryColor,
-          ),
+          style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
     );
@@ -299,7 +303,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
               width: 60,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.broken_image, size: 60);
+                return const HugeIcon(icon: HugeIcons.strokeRoundedImageNotFound01, size: 60.0, color: Colors.grey);
               },
             ),
           ),
@@ -314,7 +318,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
       return const Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.add_photo_alternate, size: 40, color: Colors.grey),
+          HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 40.0, color: Colors.grey),
           SizedBox(height: 8),
           Text(
             'Tiada icon dipilih',
@@ -334,69 +338,83 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
     int maxLines = 1,
     TextInputType? keyboardType,
   }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label + (isRequired ? ' *' : ''),
-        hintText: hint,
-        prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label + (isRequired ? ' *' : ''),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: AppTheme.textPrimaryColor,
+          ),
         ),
-        filled: true,
-        fillColor: AppTheme.surfaceColor,
-      ),
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      validator: isRequired ? (value) {
-        if (value == null || value.trim().isEmpty) {
-          return '$label adalah wajib';
-        }
-        return null;
-      } : null,
+        const SizedBox(height: 8),
+        TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixIcon: HugeIcon(icon: icon, size: 20.0, color: Colors.grey),
+            border: const OutlineInputBorder(),
+          ),
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          validator: isRequired ? (value) {
+            if (value == null || value.trim().isEmpty) {
+              return '$label adalah wajib';
+            }
+            return null;
+          } : null,
+        ),
+      ],
     );
   }
 
   Widget _buildStatusToggle() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppTheme.borderColor),
       ),
       child: Row(
         children: [
-          Icon(
-            _isActive ? Icons.visibility : Icons.visibility_off,
-            color: _isActive ? Colors.green : Colors.grey,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: (_isActive ? Colors.green : Colors.grey).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: HugeIcon(
+              icon: _isActive ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
+              color: _isActive ? Colors.green : Colors.grey,
+              size: 20.0,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Status Kategori',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   _isActive ? 'Aktif - Boleh dilihat pengguna' : 'Tidak Aktif - Tersembunyi',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
             ),
           ),
-          Switch(
+          ShadSwitch(
             value: _isActive,
             onChanged: (value) {
               setState(() => _isActive = value);
             },
-            activeColor: AppTheme.primaryColor,
           ),
         ],
       ),
@@ -406,21 +424,16 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
   Widget _buildSaveButton() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
-        border: Border(top: BorderSide(color: AppTheme.borderColor)),
-      ),
-      child: ElevatedButton(
-        onPressed: _isLoading ? null : _submitForm,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.primaryColor,
-          foregroundColor: AppTheme.textLightColor,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+        border: Border(
+          top: BorderSide(color: AppTheme.borderColor),
         ),
+      ),
+      child: ShadButton(
+        onPressed: _isLoading ? null : _submitForm,
+        size: ShadButtonSize.lg,
         child: _isLoading 
           ? const SizedBox(
               height: 20,

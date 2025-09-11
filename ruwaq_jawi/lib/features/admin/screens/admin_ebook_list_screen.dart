@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../../core/services/supabase_service.dart';
@@ -170,7 +171,10 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('Padam'),
           ),
         ],
@@ -309,7 +313,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            icon: const Icon(Icons.filter_list),
+            icon: const HugeIcon(icon: HugeIcons.strokeRoundedFilterMailCircle, color: Colors.white),
             onPressed: _showFilterDialog,
             tooltip: 'Penapis',
           ),
@@ -336,7 +340,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
         },
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
-        icon: const Icon(Icons.add),
+        icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
         label: const Text('Tambah E-book'),
       ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
@@ -349,7 +353,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
       child: TextField(
         decoration: InputDecoration(
           hintText: 'Cari e-book mengikut tajuk atau pengarang...',
-          prefixIcon: const Icon(Icons.search),
+          prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
           ),
@@ -380,9 +384,9 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem('Jumlah', totalEbooks.toString(), Icons.menu_book),
-          _buildStatItem('Aktif', activeEbooks.toString(), Icons.check_circle),
-          _buildStatItem('Premium', premiumEbooks.toString(), Icons.star),
+          _buildStatItem('Jumlah', totalEbooks.toString(), HugeIcons.strokeRoundedBook02),
+          _buildStatItem('Aktif', activeEbooks.toString(), HugeIcons.strokeRoundedCheckmarkCircle02),
+          _buildStatItem('Premium', premiumEbooks.toString(), HugeIcons.strokeRoundedStar),
         ],
       ),
     );
@@ -391,7 +395,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
   Widget _buildStatItem(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: AppTheme.primaryColor, size: 24),
+        HugeIcon(icon: icon, color: AppTheme.primaryColor, size: 24.0),
         const SizedBox(height: 4),
         Text(
           value,
@@ -422,7 +426,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 64, color: Colors.red),
+            HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Ralat Memuat Data',
@@ -453,10 +457,10 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.menu_book_outlined,
-              size: 64,
-              color: Colors.grey[400],
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedBook02,
+              size: 64.0,
+              color: Colors.grey.shade400,
             ),
             const SizedBox(height: 16),
             Text(
@@ -486,7 +490,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                   ),
                 ).then((_) => _refreshData());
               },
-              icon: const Icon(Icons.add),
+              icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
               label: const Text('Tambah E-book Pertama'),
             ),
           ],
@@ -547,18 +551,18 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                         ebook['thumbnail_url'],
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                          return Icon(
-                            Icons.menu_book,
-                            size: 40,
-                            color: Colors.grey[400],
+                          return HugeIcon(
+                            icon: HugeIcons.strokeRoundedBook02,
+                            size: 40.0,
+                            color: Colors.grey.shade400,
                           );
                         },
                       ),
                     )
-                  : Icon(
-                      Icons.menu_book,
-                      size: 40,
-                      color: Colors.grey[400],
+                  : HugeIcon(
+                      icon: HugeIcons.strokeRoundedBook02,
+                      size: 40.0,
+                      color: Colors.grey.shade400,
                     ),
             ),
             const SizedBox(width: 16),
@@ -636,7 +640,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.visibility, size: 14, color: Colors.grey[600]),
+                      HugeIcon(icon: HugeIcons.strokeRoundedView, size: 14.0, color: Colors.grey.shade600),
                       const SizedBox(width: 4),
                       Text(
                         '${ebook['views_count'] ?? 0}',
@@ -645,7 +649,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                         ),
                       ),
                       const SizedBox(width: 16),
-                      Icon(Icons.download, size: 14, color: Colors.grey[600]),
+                      HugeIcon(icon: HugeIcons.strokeRoundedDownload01, size: 14.0, color: Colors.grey.shade600),
                       const SizedBox(width: 4),
                       Text(
                         '${ebook['downloads_count'] ?? 0}',
@@ -715,7 +719,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                   value: 'edit',
                   child: Row(
                     children: [
-                      Icon(Icons.edit, size: 16),
+                      HugeIcon(icon: HugeIcons.strokeRoundedEdit01, size: 16, color: Colors.blue),
                       SizedBox(width: 8),
                       Text('Edit'),
                     ],
@@ -725,9 +729,10 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                   value: 'toggle',
                   child: Row(
                     children: [
-                      Icon(
-                        isActive ? Icons.visibility_off : Icons.visibility,
-                        size: 16,
+                      HugeIcon(
+                        icon: isActive ? HugeIcons.strokeRoundedViewOff : HugeIcons.strokeRoundedView,
+                        size: 16.0,
+                        color: Colors.blue,
                       ),
                       const SizedBox(width: 8),
                       Text(isActive ? 'Nyahaktif' : 'Aktifkan'),
@@ -738,7 +743,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete, size: 16, color: Colors.red),
+                      HugeIcon(icon: HugeIcons.strokeRoundedDelete01, size: 16.0, color: Colors.red),
                       SizedBox(width: 8),
                       Text('Padam', style: TextStyle(color: Colors.red)),
                     ],

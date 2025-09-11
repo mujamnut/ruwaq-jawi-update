@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -342,9 +343,15 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           labelColor: AppTheme.textLightColor,
           unselectedLabelColor: AppTheme.textLightColor.withOpacity(0.7),
           tabs: const [
-            Tab(icon: Icon(Icons.info), text: 'Maklumat'),
-            Tab(icon: Icon(Icons.picture_as_pdf), text: 'Fail'),
-            Tab(icon: Icon(Icons.video_library), text: 'Episode'),
+            Tab(
+              icon: HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.grey),
+              text: 'Maklumat',
+            ),
+            Tab(icon: HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.grey), text: 'Fail'),
+            Tab(
+              icon: HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: Colors.grey),
+              text: 'Episode',
+            ),
           ],
         ),
         actions: [
@@ -394,7 +401,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             controller: _titleController,
             label: 'Tajuk Kitab',
             hint: 'Nama kitab',
-            icon: Icons.book,
+            icon: HugeIcons.strokeRoundedBook02,
             isRequired: true,
           ),
           const SizedBox(height: 16),
@@ -404,7 +411,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             controller: _authorController,
             label: 'Pengarang',
             hint: 'Nama pengarang kitab',
-            icon: Icons.person,
+            icon: HugeIcons.strokeRoundedUser,
           ),
           const SizedBox(height: 16),
 
@@ -417,7 +424,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             controller: _descriptionController,
             label: 'Deskripsi',
             hint: 'Penerangan ringkas tentang kitab',
-            icon: Icons.description,
+            icon: HugeIcons.strokeRoundedFile01,
             maxLines: 4,
           ),
           const SizedBox(height: 16),
@@ -427,7 +434,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             controller: _totalPagesController,
             label: 'Jumlah Halaman',
             hint: 'Bilangan halaman (untuk e-book)',
-            icon: Icons.pages,
+            icon: HugeIcons.strokeRoundedFile01,
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 16),
@@ -437,7 +444,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             controller: _sortOrderController,
             label: 'Susunan',
             hint: 'Nombor untuk urutan paparan',
-            icon: Icons.sort,
+            icon: HugeIcons.strokeRoundedSortingAZ01,
             keyboardType: TextInputType.number,
           ),
           const SizedBox(height: 24),
@@ -501,7 +508,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               ),
               ElevatedButton.icon(
                 onPressed: () => _showAddEpisodeDialog(),
-                icon: const Icon(Icons.add),
+                icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
                 label: const Text('Tambah Episode'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
@@ -519,7 +526,11 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.video_library, size: 64, color: Colors.grey),
+                      Icon(
+                        HugeIcons.strokeRoundedVideo01,
+                        size: 64.0,
+                        color: Colors.grey,
+                      ),
                       SizedBox(height: 16),
                       Text(
                         'Belum ada episode video',
@@ -588,7 +599,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       value: _selectedCategoryId,
       decoration: InputDecoration(
         labelText: 'Kategori',
-        prefixIcon: const Icon(Icons.category),
+        prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedGrid, color: Colors.grey),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
         fillColor: AppTheme.surfaceColor,
@@ -618,7 +629,9 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               : 'Percuma untuk semua pengguna',
           value: _isPremium,
           onChanged: (value) => setState(() => _isPremium = value),
-          icon: _isPremium ? Icons.lock : Icons.lock_open,
+          icon: _isPremium
+              ? HugeIcons.strokeRoundedLockPassword
+              : HugeIcons.strokeRoundedLock,
         ),
         const SizedBox(height: 16),
         _buildToggle(
@@ -628,7 +641,9 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               : 'Hanya video tersedia',
           value: _isEbookAvailable,
           onChanged: (value) => setState(() => _isEbookAvailable = value),
-          icon: _isEbookAvailable ? Icons.picture_as_pdf : Icons.video_library,
+          icon: _isEbookAvailable
+              ? HugeIcons.strokeRoundedPdf01
+              : HugeIcons.strokeRoundedVideo01,
         ),
         const SizedBox(height: 16),
         _buildToggle(
@@ -638,7 +653,9 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               : 'Tidak Aktif - Tersembunyi',
           value: _isActive,
           onChanged: (value) => setState(() => _isActive = value),
-          icon: _isActive ? Icons.visibility : Icons.visibility_off,
+          icon: _isActive
+              ? HugeIcons.strokeRoundedView
+              : HugeIcons.strokeRoundedViewOff,
         ),
       ],
     );
@@ -754,7 +771,11 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               ),
             )
           else
-            const Icon(Icons.picture_as_pdf, size: 48, color: Colors.red),
+            const Icon(
+              HugeIcons.strokeRoundedPdf01,
+              size: 48.0,
+              color: Colors.red,
+            ),
           const SizedBox(height: 8),
           Text(
             selectedFile.path.split('/').last,
@@ -776,12 +797,19 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                 width: 120,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  return const Icon(Icons.broken_image, size: 48);
+                  return const Icon(
+                    HugeIcons.strokeRoundedImageNotFound01,
+                    size: 48.0,
+                  );
                 },
               ),
             )
           else
-            const Icon(Icons.picture_as_pdf, size: 48, color: Colors.red),
+            const Icon(
+              HugeIcons.strokeRoundedPdf01,
+              size: 48.0,
+              color: Colors.red,
+            ),
           const SizedBox(height: 8),
           Text(
             isImage ? 'Thumbnail sedia ada' : 'PDF sedia ada',
@@ -794,8 +822,10 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
-            isImage ? Icons.add_photo_alternate : Icons.upload_file,
-            size: 48,
+            isImage
+                ? HugeIcons.strokeRoundedImage01
+                : HugeIcons.strokeRoundedUpload01,
+            size: 48.0,
             color: Colors.grey,
           ),
           const SizedBox(height: 8),
@@ -852,12 +882,14 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                               color: Colors.grey[300],
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.broken_image),
+                            child: const Icon(
+                              HugeIcons.strokeRoundedImageNotFound01,
+                            ),
                           );
                         },
                       ),
                     )
-                  : const Icon(Icons.video_library, size: 40),
+                  : const HugeIcon(icon: HugeIcons.strokeRoundedVideo01, size: 40, color: Colors.grey),
             ),
             const SizedBox(width: 12),
 
@@ -977,7 +1009,11 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Drag Handle
-                Icon(Icons.drag_handle, color: Colors.grey[400], size: 20),
+                Icon(
+                  HugeIcons.strokeRoundedDrag01,
+                  color: Colors.grey[400],
+                  size: 20.0,
+                ),
                 const SizedBox(height: 8),
 
                 // Options Menu
@@ -987,7 +1023,10 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                     const PopupMenuItem(
                       value: 'play',
                       child: ListTile(
-                        leading: Icon(Icons.play_arrow, color: Colors.green),
+                        leading: Icon(
+                          HugeIcons.strokeRoundedPlay,
+                          color: Colors.green,
+                        ),
                         title: Text('Tonton di YouTube'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -995,7 +1034,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                     const PopupMenuItem(
                       value: 'edit',
                       child: ListTile(
-                        leading: Icon(Icons.edit),
+                        leading: HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.blue),
                         title: Text('Edit'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1003,7 +1042,10 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                     const PopupMenuItem(
                       value: 'delete',
                       child: ListTile(
-                        leading: Icon(Icons.delete, color: Colors.red),
+                        leading: Icon(
+                          HugeIcons.strokeRoundedDelete01,
+                          color: Colors.red,
+                        ),
                         title: Text('Padam'),
                         contentPadding: EdgeInsets.zero,
                       ),
@@ -1270,11 +1312,14 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
         _youtubeVideoId = widget.episode!['youtube_video_id'];
         _youtubeUrlController.text =
             'https://www.youtube.com/watch?v=$_youtubeVideoId';
-        
+
         final existingThumbnailUrl = widget.episode!['thumbnail_url'];
-        final defaultThumbnailUrl = widget.defaultThumbnailFor(_youtubeVideoId!);
-        
-        if (existingThumbnailUrl != null && existingThumbnailUrl != defaultThumbnailUrl) {
+        final defaultThumbnailUrl = widget.defaultThumbnailFor(
+          _youtubeVideoId!,
+        );
+
+        if (existingThumbnailUrl != null &&
+            existingThumbnailUrl != defaultThumbnailUrl) {
           _useCustomThumbnail = true;
           _thumbnailUrlController.text = existingThumbnailUrl;
           _previewThumbnailUrl = existingThumbnailUrl;
@@ -1320,14 +1365,15 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
       setState(() {
         _youtubeVideoId = id;
         _previewTitle = 'Video YouTube';
-        
+
         // Use custom thumbnail if provided, otherwise use default
-        if (_useCustomThumbnail && _thumbnailUrlController.text.trim().isNotEmpty) {
+        if (_useCustomThumbnail &&
+            _thumbnailUrlController.text.trim().isNotEmpty) {
           _previewThumbnailUrl = _thumbnailUrlController.text.trim();
         } else {
           _previewThumbnailUrl = widget.defaultThumbnailFor(id);
         }
-        
+
         _isFetchingPreview = false;
         _urlErrorMessage = null;
       });
@@ -1336,7 +1382,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
 
   void _onThumbnailUrlChanged() {
     if (!_useCustomThumbnail) return;
-    
+
     final url = _thumbnailUrlController.text.trim();
     setState(() {
       if (url.isNotEmpty && _youtubeVideoId != null) {
@@ -1368,7 +1414,10 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.numbers, color: AppTheme.primaryColor),
+                    Icon(
+                      HugeIcons.strokeRoundedTextNumberSign,
+                      color: AppTheme.primaryColor,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Episode $_episodeNumber',
@@ -1388,7 +1437,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                   labelText: 'URL Video YouTube *',
                   hintText:
                       'Tampal URL penuh, contoh: https://www.youtube.com/watch?v=...',
-                  prefixIcon: const Icon(Icons.link),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedLink01, color: Colors.grey),
                   border: const OutlineInputBorder(),
                   errorText: _urlErrorMessage,
                 ),
@@ -1440,7 +1489,9 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                               width: 80,
                               height: 60,
                               color: Colors.grey[300],
-                              child: const Icon(Icons.broken_image),
+                              child: const Icon(
+                                HugeIcons.strokeRoundedImageNotFound01,
+                              ),
                             );
                           },
                         ),
@@ -1471,7 +1522,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                             await launchUrl(Uri.parse(url));
                           }
                         },
-                        icon: const Icon(Icons.open_in_new),
+                        icon: HugeIcon(icon: HugeIcons.strokeRoundedArrowUpRight01, color: Colors.blue),
                         tooltip: 'Buka di YouTube',
                       ),
                     ],
@@ -1487,7 +1538,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Tajuk Episode *',
                   hintText: 'Contoh: Bab 1 - Pengenalan Fiqh',
-                  prefixIcon: Icon(Icons.title),
+                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -1496,7 +1547,9 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
               // Thumbnail URL Section
               SwitchListTile(
                 title: const Text('Gunakan URL Thumbnail Sendiri'),
-                subtitle: const Text('Jika tidak, akan guna thumbnail default YouTube'),
+                subtitle: const Text(
+                  'Jika tidak, akan guna thumbnail default YouTube',
+                ),
                 value: _useCustomThumbnail,
                 onChanged: (value) {
                   setState(() {
@@ -1504,7 +1557,9 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                     if (!value) {
                       _thumbnailUrlController.clear();
                       if (_youtubeVideoId != null) {
-                        _previewThumbnailUrl = widget.defaultThumbnailFor(_youtubeVideoId!);
+                        _previewThumbnailUrl = widget.defaultThumbnailFor(
+                          _youtubeVideoId!,
+                        );
                       }
                     } else {
                       _onThumbnailUrlChanged();
@@ -1519,7 +1574,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                   decoration: const InputDecoration(
                     labelText: 'URL Thumbnail',
                     hintText: 'https://example.com/thumbnail.jpg',
-                    prefixIcon: Icon(Icons.image),
+                    prefixIcon: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.grey),
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (value) => _onThumbnailUrlChanged(),
@@ -1555,10 +1610,12 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                   _titleController.text.trim().isNotEmpty &&
                   !_isFetchingPreview)
               ? () {
-                  final finalThumbnailUrl = _useCustomThumbnail && _thumbnailUrlController.text.trim().isNotEmpty
+                  final finalThumbnailUrl =
+                      _useCustomThumbnail &&
+                          _thumbnailUrlController.text.trim().isNotEmpty
                       ? _thumbnailUrlController.text.trim()
                       : _previewThumbnailUrl;
-                  
+
                   widget.onSave(
                     episodeId: widget.episode?['id'],
                     title: _titleController.text.trim(),

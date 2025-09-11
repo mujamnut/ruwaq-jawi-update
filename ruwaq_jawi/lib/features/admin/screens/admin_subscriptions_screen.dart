@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/services/supabase_service.dart';
@@ -108,17 +109,17 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
                                 return const Icon(
-                                  Icons.person,
+                                  HugeIcons.strokeRoundedUser,
                                   color: Colors.white,
-                                  size: 20,
+                                  size: 20.0,
                                 );
                               },
                             ),
                           )
                         : const Icon(
-                            Icons.person,
+                            HugeIcons.strokeRoundedUser,
                             color: Colors.white,
-                            size: 20,
+                            size: 20.0,
                           ),
                   ),
                 ),
@@ -142,7 +143,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Ralat',
@@ -202,25 +203,25 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
             _buildStatCard(
               'Jumlah Langganan',
               _stats['totalSubscriptions'].toString(),
-              Icons.subscriptions,
+              HugeIcons.strokeRoundedCreditCard,
               Colors.blue,
             ),
             _buildStatCard(
               'Aktif',
               _stats['activeSubscriptions'].toString(),
-              Icons.check_circle,
+              HugeIcons.strokeRoundedCheckmarkCircle02,
               Colors.green,
             ),
             _buildStatCard(
               'Tamat Tempoh',
               _stats['expiredSubscriptions'].toString(),
-              Icons.schedule,
+              HugeIcons.strokeRoundedClock01,
               Colors.orange,
             ),
             _buildStatCard(
               'Jumlah Hasil',
               'RM ${_stats['totalRevenue'].toStringAsFixed(2)}',
-              Icons.attach_money,
+              HugeIcons.strokeRoundedMoney04,
               Colors.purple,
             ),
           ],
@@ -350,8 +351,8 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.subscriptions,
-                      size: 48,
+                      HugeIcons.strokeRoundedCreditCard,
+                      size: 48.0,
                       color: Colors.grey[400],
                     ),
                     const SizedBox(height: 16),
@@ -386,7 +387,7 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                     child: Icon(
                       _getStatusIcon(subscription['status']),
                       color: Colors.white,
-                      size: 20,
+                      size: 20.0,
                     ),
                   ),
                   title: Text(
@@ -417,9 +418,9 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                     children: [
                       if (subscription['auto_renew'] == true)
                         Icon(
-                          Icons.autorenew,
+                          HugeIcons.strokeRoundedRefresh,
                           color: Colors.green,
-                          size: 16,
+                          size: 16.0,
                         ),
                       Text(
                         subscription['provider']?.toString().toUpperCase() ?? 'MANUAL',
@@ -461,19 +462,19 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
   IconData _getStatusIcon(String? status) {
     switch (status?.toLowerCase()) {
       case 'active':
-        return Icons.check_circle;
+        return HugeIcons.strokeRoundedCheckmarkCircle02;
       case 'expired':
-        return Icons.schedule;
+        return HugeIcons.strokeRoundedClock01;
       case 'cancelled':
-        return Icons.cancel;
+        return HugeIcons.strokeRoundedCancel01;
       case 'trialing':
-        return Icons.access_time;
+        return HugeIcons.strokeRoundedClock01;
       case 'past_due':
-        return Icons.warning;
+        return HugeIcons.strokeRoundedAlert02;
       case 'paused':
-        return Icons.pause_circle;
+        return HugeIcons.strokeRoundedPauseCircle;
       default:
-        return Icons.help;
+        return HugeIcons.strokeRoundedHelpCircle;
     }
   }
 

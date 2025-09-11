@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -470,18 +471,18 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                               height: 36,
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) {
-                                return const Icon(
-                                  Icons.person,
+                                return const HugeIcon(
+                                  icon: HugeIcons.strokeRoundedUser,
                                   color: Colors.white,
-                                  size: 20,
+                                  size: 20.0,
                                 );
                               },
                             ),
                           )
-                        : const Icon(
-                            Icons.person,
+                        : const HugeIcon(
+                            icon: HugeIcons.strokeRoundedUser,
                             color: Colors.white,
-                            size: 20,
+                            size: 20.0,
                           ),
                   ),
                 ),
@@ -505,7 +506,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
             const SizedBox(height: 16),
             Text(
               'Ralat',
@@ -576,28 +577,28 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
             _buildOverviewCard(
               'Jumlah Pengguna',
               users['total'].toString(),
-              Icons.people,
+              HugeIcons.strokeRoundedUserMultiple,
               Colors.blue,
               '${growth['userGrowth']?.toStringAsFixed(1) ?? '0'}%',
             ),
             _buildOverviewCard(
               'Langganan Aktif',
               subscriptions['active'].toString(),
-              Icons.card_membership,
+              HugeIcons.strokeRoundedCreditCard,
               Colors.green,
               '${growth['subscriptionGrowth']?.toStringAsFixed(1) ?? '0'}%',
             ),
             _buildOverviewCard(
               'Jumlah Kitab',
               content['totalKitab'].toString(),
-              Icons.book,
+              HugeIcons.strokeRoundedBook02,
               AppTheme.primaryColor,
               '${content['activeKitab']} aktif',
             ),
             _buildOverviewCard(
               'Kategori',
               content['totalCategories'].toString(),
-              Icons.category,
+              HugeIcons.strokeRoundedGrid,
               Colors.purple,
               '${content['activeCategories']} aktif',
             ),
@@ -618,7 +619,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(icon, color: color, size: 24),
+                HugeIcon(icon: icon, color: color, size: 24.0),
                 Text(
                   subtitle,
                   style: TextStyle(
@@ -670,7 +671,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Pelajar',
                     users['students'].toString(),
-                    Icons.school,
+                    HugeIcons.strokeRoundedSchool,
                     Colors.blue,
                   ),
                 ),
@@ -678,7 +679,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Admin',
                     users['admins'].toString(),
-                    Icons.admin_panel_settings,
+                    HugeIcons.strokeRoundedUserSettings01,
                     Colors.red,
                   ),
                 ),
@@ -691,7 +692,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Pelanggan Aktif',
                     users['activeSubscribers'].toString(),
-                    Icons.verified_user,
+                    HugeIcons.strokeRoundedUserCheck01,
                     Colors.green,
                   ),
                 ),
@@ -699,7 +700,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Baru (30 hari)',
                     users['recentRegistrations'].toString(),
-                    Icons.new_releases,
+                    HugeIcons.strokeRoundedNewReleases,
                     Colors.orange,
                   ),
                 ),
@@ -733,7 +734,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Total Video',
                     content['totalVideos'].toString(),
-                    Icons.video_library,
+                    HugeIcons.strokeRoundedVideo01,
                     Colors.red,
                   ),
                 ),
@@ -741,7 +742,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Video Aktif',
                     content['activeVideos'].toString(),
-                    Icons.play_circle,
+                    HugeIcons.strokeRoundedPlayCircle,
                     Colors.green,
                   ),
                 ),
@@ -754,7 +755,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Premium Kitab',
                     content['premiumKitab'].toString(),
-                    Icons.star,
+                    HugeIcons.strokeRoundedStar,
                     Colors.amber,
                   ),
                 ),
@@ -762,7 +763,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'E-Book Tersedia',
                     content['ebookAvailable'].toString(),
-                    Icons.menu_book,
+                    HugeIcons.strokeRoundedBook02,
                     Colors.purple,
                   ),
                 ),
@@ -873,7 +874,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Transaksi',
                     revenue['totalTransactions'].toString(),
-                    Icons.receipt,
+                    HugeIcons.strokeRoundedInvoice01,
                     Colors.blue,
                   ),
                 ),
@@ -881,7 +882,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                   child: _buildStatItem(
                     'Bulanan Berulang',
                     'RM ${revenue['monthlyRecurringRevenue']?.toStringAsFixed(2) ?? '0.00'}',
-                    Icons.autorenew,
+                    HugeIcons.strokeRoundedRefresh,
                     Colors.green,
                   ),
                 ),
@@ -948,8 +949,9 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                     ),
                     title: Text(content['title']),
                     subtitle: Text('${content['saves']} simpanan'),
-                    trailing: Icon(
-                      content['type'] == 'kitab' ? Icons.book : Icons.video_library,
+                    trailing: HugeIcon(
+                      icon: content['type'] == 'kitab' ? HugeIcons.strokeRoundedBook02 : HugeIcons.strokeRoundedVideo01,
+                      color: Colors.grey,
                     ),
                   );
                 },
@@ -969,7 +971,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
       ),
       child: Column(
         children: [
-          Icon(icon, color: color, size: 24),
+          HugeIcon(icon: icon, color: color, size: 24.0),
           const SizedBox(height: 8),
           Text(
             value,

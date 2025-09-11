@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -27,12 +28,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft02, color: Colors.white),
           onPressed: () => context.go('/admin/dashboard'),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.white),
             onPressed: () => _showEditProfileDialog(context),
             tooltip: 'Edit Profile',
           ),
@@ -92,17 +93,17 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return const Icon(
-                          Icons.person,
+                          HugeIcons.strokeRoundedUser,
                           color: Colors.white,
-                          size: 50,
+                          size: 50.0,
                         );
                       },
                     ),
                   )
                 : const Icon(
-                    Icons.person,
+                    HugeIcons.strokeRoundedUser,
                     color: Colors.white,
-                    size: 50,
+                    size: 50.0,
                   ),
           ),
           const SizedBox(height: 16),
@@ -178,25 +179,25 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             _buildFeatureItem(
               'Pengurusan Pengguna',
               'Lihat dan urus semua pengguna sistem',
-              Icons.people,
+              HugeIcons.strokeRoundedUserMultiple,
               () => context.go('/admin/users'),
             ),
             _buildFeatureItem(
               'Pengurusan Kandungan',
               'Tambah, edit, dan urus kitab dan video',
-              Icons.library_books,
+              HugeIcons.strokeRoundedBook02,
               () => context.go('/admin/content'),
             ),
             _buildFeatureItem(
               'Analisis dan Laporan',
               'Lihat statistik dan analisis sistem',
-              Icons.analytics,
+              HugeIcons.strokeRoundedAnalytics01,
               () => context.go('/admin/analytics-real'),
             ),
             _buildFeatureItem(
               'Pengurusan Langganan',
               'Urus langganan dan pembayaran',
-              Icons.subscriptions,
+              HugeIcons.strokeRoundedCreditCard,
               () => context.go('/admin/subscriptions'),
             ),
           ],
@@ -255,7 +256,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.logout),
+                    : const HugeIcon(icon: HugeIcons.strokeRoundedLogout01, color: Colors.white),
                 label: Text(_isLoading ? 'Sedang Log Keluar...' : 'Log Keluar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
@@ -315,7 +316,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         child: Icon(
           icon,
           color: AppTheme.primaryColor,
-          size: 24,
+          size: 24.0,
         ),
       ),
       title: Text(
@@ -323,7 +324,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       subtitle: Text(description),
-      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+      trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, size: 16, color: Colors.grey),
       onTap: onTap,
     );
   }
