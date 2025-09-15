@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
-import '../../student/widgets/student_bottom_nav.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -18,10 +18,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _nameController = TextEditingController();
   Map<String, dynamic>? _currentSubscription;
   bool _isLoadingSubscription = true;
-  
-  Map<String, int> _libraryStats = {'ebooks': 0, 'videos': 0};
-  int _orderCount = 0;
-  bool _isLoadingStats = true;
 
   @override
   void initState() {
@@ -31,7 +27,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _nameController.text = authProvider.userProfile?.fullName ?? '';
     });
     _loadCurrentSubscription();
-    _loadLibraryStats();
   }
 
   @override
@@ -44,12 +39,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final user = SupabaseService.currentUser;
       if (user != null) {
-        final response = await SupabaseService.from('subscriptions')
-            .select()
+        final response = await SupabaseService.from('user_subscriptions')
+            .select('*, subscription_plans(*)')
             .eq('user_id', user.id)
             .eq('status', 'active')
-            .gte('current_period_end', DateTime.now().toIso8601String())
-            .order('current_period_end', ascending: false)
+            .gte('end_date', DateTime.now().toIso8601String())
+            .order('end_date', ascending: false)
             .limit(1)
             .maybeSingle();
 
@@ -73,60 +68,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
         setState(() {
           _currentSubscription = null;
           _isLoadingSubscription = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadLibraryStats() async {
-    try {
-      final user = SupabaseService.currentUser;
-      if (user != null) {
-        final savedItemsResponse = await SupabaseService.from('saved_items')
-            .select()
-            .eq('user_id', user.id);
-        
-        int ebooksCount = 0;
-        int videosCount = 0;
-        
-        for (final item in savedItemsResponse) {
-          if (item['item_type'] == 'kitab') {
-            ebooksCount++;
-          } else if (item['item_type'] == 'video') {
-            videosCount++;
-          }
-        }
-        
-        final progressResponse = await SupabaseService.from('reading_progress')
-            .select()
-            .eq('user_id', user.id);
-        
-        if (mounted) {
-          setState(() {
-            _libraryStats = {
-              'ebooks': ebooksCount,
-              'videos': videosCount,
-            };
-            _orderCount = progressResponse.length;
-            _isLoadingStats = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _libraryStats = {'ebooks': 0, 'videos': 0};
-            _orderCount = 0;
-            _isLoadingStats = false;
-          });
-        }
-      }
-    } catch (e) {
-      print('Error loading library stats: $e');
-      if (mounted) {
-        setState(() {
-          _libraryStats = {'ebooks': 0, 'videos': 0};
-          _orderCount = 0;
-          _isLoadingStats = false;
         });
       }
     }
@@ -207,8 +148,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       labelText: 'Kata Laluan Lama',
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          obscureOldPassword ? Icons.visibility : Icons.visibility_off,
+                        icon: PhosphorIcon(
+                          obscureOldPassword
+                              ? PhosphorIcons.eye()
+                              : PhosphorIcons.eyeSlash(),
                         ),
                         onPressed: () {
                           setState(() {
@@ -219,7 +162,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // New Password Field
                   TextField(
                     controller: newPasswordController,
@@ -228,8 +171,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       labelText: 'Kata Laluan Baru',
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          obscureNewPassword ? Icons.visibility : Icons.visibility_off,
+                        icon: PhosphorIcon(
+                          obscureNewPassword
+                              ? PhosphorIcons.eye()
+                              : PhosphorIcons.eyeSlash(),
                         ),
                         onPressed: () {
                           setState(() {
@@ -240,7 +185,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Confirm Password Field
                   TextField(
                     controller: confirmPasswordController,
@@ -249,8 +194,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       labelText: 'Sahkan Kata Laluan Baru',
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
-                        icon: Icon(
-                          obscureConfirmPassword ? Icons.visibility : Icons.visibility_off,
+                        icon: PhosphorIcon(
+                          obscureConfirmPassword
+                              ? PhosphorIcons.eye()
+                              : PhosphorIcons.eyeSlash(),
                         ),
                         onPressed: () {
                           setState(() {
@@ -261,22 +208,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Password Requirements
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: AppTheme.primaryColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(
-                              Icons.info_outline,
+                            PhosphorIcon(
+                              PhosphorIcons.info(),
                               color: AppTheme.primaryColor,
                               size: 16,
                             ),
@@ -309,88 +258,117 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: isChangingPassword ? null : () {
-                  Navigator.of(context).pop();
-                  oldPasswordController.dispose();
-                  newPasswordController.dispose();
-                  confirmPasswordController.dispose();
-                },
+                onPressed: isChangingPassword
+                    ? null
+                    : () {
+                        Navigator.of(context).pop();
+                        oldPasswordController.dispose();
+                        newPasswordController.dispose();
+                        confirmPasswordController.dispose();
+                      },
                 child: const Text('Batal'),
               ),
               ElevatedButton(
-                onPressed: isChangingPassword ? null : () async {
-                  // Validate inputs
-                  if (oldPasswordController.text.trim().isEmpty) {
-                    _showSnackBar('Sila masukkan kata laluan lama', isError: true);
-                    return;
-                  }
-                  
-                  if (newPasswordController.text.trim().isEmpty) {
-                    _showSnackBar('Sila masukkan kata laluan baru', isError: true);
-                    return;
-                  }
-                  
-                  if (newPasswordController.text.length < 6) {
-                    _showSnackBar('Kata laluan baru mestilah sekurang-kurangnya 6 aksara', isError: true);
-                    return;
-                  }
-                  
-                  if (newPasswordController.text != confirmPasswordController.text) {
-                    _showSnackBar('Kata laluan baru dan pengesahan tidak sepadan', isError: true);
-                    return;
-                  }
-                  
-                  if (oldPasswordController.text == newPasswordController.text) {
-                    _showSnackBar('Kata laluan baru mestilah berbeza daripada kata laluan lama', isError: true);
-                    return;
-                  }
+                onPressed: isChangingPassword
+                    ? null
+                    : () async {
+                        // Validate inputs
+                        if (oldPasswordController.text.trim().isEmpty) {
+                          _showSnackBar(
+                            'Sila masukkan kata laluan lama',
+                            isError: true,
+                          );
+                          return;
+                        }
 
-                  setState(() {
-                    isChangingPassword = true;
-                  });
+                        if (newPasswordController.text.trim().isEmpty) {
+                          _showSnackBar(
+                            'Sila masukkan kata laluan baru',
+                            isError: true,
+                          );
+                          return;
+                        }
 
-                  try {
-                    // Change password using AuthProvider
-                    final authProvider = context.read<AuthProvider>();
-                    final success = await authProvider.changePassword(
-                      oldPassword: oldPasswordController.text.trim(),
-                      newPassword: newPasswordController.text.trim(),
-                    );
+                        if (newPasswordController.text.length < 6) {
+                          _showSnackBar(
+                            'Kata laluan baru mestilah sekurang-kurangnya 6 aksara',
+                            isError: true,
+                          );
+                          return;
+                        }
 
-                    if (success && mounted) {
-                      Navigator.of(context).pop();
-                      _showSnackBar('Kata laluan berjaya ditukar');
-                    } else if (mounted) {
-                      _showSnackBar('Ralat menukar kata laluan. Sila semak kata laluan lama anda.', isError: true);
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      _showSnackBar('Ralat: ${e.toString()}', isError: true);
-                    }
-                  } finally {
-                    if (mounted) {
-                      setState(() {
-                        isChangingPassword = false;
-                      });
-                    }
-                  }
+                        if (newPasswordController.text !=
+                            confirmPasswordController.text) {
+                          _showSnackBar(
+                            'Kata laluan baru dan pengesahan tidak sepadan',
+                            isError: true,
+                          );
+                          return;
+                        }
 
-                  // Dispose controllers
-                  oldPasswordController.dispose();
-                  newPasswordController.dispose();
-                  confirmPasswordController.dispose();
-                },
+                        if (oldPasswordController.text ==
+                            newPasswordController.text) {
+                          _showSnackBar(
+                            'Kata laluan baru mestilah berbeza daripada kata laluan lama',
+                            isError: true,
+                          );
+                          return;
+                        }
+
+                        setState(() {
+                          isChangingPassword = true;
+                        });
+
+                        try {
+                          // Change password using AuthProvider
+                          final authProvider = context.read<AuthProvider>();
+                          final success = await authProvider.changePassword(
+                            oldPassword: oldPasswordController.text.trim(),
+                            newPassword: newPasswordController.text.trim(),
+                          );
+
+                          if (success && mounted) {
+                            Navigator.of(context).pop();
+                            _showSnackBar('Kata laluan berjaya ditukar');
+                          } else if (mounted) {
+                            _showSnackBar(
+                              'Ralat menukar kata laluan. Sila semak kata laluan lama anda.',
+                              isError: true,
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            _showSnackBar(
+                              'Ralat: ${e.toString()}',
+                              isError: true,
+                            );
+                          }
+                        } finally {
+                          if (mounted) {
+                            setState(() {
+                              isChangingPassword = false;
+                            });
+                          }
+                        }
+
+                        // Dispose controllers
+                        oldPasswordController.dispose();
+                        newPasswordController.dispose();
+                        confirmPasswordController.dispose();
+                      },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: AppTheme.textLightColor,
                 ),
-                child: isChangingPassword 
+                child: isChangingPassword
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : const Text('Tukar'),
@@ -407,7 +385,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: isError ? AppTheme.errorColor : AppTheme.successColor,
+          backgroundColor: isError
+              ? AppTheme.errorColor
+              : AppTheme.successColor,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -417,20 +397,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.textPrimaryColor,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/home'),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: PhosphorIcon(
+              PhosphorIcons.caretLeft(),
+              color: AppTheme.primaryColor,
+              size: 20,
+            ),
+            onPressed: () => context.go('/home'),
+          ),
         ),
         title: Text(
           'Profile',
-          style: theme.appBarTheme.titleTextStyle?.copyWith(fontSize: 18),
+          style: theme.appBarTheme.titleTextStyle?.copyWith(
+            fontSize: 18,
+            color: AppTheme.textPrimaryColor,
+          ),
         ),
         centerTitle: true,
       ),
@@ -449,13 +443,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 _buildProfileHeader(authProvider, userProfile),
                 SizedBox(height: 30),
 
-                _buildMyLibrarySection(),
+                _buildSavedItemsSection(),
                 SizedBox(height: 20),
 
                 _buildSubscriptionSection(userProfile),
-                SizedBox(height: 20),
-
-                _buildOrdersSection(),
                 SizedBox(height: 20),
 
                 _buildSettingsSection(),
@@ -480,6 +471,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(60),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(60),
@@ -487,8 +485,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'assets/images/app_logo.png',
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
-                    return Icon(
-                      Icons.person,
+                    return PhosphorIcon(
+                      PhosphorIcons.user(),
                       size: 60,
                       color: AppTheme.textSecondaryColor,
                     );
@@ -516,8 +514,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: Colors.white, width: 3),
                   ),
-                  child: Icon(
-                    Icons.edit,
+                  child: PhosphorIcon(
+                    PhosphorIcons.pencil(),
                     color: Colors.white,
                     size: 18,
                   ),
@@ -527,7 +525,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
         SizedBox(height: 16),
-        
+
         if (_isEditingName) ...[
           Container(
             width: double.infinity,
@@ -545,7 +543,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
                 SizedBox(height: 12),
@@ -575,11 +576,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
             userProfile.fullName ?? 'Pengguna',
             style: theme.textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
+              color: AppTheme.textPrimaryColor,
             ),
           ),
         ],
         SizedBox(height: 4),
-        
+
         Text(
           authProvider.user?.email ?? '',
           style: TextStyle(
@@ -592,17 +594,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildMyLibrarySection() {
+  Widget _buildSavedItemsSection() {
     return _buildSection(
       title: 'My Library',
       child: _buildMenuItem(
-        icon: Icons.library_books,
+        icon: PhosphorIcons.heart(),
         iconColor: AppTheme.primaryColor,
-        title: 'E-books & Episod',
-        subtitle: _isLoadingStats 
-            ? 'Memuat...' 
-            : '${_libraryStats['ebooks']} E-books, ${_libraryStats['videos']} Episod',
-        onTap: () => context.push('/library'),
+        title: 'Loved Items',
+        subtitle: 'Pengajian and E-Books loved',
+        onTap: () => context.push('/saved'),
       ),
     );
   }
@@ -617,7 +617,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 leading: Container(
                   width: 40,
                   height: 40,
@@ -625,9 +628,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.workspace_premium, color: AppTheme.primaryColor, size: 20),
+                  child: PhosphorIcon(
+                    PhosphorIcons.crown(),
+                    color: AppTheme.primaryColor,
+                    size: 20,
+                  ),
                 ),
-                title: Text('Memuat langganan...'),
+                title: Text(
+                  'Memuat langganan...',
+                  style: TextStyle(color: AppTheme.textPrimaryColor),
+                ),
                 trailing: SizedBox(
                   width: 16,
                   height: 16,
@@ -636,97 +646,166 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           : _buildMenuItem(
-              icon: Icons.workspace_premium,
+              icon: PhosphorIcons.crown(),
               iconColor: AppTheme.primaryColor,
-              title: _currentSubscription != null ? 'Premium Access' : 'Basic Access',
-              subtitle: _currentSubscription != null 
-                  ? _formatSubscriptionEndDate(_currentSubscription!['current_period_end'])
+              title: _currentSubscription != null
+                  ? 'Premium Access'
+                  : 'Basic Access',
+              subtitle: _currentSubscription != null
+                  ? _getSubscriptionDetails(_currentSubscription!)
                   : 'Upgrade to Premium',
-              onTap: () => context.push('/subscription'),
+              onTap: () => context.push('/subscription-detail'),
             ),
     );
   }
 
-  String _formatSubscriptionEndDate(String endDateStr) {
+  String _getSubscriptionDetails(Map<String, dynamic> subscription) {
     try {
+      final endDateStr = subscription['end_date'] as String?;
+      final planName = subscription['subscription_plans']?['name'] as String?;
+      final amount = subscription['amount'] as String?;
+
+      if (endDateStr == null || endDateStr.isEmpty) {
+        return planName ?? 'Active subscription';
+      }
+
       final endDate = DateTime.parse(endDateStr);
-      return 'Active until ${endDate.day}/${endDate.month}/${endDate.year}';
+      final daysLeft = endDate.difference(DateTime.now()).inDays;
+
+      if (daysLeft < 0) {
+        return 'Subscription expired';
+      }
+
+      final planInfo = planName ?? 'Premium';
+      final priceInfo = amount != null ? ' - RM$amount' : '';
+
+      if (daysLeft <= 7) {
+        return '$planInfo$priceInfo - $daysLeft hari lagi';
+      } else {
+        return '$planInfo$priceInfo - Aktif hingga ${endDate.day}/${endDate.month}/${endDate.year}';
+      }
     } catch (e) {
+      print('Error formatting subscription details: $e');
       return 'Active subscription';
     }
-  }
-
-  Widget _buildOrdersSection() {
-    return _buildSection(
-      title: 'Orders',
-      child: _buildMenuItem(
-        icon: Icons.shopping_bag,
-        iconColor: AppTheme.primaryColor,
-        title: 'Order History',
-        subtitle: _isLoadingStats 
-            ? 'Memuat...' 
-            : '$_orderCount Accessed Books',
-        onTap: () => context.push('/orders'),
-      ),
-    );
   }
 
   Widget _buildSettingsSection() {
     return _buildSection(
       title: 'Settings',
-      child: Column(
-        children: [
-          _buildMenuItem(
-            icon: Icons.language,
-            iconColor: AppTheme.primaryColor,
-            title: 'Language',
-            subtitle: null,
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) => AlertDialog(
-                  title: Text('Pilih Bahasa'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        title: Text('Bahasa Melayu'),
-                        onTap: () => Navigator.pop(context),
-                      ),
-                      ListTile(
-                        title: Text('English'),
-                        onTap: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              );
-            },
-          ),
-          _buildMenuItem(
-            icon: Icons.bookmark,
-            iconColor: AppTheme.primaryColor,
-            title: 'Simpanan',
-            subtitle: 'Item yang disimpan',
-            onTap: () => context.push('/saved'),
-          ),
-          SizedBox(height: 12),
-          _buildMenuItem(
-            icon: Icons.lock_reset,
-            iconColor: AppTheme.primaryColor,
-            title: 'Tukar Kata Laluan',
-            subtitle: 'Kemas kini kata laluan akaun anda',
-            onTap: _handleChangePassword,
-          ),
-          SizedBox(height: 12),
-          _buildMenuItem(
-            icon: Icons.logout,
-            iconColor: AppTheme.errorColor,
-            title: 'Logout',
-            subtitle: null,
-            onTap: _handleSignOut,
-          ),
-        ],
+                child: PhosphorIcon(
+                  PhosphorIcons.globe(),
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Language',
+                style: TextStyle(color: AppTheme.textPrimaryColor),
+              ),
+              trailing: PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: AppTheme.textSecondaryColor,
+                size: 16,
+              ),
+              onTap: () {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: Text('Pilih Bahasa'),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ListTile(
+                          title: Text('Bahasa Melayu'),
+                          onTap: () => Navigator.pop(context),
+                        ),
+                        ListTile(
+                          title: Text('English'),
+                          onTap: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+            Divider(height: 1, color: AppTheme.borderColor),
+            ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: PhosphorIcon(
+                  PhosphorIcons.lockKey(),
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Tukar Kata Laluan',
+                style: TextStyle(color: AppTheme.textPrimaryColor),
+              ),
+              subtitle: Text(
+                'Kemas kini kata laluan akaun anda',
+                style: TextStyle(color: AppTheme.textSecondaryColor),
+              ),
+              trailing: PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: AppTheme.textSecondaryColor,
+                size: 16,
+              ),
+              onTap: _handleChangePassword,
+            ),
+            Divider(height: 1, color: AppTheme.borderColor),
+            ListTile(
+              contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.errorColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: PhosphorIcon(
+                  PhosphorIcons.signOut(),
+                  color: AppTheme.errorColor,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Logout',
+                style: TextStyle(color: AppTheme.textPrimaryColor),
+              ),
+              trailing: PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: AppTheme.textSecondaryColor,
+                size: 16,
+              ),
+              onTap: _handleSignOut,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -740,6 +819,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           title,
           style: theme.textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimaryColor,
           ),
         ),
         SizedBox(height: 12),
@@ -749,14 +829,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildMenuItem({
-    required IconData icon,
+    required dynamic icon,
     required Color iconColor,
     required String title,
     String? subtitle,
     required VoidCallback onTap,
   }) {
     final theme = Theme.of(context);
-    
+
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
@@ -771,12 +851,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: iconColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Icon(icon, color: iconColor, size: 20),
+          child: PhosphorIcon(icon, color: iconColor, size: 20),
         ),
         title: Text(
           title,
           style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimaryColor,
           ),
         ),
         subtitle: subtitle != null
@@ -787,8 +868,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               )
             : null,
-        trailing: Icon(
-          Icons.arrow_forward_ios,
+        trailing: PhosphorIcon(
+          PhosphorIcons.caretRight(),
           color: theme.textTheme.bodySmall?.color,
           size: 16,
         ),
@@ -796,5 +877,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
 }

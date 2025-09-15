@@ -12,7 +12,7 @@ class NotificationsProvider with ChangeNotifier {
   bool get isLoading => _loading;
   String? get error => _error;
   List<UserNotificationItem> get inbox => List.unmodifiable(_inbox);
-  int get unreadCount => _inbox.where((n) => n.readAt == null).length;
+  int get unreadCount => _inbox.where((n) => !n.isRead).length;
 
   Future<void> loadInbox() async {
     _loading = true;
@@ -27,18 +27,16 @@ class NotificationsProvider with ChangeNotifier {
 
       final res = await _supabase
           .from('user_notifications')
-          .select(
-            'id, user_id, delivered_at, read_at, notifications ( id, title, body, type, data, created_at )',
-          )
+          .select('*')
+          .eq('user_id', user.id)
           .order('delivered_at', ascending: false);
 
       _inbox
         ..clear()
         ..addAll(
           (res as List)
-              .where((row) => row['notifications'] != null)
               .map<UserNotificationItem>(
-                (row) => UserNotificationItem.fromJoinedMap(row, user.id),
+                (row) => UserNotificationItem.fromMap(row),
               ),
         );
 
@@ -58,7 +56,11 @@ class NotificationsProvider with ChangeNotifier {
 
       await _supabase
           .from('user_notifications')
-          .update({'read_at': DateTime.now().toIso8601String()})
+          .update({
+            'read_at': DateTime.now().toIso8601String(),
+            'status': 'read',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('id', userNotificationId)
           .eq('user_id', user.id);
 
@@ -68,9 +70,14 @@ class NotificationsProvider with ChangeNotifier {
         _inbox[idx] = UserNotificationItem(
           id: item.id,
           userId: item.userId,
+          message: item.message,
+          metadata: item.metadata,
+          status: 'read',
+          deliveryStatus: item.deliveryStatus,
+          isFavorite: item.isFavorite,
           deliveredAt: item.deliveredAt,
           readAt: DateTime.now(),
-          notification: item.notification,
+          updatedAt: DateTime.now(),
         );
         notifyListeners();
       }

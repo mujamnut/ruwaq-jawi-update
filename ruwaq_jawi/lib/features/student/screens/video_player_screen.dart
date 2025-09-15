@@ -14,7 +14,9 @@ import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/models/kitab.dart';
 import '../../../core/models/kitab_video.dart';
+import '../../../core/models/video_episode.dart';
 import '../widgets/save_video_button.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String kitabId;
@@ -40,8 +42,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
   // Real data from database
   Kitab? _kitab;
-  KitabVideo? _currentEpisode;
-  List<KitabVideo> _episodes = [];
+  VideoEpisode? _currentEpisode;
+  List<VideoEpisode> _episodes = [];
 
   @override
   void initState() {
@@ -255,97 +257,450 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       ),
       builder: (context, player) {
         return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
-          appBar: AppBar(
-            backgroundColor: AppTheme.backgroundColor,
-            foregroundColor: AppTheme.textPrimaryColor,
-            elevation: 0,
-            title: Text(
-              _currentEpisode?.title ?? _kitab!.title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            actions: [
-              // Save Video Button
-              if (_currentEpisode != null || _currentVideoId != null)
-                SaveVideoButton(
-                  videoId:
-                      _currentEpisode?.youtubeVideoId ?? _currentVideoId ?? '',
-                  videoTitle: _currentEpisode?.title ?? _kitab!.title,
-                  videoUrl:
-                      _currentEpisode?.youtubeWatchUrl ??
-                      (_currentVideoId != null
-                          ? 'https://www.youtube.com/watch?v=$_currentVideoId'
-                          : null),
-                ),
-              // Bookmark Button
-              Consumer<BookmarkProvider>(
-                builder: (context, bookmarkProvider, child) {
-                  final isBookmarked = bookmarkProvider.isBookmarked(
-                    widget.kitabId,
-                  );
-                  return IconButton(
-                    icon: _isBookmarkLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                AppTheme.primaryColor,
-                              ),
-                            ),
-                          )
-                        : Icon(
-                            isBookmarked
-                                ? Icons.bookmark
-                                : Icons.bookmark_outline,
-                            color: AppTheme.primaryColor,
-                          ),
-                    onPressed: _isBookmarkLoading ? null : _toggleBookmark,
-                    tooltip: isBookmarked ? 'Buang Tandaan' : 'Tandai',
-                  );
-                },
-              ),
-            ],
-          ),
-          body: Column(
+          backgroundColor: Colors.white,
+          body: Stack(
             children: [
-              // Video Player
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Container(color: Colors.black, child: player),
+              // Main content
+              Column(
+                children: [
+                  // Video Player
+                  AspectRatio(
+                    aspectRatio: 16 / 9,
+                    child: Container(color: Colors.black, child: player),
+                  ),
+                  // Content below video
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildVideoHeader(),
+                          _buildActionButtons(),
+                          _buildVideoDescription(),
+                          if (_kitab!.hasMultipleVideos && _episodes.isNotEmpty)
+                            _buildEpisodesSection(),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              // Tab Bar
-              Container(
-                color: AppTheme.backgroundColor,
-                child: TabBar(
-                  controller: _tabController,
-                  labelColor: AppTheme.primaryColor,
-                  unselectedLabelColor: AppTheme.textSecondaryColor,
-                  indicatorColor: AppTheme.primaryColor,
-                  indicatorWeight: 3,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-                  tabs: [
-                    Tab(text: _kitab!.hasMultipleVideos ? 'Episod' : 'Video'),
-                    Tab(text: 'E-Book'),
-                  ],
+              // Floating back button
+              Positioned(
+                top: 50,
+                left: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: PhosphorIcon(
+                      PhosphorIcons.arrowLeft(),
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: () => context.pop(),
+                  ),
                 ),
               ),
-              // Tab Content
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [_buildVideoTab(), _buildEBookTab()],
+              // Floating heart button
+              Positioned(
+                top: 50,
+                right: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Consumer<BookmarkProvider>(
+                    builder: (context, bookmarkProvider, child) {
+                      final isBookmarked = bookmarkProvider.isBookmarked(
+                        widget.kitabId,
+                      );
+                      return IconButton(
+                        icon: _isBookmarkLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
+                                ),
+                              )
+                            : PhosphorIcon(
+                                isBookmarked
+                                    ? PhosphorIcons.heart(
+                                        PhosphorIconsStyle.fill,
+                                      )
+                                    : PhosphorIcons.heart(),
+                                color: isBookmarked ? Colors.red : Colors.white,
+                                size: 20,
+                              ),
+                        onPressed: _isBookmarkLoading ? null : _toggleBookmark,
+                      );
+                    },
+                  ),
                 ),
               ),
             ],
           ),
         );
       },
+    );
+  }
+
+  Widget _buildVideoHeader() {
+    final kitabProvider = context.read<KitabProvider>();
+    final category = kitabProvider.categories
+        .where((c) => c.id == _kitab!.categoryId)
+        .firstOrNull;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Category badge
+          if (category != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                category.name,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.primaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // Title
+          Text(
+            _currentEpisode?.title ?? _kitab!.title,
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: Colors.black,
+              height: 1.2,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // Author
+          Text(
+            'Oleh ${_kitab!.author ?? 'Unknown'}',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: AppTheme.textSecondaryColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      child: Row(
+        children: [
+          // Stats card
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: PhosphorIcon(
+                      PhosphorIcons.playCircle(),
+                      color: AppTheme.primaryColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Episod',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${_episodes.length} Bahagian',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Watch now button
+          Container(
+            constraints: const BoxConstraints(maxWidth: 160),
+            child: ElevatedButton(
+              onPressed: () {
+                // Already watching, could implement next episode functionality
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                elevation: 4,
+                shadowColor: AppTheme.primaryColor.withOpacity(0.4),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  PhosphorIcon(
+                    PhosphorIcons.play(),
+                    color: Colors.white,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Tonton Sekarang',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVideoDescription() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Tentang Kitab',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _currentEpisode?.description ??
+                _kitab!.description ??
+                'Tiada penerangan tersedia.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSecondaryColor,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: () {
+              // Show full description
+            },
+            child: Text(
+              'Baca lagi',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodesSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Episod',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Show all episodes
+                },
+                child: Text(
+                  'Lihat semua',
+                  style: TextStyle(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _episodes.length,
+            itemBuilder: (context, index) {
+              return _buildModernEpisodeCard(_episodes[index], index);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernEpisodeCard(VideoEpisode episode, int index) {
+    final isCurrentEpisode = _currentEpisode?.id == episode.id;
+    final authProvider = context.read<AuthProvider>();
+    final canAccess = !_kitab!.isPremium || authProvider.hasActiveSubscription;
+    final isLocked = !canAccess && !episode.isPreview;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: InkWell(
+        onTap: isLocked ? null : () => _switchToEpisode(episode),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isCurrentEpisode
+                ? AppTheme.primaryColor.withOpacity(0.1)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isCurrentEpisode
+                  ? AppTheme.primaryColor
+                  : AppTheme.borderColor.withOpacity(0.3),
+              width: isCurrentEpisode ? 2 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Episode number circle
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isLocked
+                      ? AppTheme.textSecondaryColor.withOpacity(0.1)
+                      : isCurrentEpisode
+                          ? AppTheme.primaryColor
+                          : AppTheme.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: isLocked
+                      ? PhosphorIcon(
+                          PhosphorIcons.lock(),
+                          color: AppTheme.textSecondaryColor,
+                          size: 20,
+                        )
+                      : Text(
+                          '${episode.partNumber}',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isCurrentEpisode
+                                ? Colors.white
+                                : AppTheme.primaryColor,
+                          ),
+                        ),
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Episode content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      episode.title,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: isLocked
+                            ? AppTheme.textSecondaryColor
+                            : Colors.black,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      episode.formattedDuration,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Play/Current indicator
+              Container(
+                padding: const EdgeInsets.all(8),
+                child: PhosphorIcon(
+                  isCurrentEpisode
+                      ? PhosphorIcons.pause()
+                      : isLocked
+                          ? PhosphorIcons.lock()
+                          : PhosphorIcons.play(),
+                  color: isCurrentEpisode
+                      ? AppTheme.primaryColor
+                      : isLocked
+                          ? AppTheme.textSecondaryColor
+                          : AppTheme.textSecondaryColor,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -413,7 +768,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     );
   }
 
-  Widget _buildEpisodeCard(KitabVideo episode) {
+  Widget _buildEpisodeCard(VideoEpisode episode) {
     final isCurrentEpisode = _currentEpisode?.id == episode.id;
     final authProvider = context.read<AuthProvider>();
     final canAccess = !_kitab!.isPremium || authProvider.hasActiveSubscription;
@@ -656,7 +1011,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
   }
 
-  void _switchToEpisode(KitabVideo episode) async {
+  void _switchToEpisode(VideoEpisode episode) async {
     if (_currentEpisode?.id == episode.id)
       return; // Already playing this episode
 

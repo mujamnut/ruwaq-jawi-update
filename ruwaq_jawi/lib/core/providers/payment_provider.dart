@@ -116,15 +116,16 @@ class PaymentProvider with ChangeNotifier {
   }
 
   String _getPlanType(String planId) {
-    // Convert plan ID to subscription duration
+    // Convert plan ID to subscription duration - FIXED to match database structure
     switch (planId.toLowerCase()) {
       case 'monthly_basic':
+        return '1month';        // ✅ 1 month plan
+      case 'quarterly_pr':
+        return '3month';        // ✅ 3 months plan
       case 'monthly_premium':
-        return '1month';
-      case 'semiannual_premium':
-        return '6month';
+        return '6month';        // ✅ FIXED: monthly_premium is actually 6 month plan in database
       case 'yearly_premium':
-        return '12month';
+        return '12month';       // ✅ 12 months plan
       default:
         return '1month'; // Default to monthly plan
     }
@@ -142,10 +143,10 @@ class PaymentProvider with ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Updated prices to match database - RM 6.90, RM 27.90, RM 60.00
+      // Updated to match ACTUAL database structure - Fix plan ID mapping
       _subscriptionPlans = [
         SubscriptionPlan(
-          id: 'monthly_premium',
+          id: 'monthly_basic',  // ← FIXED: Use actual 1 month plan ID from database
           name: '1 Bulan Premium',
           description: 'Akses penuh kepada semua kandungan Islam',
           price: 6.90,
@@ -161,12 +162,29 @@ class PaymentProvider with ChangeNotifier {
           isActive: true,
         ),
         SubscriptionPlan(
-          id: 'semiannual_premium',
+          id: 'quarterly_pr',
+          name: '3 Bulan Premium',
+          description: 'Akses penuh dengan jimat 20%',
+          price: 17.90,
+          currency: 'MYR',
+          durationDays: 90,
+          features: [
+            'Akses kepada 500+ kitab Islam',
+            'Video kuliah premium',
+            'Muat turun offline',
+            'Sokongan keutamaan',
+            'Ciri carian lanjutan',
+            'Jimat RM 3.80',
+          ],
+          isActive: true,
+        ),
+        SubscriptionPlan(
+          id: 'monthly_premium',  // ← FIXED: Database "monthly_premium" is actually 6 month plan
           name: '6 Bulan Premium',
           description: 'Akses penuh dengan jimat 33%',
           price: 27.90,
           currency: 'MYR',
-          durationDays: 180,
+          durationDays: 180, // ✅ FIXED: 6 months should be 180 days
           features: [
             'Akses kepada 500+ kitab Islam',
             'Video kuliah premium',

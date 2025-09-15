@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 
 class StudentBottomNav extends StatelessWidget {
   final int currentIndex;
-  
-  const StudentBottomNav({
-    super.key,
-    required this.currentIndex,
-  });
+
+  const StudentBottomNav({super.key, required this.currentIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -28,25 +26,65 @@ class StudentBottomNav extends StatelessWidget {
       ),
       elevation: 8,
       onTap: (index) => _onNavTap(context, index),
-      items: const [
+      items: [
         BottomNavigationBarItem(
-          icon: Icon(Icons.home_outlined),
-          activeIcon: Icon(Icons.home),
+          icon: PhosphorIcon(
+            PhosphorIcons.house(),
+            color: currentIndex == 0
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondaryColor,
+            size: 24,
+          ),
+          activeIcon: PhosphorIcon(
+            PhosphorIcons.house(PhosphorIconsStyle.fill),
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
           label: 'Utama',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.book_outlined),
-          activeIcon: Icon(Icons.book),
-          label: 'Kitab',
+          icon: PhosphorIcon(
+            PhosphorIcons.chalkboardTeacher(),
+            color: currentIndex == 1
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondaryColor,
+            size: 24,
+          ),
+          activeIcon: PhosphorIcon(
+            PhosphorIcons.chalkboardTeacher(PhosphorIconsStyle.fill),
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
+          label: 'Pengajian',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.picture_as_pdf_outlined),
-          activeIcon: Icon(Icons.picture_as_pdf),
+          icon: PhosphorIcon(
+            PhosphorIcons.books(),
+            color: currentIndex == 2
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondaryColor,
+            size: 24,
+          ),
+          activeIcon: PhosphorIcon(
+            PhosphorIcons.books(PhosphorIconsStyle.fill),
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
           label: 'E-Book',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.star_outline),
-          activeIcon: Icon(Icons.star),
+          icon: PhosphorIcon(
+            PhosphorIcons.crown(),
+            color: currentIndex == 3
+                ? AppTheme.primaryColor
+                : AppTheme.textSecondaryColor,
+            size: 24,
+          ),
+          activeIcon: PhosphorIcon(
+            PhosphorIcons.crown(PhosphorIconsStyle.fill),
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
           label: 'Langganan',
         ),
       ],

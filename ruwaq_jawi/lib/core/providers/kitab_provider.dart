@@ -1,23 +1,30 @@
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 import '../models/kitab.dart';
+import '../models/video_kitab.dart';
+import '../models/ebook.dart';
 import '../models/category.dart';
 import '../models/reading_progress.dart';
 import '../models/kitab_video.dart';
+import '../models/video_episode.dart';
 import '../services/supabase_service.dart';
 
 class KitabProvider extends ChangeNotifier {
   List<Kitab> _kitabList = [];
+  List<VideoKitab> _videoKitabList = [];
+  List<Ebook> _ebookList = [];
   List<Category> _categories = [];
   Map<String, ReadingProgress> _userProgress = {};
-  Map<String, List<KitabVideo>> _kitabVideosCache = {};
+  Map<String, List<VideoEpisode>> _kitabVideosCache = {};
   bool _isLoading = false;
   String? _errorMessage;
 
   // Getters
   List<Kitab> get kitabList => _kitabList;
+  List<VideoKitab> get videoKitabList => _videoKitabList;
+  List<Ebook> get ebookList => _ebookList;
   List<Category> get categories => _categories;
   Map<String, ReadingProgress> get userProgress => _userProgress;
-  Map<String, List<KitabVideo>> get kitabVideosCache => _kitabVideosCache;
+  Map<String, List<VideoEpisode>> get kitabVideosCache => _kitabVideosCache;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -25,6 +32,16 @@ class KitabProvider extends ChangeNotifier {
   List<Kitab> get premiumKitab => _kitabList.where((k) => k.isPremium).toList();
   List<Kitab> get freeKitab => _kitabList.where((k) => !k.isPremium).toList();
   List<Kitab> get availableEbooks => _kitabList.where((k) => k.isEbookAvailable).toList();
+  
+  // Video Kitab filtered lists
+  List<VideoKitab> get activeVideoKitab => _videoKitabList.where((vk) => vk.isActive).toList();
+  List<VideoKitab> get premiumVideoKitab => _videoKitabList.where((vk) => vk.isPremium && vk.isActive).toList();
+  List<VideoKitab> get freeVideoKitab => _videoKitabList.where((vk) => !vk.isPremium && vk.isActive).toList();
+  
+  // Ebook filtered lists
+  List<Ebook> get activeEbooks => _ebookList.where((e) => e.isActive).toList();
+  List<Ebook> get premiumEbooks => _ebookList.where((e) => e.isPremium && e.isActive).toList();
+  List<Ebook> get freeEbooks => _ebookList.where((e) => !e.isPremium && e.isActive).toList();
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -42,7 +59,11 @@ class KitabProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
 
-      await Future.wait([loadCategories(), loadKitabList()]);
+      await Future.wait([
+        loadCategories(), 
+        loadVideoKitabList(),
+        loadEbookList(),
+      ]);
     } catch (e) {
       _setError('Failed to initialize: ${e.toString()}');
     } finally {
@@ -67,34 +88,86 @@ class KitabProvider extends ChangeNotifier {
     }
   }
 
-  /// Load all kitab from database
-  Future<void> loadKitabList({String? categoryId}) async {
+  /// Load all kitab from database - DEPRECATED: Use loadVideoKitabList() and loadEbookList() instead
+  // Future<void> loadKitabList({String? categoryId}) async {
+  //   try {
+  //     var query = SupabaseService.from('kitab').select('''
+  //       *, 
+  //       categories(*),
+  //       pdf_storage_path,
+  //       pdf_file_size,
+  //       pdf_upload_date,
+  //       is_ebook_available,
+  //       has_multiple_videos,
+  //       total_videos,
+  //       total_duration_minutes
+  //     ''');
+
+  //     if (categoryId != null) {
+  //       query = query.eq('category_id', categoryId);
+  //     }
+
+  //     final response = await query.order('sort_order');
+
+  //     _kitabList = (response as List)
+  //         .map((json) => Kitab.fromJson(json))
+  //         .toList();
+
+  //     notifyListeners();
+  //   } catch (e) {
+  //     _setError('Failed to load kitab list: ${e.toString()}');
+  //   }
+  // }
+
+  /// Load all video kitab from video_kitab table
+  Future<void> loadVideoKitabList({String? categoryId}) async {
     try {
-      var query = SupabaseService.from('kitab').select('''
+      var query = SupabaseService.from('video_kitab').select('''
         *, 
-        categories(*),
-        pdf_storage_path,
-        pdf_file_size,
-        pdf_upload_date,
-        is_ebook_available,
-        has_multiple_videos,
-        total_videos,
-        total_duration_minutes
+        categories(*)
       ''');
 
       if (categoryId != null) {
         query = query.eq('category_id', categoryId);
       }
 
-      final response = await query.order('sort_order');
+      final response = await query
+          .eq('is_active', true)
+          .order('sort_order');
 
-      _kitabList = (response as List)
-          .map((json) => Kitab.fromJson(json))
+      _videoKitabList = (response as List)
+          .map((json) => VideoKitab.fromJson(json))
           .toList();
 
       notifyListeners();
     } catch (e) {
-      _setError('Failed to load kitab list: ${e.toString()}');
+      _setError('Failed to load video kitab list: ${e.toString()}');
+    }
+  }
+
+  /// Load all ebooks from ebooks table
+  Future<void> loadEbookList({String? categoryId}) async {
+    try {
+      var query = SupabaseService.from('ebooks').select('''
+        *, 
+        categories(*)
+      ''');
+
+      if (categoryId != null) {
+        query = query.eq('category_id', categoryId);
+      }
+
+      final response = await query
+          .eq('is_active', true)
+          .order('sort_order');
+
+      _ebookList = (response as List)
+          .map((json) => Ebook.fromJson(json))
+          .toList();
+
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to load ebook list: ${e.toString()}');
     }
   }
 
@@ -118,6 +191,52 @@ class KitabProvider extends ChangeNotifier {
     return _kitabList.where((kitab) {
       return kitab.title.toLowerCase().contains(lowercaseQuery) ||
           (kitab.author?.toLowerCase().contains(lowercaseQuery) ?? false);
+    }).toList();
+  }
+
+  /// Get video kitab by ID
+  VideoKitab? getVideoKitabById(String id) {
+    try {
+      return _videoKitabList.firstWhere((videoKitab) => videoKitab.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get video kitab by category
+  List<VideoKitab> getVideoKitabByCategory(String categoryId) {
+    return _videoKitabList.where((videoKitab) => videoKitab.categoryId == categoryId).toList();
+  }
+
+  /// Search video kitab by title or author
+  List<VideoKitab> searchVideoKitab(String query) {
+    final lowercaseQuery = query.toLowerCase();
+    return _videoKitabList.where((videoKitab) {
+      return videoKitab.title.toLowerCase().contains(lowercaseQuery) ||
+          (videoKitab.author?.toLowerCase().contains(lowercaseQuery) ?? false);
+    }).toList();
+  }
+
+  /// Get ebook by ID
+  Ebook? getEbookById(String id) {
+    try {
+      return _ebookList.firstWhere((ebook) => ebook.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Get ebooks by category
+  List<Ebook> getEbooksByCategory(String categoryId) {
+    return _ebookList.where((ebook) => ebook.categoryId == categoryId).toList();
+  }
+
+  /// Search ebooks by title or author
+  List<Ebook> searchEbooks(String query) {
+    final lowercaseQuery = query.toLowerCase();
+    return _ebookList.where((ebook) {
+      return ebook.title.toLowerCase().contains(lowercaseQuery) ||
+          (ebook.author?.toLowerCase().contains(lowercaseQuery) ?? false);
     }).toList();
   }
 
@@ -227,42 +346,46 @@ class KitabProvider extends ChangeNotifier {
     return recentKitab;
   }
 
-  /// Load continue reading data - combines kitab with reading progress from database
+  /// Load continue reading data - TEMPORARILY DISABLED until reading_progress table is updated
   Future<List<dynamic>> loadContinueReading({int limit = 1}) async {
     try {
-      final user = SupabaseService.currentUser;
-      if (user == null) return [];
+      // TODO: Update this method to work with new video_kitab and ebooks tables
+      // For now, return empty list to prevent errors
+      return [];
       
-      final response = await SupabaseService.from('reading_progress')
-          .select('''
-            *,
-            kitab:kitab_id (
-              id, title, author, description, thumbnail_url, is_premium,
-              category_id, duration_minutes, total_pages, created_at,
-              has_multiple_videos, total_videos, total_duration_minutes
-            )
-          ''')
-          .eq('user_id', user.id)
-          .gt('progress_percentage', 0) // Only show items with some progress
-          .order('last_accessed', ascending: false)
-          .limit(limit);
+      // final user = SupabaseService.currentUser;
+      // if (user == null) return [];
+      
+      // final response = await SupabaseService.from('reading_progress')
+      //     .select('''
+      //       *,
+      //       kitab:kitab_id (
+      //         id, title, author, description, thumbnail_url, is_premium,
+      //         category_id, duration_minutes, total_pages, created_at,
+      //         has_multiple_videos, total_videos, total_duration_minutes
+      //       )
+      //     ''')
+      //     .eq('user_id', user.id)
+      //     .gt('progress_percentage', 0) // Only show items with some progress
+      //     .order('last_accessed', ascending: false)
+      //     .limit(limit);
           
-      final results = <dynamic>[];
-      for (final item in response as List) {
-        if (item['kitab'] != null) {
-          results.add({
-            'kitab': Kitab.fromJson(item['kitab']),
-            'progress': {
-              'progress_percentage': item['progress_percentage'] ?? 0,
-              'current_page': item['current_page'] ?? 1,
-              'last_accessed': item['last_accessed'],
-              'video_progress': item['video_progress'] ?? 0,
-            }
-          });
-        }
-      }
+      // final results = <dynamic>[];
+      // for (final item in response as List) {
+      //   if (item['kitab'] != null) {
+      //     results.add({
+      //       'kitab': Kitab.fromJson(item['kitab']),
+      //       'progress': {
+      //         'progress_percentage': item['progress_percentage'] ?? 0,
+      //         'current_page': item['current_page'] ?? 1,
+      //         'last_accessed': item['last_accessed'],
+      //         'video_progress': item['video_progress'] ?? 0,
+      //       }
+      //     });
+      //   }
+      // }
       
-      return results;
+      // return results;
     } catch (e) {
       print('Error loading continue reading: $e');
       return [];
@@ -272,6 +395,8 @@ class KitabProvider extends ChangeNotifier {
   /// Clear all data (useful for logout)
   void clear() {
     _kitabList.clear();
+    _videoKitabList.clear();
+    _ebookList.clear();
     _categories.clear();
     _userProgress.clear();
     _kitabVideosCache.clear();
@@ -286,27 +411,27 @@ class KitabProvider extends ChangeNotifier {
   }
 
   /// Load videos for a specific kitab
-  Future<List<KitabVideo>> loadKitabVideos(String kitabId) async {
+  Future<List<VideoEpisode>> loadKitabVideos(String kitabId) async {
     try {
       // Check cache first
       if (_kitabVideosCache.containsKey(kitabId)) {
         return _kitabVideosCache[kitabId]!;
       }
 
-      final response = await SupabaseService.from('kitab_videos')
+      // Load ALL episodes (including inactive ones) to fix missing 4th episode issue
+      final response = await SupabaseService.from('video_episodes')
           .select()
-          .eq('kitab_id', kitabId)
-          .eq('is_active', true)
+          .eq('video_kitab_id', kitabId)
           .order('sort_order');
 
       final videos = (response as List)
-          .map((json) => KitabVideo.fromJson(json))
+          .map((json) => VideoEpisode.fromJson(json))
           .toList();
 
       // Cache the result
       _kitabVideosCache[kitabId] = videos;
       notifyListeners();
-      
+
       return videos;
     } catch (e) {
       print('Error loading kitab videos: $e');
@@ -315,12 +440,12 @@ class KitabProvider extends ChangeNotifier {
   }
 
   /// Get cached videos for a kitab (returns empty list if not cached)
-  List<KitabVideo> getCachedVideos(String kitabId) {
+  List<VideoEpisode> getCachedVideos(String kitabId) {
     return _kitabVideosCache[kitabId] ?? [];
   }
 
   /// Get video by ID from cache
-  KitabVideo? getVideoById(String videoId) {
+  VideoEpisode? getVideoById(String videoId) {
     for (final videos in _kitabVideosCache.values) {
       for (final video in videos) {
         if (video.id == videoId) {
@@ -332,19 +457,19 @@ class KitabProvider extends ChangeNotifier {
   }
 
   /// Load preview videos for a specific kitab
-  Future<List<KitabVideo>> loadPreviewVideos(String kitabId) async {
+  Future<List<VideoEpisode>> loadPreviewVideos(String kitabId) async {
     try {
-      final response = await SupabaseService.from('kitab_videos')
+      final response = await SupabaseService.from('video_episodes')
           .select()
-          .eq('kitab_id', kitabId)
-          .eq('is_active', true)
+          .eq('video_kitab_id', kitabId)
+          .eq('is_active', true)  // Only show active preview videos
           .eq('is_preview', true)
           .order('sort_order');
 
       final previewVideos = (response as List)
-          .map((json) => KitabVideo.fromJson(json))
+          .map((json) => VideoEpisode.fromJson(json))
           .toList();
-      
+
       return previewVideos;
     } catch (e) {
       print('Error loading preview videos: $e');
@@ -353,7 +478,7 @@ class KitabProvider extends ChangeNotifier {
   }
 
   /// Get preview videos from cache (filter from already loaded videos)
-  List<KitabVideo> getPreviewVideosFromCache(String kitabId) {
+  List<VideoEpisode> getPreviewVideosFromCache(String kitabId) {
     final allVideos = _kitabVideosCache[kitabId] ?? [];
     return allVideos.where((video) => video.isPreview).toList();
   }
@@ -372,12 +497,12 @@ class KitabProvider extends ChangeNotifier {
   }
 
   /// Load all available preview videos across all kitab (for general preview browsing)
-  Future<List<KitabVideo>> loadAllPreviewVideos({int limit = 20}) async {
+  Future<List<VideoEpisode>> loadAllPreviewVideos({int limit = 20}) async {
     try {
-      final response = await SupabaseService.from('kitab_videos')
+      final response = await SupabaseService.from('video_episodes')
           .select('''
             *,
-            kitab:kitab_id (
+            video_kitab:video_kitab_id (
               id, title, author, thumbnail_url, category_id
             )
           ''')
@@ -387,7 +512,7 @@ class KitabProvider extends ChangeNotifier {
           .limit(limit);
 
       final previewVideos = (response as List)
-          .map((json) => KitabVideo.fromJson(json))
+          .map((json) => VideoEpisode.fromJson(json))
           .toList();
       
       return previewVideos;

@@ -73,7 +73,7 @@ class SubscriptionProvider with ChangeNotifier {
         throw Exception('User not authenticated');
       }
 
-      final response = await SupabaseService.from('subscriptions')
+      final response = await SupabaseService.from('user_subscriptions')
           .select('*, subscription_plans(*)')
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
@@ -83,14 +83,14 @@ class SubscriptionProvider with ChangeNotifier {
         return Subscription(
           id: sub['id'],
           userId: sub['user_id'],
-          planType: sub['plan_id'] ?? 'unknown',
-          startDate: DateTime.parse(sub['started_at']),
-          endDate: DateTime.parse(sub['current_period_end']),
+          planType: sub['subscription_plan_id'] ?? 'unknown',
+          startDate: DateTime.parse(sub['start_date']),
+          endDate: DateTime.parse(sub['end_date']),
           status: sub['status'],
-          paymentMethod: sub['provider'],
+          paymentMethod: 'toyyibpay', // Default since provider field doesn't exist
           amount: double.parse(sub['amount'].toString()),
-          currency: sub['currency'],
-          autoRenew: sub['auto_renew'] ?? false,
+          currency: sub['currency'] ?? 'MYR',
+          autoRenew: false, // Database doesn't have this field
           createdAt: DateTime.parse(sub['created_at']),
           updatedAt: DateTime.parse(sub['updated_at']),
         );
@@ -200,7 +200,7 @@ class SubscriptionProvider with ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      await SupabaseService.from('subscriptions')
+      await SupabaseService.from('user_subscriptions')
           .update({
             'status': 'cancelled',
             'updated_at': DateTime.now().toIso8601String(),
@@ -332,7 +332,7 @@ class SubscriptionProvider with ChangeNotifier {
 
       print('🔍 Verifying payment status for Bill ID: $billId');
 
-      // First try: Call edge function
+      // First try: Call verify-payment edge function
       try {
         final response = await http.post(
           Uri.parse('https://ckgxglvozrsognqqkpkk.supabase.co/functions/v1/verify-payment'),
@@ -391,21 +391,11 @@ class SubscriptionProvider with ChangeNotifier {
       } else {
         print('⏳ Direct verification also says payment not ready');
         
-        // Third try: Check if we can use direct activation based on redirect URL data
-        try {
-          print('🔧 Final attempt: Direct activation if payment redirect was successful...');
-          
-          // If we reach here and have evidence of payment success, use direct activation
-          final directSuccess = await _tryDirectActivation(billId, planId, user.id);
-          
-          if (directSuccess) {
-            print('🎉 Payment activated via direct activation!');
-            await loadUserSubscriptions();
-            return true;
-          }
-        } catch (directError) {
-          print('❌ Direct activation also failed: $directError');
-        }
+        // DISABLED: Direct activation fallback
+        // Reason: This causes false positive activations for cancelled/failed payments
+        // Only use direct activation when explicitly needed via separate method
+        print('⚠️ Payment verification failed via API. Direct activation DISABLED to prevent false positives.');
+        print('💡 If payment was actually successful, use manual verification or contact support.');
         
         return false;
       }
@@ -541,28 +531,41 @@ class SubscriptionProvider with ChangeNotifier {
     }
   }
   
-  /// Try direct activation when all other methods fail
-  Future<bool> _tryDirectActivation(String billId, String planId, String userId) async {
+  /// Manual direct activation - ONLY use when payment is confirmed successful
+  /// This method should be called explicitly, not as automatic fallback
+  Future<bool> manualDirectActivation({
+    required String billId,
+    required String planId,
+    required String userId,
+    required String reason,
+    double? amount, // Optional amount parameter
+  }) async {
     try {
       print('🔧 Attempting direct activation for bill: $billId');
       
-      // Get plan details to determine amount
-      double amount = 6.90; // Default fallback to 1 month price
-      try {
-        final planDetails = await SupabaseService.from('subscription_plans')
-            .select('price')
-            .eq('id', planId)
-            .maybeSingle();
-        if (planDetails != null) {
-          amount = double.tryParse(planDetails['price']?.toString() ?? '6.90') ?? 6.90;
+      // Use passed amount or get plan details to determine amount
+      double finalAmount = amount ?? 6.90; // Use passed amount or default fallback
+
+      if (amount == null) {
+        // Only fetch from database if amount not provided
+        try {
+          final planDetails = await SupabaseService.from('subscription_plans')
+              .select('price')
+              .eq('id', planId)
+              .maybeSingle();
+          if (planDetails != null) {
+            finalAmount = double.tryParse(planDetails['price']?.toString() ?? '6.90') ?? 6.90;
+          }
+        } catch (e) {
+          print('⚠️ Could not get plan price for direct activation: $e');
         }
-      } catch (e) {
-        print('⚠️ Could not get plan price for direct activation: $e');
       }
+
+      print('💰 Using amount: RM${finalAmount.toStringAsFixed(2)} for activation');
       
-      // Call direct activation edge function
+      // Call fixed direct activation edge function
       final response = await http.post(
-        Uri.parse('https://ckgxglvozrsognqqkpkk.supabase.co/functions/v1/direct-activation'),
+        Uri.parse('https://ckgxglvozrsognqqkpkk.supabase.co/functions/v1/direct-activation-fixed'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer ${SupabaseService.client.auth.currentSession?.accessToken}',
@@ -572,8 +575,8 @@ class SubscriptionProvider with ChangeNotifier {
           'userId': userId,
           'planId': planId,
           'transactionId': 'direct_${DateTime.now().millisecondsSinceEpoch}',
-          'amount': amount,
-          'reason': 'API verification failed - user reported successful payment'
+          'amount': finalAmount,
+          'reason': reason
         }),
       );
 

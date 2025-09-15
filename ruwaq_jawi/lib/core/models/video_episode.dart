@@ -82,6 +82,23 @@ class VideoEpisode {
     };
   }
 
+  /// Format duration to readable string (e.g., "5 minit", "1 jam 30 minit")
+  String get formattedDuration {
+    if (durationMinutes <= 0) return '0 minit';
+    
+    final hours = durationMinutes ~/ 60;
+    final minutes = durationMinutes % 60;
+    
+    if (hours > 0) {
+      if (minutes > 0) {
+        return '$hours jam $minutes minit';
+      }
+      return '$hours jam';
+    }
+    
+    return '$minutes minit';
+  }
+
   VideoEpisode copyWith({
     String? title,
     String? description,

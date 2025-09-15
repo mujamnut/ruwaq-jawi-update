@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/models/payment_models.dart';
 import '../../../core/providers/payment_provider.dart';
 import '../../../core/config/payment_config.dart';
@@ -186,7 +187,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       appBar: AppBar(
         title: const Text('Payment'),
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: PhosphorIcon(
+            PhosphorIcons.arrowLeft(),
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => context.go('/subscription'),
         ),
       ),

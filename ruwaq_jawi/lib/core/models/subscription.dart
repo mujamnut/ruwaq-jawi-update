@@ -103,6 +103,14 @@ class Subscription {
 
   String get planDisplayName {
     switch (planType) {
+      case 'monthly_basic':
+        return '1 Bulan Basic';
+      case 'monthly_premium':
+        return '6 Bulan Premium';
+      case 'quarterly_pr':
+        return '3 Bulan Premium';
+      case 'yearly_premium':
+        return '1 Tahun Premium';
       case '1month':
         return '1 Bulan';
       case '3month':

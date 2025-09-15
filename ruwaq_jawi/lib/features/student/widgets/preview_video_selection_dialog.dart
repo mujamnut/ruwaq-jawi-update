@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
-import '../../../core/models/kitab.dart';
+import '../../../core/models/video_kitab.dart';
 import '../../../core/models/kitab_video.dart';
+import '../../../core/models/video_episode.dart';
 
 class PreviewVideoSelectionDialog extends StatefulWidget {
   final String kitabId;
-  final Kitab kitab;
+  final VideoKitab kitab;
 
   const PreviewVideoSelectionDialog({
     super.key,
@@ -21,7 +23,7 @@ class PreviewVideoSelectionDialog extends StatefulWidget {
 }
 
 class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialog> {
-  List<KitabVideo> _previewVideos = [];
+  List<VideoEpisode> _previewVideos = [];
   bool _isLoading = true;
 
   @override
@@ -51,7 +53,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
     }
   }
 
-  void _playPreview([KitabVideo? video]) {
+  void _playPreview([VideoEpisode? video]) {
     Navigator.of(context).pop();
     
     if (video != null) {
@@ -133,7 +135,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                       const Spacer(),
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.close),
+                        icon: PhosphorIcon(PhosphorIcons.x()),
                         color: AppTheme.textLightColor,
                         iconSize: 20,
                       ),
@@ -183,8 +185,8 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.visibility_off_outlined,
+          PhosphorIcon(
+            PhosphorIcons.eyeSlash(),
             size: 48,
             color: AppTheme.textSecondaryColor,
           ),
@@ -250,8 +252,8 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
           color: AppTheme.secondaryColor.withOpacity(0.1),
           child: Row(
             children: [
-              Icon(
-                Icons.info_outline,
+              PhosphorIcon(
+                PhosphorIcons.info(),
                 size: 16,
                 color: AppTheme.primaryColor,
               ),
@@ -323,7 +325,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
     );
   }
 
-  Widget _buildPreviewVideoTile(KitabVideo video) {
+  Widget _buildPreviewVideoTile(VideoEpisode video) {
     return Container(
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
@@ -396,8 +398,8 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        Icon(
-                          Icons.access_time,
+                        PhosphorIcon(
+                          PhosphorIcons.clock(),
                           size: 14,
                           color: AppTheme.primaryColor,
                         ),
@@ -416,8 +418,8 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
               ),
               
               // Play icon
-              Icon(
-                Icons.play_circle_outline,
+              PhosphorIcon(
+                PhosphorIcons.play(),
                 color: AppTheme.primaryColor,
                 size: 20,
               ),

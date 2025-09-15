@@ -1,15 +1,13 @@
-// ignore_for_file: unused_import
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
-import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/student_bottom_nav.dart';
-import '../../../core/widgets/offline_state_screen.dart';
 
 class StudentHomeScreen extends StatefulWidget {
   const StudentHomeScreen({super.key});
@@ -18,18 +16,146 @@ class StudentHomeScreen extends StatefulWidget {
   State<StudentHomeScreen> createState() => _StudentHomeScreenState();
 }
 
-class _StudentHomeScreenState extends State<StudentHomeScreen> {
+class _StudentHomeScreenState extends State<StudentHomeScreen>
+    with TickerProviderStateMixin {
+  late ScrollController _featuredScrollController;
+  Timer? _autoScrollTimer;
+  late AnimationController _progressAnimationController;
+  int _currentCardIndex = 0;
+  int _totalCards = 0;
+  bool _userIsScrolling = false;
+
   @override
   void initState() {
     super.initState();
+    _featuredScrollController = ScrollController();
+    _progressAnimationController = AnimationController(
+      duration: const Duration(seconds: 5),
+      vsync: this,
+    );
+
+    // Listen for user scroll interactions
+    _featuredScrollController.addListener(() {
+      if (_featuredScrollController.position.isScrollingNotifier.value) {
+        _userIsScrolling = true;
+        _resetAutoScrollTimer();
+      }
+
+      // Update dots based on scroll position when user scrolls manually
+      if (_totalCards > 0 && _featuredScrollController.hasClients) {
+        final cardWidth = 316.0; // 300 + 16 margin
+        final screenWidth = MediaQuery.of(context).size.width;
+        final centerOffset = (screenWidth - 300) / 2;
+        final currentOffset = _featuredScrollController.offset + centerOffset;
+        final rawCardIndex = (currentOffset / cardWidth).round();
+
+        // Clamp to valid range and handle infinite scroll
+        final newCardIndex = rawCardIndex.clamp(0, (_totalCards * 2) - 1);
+
+        if (newCardIndex != _currentCardIndex) {
+          setState(() {
+            _currentCardIndex = newCardIndex;
+          });
+        }
+      }
+    });
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kitabProvider = context.read<KitabProvider>();
-      if (kitabProvider.kitabList.isEmpty) {
+      if (kitabProvider.videoKitabList.isEmpty &&
+          kitabProvider.ebookList.isEmpty) {
         kitabProvider.initialize();
       }
       // Load notifications inbox for signed-in users
       context.read<NotificationsProvider>().loadInbox();
+
+      // Start auto-scroll after content loads
+      _startAutoScroll();
     });
+  }
+
+  void _startAutoScroll() {
+    _resetAutoScrollTimer();
+  }
+
+  void _resetAutoScrollTimer() {
+    _autoScrollTimer?.cancel();
+    _progressAnimationController.stop();
+    _progressAnimationController.reset();
+
+    // Start first animation
+    _startProgressAnimation();
+  }
+
+  void _startProgressAnimation() {
+    if (mounted && !_userIsScrolling) {
+      _progressAnimationController.forward().then((_) {
+        if (mounted &&
+            _featuredScrollController.hasClients &&
+            !_userIsScrolling) {
+          _scrollToNextCard();
+          // Start next cycle
+          _progressAnimationController.reset();
+          _startProgressAnimation();
+        }
+      });
+    } else {
+      // If user is scrolling, try again after 100ms
+      Timer(const Duration(milliseconds: 100), () {
+        _userIsScrolling = false;
+        _startProgressAnimation();
+      });
+    }
+  }
+
+  void _scrollToNextCard() {
+    if (_totalCards == 0) return;
+
+    // Update current card index for dots indicator
+    final previousIndex = _currentCardIndex % _totalCards;
+    _currentCardIndex =
+        (_currentCardIndex + 1) % (_totalCards * 2); // Use doubled content
+    final currentDisplayIndex = _currentCardIndex % _totalCards;
+
+    final cardWidth = 316.0; // 300 + 16 margin
+    final screenWidth = MediaQuery.of(context).size.width;
+    final centerOffset = (screenWidth - 300) / 2; // Center the card
+    final targetOffset = (_currentCardIndex * cardWidth) - centerOffset;
+
+    // Trigger rebuild for dots indicator
+    setState(() {});
+
+    _featuredScrollController
+        .animateTo(
+          targetOffset.clamp(
+            0.0,
+            _featuredScrollController.position.maxScrollExtent,
+          ),
+          duration: const Duration(milliseconds: 800),
+          curve: Curves.easeInOut,
+        )
+        .then((_) {
+          // Reset position for infinite scroll when we reach the end of first set
+          if (_currentCardIndex >= _totalCards) {
+            _currentCardIndex = _currentCardIndex - _totalCards;
+            final resetOffset = (_currentCardIndex * cardWidth) - centerOffset;
+            _featuredScrollController.jumpTo(
+              resetOffset.clamp(
+                0.0,
+                _featuredScrollController.position.maxScrollExtent,
+              ),
+            );
+            setState(() {}); // Update dots after reset
+          }
+        });
+  }
+
+  @override
+  void dispose() {
+    _autoScrollTimer?.cancel();
+    _featuredScrollController.dispose();
+    _progressAnimationController.dispose();
+    super.dispose();
   }
 
   @override
@@ -99,126 +225,145 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryColor,
+                              color: AppTheme.textSecondaryColor,
                             ),
                       ),
                     ],
                   ),
                 ),
-                Consumer<NotificationsProvider>(
-                  builder: (context, notif, _) {
-                    final unread = notif.unreadCount;
-                    final icon = IconButton(
-                      icon: Icon(
-                        Icons.notifications_outlined,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      onPressed: () async {
-                        // Refresh inbox and show simple list
-                        await context.read<NotificationsProvider>().loadInbox();
-                        if (!mounted) return;
-                        // Show bottom sheet with notifications (same behavior)
-                        // ignore: use_build_context_synchronously
-                        showModalBottomSheet(
-                          context: context,
-                          backgroundColor: AppTheme.surfaceColor,
-                          shape: const RoundedRectangleBorder(
-                            borderRadius: BorderRadius.vertical(
-                              top: Radius.circular(16),
-                            ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Notification Icon
+                    Consumer<NotificationsProvider>(
+                      builder: (context, notif, _) {
+                        final unread = notif.unreadCount;
+                        final icon = IconButton(
+                          icon: PhosphorIcon(
+                            PhosphorIcons.bell(),
+                            color: AppTheme.textPrimaryColor,
                           ),
-                          builder: (_) {
-                            final items = context
+                          onPressed: () async {
+                            // Refresh inbox and show simple list
+                            await context
                                 .read<NotificationsProvider>()
-                                .inbox;
-                            if (items.isEmpty) {
-                              return Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Center(
-                                  child: Text(
-                                    'Tiada notifikasi',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          color: AppTheme.textSecondaryColor,
-                                        ),
-                                  ),
+                                .loadInbox();
+                            if (!mounted) return;
+                            // Show bottom sheet with notifications (same behavior)
+                            // ignore: use_build_context_synchronously
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: AppTheme.surfaceColor,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(16),
                                 ),
-                              );
-                            }
-                            return SafeArea(
-                              child: ListView.separated(
-                                padding: const EdgeInsets.all(16),
-                                itemCount: items.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 16),
-                                itemBuilder: (ctx, i) {
-                                  final n = items[i];
-                                  final isUnread = n.readAt == null;
-                                  return ListTile(
-                                    contentPadding: EdgeInsets.zero,
-                                    leading: Icon(
-                                      isUnread
-                                          ? Icons.markunread
-                                          : Icons.drafts_outlined,
-                                      color: isUnread
-                                          ? AppTheme.primaryColor
-                                          : AppTheme.textSecondaryColor,
-                                    ),
-                                    title: Text(
-                                      n.notification.title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge
-                                          ?.copyWith(
-                                            fontWeight: isUnread
-                                                ? FontWeight.w700
-                                                : FontWeight.w500,
-                                            color: AppTheme.textPrimaryColor,
-                                          ),
-                                    ),
-                                    subtitle: Text(
-                                      n.notification.body,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                            color: AppTheme.textSecondaryColor,
-                                          ),
-                                    ),
-                                    onTap: () async {
-                                      await context
-                                          .read<NotificationsProvider>()
-                                          .markAsRead(n.id);
-                                      if (!mounted) return;
-                                      Navigator.of(context).pop();
-                                    },
-                                  );
-                                },
                               ),
+                              builder: (_) {
+                                final items = context
+                                    .read<NotificationsProvider>()
+                                    .inbox;
+                                if (items.isEmpty) {
+                                  return Padding(
+                                    padding: const EdgeInsets.all(24),
+                                    child: Center(
+                                      child: Text(
+                                        'Tiada notifikasi',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color:
+                                                  AppTheme.textSecondaryColor,
+                                            ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                return SafeArea(
+                                  child: ListView.separated(
+                                    padding: const EdgeInsets.all(16),
+                                    itemCount: items.length,
+                                    separatorBuilder: (_, __) =>
+                                        const Divider(height: 16),
+                                    itemBuilder: (ctx, i) {
+                                      final n = items[i];
+                                      final isUnread = n.readAt == null;
+                                      return ListTile(
+                                        contentPadding: EdgeInsets.zero,
+                                        leading: PhosphorIcon(
+                                          isUnread
+                                              ? PhosphorIcons.envelope(
+                                                  PhosphorIconsStyle.fill,
+                                                )
+                                              : PhosphorIcons.envelope(),
+                                          color: isUnread
+                                              ? AppTheme.primaryColor
+                                              : AppTheme.textSecondaryColor,
+                                        ),
+                                        title: Text(
+                                          n.title,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                fontWeight: isUnread
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
+                                                color:
+                                                    AppTheme.textPrimaryColor,
+                                              ),
+                                        ),
+                                        subtitle: Text(
+                                          n.body,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color:
+                                                    AppTheme.textSecondaryColor,
+                                              ),
+                                        ),
+                                        onTap: () async {
+                                          await context
+                                              .read<NotificationsProvider>()
+                                              .markAsRead(n.id);
+                                          if (!mounted) return;
+                                          Navigator.of(context).pop();
+                                        },
+                                      );
+                                    },
+                                  ),
+                                );
+                              },
                             );
                           },
                         );
+                        if (unread > 0) {
+                          return Badge(
+                            alignment: Alignment.topRight,
+                            backgroundColor: AppTheme.primaryColor,
+                            label: Text(
+                              unread > 99 ? '99+' : '$unread',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            child: icon,
+                          );
+                        }
+                        return icon;
                       },
-                    );
-                    if (unread > 0) {
-                      return Badge(
-                        alignment: Alignment.topRight,
-                        backgroundColor: AppTheme.primaryColor,
-                        label: Text(
-                          unread > 99 ? '99+' : '$unread',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        child: icon,
-                      );
-                    }
-                    return icon;
-                  },
+                    ),
+                    const SizedBox(width: 12),
+                    // Profile Avatar
+                    GestureDetector(
+                      onTap: () => context.push('/profile'),
+                      child: _buildProfileAvatar(authProvider),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -237,13 +382,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   vertical: 12,
                 ),
                 decoration: BoxDecoration(
-                  color: AppTheme.surfaceColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.borderColor),
+                  color: const Color(0xFFEEEEEE),
+                  borderRadius: BorderRadius.circular(25),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.search, color: AppTheme.textSecondaryColor),
+                    PhosphorIcon(
+                      PhosphorIcons.magnifyingGlass(),
+                      color: AppTheme.textSecondaryColor,
+                    ),
                     const SizedBox(width: 12),
                     Text(
                       'Cari kitab, video, atau topik...',
@@ -264,11 +411,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget _buildFeaturedSection() {
     return Consumer<KitabProvider>(
       builder: (context, kitabProvider, child) {
-        final featuredKitab = kitabProvider.premiumKitab.take(3).toList();
+        // Combine premium video kitab and ebooks for featured section
+        final featuredContent = [
+          ...kitabProvider.premiumVideoKitab.take(3),
+          ...kitabProvider.premiumEbooks.take(2),
+        ];
 
-        if (featuredKitab.isEmpty) {
+        if (featuredContent.isEmpty) {
           return const SizedBox.shrink();
         }
+
+        // Update total cards count for auto-scroll
+        _totalCards = featuredContent.length;
+
+        // Create infinite content by duplicating the original content
+        final infiniteContent = [...featuredContent, ...featuredContent];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,28 +441,87 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             SizedBox(
               height: 200,
               child: ListView.builder(
+                controller: _featuredScrollController,
                 scrollDirection: Axis.horizontal,
-                itemCount: featuredKitab.length,
+                itemCount: infiniteContent.length,
+                physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
                   return Container(
                     width: 300,
-                    margin: EdgeInsets.only(
-                      right: index < featuredKitab.length - 1 ? 16 : 0,
-                    ),
-                    child: _buildFeaturedCard(featuredKitab[index]),
+                    margin: const EdgeInsets.only(right: 16),
+                    child: _buildFeaturedCard(infiniteContent[index]),
                   );
                 },
               ),
             ),
+            const SizedBox(height: 16),
+            // Dots indicator with progress animation
+            _buildDotsIndicator(),
           ],
         );
       },
     );
   }
 
-  Widget _buildFeaturedCard(kitab) {
+  Widget _buildDotsIndicator() {
+    if (_totalCards == 0) return const SizedBox.shrink();
+
+    return Center(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(_totalCards, (index) {
+          final isActive = index == (_currentCardIndex % _totalCards);
+
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            child: isActive
+                ? // Active dot becomes progress bar
+                  AnimatedBuilder(
+                    animation: _progressAnimationController,
+                    builder: (context, child) {
+                      return Container(
+                        width: 24,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppTheme.borderColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: _userIsScrolling
+                              ? 0
+                              : _progressAnimationController.value,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                : // Inactive dots remain as circles
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.borderColor,
+                    ),
+                  ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedCard(dynamic content) {
+    final isEbook = content.runtimeType.toString().contains('Ebook');
+    final route = isEbook ? '/ebook/${content.id}' : '/kitab/${content.id}';
+
     return GestureDetector(
-      onTap: () => context.push('/kitab/${kitab.id}'),
+      onTap: () => context.push(route),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -345,7 +561,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    kitab.title,
+                    content.title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: AppTheme.textLightColor,
                       fontWeight: FontWeight.bold,
@@ -353,8 +569,10 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    kitab.description ??
-                        'Kitab premium dengan kandungan berkualiti tinggi',
+                    content.description ??
+                        (isEbook
+                            ? 'E-book premium dengan kandungan berkualiti tinggi'
+                            : 'Video kitab premium dengan kandungan berkualiti tinggi'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.textLightColor.withOpacity(0.9),
                     ),
@@ -417,9 +635,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               itemCount: categories.length,
               itemBuilder: (context, index) {
                 final category = categories[index];
-                final kitabCount = kitabProvider.kitabList
+                // Count both video kitab and ebooks for this category
+                final videoKitabCount = kitabProvider.videoKitabList
                     .where((k) => k.categoryId == category.id)
                     .length;
+                final ebookCount = kitabProvider.ebookList
+                    .where((e) => e.categoryId == category.id)
+                    .length;
+                final totalCount = videoKitabCount + ebookCount;
 
                 return GestureDetector(
                   onTap: () => context.push(
@@ -432,33 +655,73 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                       border: Border.all(color: AppTheme.borderColor),
                     ),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.book,
-                            color: AppTheme.primaryColor,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          category.name,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: AppTheme.textPrimaryColor,
+                        // Top section with Arabic text
+                        Expanded(
+                          flex: 2,
+                          child: Container(
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor.withOpacity(0.1),
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(12),
+                                topRight: Radius.circular(12),
                               ),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _getArabicTextForCategory(category.name),
+                                style: const TextStyle(
+                                  fontFamily: 'ArefRuqaa',
+                                  fontSize: 35,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.primaryColor,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
                         ),
-                        Text(
-                          '$kitabCount kitab',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppTheme.textSecondaryColor),
+                        // Bottom section with category name and count
+                        Expanded(
+                          flex: 1,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    category.name,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          color: AppTheme.textPrimaryColor,
+                                          fontSize: 12,
+                                        ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Flexible(
+                                  child: Text(
+                                    '$totalCount item',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppTheme.textSecondaryColor,
+                                          fontSize: 10,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -475,11 +738,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
   Widget _buildRecentSection() {
     return Consumer<KitabProvider>(
       builder: (context, kitabProvider, child) {
-        final recentKitab = kitabProvider.kitabList.toList()
-          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-        final displayKitab = recentKitab.take(4).toList();
+        // Combine both video kitab and ebooks for recent section
+        final recentContent =
+            <dynamic>[
+              ...kitabProvider.videoKitabList,
+              ...kitabProvider.ebookList,
+            ]..sort(
+              (a, b) =>
+                  (b as dynamic).createdAt.compareTo((a as dynamic).createdAt),
+            );
+        final displayContent = recentContent.take(4).toList();
 
-        if (displayKitab.isEmpty) {
+        if (displayContent.isEmpty) {
           return const SizedBox.shrink();
         }
 
@@ -513,14 +783,14 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
               height: 240,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
-                itemCount: displayKitab.length,
+                itemCount: displayContent.length,
                 itemBuilder: (context, index) {
                   return Container(
                     width: 160,
                     margin: EdgeInsets.only(
-                      right: index < displayKitab.length - 1 ? 12 : 0,
+                      right: index < displayContent.length - 1 ? 12 : 0,
                     ),
-                    child: _buildContentCard(displayKitab[index]),
+                    child: _buildContentCard(displayContent[index]),
                   );
                 },
               ),
@@ -531,9 +801,96 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
     );
   }
 
-  Widget _buildContentCard(kitab) {
+  String _getYouTubeThumbnailUrl(String? youtubeUrl) {
+    if (youtubeUrl == null || youtubeUrl.isEmpty) return '';
+
+    // Extract video ID from various YouTube URL formats
+    String? videoId;
+
+    if (youtubeUrl.contains('youtube.com/watch?v=')) {
+      videoId = youtubeUrl.split('v=')[1].split('&')[0];
+    } else if (youtubeUrl.contains('youtu.be/')) {
+      videoId = youtubeUrl.split('youtu.be/')[1].split('?')[0];
+    } else if (youtubeUrl.contains('youtube.com/embed/')) {
+      videoId = youtubeUrl.split('embed/')[1].split('?')[0];
+    }
+
+    if (videoId != null && videoId.isNotEmpty) {
+      // Use high quality thumbnail (hqdefault.jpg)
+      return 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
+    }
+
+    return '';
+  }
+
+  Widget _buildVideoThumbnail(dynamic content) {
+    String thumbnailUrl = '';
+
+    // Check if content has thumbnailUrl (VideoKitab case)
+    if (content.thumbnailUrl != null && content.thumbnailUrl.isNotEmpty) {
+      thumbnailUrl = content.thumbnailUrl;
+    }
+    // If no thumbnailUrl, try to get from youtubeWatchUrl (VideoEpisode case)
+    else if (content.runtimeType.toString().contains('VideoEpisode') &&
+        content.youtubeWatchUrl != null) {
+      thumbnailUrl = _getYouTubeThumbnailUrl(content.youtubeWatchUrl);
+    }
+
+    if (thumbnailUrl.isNotEmpty) {
+      return Image.network(
+        thumbnailUrl,
+        width: double.infinity,
+        height: 120,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return Container(
+            width: double.infinity,
+            height: 120,
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            child: Center(
+              child: PhosphorIcon(
+                PhosphorIcons.videoCamera(),
+                size: 48,
+                color: AppTheme.primaryColor,
+              ),
+            ),
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: double.infinity,
+            height: 120,
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            child: Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.primaryColor,
+                ),
+                strokeWidth: 2,
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      // Fallback to icon if no YouTube URL
+      return Center(
+        child: PhosphorIcon(
+          PhosphorIcons.videoCamera(),
+          size: 48,
+          color: AppTheme.primaryColor,
+        ),
+      );
+    }
+  }
+
+  Widget _buildContentCard(dynamic content) {
+    final isEbook = content.runtimeType.toString().contains('Ebook');
+    final route = isEbook ? '/ebook/${content.id}' : '/kitab/${content.id}';
+
     return GestureDetector(
-      onTap: () => context.push('/kitab/${kitab.id}'),
+      onTap: () => context.push(route),
       child: Container(
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
@@ -551,9 +908,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   top: Radius.circular(12),
                 ),
               ),
-              child: Center(
-                child: Icon(Icons.book, size: 48, color: AppTheme.primaryColor),
-              ),
+              child: isEbook
+                  ? // Keep icon for ebooks
+                    Center(
+                      child: PhosphorIcon(
+                        PhosphorIcons.filePdf(),
+                        size: 48,
+                        color: AppTheme.primaryColor,
+                      ),
+                    )
+                  : // Use thumbnail for video kitab
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12),
+                      ),
+                      child: _buildVideoThumbnail(content),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.all(12),
@@ -561,7 +931,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    kitab.title,
+                    content.title,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textPrimaryColor,
@@ -571,25 +941,31 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    kitab.author ?? 'Unknown Author',
+                    content.author ?? 'Unknown Author',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: AppTheme.textSecondaryColor,
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Show episode count for all kitab
+                  // Show appropriate info based on content type
                   Row(
                     children: [
-                      Icon(
-                        Icons.video_library,
+                      PhosphorIcon(
+                        isEbook
+                            ? PhosphorIcons.filePdf()
+                            : PhosphorIcons.videoCamera(),
                         size: 16,
                         color: AppTheme.primaryColor,
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        kitab.hasMultipleVideos && kitab.totalVideos > 0
-                            ? '${kitab.totalVideos} episod'
-                            : '1 episod',
+                        isEbook
+                            ? (content.totalPages != null
+                                  ? '${content.totalPages} hal'
+                                  : 'E-book')
+                            : (content.totalVideos > 0
+                                  ? '${content.totalVideos} episod'
+                                  : '1 episod'),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.primaryColor,
                           fontWeight: FontWeight.w500,
@@ -628,12 +1004,22 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Sambung Bacaan',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
-                  ),
+                Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.bookOpen(),
+                      color: AppTheme.primaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Sambung Bacaan',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 GestureDetector(
@@ -642,8 +1028,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: AppTheme.borderColor),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Row(
                       children: [
@@ -652,9 +1045,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                           height: 60,
                           decoration: BoxDecoration(
                             color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(Icons.book, color: AppTheme.primaryColor),
+                          child: PhosphorIcon(
+                            PhosphorIcons.bookOpen(),
+                            color: AppTheme.primaryColor,
+                            size: 24,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -696,8 +1093,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                             ],
                           ),
                         ),
-                        Icon(
-                          Icons.arrow_forward_ios,
+                        PhosphorIcon(
+                          PhosphorIcons.caretRight(),
                           color: AppTheme.textSecondaryColor,
                           size: 16,
                         ),
@@ -711,5 +1108,121 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
         );
       },
     );
+  }
+
+  Widget _buildProfileAvatar(AuthProvider authProvider) {
+    final userProfile = authProvider.userProfile;
+    final userName = userProfile?.fullName ?? 'User';
+    final profileImageUrl = userProfile?.avatarUrl;
+
+    // Get initials from name
+    String getInitials(String name) {
+      final words = name.trim().split(' ');
+      if (words.isEmpty) return 'U';
+      if (words.length == 1) return words[0][0].toUpperCase();
+      return '${words.first[0]}${words.last[0]}'.toUpperCase();
+    }
+
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppTheme.primaryColor, width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ClipOval(
+        child: profileImageUrl != null && profileImageUrl.isNotEmpty
+            ? Image.network(
+                profileImageUrl,
+                width: 36,
+                height: 36,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  // Fallback to initials if image fails to load
+                  return _buildInitialsAvatar(getInitials(userName));
+                },
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    width: 36,
+                    height: 36,
+                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    child: Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            AppTheme.primaryColor,
+                          ),
+                          strokeWidth: 2,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              )
+            : _buildInitialsAvatar(getInitials(userName)),
+      ),
+    );
+  }
+
+  Widget _buildInitialsAvatar(String initials) {
+    return Container(
+      width: 36,
+      height: 36,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primaryColor,
+            AppTheme.primaryColor.withOpacity(0.8),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getArabicTextForCategory(String categoryName) {
+    final category = categoryName.toLowerCase().trim();
+
+    if (category.contains('fiqh')) {
+      return 'الفقه';
+    } else if (category.contains('akidah')) {
+      return 'العقيدة';
+    } else if (category.contains('quran & tafsir')) {
+      return 'القران و التفسير';
+    } else if (category.contains('hadith')) {
+      return 'الحديث';
+    } else if (category.contains('sirah')) {
+      return 'السيرة';
+    } else if (category.contains('akhlak & tasawuf')) {
+      return 'التصوف';
+    } else if (category.contains('usul fiqh')) {
+      return 'أصول الفقه';
+    } else if (category.contains('bahasa arab')) {
+      return 'لغة العربية';
+    } else {
+      return 'كتاب';
+    }
   }
 }

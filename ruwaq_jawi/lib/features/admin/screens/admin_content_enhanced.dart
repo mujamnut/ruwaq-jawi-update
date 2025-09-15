@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -17,7 +18,8 @@ class AdminContentEnhanced extends StatefulWidget {
   _AdminContentEnhancedState createState() => _AdminContentEnhancedState();
 }
 
-class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
+class _AdminContentEnhancedState extends State<AdminContentEnhanced>
+    with TickerProviderStateMixin {
   List<VideoKitab> _kitabList = [];
   List<Category> _categories = [];
   bool _isLoading = true;
@@ -26,19 +28,71 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
   String _searchQuery = '';
   
   final _searchController = TextEditingController();
+  late AnimationController _fabAnimationController;
+  late AnimationController _listAnimationController;
+  late Animation<double> _fabScaleAnimation;
+  late Animation<double> _fabRotationAnimation;
+  ScrollController _scrollController = ScrollController();
+  bool _isAppBarVisible = true;
 
 
   @override
   void initState() {
     super.initState();
     _searchController.text = _searchQuery;
+    
+    // Initialize animation controllers
+    _fabAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _listAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    // Setup FAB animations
+    _fabScaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fabAnimationController,
+      curve: Curves.elasticOut,
+    ));
+    
+    _fabRotationAnimation = Tween<double>(
+      begin: 0.0,
+      end: 0.125, // 45 degrees
+    ).animate(CurvedAnimation(
+      parent: _fabAnimationController,
+      curve: Curves.easeInOut,
+    ));
+    
+    // Setup scroll listener for app bar visibility
+    _scrollController.addListener(_onScroll);
+    
     _refreshData();
+    _fabAnimationController.forward();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _fabAnimationController.dispose();
+    _listAnimationController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+  
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      final bool shouldShowAppBar = _scrollController.offset <= 50;
+      if (shouldShowAppBar != _isAppBarVisible) {
+        setState(() {
+          _isAppBarVisible = shouldShowAppBar;
+        });
+      }
+    }
   }
 
   // Load data with caching
@@ -88,7 +142,6 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
       final categories = await SupabaseService.getActiveCategories();
       final kitabList = await VideoKitabService.getVideoKitabs();
 
-
       // Cache the fresh data
       await _cacheData(kitabList, categories);
 
@@ -98,6 +151,9 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
         _isLoading = false;
         _error = null;
       });
+      
+      // Start list animation after data loads
+      _listAnimationController.forward();
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -148,141 +204,472 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Kandungan'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      backgroundColor: AppTheme.backgroundColor,
+      appBar: _buildModernAppBar(),
+      extendBodyBehindAppBar: false,
       body: RefreshIndicator(
         onRefresh: _refreshData,
+        color: AppTheme.primaryColor,
+        backgroundColor: Colors.white,
+        strokeWidth: 3.0,
         child: Column(
           children: [
+            // Modern Search and Filter Section
+            _buildSearchAndFilterSection(),
 
-            // Search and Filter
-            Container(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  // Search Bar
-                  TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Cari kitab...',
-                      prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                    ),
-                    onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
-                    },
-                  ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // Filter Tabs
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildFilterChip('all', 'Semua'),
-                        _buildFilterChip('active', 'Aktif'),
-                        _buildFilterChip('inactive', 'Tidak Aktif'),
-                        _buildFilterChip('premium', 'Premium'),
-                        _buildFilterChip('free', 'Percuma'),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Content List
+            // Enhanced Content List
             Expanded(
               child: _isLoading
-                  ? const Center(child: CircularProgressIndicator())
+                  ? _buildModernLoadingState()
                   : _error != null
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, size: 64.0, color: Colors.red),
-                              const SizedBox(height: 16),
-                              Text('Ralat: $_error'),
-                              const SizedBox(height: 16),
-                              ElevatedButton(
-                                onPressed: _refreshData,
-                                child: const Text('Cuba Lagi'),
-                              ),
-                            ],
-                          ),
-                        )
+                      ? _buildModernErrorState()
                       : _filteredKitab.isEmpty
-                          ? const Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  HugeIcon(icon: HugeIcons.strokeRoundedInbox, size: 64.0, color: Colors.grey),
-                                  SizedBox(height: 16),
-                                  Text('Tiada kitab dijumpai'),
-                                ],
-                              ),
-                            )
-                          : ListView.builder(
-                              padding: const EdgeInsets.all(16),
-                              itemCount: _filteredKitab.length,
-                              itemBuilder: (context, index) {
-                                final kitab = _filteredKitab[index];
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 16),
-                                  child: _buildKitabCard(kitab),
-                                );
-                              },
-                            ),
+                          ? _buildModernEmptyState()
+                          : _buildModernContentList(),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createNewKitab,
-        backgroundColor: AppTheme.primaryColor,
-        child: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
-      ),
+      floatingActionButton: _buildModernFAB(),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
     );
   }
 
 
-  Widget _buildFilterChip(String value, String label) {
+  PreferredSizeWidget _buildModernAppBar() {
+    return AppBar(
+      title: const Text(
+        'Kandungan',
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          fontSize: 24,
+          letterSpacing: -0.5,
+        ),
+      ),
+      backgroundColor: AppTheme.primaryColor,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      systemOverlayStyle: SystemUiOverlayStyle.light,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppTheme.primaryColor,
+              AppTheme.primaryLightColor,
+            ],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+      ),
+      actions: const [],
+    );
+  }
+
+  Widget _buildSearchAndFilterSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Modern Search Bar
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              color: AppTheme.backgroundColor,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Cari kitab, pengarang, atau kategori...',
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondaryColor.withOpacity(0.6),
+                  fontSize: 16,
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedSearch01,
+                    color: AppTheme.textSecondaryColor.withOpacity(0.7),
+                    size: 20,
+                  ),
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+          
+          const SizedBox(height: 20),
+          
+          // Filter Label
+          Text(
+            'Filter Kandungan',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondaryColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          
+          // Modern Filter Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildModernFilterChip('all', 'Semua', HugeIcons.strokeRoundedGridView),
+                _buildModernFilterChip('active', 'Aktif', HugeIcons.strokeRoundedCheckmarkCircle02),
+                _buildModernFilterChip('inactive', 'Tidak Aktif', HugeIcons.strokeRoundedCancel01),
+                _buildModernFilterChip('premium', 'Premium', HugeIcons.strokeRoundedStar),
+                _buildModernFilterChip('free', 'Percuma', HugeIcons.strokeRoundedGift),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernFilterChip(String value, String label, IconData icon) {
     final isSelected = _selectedFilter == value;
     
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (selected) {
-          setState(() {
-            _selectedFilter = selected ? value : 'all';
-          });
-        },
-        selectedColor: AppTheme.primaryColor.withOpacity(0.2),
-        backgroundColor: Colors.grey[100],
-        checkmarkColor: AppTheme.primaryColor,
-        labelStyle: TextStyle(
-          color: isSelected ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            setState(() {
+              _selectedFilter = isSelected ? 'all' : value;
+            });
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected 
+                  ? AppTheme.primaryColor 
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isSelected 
+                    ? AppTheme.primaryColor 
+                    : AppTheme.borderColor,
+                width: isSelected ? 0 : 1,
+              ),
+              boxShadow: isSelected ? [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ] : [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HugeIcon(
+                  icon: icon,
+                  size: 16,
+                  color: isSelected 
+                      ? Colors.white 
+                      : AppTheme.textSecondaryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected 
+                        ? Colors.white 
+                        : AppTheme.textSecondaryColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildKitabCard(VideoKitab kitab) {
+  Widget _buildModernLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                strokeWidth: 3,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Memuat kandungan...',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textSecondaryColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernErrorState() {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppTheme.errorColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(40),
+              ),
+              child: const Center(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedAlert02,
+                  size: 40,
+                  color: AppTheme.errorColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Ops! Terdapat ralat',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error!,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _refreshData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedRefresh,
+                    size: 18,
+                    color: Colors.white,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Cuba Lagi',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernEmptyState() {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(60),
+              ),
+              child: Center(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedInbox,
+                  size: 60,
+                  color: AppTheme.textSecondaryColor.withOpacity(0.6),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Tiada kitab dijumpai',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Cuba ubah carian atau filter anda',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                color: AppTheme.textSecondaryColor,
+              ),
+            ),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _searchQuery = '';
+                  _selectedFilter = 'all';
+                  _searchController.clear();
+                });
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text(
+                'Kosongkan Penapis',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernContentList() {
+    return AnimatedBuilder(
+      animation: _listAnimationController,
+      builder: (context, child) {
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          itemCount: _filteredKitab.length,
+          itemBuilder: (context, index) {
+            final kitab = _filteredKitab[index];
+            final animationDelay = index * 0.1;
+            return TweenAnimationBuilder(
+              duration: Duration(milliseconds: 600 + (index * 100)),
+              tween: Tween<double>(begin: 0.0, end: 1.0),
+              curve: Curves.easeOutBack,
+              builder: (context, double value, child) {
+                return Transform.translate(
+                  offset: Offset(0, (1 - value) * 30),
+                  child: Opacity(
+                    opacity: value.clamp(0.0, 1.0),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: _buildModernKitabCard(kitab),
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildModernKitabCard(VideoKitab kitab) {
     final category = _categories.firstWhere(
       (c) => c.id == kitab.categoryId,
       orElse: () => Category(
@@ -298,178 +685,207 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+            spreadRadius: 0,
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _editKitab(kitab),
-          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _editKitab(kitab);
+          },
+          borderRadius: BorderRadius.circular(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Thumbnail header
+              // Enhanced Thumbnail Header
               Container(
-                height: 120,
+                height: 140,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
                       AppTheme.primaryColor.withOpacity(0.1),
-                      AppTheme.primaryColor.withOpacity(0.05),
+                      AppTheme.primaryLightColor.withOpacity(0.05),
                     ],
                   ),
                   borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
+                    topLeft: Radius.circular(20),
+                    topRight: Radius.circular(20),
                   ),
                 ),
                 child: Stack(
                   children: [
                     if (kitab.thumbnailUrl != null)
-                      ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                        child: Image.network(
-                          kitab.thumbnailUrl!,
-                          width: double.infinity,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return _buildModernPlaceholder();
-                          },
+                      Hero(
+                        tag: 'kitab_${kitab.id}',
+                        child: ClipRRect(
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                          child: Image.network(
+                            kitab.thumbnailUrl!,
+                            width: double.infinity,
+                            height: 140,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return _buildEnhancedPlaceholder();
+                            },
+                          ),
                         ),
                       )
                     else
-                      _buildModernPlaceholder(),
+                      _buildEnhancedPlaceholder(),
                     
-                    // Status badges
+                    // Status Badges with Better Styling
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 12,
+                      right: 12,
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (!kitab.isActive)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Tidak Aktif',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          if (kitab.isPremium)
-                            Container(
-                              margin: const EdgeInsets.only(left: 4),
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.amber,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Premium',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
+                            _buildStatusBadge(
+                              'Tidak Aktif',
+                              AppTheme.errorColor,
+                              HugeIcons.strokeRoundedCancel01,
                             ),
                         ],
+                      ),
+                    ),
+                    
+                    // Gradient Overlay
+                    Positioned.fill(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.05),
+                            ],
+                          ),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               
-              // Content info
+              // Enhanced Content Info
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title
                     Text(
                       kitab.title,
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.textPrimaryColor,
+                        height: 1.3,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Oleh: ${kitab.author ?? 'Tiada Pengarang'}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        category.name,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 8),
+                    
+                    // Author
                     Row(
                       children: [
                         HugeIcon(
-                          icon: kitab.isActive ? HugeIcons.strokeRoundedCheckmarkCircle02 : HugeIcons.strokeRoundedCancel01,
-                          size: 16.0,
-                          color: kitab.isActive ? Colors.green : Colors.red,
+                          icon: HugeIcons.strokeRoundedUser,
+                          size: 14,
+                          color: AppTheme.textSecondaryColor,
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          kitab.isActive ? 'Aktif' : 'Tidak Aktif',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: kitab.isActive ? Colors.green : Colors.red,
-                            fontWeight: FontWeight.w500,
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            kitab.author ?? 'Tiada Pengarang',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.textSecondaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    
+                    // Category Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedTag01,
+                            size: 12,
+                            color: AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            category.name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // Status Row
+                    Row(
+                      children: [
+                        // Active Status
+                        _buildInfoChip(
+                          icon: kitab.isActive 
+                              ? HugeIcons.strokeRoundedCheckmarkCircle02 
+                              : HugeIcons.strokeRoundedCancel01,
+                          label: kitab.isActive ? 'Aktif' : 'Tidak Aktif',
+                          color: kitab.isActive 
+                              ? AppTheme.successColor 
+                              : AppTheme.errorColor,
                         ),
                         const Spacer(),
-                        HugeIcon(
-                          icon: kitab.isPremium ? HugeIcons.strokeRoundedStar : HugeIcons.strokeRoundedLock,
-                          size: 16.0,
-                          color: kitab.isPremium ? Colors.amber : Colors.blue,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          kitab.isPremium ? 'Premium' : 'Percuma',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: kitab.isPremium ? Colors.amber : Colors.blue,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
                       ],
                     ),
                   ],
@@ -482,40 +898,134 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced> {
     );
   }
 
-  Widget _buildModernPlaceholder() {
+  Widget _buildStatusBadge(
+    String label,
+    Color color,
+    IconData icon, {
+    EdgeInsets? margin,
+  }) {
+    return Container(
+      margin: margin,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.3),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HugeIcon(
+            icon: icon,
+            size: 12,
+            color: Colors.white,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        HugeIcon(
+          icon: icon,
+          size: 16,
+          color: color,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            color: color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEnhancedPlaceholder() {
     return Container(
       width: double.infinity,
-      height: 120,
+      height: 140,
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [
             AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.primaryColor.withOpacity(0.05),
+            AppTheme.primaryLightColor.withOpacity(0.05),
           ],
         ),
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          HugeIcon(
-            icon: HugeIcons.strokeRoundedVideo01,
-            size: 32.0,
-            color: AppTheme.primaryColor.withOpacity(0.6),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedVideo01,
+              size: 40,
+              color: AppTheme.primaryColor.withOpacity(0.7),
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             'Video Kitab',
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 14,
               color: AppTheme.primaryColor.withOpacity(0.8),
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.5,
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModernFAB() {
+    return FloatingActionButton(
+      onPressed: () {
+        HapticFeedback.lightImpact();
+        _createNewKitab();
+      },
+      backgroundColor: const Color(0xFF00BF6D),
+      foregroundColor: Colors.white,
+      child: const HugeIcon(
+        icon: HugeIcons.strokeRoundedPlusSign,
+        color: Colors.white,
+        size: 24.0,
       ),
     );
   }

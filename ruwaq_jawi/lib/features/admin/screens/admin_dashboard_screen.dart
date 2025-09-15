@@ -8,12 +8,8 @@ import 'dart:convert';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../auth/screens/login_screen.dart';
-import 'admin_users_screen.dart';
-import 'admin_ebook_list_screen.dart';
-import 'admin_category_form_screen.dart';
-import 'admin_analytics_real_screen.dart';
 import '../widgets/admin_bottom_nav.dart';
+import 'admin_notification_detail_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -112,48 +108,378 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     _lastScrollOffset = currentOffset;
   }
 
-  void _showNotifications() {
-    showShadSheet(
+  void _showNotifications() async {
+    // Fetch real notification data
+    final recentContent = await _fetchRecentContent();
+    final totalUsers = await _fetchTotalUsers();
+    final notifications = await _buildNotificationsList(recentContent, totalUsers);
+    
+    if (!mounted) return;
+    
+    showModalBottomSheet(
       context: context,
-      builder: (context) => ShadSheet(
-        title: const Text('Notifikasi'),
-        description: const Text('Aktiviti dan update terkini sistem'),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            _buildNotificationCard(
-              icon: HugeIcons.strokeRoundedCreditCard,
-              iconColor: Colors.green,
-              title: 'Pembayaran Baharu',
-              subtitle: 'Pengguna telah membuat pembayaran premium',
-              time: '2 minit lalu',
+            // Header
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildNotificationCard(
-              icon: HugeIcons.strokeRoundedBook02,
-              iconColor: AppTheme.primaryColor,
-              title: 'Kitab Baharu Ditambah',
-              subtitle: 'Kitab "Fiqh Muamalat" telah ditambah',
-              time: '1 jam lalu',
+            const SizedBox(height: 20),
+            
+            // Title and Read All button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Notifikasi',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: () => _markAllAsRead(notifications),
+                  icon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                    color: AppTheme.primaryColor,
+                    size: 16.0,
+                  ),
+                  label: Text(
+                    'Baca Semua',
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            _buildNotificationCard(
-              icon: HugeIcons.strokeRoundedUserAdd01,
-              iconColor: Colors.blue,
-              title: 'Pengguna Baharu',
-              subtitle: '5 pengguna baharu mendaftar hari ini',
-              time: '3 jam lalu',
+            const SizedBox(height: 8),
+            Text(
+              'Aktiviti dan update terkini sistem',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey.shade600,
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildNotificationCard(
-              icon: HugeIcons.strokeRoundedSystemUpdate02,
-              iconColor: Colors.orange,
-              title: 'Sistem Update',
-              subtitle: 'Sistem telah dikemas kini ke versi 2.1.0',
-              time: '1 hari lalu',
+            const SizedBox(height: 20),
+            
+            // Notification list
+            Expanded(
+              child: ListView.builder(
+                itemCount: notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = notifications[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildEnhancedNotificationCard(notification),
+                  );
+                },
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRecentContent() async {
+    try {
+      final response = await SupabaseService.from('ebooks')
+          .select('id, title, author, created_at')
+          .gte('created_at', DateTime.now().subtract(const Duration(days: 7)).toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(2);
+      
+      final response2 = await SupabaseService.from('video_kitab')
+          .select('id, title, author, created_at')
+          .gte('created_at', DateTime.now().subtract(const Duration(days: 7)).toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(2);
+      
+      List<Map<String, dynamic>> allContent = [];
+      
+      // Add ebooks with type
+      for (var item in response) {
+        allContent.add({
+          ...item,
+          'type': 'ebook',
+          'formatted_time': _formatTimeAgo(DateTime.parse(item['created_at'])),
+        });
+      }
+      
+      // Add video kitab with type
+      for (var item in response2) {
+        allContent.add({
+          ...item,
+          'type': 'video_kitab',
+          'formatted_time': _formatTimeAgo(DateTime.parse(item['created_at'])),
+        });
+      }
+      
+      // Sort by created_at
+      allContent.sort((a, b) => DateTime.parse(b['created_at']).compareTo(DateTime.parse(a['created_at'])));
+      
+      return allContent;
+    } catch (e) {
+      print('Error fetching recent content: $e');
+      return [];
+    }
+  }
+
+  Future<int> _fetchTotalUsers() async {
+    try {
+      final response = await SupabaseService.from('profiles')
+          .select('id');
+      return (response as List).length;
+    } catch (e) {
+      print('Error fetching total users: $e');
+      return 0;
+    }
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final difference = DateTime.now().difference(dateTime);
+    
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minit lalu';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} jam lalu';
+    } else {
+      return '${difference.inDays} hari lalu';
+    }
+  }
+
+  Future<int> _getNotificationCount() async {
+    try {
+      // Count recent content (ebooks + video kitab) from last 7 days
+      final recentContent = await _fetchRecentContent();
+      // Always show at least 2 (system notifications) + recent content count
+      return 2 + recentContent.length;
+    } catch (e) {
+      print('Error getting notification count: $e');
+      return 5; // Default fallback count
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _buildNotificationsList(
+    List<Map<String, dynamic>> recentContent,
+    int totalUsers,
+  ) async {
+    List<Map<String, dynamic>> notifications = [];
+    
+    // Add content notifications
+    for (var content in recentContent.take(3)) {
+      notifications.add({
+        'id': 'content_${content['id']}',
+        'title': content['type'] == 'ebook' 
+            ? 'E-book Baharu Ditambah'
+            : 'Video Kitab Baharu Ditambah',
+        'subtitle': '${content['type'] == 'ebook' ? 'E-book' : 'Video Kitab'} "${content['title']}" oleh ${content['author'] ?? 'Penulis'}',
+        'fullDescription': 'Kandungan baharu telah ditambah ke sistem. ${content['type'] == 'ebook' ? 'E-book' : 'Video Kitab'} "${content['title']}" oleh ${content['author'] ?? 'Penulis'} kini tersedia untuk pengguna. Pastikan untuk semak kualiti kandungan dan tetapan yang bersesuaian.',
+        'time': content['formatted_time'],
+        'icon': content['type'] == 'ebook' 
+            ? HugeIcons.strokeRoundedBook02
+            : HugeIcons.strokeRoundedVideo01,
+        'iconColor': const Color(0xFF00BF6D),
+        'type': content['type'],
+        'isRead': false, // Default to unread for demonstration
+      });
+    }
+    
+    // Add system notifications
+    notifications.add({
+      'id': 'user_stats',
+      'title': 'Statistik Pengguna',
+      'subtitle': 'Jumlah pengguna berdaftar: $totalUsers',
+      'fullDescription': 'Sistem melaporkan bahawa terdapat $totalUsers pengguna yang berdaftar dalam platform. Ini termasuk admin dan pengguna biasa. Sila pantau pertumbuhan pengguna dan pastikan pengalaman pengguna yang optimum.',
+      'time': 'Baru sahaja',
+      'icon': HugeIcons.strokeRoundedUserMultiple,
+      'iconColor': Colors.blue,
+      'type': 'user_stats',
+      'isRead': false,
+    });
+    
+    notifications.add({
+      'id': 'system_update',
+      'title': 'Sistem Update',
+      'subtitle': 'Sistem dashboard telah dikemas kini dengan notifikasi data sebenar',
+      'fullDescription': 'Dashboard admin telah dikemas kini dengan sistem notifikasi yang lebih baik. Kini anda boleh melihat status baca/belum dibaca, menanda semua sebagai telah dibaca, dan melihat butiran penuh setiap notifikasi. Sistem kini menggunakan data sebenar dari pangkalan data.',
+      'time': 'Baru sahaja',
+      'icon': HugeIcons.strokeRoundedSystemUpdate02,
+      'iconColor': Colors.orange,
+      'type': 'system',
+      'isRead': true, // This one is read by default
+    });
+    
+    return notifications;
+  }
+
+  Widget _buildEnhancedNotificationCard(Map<String, dynamic> notification) {
+    final bool isRead = notification['isRead'] ?? false;
+    
+    return GestureDetector(
+      onTap: () => _openNotificationDetail(notification),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isRead ? Colors.white : AppTheme.primaryColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isRead 
+                ? Colors.grey.shade200 
+                : AppTheme.primaryColor.withValues(alpha: 0.2),
+            width: isRead ? 1 : 2,
+          ),
+          boxShadow: [
+            if (!isRead)
+              BoxShadow(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Icon with indicator
+            Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: (notification['iconColor'] as Color).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: HugeIcon(
+                    icon: notification['icon'],
+                    color: notification['iconColor'],
+                    size: 24.0,
+                  ),
+                ),
+                if (!isRead)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    notification['title'],
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
+                      color: isRead ? Colors.black87 : Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification['subtitle'],
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isRead ? Colors.grey[600] : Colors.grey[700],
+                      fontWeight: isRead ? FontWeight.normal : FontWeight.w500,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification['time'],
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Chevron
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowRight01,
+              color: Colors.grey.shade400,
+              size: 16.0,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openNotificationDetail(Map<String, dynamic> notification) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminNotificationDetailScreen(
+          title: notification['title'],
+          subtitle: notification['subtitle'],
+          time: notification['time'],
+          fullDescription: notification['fullDescription'],
+          icon: notification['icon'],
+          iconColor: notification['iconColor'],
+          notificationType: notification['type'],
+        ),
+      ),
+    ).then((_) {
+      // Mark as read when returning from detail page
+      _markAsRead(notification);
+    });
+  }
+
+  void _markAsRead(Map<String, dynamic> notification) {
+    // In a real app, this would update the database
+    setState(() {
+      notification['isRead'] = true;
+    });
+  }
+
+  void _markAllAsRead(List<Map<String, dynamic>> notifications) {
+    // In a real app, this would update the database
+    setState(() {
+      for (var notification in notifications) {
+        notification['isRead'] = true;
+      }
+    });
+    
+    // Show feedback
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Semua notifikasi telah ditanda sebagai telah dibaca'),
+        backgroundColor: AppTheme.primaryColor,
       ),
     );
   }
@@ -331,7 +657,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           builder: (context, child) {
             return Transform.translate(
               offset: Offset(0, -kToolbarHeight * _appBarAnimation.value),
-              child: AppBar(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00BF6D),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF00BF6D).withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: AppBar(
+                  backgroundColor: Colors.transparent,
                 title: AnimatedBuilder(
                   animation: _appBarAnimation,
                   builder: (context, child) {
@@ -347,7 +685,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     );
                   },
                 ),
-                backgroundColor: AppTheme.primaryColor,
                 foregroundColor: AppTheme.textLightColor,
                 elevation: 0,
                 actions: [
@@ -382,14 +719,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                         minWidth: 12,
                                         minHeight: 12,
                                       ),
-                                      child: const Text(
-                                        '3',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                        textAlign: TextAlign.center,
+                                      child: FutureBuilder<int>(
+                                        future: _getNotificationCount(),
+                                        builder: (context, snapshot) {
+                                          final count = snapshot.data ?? 5;
+                                          return Text(
+                                            count.toString(),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          );
+                                        },
                                       ),
                                     ),
                                   ),
@@ -447,6 +790,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     },
                   ),
                 ],
+                ),
               ),
             );
           },
@@ -675,25 +1019,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             _buildActionButton(
               'Tambah Kategori',
               HugeIcons.strokeRoundedPlusSignCircle,
-              Colors.blue,
+              const Color(0xFF00BF6D),
               _navigateToAddCategory,
             ),
             _buildActionButton(
               'Tambah Kitab',
               HugeIcons.strokeRoundedLibrary,
-              Colors.green,
+              const Color(0xFF00BF6D),
               _navigateToAddKitab,
             ),
             _buildActionButton(
               'Urus Pengguna',
               HugeIcons.strokeRoundedUserSettings01,
-              Colors.orange,
+              const Color(0xFF00BF6D),
               () => context.go('/admin/users'),
             ),
             _buildActionButton(
               'Laporan',
               HugeIcons.strokeRoundedAnalytics01,
-              Colors.purple,
+              const Color(0xFF00BF6D),
               () => context.go('/admin/reports'),
             ),
           ],
@@ -703,23 +1047,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Widget _buildActionButton(String title, IconData icon, Color color, VoidCallback onTap) {
-    return ShadButton(
-      onPressed: onTap,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HugeIcon(icon: icon, color: color, size: 20.0),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: color,
-              ),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
+        border: Border.all(color: color.withOpacity(0.15), width: 1),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: color.withOpacity(0.1),
+          highlightColor: color.withOpacity(0.05),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: HugeIcon(icon: icon, color: color, size: 20.0),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

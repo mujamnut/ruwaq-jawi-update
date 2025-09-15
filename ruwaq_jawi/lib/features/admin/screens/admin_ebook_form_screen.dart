@@ -12,11 +12,7 @@ class AdminEbookFormScreen extends StatefulWidget {
   final String? ebookId;
   final Map<String, dynamic>? ebookData;
 
-  const AdminEbookFormScreen({
-    super.key,
-    this.ebookId,
-    this.ebookData,
-  });
+  const AdminEbookFormScreen({super.key, this.ebookId, this.ebookData});
 
   @override
   State<AdminEbookFormScreen> createState() => _AdminEbookFormScreenState();
@@ -33,7 +29,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
   bool _isPremium = true;
   String? _selectedCategoryId;
   List<Map<String, dynamic>> _categories = [];
-  
+
   // File handling
   PlatformFile? _selectedPdfFile;
   PlatformFile? _selectedThumbnailFile;
@@ -63,11 +59,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
   Future<void> _loadCategories() async {
     try {
-      final categories = await SupabaseService.from('categories')
-          .select('id, name')
-          .eq('is_active', true)
-          .order('name');
-      
+      final categories = await SupabaseService.from(
+        'categories',
+      ).select('id, name').eq('is_active', true).order('name');
+
       setState(() {
         _categories = List<Map<String, dynamic>>.from(categories);
       });
@@ -89,7 +84,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           _selectedPdfFile = result.files.first;
         });
         _showSuccessSnackBar('Fail PDF dipilih: ${_selectedPdfFile!.name}');
-        
+
         // Auto-detect PDF page count
         await _detectPdfPageCount();
       }
@@ -109,7 +104,9 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
         setState(() {
           _selectedThumbnailFile = result.files.first;
         });
-        _showSuccessSnackBar('Gambar thumbnail dipilih: ${_selectedThumbnailFile!.name}');
+        _showSuccessSnackBar(
+          'Gambar thumbnail dipilih: ${_selectedThumbnailFile!.name}',
+        );
       }
     } catch (e) {
       _showErrorSnackBar('Ralat memilih gambar: ${e.toString()}');
@@ -118,28 +115,32 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
   Future<void> _detectPdfPageCount() async {
     if (_selectedPdfFile?.bytes == null) return;
-    
+
     try {
       // Create a temporary file from bytes to use with pdfx
       final tempDir = Directory.systemTemp;
-      final tempFile = File('${tempDir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.pdf');
+      final tempFile = File(
+        '${tempDir.path}/temp_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
       await tempFile.writeAsBytes(_selectedPdfFile!.bytes!);
-      
+
       // Use pdfx to read PDF and get page count
       final document = await pdfx.PdfDocument.openFile(tempFile.path);
       final pageCount = document.pagesCount;
-      
+
       setState(() {
         _pagesController.text = pageCount.toString();
       });
-      
+
       _showSuccessSnackBar('Jumlah halaman PDF dikesan: $pageCount');
-      
+
       // Close the document and clean up temp file
       await document.close();
       await tempFile.delete();
     } catch (e) {
-      _showErrorSnackBar('Tidak dapat mengesan bilangan halaman PDF secara automatik: ${e.toString()}');
+      _showErrorSnackBar(
+        'Tidak dapat mengesan bilangan halaman PDF secara automatik: ${e.toString()}',
+      );
     }
   }
 
@@ -147,17 +148,17 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
     try {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${file.name}';
       final filePath = '$folder/$fileName';
-      
+
       // Upload to Supabase Storage
       await SupabaseService.client.storage
           .from('ebook-pdfs')
           .uploadBinary(filePath, file.bytes!);
-      
+
       // Get public URL
       final publicUrl = SupabaseService.client.storage
           .from('ebook-pdfs')
           .getPublicUrl(filePath);
-      
+
       return publicUrl;
     } catch (e) {
       throw Exception('Ralat upload fail: $e');
@@ -177,24 +178,24 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
       // Upload files in parallel for better performance
       final List<Future<String?>> uploadTasks = [];
-      
+
       if (_selectedPdfFile != null) {
         uploadTasks.add(_uploadFile(_selectedPdfFile!, 'pdf'));
       }
-      
+
       if (_selectedThumbnailFile != null) {
         uploadTasks.add(_uploadFile(_selectedThumbnailFile!, 'thumbnails'));
       }
-      
+
       // Execute uploads in parallel
       if (uploadTasks.isNotEmpty) {
         final results = await Future.wait(uploadTasks);
         int resultIndex = 0;
-        
+
         if (_selectedPdfFile != null) {
           pdfUrl = results[resultIndex++];
         }
-        
+
         if (_selectedThumbnailFile != null) {
           thumbnailUrl = results[resultIndex];
         }
@@ -207,11 +208,17 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
       final ebookData = {
         'title': _titleController.text.trim(),
-        'author': _authorController.text.trim().isEmpty ? null : _authorController.text.trim(),
-        'description': _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+        'author': _authorController.text.trim().isEmpty
+            ? null
+            : _authorController.text.trim(),
+        'description': _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
         'category_id': _selectedCategoryId,
         'pdf_url': pdfUrl,
-        'pdf_storage_path': _selectedPdfFile != null ? 'pdf/${DateTime.now().millisecondsSinceEpoch}_${_selectedPdfFile!.name}' : null,
+        'pdf_storage_path': _selectedPdfFile != null
+            ? 'pdf/${DateTime.now().millisecondsSinceEpoch}_${_selectedPdfFile!.name}'
+            : null,
         'pdf_file_size': _selectedPdfFile?.size,
         'thumbnail_url': thumbnailUrl,
         'is_premium': _isPremium,
@@ -222,9 +229,9 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
       if (widget.ebookId != null) {
         // Update existing e-book
-        await SupabaseService.from('ebooks')
-            .update(ebookData)
-            .eq('id', widget.ebookId!);
+        await SupabaseService.from(
+          'ebooks',
+        ).update(ebookData).eq('id', widget.ebookId!);
         _showSuccessSnackBar('E-book berjaya dikemaskini');
       } else {
         // Create new e-book
@@ -235,12 +242,11 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
       // Wait a moment for snackbar to show, then navigate
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       // Navigate back to ebook list
       if (mounted) {
         context.go('/admin/ebooks');
       }
-      
     } catch (e) {
       _showErrorSnackBar('Ralat menyimpan e-book: ${e.toString()}');
     } finally {
@@ -254,19 +260,13 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
 
   void _showSuccessSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.green),
     );
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -282,8 +282,11 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft02, color: Colors.white),
-          onPressed: () => context.go('/admin/ebooks'),
+          icon: const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft02,
+            color: Colors.white,
+          ),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Form(
@@ -324,7 +327,11 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
         children: [
           Row(
             children: [
-              HugeIcon(icon: HugeIcons.strokeRoundedBook02, color: Colors.blue, size: 24),
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedBook02,
+                color: Colors.blue,
+                size: 24,
+              ),
               const SizedBox(width: 8),
               Text(
                 'E-book Khusus',
@@ -355,9 +362,9 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
       children: [
         Text(
           'Maklumat Asas E-book',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -365,7 +372,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Tajuk E-book *',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
+            prefixIcon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedAlignLeft,
+              color: Colors.grey,
+            ),
           ),
           validator: (value) {
             if (value?.trim().isEmpty ?? true) {
@@ -380,7 +390,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Pengarang',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.grey),
+            prefixIcon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedUser,
+              color: Colors.grey,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -389,7 +402,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Kategori',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedGrid, color: Colors.grey),
+            prefixIcon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedGrid,
+              color: Colors.grey,
+            ),
           ),
           items: _categories.map((category) {
             return DropdownMenuItem<String>(
@@ -410,7 +426,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Penerangan',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
+            prefixIcon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedFile01,
+              color: Colors.grey,
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -420,7 +439,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Jumlah Muka Surat',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
+            prefixIcon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedFile01,
+              color: Colors.grey,
+            ),
             hintText: 'Auto-dikesan apabila PDF dipilih',
             helperText: 'Akan cuba mengesan bilangan halaman secara automatik',
           ),
@@ -435,12 +457,12 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
       children: [
         Text(
           'Upload Fail',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
-        
+
         // PDF Upload
         Container(
           width: double.infinity,
@@ -454,7 +476,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
             children: [
               Row(
                 children: [
-                  HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.red),
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedPdf01,
+                    color: Colors.red,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Fail PDF E-book *',
@@ -490,10 +515,15 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: _pickPdfFile,
-                icon: const HugeIcon(icon: HugeIcons.strokeRoundedUpload01, color: Colors.white),
-                label: Text(_selectedPdfFile != null || _uploadedPdfUrl != null 
-                    ? 'Tukar PDF' 
-                    : 'Pilih PDF'),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedUpload01,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _selectedPdfFile != null || _uploadedPdfUrl != null
+                      ? 'Tukar PDF'
+                      : 'Pilih PDF',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
@@ -502,9 +532,9 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
             ],
           ),
         ),
-        
+
         const SizedBox(height: 16),
-        
+
         // Thumbnail Upload
         Container(
           width: double.infinity,
@@ -518,7 +548,10 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
             children: [
               Row(
                 children: [
-                  HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.purple),
+                  HugeIcon(
+                    icon: HugeIcons.strokeRoundedImage01,
+                    color: Colors.purple,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Gambar Thumbnail (Opsional)',
@@ -554,10 +587,16 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
               const SizedBox(height: 8),
               ElevatedButton.icon(
                 onPressed: _pickThumbnailFile,
-                icon: const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.white),
-                label: Text(_selectedThumbnailFile != null || _uploadedThumbnailUrl != null 
-                    ? 'Tukar Thumbnail' 
-                    : 'Pilih Thumbnail'),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedImage01,
+                  color: Colors.white,
+                ),
+                label: Text(
+                  _selectedThumbnailFile != null ||
+                          _uploadedThumbnailUrl != null
+                      ? 'Tukar Thumbnail'
+                      : 'Pilih Thumbnail',
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.purple,
                   foregroundColor: Colors.white,
@@ -576,16 +615,18 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
       children: [
         Text(
           'Tetapan E-book',
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         SwitchListTile(
           title: const Text('E-book Premium'),
-          subtitle: Text(_isPremium 
-              ? 'Memerlukan langganan untuk akses' 
-              : 'Boleh diakses secara percuma'),
+          subtitle: Text(
+            _isPremium
+                ? 'Memerlukan langganan untuk akses'
+                : 'Boleh diakses secara percuma',
+          ),
           value: _isPremium,
           activeColor: AppTheme.primaryColor,
           onChanged: (value) {
@@ -609,18 +650,20 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : const HugeIcon(icon: HugeIcons.strokeRoundedFloppyDisk, color: Colors.white),
-        label: Text(_isLoading 
-            ? 'Menyimpan...' 
-            : (widget.ebookId != null ? 'Kemaskini E-book' : 'Simpan E-book')),
+            : const HugeIcon(
+                icon: HugeIcons.strokeRoundedFloppyDisk,
+                color: Colors.white,
+              ),
+        label: Text(
+          _isLoading
+              ? 'Menyimpan...'
+              : (widget.ebookId != null ? 'Kemaskini E-book' : 'Simpan E-book'),
+        ),
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.primaryColor,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          textStyle: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );

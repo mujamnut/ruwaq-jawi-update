@@ -30,12 +30,12 @@ class AuthProvider extends ChangeNotifier {
       final now = DateTime.now().toUtc();
       print('AuthProvider: Checking subscription for user: ${_user!.id}');
       
-      final response = await SupabaseService.from('subscriptions')
+      final response = await SupabaseService.from('user_subscriptions')
           .select()
           .eq('user_id', _user!.id)
           .eq('status', 'active')
-          .lte('current_period_start', now.toIso8601String())
-          .gte('current_period_end', now.toIso8601String())
+          .lte('start_date', now.toIso8601String())
+          .gte('end_date', now.toIso8601String())
           .maybeSingle();
       
       final hasActive = response != null;
@@ -50,10 +50,10 @@ class AuthProvider extends ChangeNotifier {
         }
       } else {
         // Check if subscription exists but is expired
-        final expiredSub = await SupabaseService.from('subscriptions')
+        final expiredSub = await SupabaseService.from('user_subscriptions')
             .select()
             .eq('user_id', _user!.id)
-            .lt('current_period_end', now.toIso8601String())
+            .lt('end_date', now.toIso8601String())
             .maybeSingle();
             
         if (expiredSub != null) {

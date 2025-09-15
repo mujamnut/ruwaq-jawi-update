@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/providers/bookmark_provider.dart';
 import '../../../core/models/kitab.dart';
+import '../../../core/services/local_saved_items_service.dart';
 import '../widgets/student_bottom_nav.dart';
 
 class SavedItemsScreen extends StatefulWidget {
@@ -28,6 +30,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
       if (!bm.isLoading && bm.bookmarks.isEmpty) {
         bm.loadBookmarks();
       }
+      
+      // Add test data for demonstration
+      _addTestData();
     });
   }
 
@@ -35,6 +40,51 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _addTestData() async {
+    try {
+      final provider = context.read<SavedItemsProvider>();
+      
+      // Add sample kitab data untuk test
+      final sampleKitab = Kitab(
+        id: 'test_kitab_1',
+        title: 'Kitab Test Simpanan',
+        author: 'Penulis Test',
+        description: 'Ini adalah kitab test untuk local storage',
+        thumbnailUrl: '',
+        categoryId: 'test_category',
+        isActive: true,
+        isPremium: false,
+        sortOrder: 1,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+      
+      await provider.addKitabToLocal(sampleKitab);
+      
+      // Add sample video data untuk test  
+      await LocalSavedItemsService.saveVideo({
+        'kitabId': 'test_kitab_1',
+        'episodeId': 'test_episode_1',
+        'title': 'Video Test Simpanan',
+        'description': 'Video test untuk local storage',
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+      
+      print('Test data added successfully');
+    } catch (e) {
+      print('Error adding test data: $e');
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _loadLocalVideos() async {
+    try {
+      return await LocalSavedItemsService.getSavedVideos();
+    } catch (e) {
+      print('Error loading local videos: $e');
+      return [];
+    }
   }
 
   @override
@@ -47,7 +97,11 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
         foregroundColor: AppTheme.textLightColor,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: PhosphorIcon(
+            PhosphorIcons.arrowLeft(),
+            color: AppTheme.textLightColor,
+            size: 20,
+          ),
           onPressed: () => context.go('/home'),
         ),
         bottom: TabBar(
@@ -56,18 +110,67 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
           labelColor: AppTheme.textLightColor,
           unselectedLabelColor: AppTheme.textLightColor.withOpacity(0.7),
           tabs: const [
-            Tab(text: 'Kitab'),
-            Tab(text: 'Video'),
+            Tab(text: 'Kitab & Video'),
+            Tab(text: 'E-book'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildKitabTab(),
-          _buildVideoTab(),
+          _buildKitabAndVideoTab(),
+          _buildEbookTab(),
         ],
       ),
+    );
+  }
+
+  Widget _buildKitabAndVideoTab() {
+    return Consumer2<SavedItemsProvider, BookmarkProvider>(
+      builder: (context, savedItemsProvider, bookmarkProvider, child) {
+        final isLoading = savedItemsProvider.isLoading || bookmarkProvider.isLoading;
+        
+        if (isLoading) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final savedKitabs = savedItemsProvider.savedKitab;
+        final videoBookmarks = bookmarkProvider.getBookmarksByType('video');
+
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: _loadLocalVideos(),
+          builder: (context, snapshot) {
+            final localVideos = snapshot.data ?? [];
+            final allVideos = [...videoBookmarks, ...localVideos];
+            
+            final hasItems = savedKitabs.isNotEmpty || allVideos.isNotEmpty;
+            
+            if (!hasItems) {
+              return _buildEmptyState('Tiada simpanan', 'Simpan kitab dan video kegemaran anda untuk akses mudah');
+            }
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (savedKitabs.isNotEmpty) ...[
+                    Text('Kitab', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...savedKitabs.map((kitab) => _buildKitabCard(kitab)),
+                    const SizedBox(height: 16),
+                  ],
+                  if (allVideos.isNotEmpty) ...[
+                    Text('Video', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...allVideos.map((video) => _buildVideoCard(video)),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -396,7 +499,83 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
     );
   }
 
-  // Removed _buildVideoCard as it's not used with real data
+  Widget _buildEbookTab() {
+    // For now, show placeholder for e-book saved items
+    // This will need to be connected to actual e-book saved items provider
+    return _buildEmptyState('Tiada e-book disimpan', 'Simpan e-book kegemaran anda untuk akses mudah');
+  }
+
+  Widget _buildVideoCard(dynamic bookmark) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderColor),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        leading: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            Icons.play_circle_outline,
+            color: AppTheme.primaryColor,
+            size: 32,
+          ),
+        ),
+        title: Text(
+          bookmark is Map ? (bookmark['title'] ?? 'Video') : (bookmark.title ?? 'Video'),
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Text(
+          'Video tersimpan',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: AppTheme.textSecondaryColor,
+          ),
+        ),
+        trailing: PopupMenuButton<String>(
+          onSelected: (value) => _handleVideoAction(value, bookmark),
+          itemBuilder: (context) => [
+            const PopupMenuItem(
+              value: 'remove',
+              child: Row(
+                children: [
+                  Icon(Icons.delete_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Buang'),
+                ],
+              ),
+            ),
+            const PopupMenuItem(
+              value: 'share',
+              child: Row(
+                children: [
+                  Icon(Icons.share_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Kongsi'),
+                ],
+              ),
+            ),
+          ],
+        ),
+        onTap: () {
+          // Navigate to video player
+          final kitabId = bookmark is Map ? bookmark['kitabId'] : bookmark.kitabId;
+          final episodeId = bookmark is Map ? bookmark['episodeId'] : bookmark.episodeId;
+          context.push('/video/$kitabId?episode=$episodeId');
+        },
+      ),
+    );
+  }
 
   Widget _buildEmptyState(String title, String subtitle) {
     return Center(
@@ -448,7 +627,61 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
     }
   }
 
-  // Removed _handleVideoAction as video saving is not implemented yet
+  void _handleVideoAction(String action, dynamic bookmark) {
+    switch (action) {
+      case 'remove':
+        _removeVideoBookmark(bookmark);
+        break;
+      case 'share':
+        _shareVideoContent(bookmark);
+        break;
+    }
+  }
+
+  void _removeVideoBookmark(dynamic bookmark) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Buang dari Simpanan'),
+        content: Text('Adakah anda pasti ingin membuang video ini dari simpanan?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final kitabId = bookmark is Map ? bookmark['kitabId'] : bookmark.kitabId;
+              final success = await context.read<BookmarkProvider>().removeBookmark(kitabId);
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Video dibuang dari simpanan'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Buang'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareVideoContent(dynamic bookmark) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pautan video dikongsi'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
 
   void _removeFromSaved(Kitab kitab) {
     showDialog(

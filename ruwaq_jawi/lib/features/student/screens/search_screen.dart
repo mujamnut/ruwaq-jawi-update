@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
-import '../../../core/models/kitab.dart';
+import '../../../core/models/video_kitab.dart';
+import '../../../core/models/ebook.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -16,6 +18,7 @@ class SearchScreen extends StatefulWidget {
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
 
   List<Map<String, dynamic>> _searchResults = [];
   final List<String> _recentSearches =
@@ -25,8 +28,9 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isSearching = false;
   String _selectedFilter = 'Semua';
   Timer? _debounceTimer;
+  bool _showFilter = true;
 
-  final List<String> _filterOptions = ['Semua', 'Kitab', 'Video', 'Pengarang'];
+  final List<String> _filterOptions = ['Semua', 'Pengajian', 'E-Book'];
 
   @override
   void initState() {
@@ -39,6 +43,19 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchController.addListener(() {
       setState(() {}); // Rebuild to update clear button visibility
     });
+
+    // Add scroll listener for filter visibility
+    _scrollController.addListener(() {
+      if (_scrollController.offset > 10 && _showFilter) {
+        setState(() {
+          _showFilter = false;
+        });
+      } else if (_scrollController.offset <= 10 && !_showFilter) {
+        setState(() {
+          _showFilter = true;
+        });
+      }
+    });
   }
 
   @override
@@ -46,6 +63,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _debounceTimer?.cancel();
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -54,33 +72,59 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.black,
         elevation: 0,
-        title: _buildSearchField(),
-        actions: [
-          if (_searchController.text.isNotEmpty)
-            Container(
-              margin: const EdgeInsets.only(right: 8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
+        leading: IconButton(
+          icon: PhosphorIcon(
+            PhosphorIcons.arrowLeft(),
+            color: Colors.black,
+            size: 24,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(right: 20),
+          child: Row(
+            children: [
+              Expanded(child: _buildSearchField()),
+              const SizedBox(width: 8),
+              GestureDetector(
+                onTap: () {
+                  if (_searchController.text.isNotEmpty) {
+                    _performSearch(_searchController.text);
+                  }
+                },
+                child: Text(
+                  'Search',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.primaryColor,
+                  ),
+                ),
               ),
-              child: IconButton(
-                icon: const Icon(Icons.clear, color: Colors.white, size: 20),
-                onPressed: _clearSearch,
-                tooltip: 'Kosongkan carian',
-              ),
-            ),
-        ],
+            ],
+          ),
+        ),
+        titleSpacing: 0,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          _buildFilterChips(),
-          Expanded(
+          // Main content dengan padding top untuk filter
+          Padding(
+            padding: EdgeInsets.only(top: _showFilter ? 45 : 0),
             child: _searchController.text.isEmpty
                 ? _buildSearchSuggestions()
                 : _buildSearchResults(),
+          ),
+          // Filter sticky di atas dengan animation
+          AnimatedPositioned(
+            duration: const Duration(milliseconds: 200),
+            top: _showFilter ? 0 : -45,
+            left: 0,
+            right: 0,
+            child: _buildFilterChips(),
           ),
         ],
       ),
@@ -89,38 +133,62 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildSearchField() {
     return Container(
-      height: 45,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      margin: const EdgeInsets.only(right: 16),
       child: TextField(
         controller: _searchController,
         focusNode: _searchFocusNode,
         style: const TextStyle(
           color: Colors.black87,
-          fontSize: 16,
+          fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
-          hintText: 'Cari kitab, video, atau pengarang...',
-          hintStyle: const TextStyle(color: Colors.black45, fontSize: 16),
-          border: InputBorder.none,
-          prefixIcon: const Icon(Icons.search, color: Colors.black54, size: 22),
+          filled: true,
+          fillColor: const Color(0xFFEEEEEE),
+          hintText: 'Cari kitab yang anda inginkan...',
+          hintStyle: TextStyle(
+            color: AppTheme.textSecondaryColor,
+            fontSize: 14,
+          ),
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(12),
+            child: PhosphorIcon(
+              PhosphorIcons.magnifyingGlass(),
+              color: AppTheme.textSecondaryColor,
+              size: 20,
+            ),
+          ),
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  onPressed: _clearSearch,
+                  icon: PhosphorIcon(
+                    PhosphorIcons.x(),
+                    color: AppTheme.textSecondaryColor,
+                    size: 20,
+                  ),
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(25),
+            borderSide: BorderSide(color: Colors.grey.shade400, width: 1.5),
+          ),
           contentPadding: const EdgeInsets.symmetric(
-            horizontal: 20,
+            horizontal: 16,
             vertical: 12,
           ),
         ),
-        onChanged: _performSearch,
+        onChanged: (value) {
+          setState(() {}); // Update to show/hide X button
+          _performSearch(value);
+        },
         onSubmitted: (value) {
           if (value.isNotEmpty) {
             _addToRecentSearches(value);
@@ -132,75 +200,141 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildFilterChips() {
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: _filterOptions.length,
-        itemBuilder: (context, index) {
-          final filter = _filterOptions[index];
-          final isSelected = _selectedFilter == filter;
+      color: AppTheme.backgroundColor,
+      child: Container(
+        height: 45,
+        padding: const EdgeInsets.only(left: 16, top: 6, bottom: 8),
+        child: ListView.builder(
+          scrollDirection: Axis.horizontal,
+          itemCount: _filterOptions.length,
+          itemBuilder: (context, index) {
+            final filter = _filterOptions[index];
+            final isSelected = _selectedFilter == filter;
 
-          return Container(
-            margin: EdgeInsets.only(
-              right: index < _filterOptions.length - 1 ? 8 : 0,
-            ),
-            child: FilterChip(
-              label: Text(filter),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  _selectedFilter = filter;
-                });
-                if (_searchController.text.isNotEmpty) {
-                  _performSearch(_searchController.text);
-                }
-              },
-              backgroundColor: AppTheme.surfaceColor,
-              selectedColor: AppTheme.primaryColor,
-              checkmarkColor: Colors.white,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textSecondaryColor,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            return Container(
+              margin: EdgeInsets.only(right: 12),
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _selectedFilter = filter;
+                  });
+                  // Trigger search if there's text, otherwise just update the list
+                  if (_searchController.text.isNotEmpty) {
+                    _performSearch(_searchController.text);
+                  }
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFE8E8E8) : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: isSelected
+                          ? Colors.grey.shade300
+                          : Colors.grey.shade200,
+                      width: 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    filter,
+                    style: TextStyle(
+                      color: isSelected
+                          ? AppTheme.textPrimaryColor
+                          : AppTheme.textSecondaryColor,
+                      fontSize: 14,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ),
               ),
-              side: BorderSide(
-                color: isSelected
-                    ? AppTheme.primaryColor
-                    : AppTheme.borderColor,
-              ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildSearchSuggestions() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (_recentSearches.isNotEmpty) ...[
-            _buildSectionHeader('Carian Terkini', Icons.history),
-            const SizedBox(height: 12),
-            _buildSearchChips(_recentSearches, true),
-            const SizedBox(height: 24),
+    return Consumer<KitabProvider>(
+      builder: (context, kitabProvider, child) {
+        // Filter items based on selected filter
+        final allItems = <dynamic>[];
+
+        if (_selectedFilter == 'Semua') {
+          allItems.addAll(kitabProvider.activeVideoKitab);
+          allItems.addAll(kitabProvider.activeEbooks);
+        } else if (_selectedFilter == 'Pengajian') {
+          allItems.addAll(kitabProvider.activeVideoKitab);
+        } else if (_selectedFilter == 'E-Book') {
+          allItems.addAll(kitabProvider.activeEbooks);
+        }
+
+        if (allItems.isEmpty) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return CustomScrollView(
+          controller: _scrollController,
+          slivers: [
+            // Recent searches (if any)
+            if (_recentSearches.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Container(
+                  color: AppTheme.backgroundColor,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(
+                        'Carian Terkini',
+                        PhosphorIcons.clockCounterClockwise(),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildSearchChips(_recentSearches, true),
+                    ],
+                  ),
+                ),
+              ),
+
+            // Filtered items list
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final item = allItems[index];
+                  if (item is VideoKitab) {
+                    return _buildKitabCard(item);
+                  } else {
+                    return _buildEbookCard(item);
+                  }
+                }, childCount: allItems.length),
+              ),
+            ),
           ],
-          _buildSectionHeader('Carian Popular', Icons.trending_up),
-          const SizedBox(height: 12),
-          _buildSearchChips(_popularSearches, false),
-          const SizedBox(height: 24),
-          _buildQuickCategories(),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(String title, dynamic icon) {
     return Row(
       children: [
-        Icon(icon, color: AppTheme.primaryColor, size: 20),
+        PhosphorIcon(icon, color: AppTheme.primaryColor, size: 20),
         const SizedBox(width: 8),
         Text(
           title,
@@ -225,104 +359,22 @@ class _SearchScreenState extends State<SearchScreen> {
           side: BorderSide(color: AppTheme.borderColor),
           labelStyle: const TextStyle(color: Colors.black),
           avatar: isRecent
-              ? Icon(
-                  Icons.history,
+              ? PhosphorIcon(
+                  PhosphorIcons.clockCounterClockwise(),
                   size: 16,
                   color: AppTheme.textSecondaryColor,
                 )
-              : Icon(Icons.trending_up, size: 16, color: AppTheme.primaryColor),
-          deleteIcon: isRecent ? const Icon(Icons.close, size: 16) : null,
+              : PhosphorIcon(
+                  PhosphorIcons.trendUp(),
+                  size: 16,
+                  color: AppTheme.primaryColor,
+                ),
+          deleteIcon: isRecent
+              ? PhosphorIcon(PhosphorIcons.x(), size: 16)
+              : null,
           onDeleted: isRecent ? () => _removeRecentSearch(search) : null,
         );
       }).toList(),
-    );
-  }
-
-  Widget _buildQuickCategories() {
-    return Consumer<KitabProvider>(
-      builder: (context, kitabProvider, child) {
-        final categories = kitabProvider.categories.take(4).map((category) {
-          final kitabCount = kitabProvider.kitabList
-              .where((k) => k.categoryId == category.id)
-              .length;
-          return {
-            'name': category.name,
-            'icon': Icons.book, // Default icon, could be made dynamic
-            'count': kitabCount,
-          };
-        }).toList();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSectionHeader('Kategori Popular', Icons.category),
-            const SizedBox(height: 12),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 2.5,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                return GestureDetector(
-                  onTap: () => _selectSuggestion(category['name'] as String),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.borderColor),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Icon(
-                            category['icon'] as IconData,
-                            color: AppTheme.primaryColor,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                category['name'] as String,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: Colors.black,
-                                    ),
-                              ),
-                              Text(
-                                '${category['count']} kitab',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: Colors.black54),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -336,6 +388,7 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.all(16),
       itemCount: _searchResults.length,
       itemBuilder: (context, index) {
@@ -349,7 +402,11 @@ class _SearchScreenState extends State<SearchScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.search_off, size: 64, color: AppTheme.textSecondaryColor),
+          PhosphorIcon(
+            PhosphorIcons.magnifyingGlassMinus(),
+            size: 64,
+            color: AppTheme.textSecondaryColor,
+          ),
           const SizedBox(height: 16),
           Text(
             'Tiada hasil ditemui',
@@ -391,7 +448,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
+                child: PhosphorIcon(
                   _getResultIcon(result['type']),
                   color: AppTheme.primaryColor,
                   size: 24,
@@ -457,7 +514,11 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
-              Icon(Icons.arrow_forward_ios, color: Colors.black54, size: 16),
+              PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: Colors.black54,
+                size: 16,
+              ),
             ],
           ),
         ),
@@ -465,16 +526,16 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  IconData _getResultIcon(String type) {
+  dynamic _getResultIcon(String type) {
     switch (type) {
       case 'kitab':
-        return Icons.book;
+        return PhosphorIcons.book();
       case 'video':
-        return Icons.play_circle_outline;
+        return PhosphorIcons.videoCamera();
       case 'author':
-        return Icons.person;
+        return PhosphorIcons.user();
       default:
-        return Icons.search;
+        return PhosphorIcons.magnifyingGlass();
     }
   }
 
@@ -515,10 +576,15 @@ class _SearchScreenState extends State<SearchScreen> {
       final kitabProvider = Provider.of<KitabProvider>(context, listen: false);
 
       // Ensure data is loaded - wait for it properly
-      if (kitabProvider.kitabList.isEmpty) {
-        await kitabProvider.loadKitabList();
+      if (kitabProvider.videoKitabList.isEmpty &&
+          kitabProvider.ebookList.isEmpty) {
+        await Future.wait([
+          kitabProvider.loadVideoKitabList(),
+          kitabProvider.loadEbookList(),
+        ]);
         // Double check if still empty after loading
-        if (kitabProvider.kitabList.isEmpty) {
+        if (kitabProvider.videoKitabList.isEmpty &&
+            kitabProvider.ebookList.isEmpty) {
           if (mounted) {
             setState(() {
               _searchResults = [];
@@ -530,78 +596,46 @@ class _SearchScreenState extends State<SearchScreen> {
       }
 
       final q = query.toLowerCase().trim();
-      final List<Kitab> all = List<Kitab>.from(kitabProvider.kitabList);
+      final videoKitabList = kitabProvider.activeVideoKitab;
+      final ebookList = kitabProvider.activeEbooks;
 
-      print('🔍 Searching for: "$q" in ${all.length} kitab');
+      print(
+        '🔍 Searching for: "$q" in ${videoKitabList.length} video kitab and ${ebookList.length} ebooks',
+      );
       print('📋 Selected filter: $_selectedFilter');
 
       // Filter by title or author
       List<Map<String, dynamic>> results = [];
 
       bool filterSemua = _selectedFilter == 'Semua';
-      bool filterKitab = _selectedFilter == 'Kitab';
-      bool filterVideo = _selectedFilter == 'Video';
-      bool filterPengarang = _selectedFilter == 'Pengarang';
+      bool filterPengajian = _selectedFilter == 'Pengajian';
+      bool filterEbook = _selectedFilter == 'E-Book';
 
-      if (filterPengarang) {
-        // Search for authors only
-        final authorsSet = <String>{};
-        for (final k in all) {
-          final author = (k.author ?? '').trim();
-          if (author.isNotEmpty && author.toLowerCase().contains(q)) {
-            authorsSet.add(author);
-          }
-        }
+      // Search in video kitab and ebooks
+      List<Map<String, dynamic>> allResults = [];
 
-        results = authorsSet
-            .map(
-              (author) => {
-                'id': author.hashCode.toString(),
-                'title': author,
-                'author': null,
-                'type': 'author',
-                'description': 'Pengarang',
-                'isPremium': null,
-              },
-            )
-            .toList();
-
-        print('👤 Found ${results.length} authors matching "$q"');
-      } else {
-        // Search in kitab titles and authors
-        final filteredKitab = all.where((k) {
-          final title = (k.title ?? '').toLowerCase().trim();
-          final author = (k.author ?? '').toLowerCase().trim();
-          final description = (k.description ?? '').toLowerCase().trim();
+      // Search in video kitab if filter allows
+      if (filterSemua || filterPengajian) {
+        final filteredVideoKitab = videoKitabList.where((vk) {
+          final title = (vk.title ?? '').toLowerCase().trim();
+          final author = (vk.author ?? '').toLowerCase().trim();
+          final description = (vk.description ?? '').toLowerCase().trim();
 
           // Check if query matches title, author, or description
           final titleMatches = title.contains(q);
           final authorMatches = author.contains(q);
           final descMatches = description.contains(q);
-          final matches = titleMatches || authorMatches || descMatches;
-
-          if (!matches) return false;
-
-          // Apply type filter
-          if (filterKitab) {
-            return true; // All kitab that match query
-          } else if (filterVideo) {
-            return (k.youtubeVideoId?.isNotEmpty ??
-                false); // Only kitab with videos
-          } else {
-            return true; // Semua - all matching results
-          }
+          return titleMatches || authorMatches || descMatches;
         }).toList();
 
-        results = filteredKitab.map((k) {
-          final hasVideo = (k.youtubeVideoId?.isNotEmpty ?? false);
+        final videoKitabResults = filteredVideoKitab.map((vk) {
           String? categoryName;
 
           // Get category name
-          if (k.categoryId != null) {
+          if (vk.categoryId != null) {
             try {
               final category = kitabProvider.categories.firstWhere(
-                (c) => c.id == k.categoryId,
+                (c) => c.id == vk.categoryId,
               );
               categoryName = category.name;
             } catch (e) {
@@ -610,24 +644,73 @@ class _SearchScreenState extends State<SearchScreen> {
           }
 
           return {
-            'id': k.id,
-            'title': k.title ?? 'Tidak Berjudul',
-            'author': (k.author ?? '').trim().isNotEmpty ? k.author : null,
-            'type': filterVideo ? 'video' : (hasVideo ? 'video' : 'kitab'),
+            'id': vk.id,
+            'title': vk.title ?? 'Tidak Berjudul',
+            'author': (vk.author ?? '').trim().isNotEmpty ? vk.author : null,
+            'type': 'kitab',
             'category': categoryName,
             'description':
-                k.description?.length != null && k.description!.length > 100
-                ? '${k.description!.substring(0, 100)}...'
-                : k.description,
-            'isPremium': k.isPremium,
-            'youtubeVideoId': k.youtubeVideoId,
+                vk.description?.length != null && vk.description!.length > 100
+                ? '${vk.description!.substring(0, 100)}...'
+                : vk.description,
+            'isPremium': vk.isPremium,
           };
         }).toList();
 
-        print(
-          '📚 Found ${results.length} kitab matching "$q" with filter "$_selectedFilter"',
-        );
+        allResults.addAll(videoKitabResults);
       }
+
+      // Search in ebooks if filter allows
+      if (filterSemua || filterEbook) {
+        final filteredEbooks = ebookList.where((eb) {
+          final title = (eb.title ?? '').toLowerCase().trim();
+          final author = (eb.author ?? '').toLowerCase().trim();
+          final description = (eb.description ?? '').toLowerCase().trim();
+
+          // Check if query matches title, author, or description
+          final titleMatches = title.contains(q);
+          final authorMatches = author.contains(q);
+          final descMatches = description.contains(q);
+          return titleMatches || authorMatches || descMatches;
+        }).toList();
+
+        final ebookResults = filteredEbooks.map((eb) {
+          String? categoryName;
+
+          // Get category name
+          if (eb.categoryId != null) {
+            try {
+              final category = kitabProvider.categories.firstWhere(
+                (c) => c.id == eb.categoryId,
+              );
+              categoryName = category.name;
+            } catch (e) {
+              categoryName = null;
+            }
+          }
+
+          return {
+            'id': eb.id,
+            'title': eb.title ?? 'Tidak Berjudul',
+            'author': (eb.author ?? '').trim().isNotEmpty ? eb.author : null,
+            'type': 'ebook',
+            'category': categoryName,
+            'description':
+                eb.description?.length != null && eb.description!.length > 100
+                ? '${eb.description!.substring(0, 100)}...'
+                : eb.description,
+            'isPremium': eb.isPremium,
+          };
+        }).toList();
+
+        allResults.addAll(ebookResults);
+      }
+
+      results = allResults;
+
+      print(
+        '📚 Found ${results.length} items matching "$q" with filter "$_selectedFilter"',
+      );
 
       if (!mounted) return;
 
@@ -734,11 +817,279 @@ class _SearchScreenState extends State<SearchScreen> {
     });
   }
 
+  Widget _buildKitabCard(VideoKitab kitab) {
+    final hasVideo = kitab.totalVideos > 0;
+    final hasEbook = kitab.pdfUrl != null && kitab.pdfUrl!.isNotEmpty;
+
+    return GestureDetector(
+      onTap: () => context.push('/kitab/${kitab.id}'),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.borderColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Video camera icon with circular background
+              Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: PhosphorIcon(
+                    PhosphorIcons.videoCamera(PhosphorIconsStyle.fill),
+                    color: Colors.white,
+                    size: 35,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Title with crown
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              kitab.title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (kitab.isPremium) ...[
+                            const SizedBox(width: 6),
+                            PhosphorIcon(
+                              PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                              color: const Color(0xFFFFD700),
+                              size: 16,
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 2),
+
+                      // Category
+                      Text(
+                        kitab.categoryName ?? 'Kategori Umum',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 2),
+
+                      // Episode info
+                      Text(
+                        hasVideo && kitab.totalVideos > 0
+                            ? '${kitab.totalVideos} episod'
+                            : hasEbook
+                            ? 'PDF tersedia'
+                            : '1 episod',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Arrow icon
+              PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: Colors.grey,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEbookCard(Ebook ebook) {
+    return GestureDetector(
+      onTap: () => context.push('/ebook/${ebook.id}'),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: AppTheme.borderColor.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              // Book icon with circular background
+              Container(
+                width: 55,
+                height: 55,
+                decoration: BoxDecoration(
+                  color: AppTheme.secondaryColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: PhosphorIcon(
+                    PhosphorIcons.book(PhosphorIconsStyle.fill),
+                    color: Colors.white,
+                    size: 35,
+                  ),
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              // Content
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Title with crown
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              ebook.title,
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.black,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (ebook.isPremium) ...[
+                            const SizedBox(width: 6),
+                            PhosphorIcon(
+                              PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                              color: const Color(0xFFFFD700),
+                              size: 16,
+                            ),
+                          ],
+                        ],
+                      ),
+
+                      const SizedBox(height: 2),
+
+                      // Category
+                      Text(
+                        ebook.categoryName ?? 'Kategori Umum',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+
+                      const SizedBox(height: 2),
+
+                      // Page info
+                      Text(
+                        ebook.totalPages != null && ebook.totalPages! > 0
+                            ? '${ebook.totalPages} muka surat'
+                            : 'E-Book tersedia',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Arrow icon
+              PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: Colors.grey,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openResult(Map<String, dynamic> result) {
     switch (result['type']) {
       case 'kitab':
       case 'video':
         context.push('/kitab/${result['id']}');
+        break;
+      case 'ebook':
+        context.push('/ebook/${result['id']}');
         break;
       case 'author':
         context.push('/kitab?author=${result['title']}');

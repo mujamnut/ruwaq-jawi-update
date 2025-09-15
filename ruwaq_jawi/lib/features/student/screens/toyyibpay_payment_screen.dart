@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../screens/payment_callback_page.dart';
 
 class ToyyibpayPaymentScreen extends StatefulWidget {
@@ -172,7 +173,11 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
         appBar: AppBar(
           title: const Text('Payment'),
           leading: IconButton(
-            icon: const Icon(Icons.close),
+            icon: PhosphorIcon(
+              PhosphorIcons.arrowLeft(),
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () async {
               final shouldClose = await showDialog<bool>(
                 context: context,

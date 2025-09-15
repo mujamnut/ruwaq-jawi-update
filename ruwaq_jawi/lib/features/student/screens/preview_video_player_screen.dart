@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/models/kitab.dart';
 import '../../../core/models/kitab_video.dart';
+import '../../../core/models/video_episode.dart';
 
 class PreviewVideoPlayerScreen extends StatefulWidget {
   final String kitabId;
@@ -30,8 +31,8 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
   bool _isLoading = true;
   
   Kitab? _kitab;
-  List<KitabVideo> _previewVideos = [];
-  KitabVideo? _currentVideo;
+  List<VideoEpisode> _previewVideos = [];
+  VideoEpisode? _currentVideo;
   
   @override
   void initState() {
@@ -386,7 +387,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
     );
   }
 
-  Widget _buildPreviewVideoCard(KitabVideo video) {
+  Widget _buildPreviewVideoCard(VideoEpisode video) {
     final isCurrentVideo = _currentVideo?.id == video.id;
     
     return Container(
@@ -677,7 +678,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
     );
   }
 
-  void _switchToVideo(KitabVideo video) async {
+  void _switchToVideo(VideoEpisode video) async {
     if (_currentVideo?.id == video.id) return;
     
     // Dispose current controller

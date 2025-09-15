@@ -100,16 +100,23 @@ class AdminBottomNav extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryColor.withOpacity(0.1)
+              ? const Color(0xFF00BF6D).withOpacity(0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
+          border: isSelected
+              ? Border.all(color: const Color(0xFF00BF6D).withOpacity(0.3), width: 1)
+              : null,
         ),
-        child: HugeIcon(
-          icon: icon,
-          size: 22.0,
-          color: isSelected 
-              ? AppTheme.primaryColor 
-              : Colors.grey.shade600,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 200),
+          child: HugeIcon(
+            key: ValueKey(isSelected),
+            icon: icon,
+            size: 22.0,
+            color: isSelected 
+                ? const Color(0xFF00BF6D)
+                : Colors.grey.shade600,
+          ),
         ),
       ),
       label: label,

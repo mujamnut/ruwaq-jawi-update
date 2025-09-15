@@ -25,6 +25,10 @@ import 'core/providers/subscription_provider.dart';
 import 'core/providers/connectivity_provider.dart';
 import 'core/services/deep_link_service.dart';
 import 'core/services/background_payment_service.dart';
+import 'core/services/local_favorites_service.dart';
+import 'core/services/video_progress_service.dart';
+import 'core/services/pdf_cache_service.dart';
+import 'core/services/local_saved_items_service.dart';
 import 'core/widgets/offline_banner.dart';
 import 'core/utils/connection_test.dart';
 
@@ -34,6 +38,18 @@ void main() async {
   try {
     // Initialize Hive for local storage
     await Hive.initFlutter();
+    
+    // Initialize local favorites service
+    await LocalFavoritesService.initialize();
+    
+    // Initialize video progress service
+    await VideoProgressService.initialize();
+    
+    // Initialize PDF cache service
+    await PdfCacheService.initialize();
+    
+    // Initialize local saved items service
+    await LocalSavedItemsService.initialize();
 
     // Set environment (default to development)
     EnvironmentConfig.setEnvironment(Environment.development);

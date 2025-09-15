@@ -2,9 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/models/subscription.dart';
-import '../../../core/models/bookmark.dart';
-import '../../../core/models/reading_progress.dart';
-import '../../../core/models/saved_item.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminUserDetailScreen extends StatefulWidget {
@@ -23,9 +20,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     with SingleTickerProviderStateMixin {
   UserProfile? _user;
   Subscription? _subscription;
-  List<Bookmark> _bookmarks = [];
-  List<ReadingProgress> _readingProgress = [];
-  List<SavedItem> _savedItems = [];
+  List<Map<String, dynamic>> _ebookInteractions = [];
+  List<Map<String, dynamic>> _videoKitabInteractions = [];
+  int _totalBookmarks = 0;
   
   bool _isLoading = true;
   String? _error;
@@ -91,34 +88,32 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         subscription = null;
       }
 
-      // Load user activity data
-      final bookmarksData = await SupabaseService.from('bookmarks')
-          .select()
-          .eq('user_id', widget.userId)
-          .order('created_at', ascending: false);
-
-      final readingProgressData = await SupabaseService.from('reading_progress')
-          .select()
+      // Load user activity data from real tables
+      final ebookInteractionsData = await SupabaseService.from('ebook_user_interactions')
+          .select('''
+            id, is_saved, is_downloaded, created_at, updated_at,
+            ebooks!ebook_id (id, title, author)
+          ''')
           .eq('user_id', widget.userId)
           .order('updated_at', ascending: false);
 
-      final savedItemsData = await SupabaseService.from('saved_items')
-          .select()
+      final videoKitabInteractionsData = await SupabaseService.from('video_kitab_user_interactions')
+          .select('''
+            id, is_saved, created_at, updated_at,
+            video_kitab!video_kitab_id (id, title, author)
+          ''')
           .eq('user_id', widget.userId)
-          .order('created_at', ascending: false);
+          .order('updated_at', ascending: false);
+
+      // Count total bookmarks - currently not available in basic table structure
+      int totalBookmarks = 0;
 
       setState(() {
         _user = user;
         _subscription = subscription;
-        _bookmarks = (bookmarksData as List)
-            .map((json) => Bookmark.fromJson(json))
-            .toList();
-        _readingProgress = (readingProgressData as List)
-            .map((json) => ReadingProgress.fromJson(json))
-            .toList();
-        _savedItems = (savedItemsData as List)
-            .map((json) => SavedItem.fromJson(json))
-            .toList();
+        _ebookInteractions = List<Map<String, dynamic>>.from(ebookInteractionsData);
+        _videoKitabInteractions = List<Map<String, dynamic>>.from(videoKitabInteractionsData);
+        _totalBookmarks = totalBookmarks;
         _isLoading = false;
       });
     } catch (e) {
@@ -137,13 +132,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         title: Text(_user?.fullName ?? 'Detail Pengguna'),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadUserData,
-            tooltip: 'Muat Semula',
-          ),
-        ],
       ),
       body: _buildBody(),
     );
@@ -263,9 +251,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatItem('Bookmark', _bookmarks.length.toString()),
-              _buildStatItem('Membaca', _readingProgress.length.toString()),
-              _buildStatItem('Disimpan', _savedItems.length.toString()),
+              _buildStatItem('Bookmark', _totalBookmarks.toString()),
+              _buildStatItem('E-books', _ebookInteractions.length.toString()),
+              _buildStatItem('Video Kitab', _videoKitabInteractions.length.toString()),
             ],
           ),
         ],
@@ -303,9 +291,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
         indicatorColor: AppTheme.primaryColor,
         tabs: const [
           Tab(text: 'Info', icon: Icon(Icons.info_outline)),
-          Tab(text: 'Bookmark', icon: Icon(Icons.bookmark_outline)),
-          Tab(text: 'Membaca', icon: Icon(Icons.menu_book_outlined)),
-          Tab(text: 'Disimpan', icon: Icon(Icons.favorite_outline)),
+          Tab(text: 'E-books', icon: Icon(Icons.book_outlined)),
+          Tab(text: 'Video Kitab', icon: Icon(Icons.video_library_outlined)),
+          Tab(text: 'Aktiviti', icon: Icon(Icons.timeline_outlined)),
         ],
       ),
     );
@@ -316,9 +304,9 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
       controller: _tabController,
       children: [
         _buildInfoTab(),
-        _buildBookmarksTab(),
-        _buildReadingProgressTab(),
-        _buildSavedItemsTab(),
+        _buildEbooksTab(),
+        _buildVideoKitabTab(),
+        _buildActivityTab(),
       ],
     );
   }
@@ -371,15 +359,15 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  Widget _buildBookmarksTab() {
-    if (_bookmarks.isEmpty) {
+  Widget _buildEbooksTab() {
+    if (_ebookInteractions.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.bookmark_outline, size: 64, color: Colors.grey),
+            Icon(Icons.book_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Tiada bookmark'),
+            Text('Tiada interaksi e-book'),
           ],
         ),
       );
@@ -387,69 +375,44 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _bookmarks.length,
+      itemCount: _ebookInteractions.length,
       itemBuilder: (context, index) {
-        final bookmark = _bookmarks[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            leading: Icon(Icons.bookmark, color: AppTheme.primaryColor),
-            title: Text(bookmark.title),
-            subtitle: Text(bookmark.contentType == 'pdf' 
-                ? 'Halaman ${bookmark.pdfPage}'
-                : 'Video ${bookmark.videoPosition}s'),
-            trailing: Text(_formatDate(bookmark.createdAt)),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildReadingProgressTab() {
-    if (_readingProgress.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('Tiada aktiviti membaca'),
-          ],
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _readingProgress.length,
-      itemBuilder: (context, index) {
-        final progress = _readingProgress[index];
+        final interaction = _ebookInteractions[index];
+        final ebook = interaction['ebooks'];
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
             leading: CircularProgressIndicator(
-              value: progress.completionPercentage / 100,
+              value: (interaction['progress_percentage'] ?? 0) / 100.0,
               backgroundColor: Colors.grey[300],
               valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             ),
-            title: Text('Kitab ID: ${progress.kitabId}'),
-            subtitle: Text('${progress.completionPercentage.toInt()}% selesai'),
-            trailing: Text(_formatDate(progress.updatedAt)),
+            title: Text(ebook?['title'] ?? 'E-book Tanpa Judul'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Oleh: ${ebook?['author'] ?? 'Penulis'}'),
+                Text('Halaman ${interaction['current_page'] ?? 1}'),
+                Text('${(interaction['progress_percentage'] ?? 0).toInt()}% selesai'),
+              ],
+            ),
+            trailing: Text(_formatDate(DateTime.parse(interaction['updated_at']))),
+            isThreeLine: true,
           ),
         );
       },
     );
   }
 
-  Widget _buildSavedItemsTab() {
-    if (_savedItems.isEmpty) {
+  Widget _buildVideoKitabTab() {
+    if (_videoKitabInteractions.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.favorite_outline, size: 64, color: Colors.grey),
+            Icon(Icons.video_library_outlined, size: 64, color: Colors.grey),
             SizedBox(height: 16),
-            Text('Tiada item disimpan'),
+            Text('Tiada interaksi video kitab'),
           ],
         ),
       );
@@ -457,16 +420,99 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: _savedItems.length,
+      itemCount: _videoKitabInteractions.length,
       itemBuilder: (context, index) {
-        final savedItem = _savedItems[index];
+        final interaction = _videoKitabInteractions[index];
+        final videoKitab = interaction['video_kitab'];
         return Card(
           margin: const EdgeInsets.only(bottom: 8),
           child: ListTile(
-            leading: Icon(Icons.favorite, color: Colors.red),
-            title: Text(savedItem.videoTitle ?? savedItem.folderName),
-            subtitle: Text(savedItem.itemType.toUpperCase()),
-            trailing: Text(_formatDate(savedItem.createdAt)),
+            leading: CircularProgressIndicator(
+              value: (interaction['overall_progress_percentage'] ?? 0) / 100.0,
+              backgroundColor: Colors.grey[300],
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            ),
+            title: Text(videoKitab?['title'] ?? 'Video Kitab Tanpa Judul'),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Oleh: ${videoKitab?['author'] ?? 'Penulis'}'),
+                Text('Halaman ${interaction['current_page'] ?? 1}'),
+                Text('${(interaction['overall_progress_percentage'] ?? 0).toInt()}% selesai'),
+              ],
+            ),
+            trailing: Text(_formatDate(DateTime.parse(interaction['updated_at']))),
+            isThreeLine: true,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityTab() {
+    final allInteractions = <Map<String, dynamic>>[];
+    
+    // Combine all interactions for activity timeline
+    for (var ebook in _ebookInteractions) {
+      allInteractions.add({
+        ...ebook,
+        'type': 'ebook',
+        'title': ebook['ebooks']?['title'] ?? 'E-book Tanpa Judul',
+      });
+    }
+    
+    for (var video in _videoKitabInteractions) {
+      allInteractions.add({
+        ...video,
+        'type': 'video_kitab',
+        'title': video['video_kitab']?['title'] ?? 'Video Kitab Tanpa Judul',
+      });
+    }
+    
+    // Sort by last accessed
+    allInteractions.sort((a, b) => 
+        DateTime.parse(b['updated_at']).compareTo(DateTime.parse(a['updated_at'])));
+
+    if (allInteractions.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.timeline_outlined, size: 64, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('Tiada aktiviti'),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: allInteractions.length,
+      itemBuilder: (context, index) {
+        final activity = allInteractions[index];
+        final isEbook = activity['type'] == 'ebook';
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          child: ListTile(
+            leading: Icon(
+              isEbook ? Icons.book : Icons.video_library,
+              color: AppTheme.primaryColor,
+            ),
+            title: Text(activity['title']),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(isEbook ? 'E-book' : 'Video Kitab'),
+                if (activity['is_saved'] == true)
+                  Text('💾 Disimpan', style: TextStyle(color: AppTheme.primaryColor)),
+                if (activity['user_notes'] != null && activity['user_notes'].toString().isNotEmpty)
+                  Text('📝 Ada catatan'),
+              ],
+            ),
+            trailing: Text(_formatDate(DateTime.parse(activity['updated_at']))),
+            isThreeLine: true,
           ),
         );
       },

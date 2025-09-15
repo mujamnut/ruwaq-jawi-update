@@ -95,7 +95,7 @@ async function handlePaymentSuccess(supabaseClient: any, payload: ChipWebhookPay
 
   // Activate subscription
   const { error: subscriptionError } = await supabaseClient
-    .from('subscriptions')
+    .from('user_subscriptions')
     .update({
       status: 'active',
       updated_at: new Date().toISOString(),
@@ -120,6 +120,49 @@ async function handlePaymentSuccess(supabaseClient: any, payload: ChipWebhookPay
   }
 
   console.log(`Payment completed successfully for user ${user_id}, subscription ${subscription_id}`);
+
+  // Trigger payment success notification using SQL function
+  try {
+    // Get subscription plan details
+    const { data: subscriptionData, error: subError } = await supabaseClient
+      .from('user_subscriptions')
+      .select(`
+        subscription_plans(name, price)
+      `)
+      .eq('id', subscription_id)
+      .single();
+
+    let planName = 'Premium';
+    let planPrice = paymentData.amount / 100;
+
+    if (!subError && subscriptionData?.subscription_plans) {
+      planName = subscriptionData.subscription_plans.name;
+      planPrice = subscriptionData.subscription_plans.price;
+    }
+
+    // Calculate expiry date (assuming 30 days subscription)
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 30);
+    const expiryDateString = expiryDate.toLocaleDateString('ms-MY');
+
+    // Call SQL function directly
+    const { data: notificationResult, error: notifError } = await supabaseClient
+      .rpc('send_payment_success_notification', {
+        user_id_param: user_id,
+        subscription_plan_name: planName,
+        amount_paid: `RM${planPrice}`,
+        expiry_date: expiryDateString
+      });
+
+    if (notifError) {
+      console.error('⚠️ Notification SQL error:', notifError);
+    } else {
+      console.log('✅ Payment success notification sent:', notificationResult);
+    }
+  } catch (notificationError) {
+    console.error('⚠️ Failed to send notification:', notificationError);
+    // Don't fail the main process if notification fails
+  }
 }
 
 async function handlePaymentFailure(supabaseClient: any, payload: ChipWebhookPayload) {
@@ -147,7 +190,7 @@ async function handlePaymentFailure(supabaseClient: any, payload: ChipWebhookPay
   // Update subscription status to cancelled if it exists
   if (subscription_id) {
     const { error: subscriptionError } = await supabaseClient
-      .from('subscriptions')
+      .from('user_subscriptions')
       .update({
         status: 'cancelled',
         updated_at: new Date().toISOString(),
@@ -161,3 +204,4 @@ async function handlePaymentFailure(supabaseClient: any, payload: ChipWebhookPay
 
   console.log(`Payment failed for transaction ${transaction_id}`);
 }
+

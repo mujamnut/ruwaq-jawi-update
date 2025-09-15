@@ -16,23 +16,23 @@ class SubscriptionService {
     int durationInDays;
     String subscriptionPlanId;
 
-    // Set duration and plan ID based on plan type
+    // Set duration and plan ID based on plan type - FIXED to match database structure
     switch (planType) {
       case '1month':
         durationInDays = 30;
-        subscriptionPlanId = amount <= 20 ? 'monthly_basic' : 'monthly_premium';
+        subscriptionPlanId = 'monthly_basic';    // ✅ 1 month plan
         break;
       case '3month':
         durationInDays = 90;
-        subscriptionPlanId = 'quarterly_premium';
+        subscriptionPlanId = 'quarterly_pr';     // ✅ FIXED: match database plan ID
         break;
       case '6month':
         durationInDays = 180;
-        subscriptionPlanId = 'semiannual_premium';
+        subscriptionPlanId = 'monthly_premium';  // ✅ FIXED: database "monthly_premium" is 6 month plan
         break;
       case '12month':
         durationInDays = 365;
-        subscriptionPlanId = 'yearly_premium';
+        subscriptionPlanId = 'yearly_premium';   // ✅ 12 month plan
         break;
       default:
         throw Exception('Invalid plan type');
@@ -41,11 +41,11 @@ class SubscriptionService {
     try {
       // 1. Check if user already has an active subscription
       final existingSubscription = await _supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select()
           .eq('user_id', userId)
           .eq('status', 'active')
-          .gte('current_period_end', now.toIso8601String())  // ✅ FIXED: end_date → current_period_end
+          .gte('end_date', now.toIso8601String())
           .maybeSingle();
 
       DateTime endDate;
@@ -53,16 +53,16 @@ class SubscriptionService {
       
       if (existingSubscription != null) {
         // Extend existing subscription from current end date
-        final currentEndDate = DateTime.parse(existingSubscription['current_period_end']); // ✅ FIXED: end_date → current_period_end
+        final currentEndDate = DateTime.parse(existingSubscription['end_date']); // ✅ FIXED: end_date → end_date
         endDate = currentEndDate.add(Duration(days: durationInDays));
         subscriptionId = existingSubscription['id'];
         
         // Update existing subscription
         await _supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({
-              'current_period_end': endDate.toIso8601String(),  // ✅ FIXED: end_date → current_period_end
-              'plan_id': subscriptionPlanId,                    // ✅ FIXED: plan_type → plan_id
+              'end_date': endDate.toIso8601String(),  // ✅ FIXED: end_date → end_date
+              'subscription_plan_id': subscriptionPlanId,                    // ✅ FIXED: plan_type → subscription_plan_id
               'amount': amount,
               'updated_at': now.toIso8601String(),
             })
@@ -73,19 +73,19 @@ class SubscriptionService {
         
         // First, deactivate any existing subscriptions
         await _supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({'status': 'replaced'})
             .eq('user_id', userId)
             .eq('status', 'active');
         
         final subscriptionResponse = await _supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .insert({
               'user_id': userId,
-              'plan_id': subscriptionPlanId,                    // ✅ FIXED: plan_type → plan_id
-              'started_at': now.toIso8601String(),              // ✅ FIXED: start_date → started_at
-              'current_period_start': now.toIso8601String(),    // ✅ NEW: Add period start
-              'current_period_end': endDate.toIso8601String(),  // ✅ FIXED: end_date → current_period_end
+              'subscription_plan_id': subscriptionPlanId,                    // ✅ FIXED: plan_type → subscription_plan_id
+              'start_date': now.toIso8601String(),              // ✅ FIXED: start_date → start_date
+              'start_date': now.toIso8601String(),    // ✅ NEW: Add period start
+              'end_date': endDate.toIso8601String(),  // ✅ FIXED: end_date → end_date
               'status': 'active',
               'provider': paymentMethod,                        // ✅ FIXED: payment_method → provider
               'amount': amount,
@@ -136,12 +136,12 @@ class SubscriptionService {
       print('Checking subscription for user: $userId at time: ${now.toIso8601String()}');
       
       final response = await _supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select()
           .eq('user_id', userId)
           .eq('status', 'active')
-          .lte('started_at', now.toIso8601String())
-          .gte('current_period_end', now.toIso8601String())
+          .lte('start_date', now.toIso8601String())
+          .gte('end_date', now.toIso8601String())
           .maybeSingle();
 
       final hasActive = response != null;
@@ -157,20 +157,20 @@ class SubscriptionService {
       } else {
         // Check if there are any subscriptions at all
         final anySubscription = await _supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .select()
             .eq('user_id', userId)
             .maybeSingle();
             
         if (anySubscription != null) {
-          print('Found subscription but checking if expired: ${anySubscription['current_period_end']}');
-          final endDate = DateTime.parse(anySubscription['current_period_end']);
+          print('Found subscription but checking if expired: ${anySubscription['end_date']}');
+          final endDate = DateTime.parse(anySubscription['end_date']);
           
           if (endDate.isBefore(now) && anySubscription['status'] == 'active') {
             print('Marking subscription as expired');
             // Mark as expired if it actually expired
             await _supabase
-                .from('subscriptions')
+                .from('user_subscriptions')
                 .update({'status': 'expired', 'updated_at': now.toIso8601String()})
                 .eq('id', anySubscription['id']);
             
@@ -192,16 +192,16 @@ class SubscriptionService {
   Future<DateTime?> getSubscriptionEndDate(String userId) async {
     try {
       final response = await _supabase
-          .from('subscriptions')
-          .select('current_period_end')
+          .from('user_subscriptions')
+          .select('end_date')
           .eq('user_id', userId)
           .eq('status', 'active')
-          .gte('current_period_end', DateTime.now().toUtc().toIso8601String())
-          .order('current_period_end', ascending: false)
+          .gte('end_date', DateTime.now().toUtc().toIso8601String())
+          .order('end_date', ascending: false)
           .maybeSingle();
 
-      if (response != null && response['current_period_end'] != null) {
-        return DateTime.parse(response['current_period_end']);
+      if (response != null && response['end_date'] != null) {
+        return DateTime.parse(response['end_date']);
       }
       return null;
     } catch (e) {
@@ -268,7 +268,7 @@ class SubscriptionService {
       
       // Check for active subscription in old table
       final oldSubscription = await _supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select('*')
           .eq('user_id', userId)
           .eq('status', 'active')
@@ -290,7 +290,7 @@ class SubscriptionService {
           await _supabase.from('user_subscriptions').insert({
             'user_id': userId,
             'user_name': userName,
-            'subscription_plan_id': _mapPlanTypeToId(oldSubscription['plan_type']),
+            'subscription_subscription_plan_id': _mapPlanTypeToId(oldSubscription['plan_type']),
             'status': 'active',
             'start_date': oldSubscription['start_date'],
             'end_date': oldSubscription['end_date'],

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Color Palette - Islamic-inspired colors
-  static const Color primaryColor = Color(0xFF1B4332); // Dark green
-  static const Color primaryLightColor = Color(0xFF2D5A47);
-  static const Color primaryDarkColor = Color(0xFF0F2419);
+  static const Color primaryColor = Color(0xFF00BF6D); // Bright green accent
+  static const Color primaryLightColor = Color(0xFF40D68A);
+  static const Color primaryDarkColor = Color(0xFF00A85C);
 
   static const Color secondaryColor = Color(0xFFD4AF37); // Gold
   static const Color secondaryLightColor = Color(0xFFE6C757);

@@ -2,12 +2,12 @@ class PaymentConfig {
   // Toyyibpay Configuration
   static const bool isProduction = bool.fromEnvironment(
     'PAYMENT_PRODUCTION',
-    defaultValue: false,
+    defaultValue: false, // BACK TO DEVELOPMENT FOR TESTING
   );
 
   // Toyyibpay Credentials
   static const String userSecretKey = 'j82mer37-15g3-zezd-nmq3-hcha3n8gt3xz';
-  static const String categoryCode = 'rfihs2ao';
+  static const String categoryCode = 'tcgm3rrx';
 
   // URLs - Toyyibpay API endpoints
   static const String baseUrl = isProduction

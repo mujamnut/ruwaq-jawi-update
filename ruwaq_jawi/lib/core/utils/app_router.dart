@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
-import '../../features/auth/screens/profile_screen.dart';
+import '../../features/student/screens/profile_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/email_verification_screen.dart';
@@ -13,10 +13,12 @@ import '../../features/student/screens/kitab_list_screen.dart';
 import '../../features/student/screens/kitab_detail_screen.dart';
 import '../../features/student/screens/saved_items_screen.dart';
 import '../../features/student/screens/subscription_screen.dart';
+import '../../features/student/screens/subscription_detail_screen.dart';
 import '../../features/student/screens/video_player_screen.dart';
 import '../../features/student/screens/search_screen.dart';
 import '../../features/student/screens/content_player_screen.dart';
 import '../../features/student/screens/ebook_screen.dart';
+import '../../features/student/screens/ebook_detail_screen.dart';
 import '../../features/student/screens/preview_video_player_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
 import '../../features/admin/screens/admin_content_enhanced.dart';
@@ -30,6 +32,7 @@ import '../../features/admin/screens/admin_subscriptions_screen.dart';
 import '../../features/admin/screens/admin_profile_screen.dart';
 import '../../features/admin/screens/pdf_viewer_screen.dart';
 import '../../features/student/screens/payment_screen.dart';
+import '../../features/student/screens/toyyibpay_payment_screen.dart';
 import '../models/payment_models.dart';
 import '../../features/admin/screens/admin_settings_screen.dart';
 import '../../features/admin/screens/admin_ebook_list_screen.dart';
@@ -48,12 +51,15 @@ class AppRouter {
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
             child: const SplashScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(
-                opacity: animation.drive(CurveTween(curve: Curves.easeInOut)),
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return FadeTransition(
+                    opacity: animation.drive(
+                      CurveTween(curve: Curves.easeInOut),
+                    ),
+                    child: child,
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 400),
           ),
         ),
@@ -65,16 +71,18 @@ class AppRouter {
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
             child: const LoginScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                    CurveTween(curve: Curves.easeInOutCubic),
-                  ),
-                ),
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: child,
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 300),
           ),
         ),
@@ -84,16 +92,18 @@ class AppRouter {
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
             child: const RegisterScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                    CurveTween(curve: Curves.easeInOutCubic),
-                  ),
-                ),
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: child,
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 300),
           ),
         ),
@@ -103,20 +113,22 @@ class AppRouter {
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
             child: const ForgotPasswordScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                    CurveTween(curve: Curves.easeInOutCubic),
-                  ),
-                ),
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: child,
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 300),
           ),
         ),
-        
+
         // Deep link auth routes
         GoRoute(
           path: '/auth/reset-password',
@@ -126,16 +138,18 @@ class AppRouter {
             return CustomTransitionPage(
               key: state.pageKey,
               child: ResetPasswordScreen(token: token),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                      CurveTween(curve: Curves.easeInOutCubic),
-                    ),
-                  ),
-                  child: child,
-                );
-              },
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return SlideTransition(
+                      position: animation.drive(
+                        Tween(
+                          begin: const Offset(1.0, 0.0),
+                          end: Offset.zero,
+                        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                      ),
+                      child: child,
+                    );
+                  },
               transitionDuration: const Duration(milliseconds: 300),
             );
           },
@@ -156,16 +170,18 @@ class AppRouter {
                 token: token,
                 type: type,
               ),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                      CurveTween(curve: Curves.easeInOutCubic),
-                    ),
-                  ),
-                  child: child,
-                );
-              },
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return SlideTransition(
+                      position: animation.drive(
+                        Tween(
+                          begin: const Offset(1.0, 0.0),
+                          end: Offset.zero,
+                        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                      ),
+                      child: child,
+                    );
+                  },
               transitionDuration: const Duration(milliseconds: 300),
             );
           },
@@ -176,16 +192,18 @@ class AppRouter {
           pageBuilder: (context, state) => CustomTransitionPage(
             key: state.pageKey,
             child: const WelcomeScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                    CurveTween(curve: Curves.easeInOutCubic),
-                  ),
-                ),
-                child: child,
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: child,
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 300),
           ),
         ),
@@ -196,16 +214,18 @@ class AppRouter {
             return CustomTransitionPage(
               key: state.pageKey,
               child: const LoginScreen(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                      CurveTween(curve: Curves.easeInOutCubic),
-                    ),
-                  ),
-                  child: child,
-                );
-              },
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return SlideTransition(
+                      position: animation.drive(
+                        Tween(
+                          begin: const Offset(1.0, 0.0),
+                          end: Offset.zero,
+                        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                      ),
+                      child: child,
+                    );
+                  },
               transitionDuration: const Duration(milliseconds: 300),
             );
           },
@@ -215,45 +235,17 @@ class AppRouter {
         GoRoute(
           path: '/home',
           name: 'home',
-          pageBuilder: (context, state) => CustomTransitionPage(
-            key: state.pageKey,
-            child: const StudentHomeScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                    CurveTween(curve: Curves.easeInOutCubic),
-                  ),
-                ),
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 300),
-          ),
+          builder: (context, state) => const StudentHomeScreen(),
         ),
         GoRoute(
           path: '/kitab',
           name: 'kitab-list',
-          pageBuilder: (context, state) {
+          builder: (context, state) {
             final category = state.uri.queryParameters['category'];
             final sort = state.uri.queryParameters['sort'];
-            return CustomTransitionPage(
-              key: state.pageKey,
-              child: KitabListScreen(
-                initialCategory: category,
-                initialSort: sort,
-              ),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return SlideTransition(
-                  position: animation.drive(
-                    Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                      CurveTween(curve: Curves.easeInOutCubic),
-                    ),
-                  ),
-                  child: child,
-                );
-              },
-              transitionDuration: const Duration(milliseconds: 300),
+            return KitabListScreen(
+              initialCategory: category,
+              initialSort: sort,
             );
           },
         ),
@@ -271,10 +263,7 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final episodeId = state.uri.queryParameters['episode'];
-            return ContentPlayerScreen(
-              kitabId: kitabId,
-              episodeId: episodeId,
-            );
+            return ContentPlayerScreen(kitabId: kitabId, episodeId: episodeId);
           },
         ),
         GoRoute(
@@ -283,10 +272,7 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final episodeId = state.uri.queryParameters['episode'];
-            return VideoPlayerScreen(
-              kitabId: kitabId,
-              episodeId: episodeId,
-            );
+            return VideoPlayerScreen(kitabId: kitabId, episodeId: episodeId);
           },
         ),
         GoRoute(
@@ -295,30 +281,33 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final videoId = state.uri.queryParameters['video'];
-            return PreviewVideoPlayerScreen(
-              kitabId: kitabId,
-              videoId: videoId,
-            );
+            return PreviewVideoPlayerScreen(kitabId: kitabId, videoId: videoId);
           },
         ),
         GoRoute(
           path: '/ebook',
           name: 'ebook',
-          pageBuilder: (context, state) => CustomTransitionPage(
-            key: state.pageKey,
-            child: const EbookScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(begin: const Offset(1.0, 0.0), end: Offset.zero).chain(
-                    CurveTween(curve: Curves.easeInOutCubic),
-                  ),
-                ),
-                child: child,
-              );
-            },
-            transitionDuration: const Duration(milliseconds: 300),
-          ),
+          builder: (context, state) => const EbookScreen(),
+        ),
+        GoRoute(
+          path: '/ebook/:id',
+          name: 'ebook-detail',
+          builder: (context, state) {
+            final ebookId = state.pathParameters['id']!;
+            return EbookDetailScreen(ebookId: ebookId);
+          },
+        ),
+        GoRoute(
+          path: '/ebook/reader/:id',
+          name: 'ebook-reader',
+          builder: (context, state) {
+            final ebookId = state.pathParameters['id']!;
+            return PdfViewerScreen(
+              pdfUrl: 'placeholder', // This will be dynamically loaded
+              title: 'E-book Reader',
+              kitabId: ebookId,
+            );
+          },
         ),
         GoRoute(
           path: '/saved',
@@ -432,7 +421,7 @@ class AppRouter {
             return admin_kitab.AdminKitabDetailScreen(kitabId: kitabId);
           },
         ),
-        
+
         // PDF Viewer Route
         GoRoute(
           path: '/pdf-viewer',
@@ -448,6 +437,67 @@ class AppRouter {
         ),
 
         // Payment Routes
+        GoRoute(
+          path: '/payment/toyyibpay',
+          name: 'toyyibpay-payment',
+          builder: (context, state) {
+            final extra = state.extra as Map<String, dynamic>;
+            return ToyyibpayPaymentScreen(
+              billCode: extra['billCode'] as String,
+              billUrl: extra['billUrl'] as String,
+              planId: extra['planId'] as String?,
+              amount: extra['amount'] as double?,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/payment-callback',
+          name: 'payment-callback-direct',
+          builder: (context, state) {
+            final billId = state.uri.queryParameters['billId'];
+            final planId = state.uri.queryParameters['planId'];
+            final amountStr = state.uri.queryParameters['amount'];
+
+            if (billId == null || planId == null || amountStr == null) {
+              // Invalid parameters - redirect to subscription
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                context.go('/subscription');
+              });
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
+
+            final amount = double.tryParse(amountStr) ?? 0.0;
+
+            return PaymentCallbackPage(
+              billId: billId,
+              planId: planId,
+              amount: amount,
+            );
+          },
+        ),
+        GoRoute(
+          path: '/subscription-detail',
+          name: 'subscription-detail',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            child: const SubscriptionDetailScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: child,
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        ),
         GoRoute(
           path: '/subscription',
           name: 'subscription',
@@ -491,21 +541,19 @@ class AppRouter {
                     final billId = state.uri.queryParameters['billId'];
                     final planId = state.uri.queryParameters['planId'];
                     final amountStr = state.uri.queryParameters['amount'];
-                    
+
                     if (billId == null || planId == null || amountStr == null) {
                       // Invalid parameters - redirect to subscription
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         context.go('/subscription');
                       });
                       return const Scaffold(
-                        body: Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        body: Center(child: CircularProgressIndicator()),
                       );
                     }
-                    
+
                     final amount = double.tryParse(amountStr) ?? 0.0;
-                    
+
                     return PaymentCallbackPage(
                       billId: billId,
                       planId: planId,

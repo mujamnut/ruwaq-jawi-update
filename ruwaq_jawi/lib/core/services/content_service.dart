@@ -10,14 +10,14 @@ class ContentService {
     try {
       final now = DateTime.now().toUtc();
       
-      // Check from subscriptions table for accurate status
+      // Check from user_subscriptions table for accurate status
       final response = await _supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select()
           .eq('user_id', _userId)
           .eq('status', 'active')
-          .lte('started_at', now.toIso8601String())
-          .gte('current_period_end', now.toIso8601String())
+          .lte('start_date', now.toIso8601String())
+          .gte('end_date', now.toIso8601String())
           .maybeSingle();
 
       final hasActive = response != null;
@@ -112,12 +112,12 @@ class ContentService {
     try {
       final now = DateTime.now().toUtc();
       final response = await _supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select()
           .eq('user_id', _userId)
           .eq('status', 'active')
-          .gte('current_period_end', now.toIso8601String())
-          .order('current_period_end', ascending: false)
+          .gte('end_date', now.toIso8601String())
+          .order('end_date', ascending: false)
           .maybeSingle();
 
       if (response == null) {
@@ -126,9 +126,9 @@ class ContentService {
 
       return {
         'hasSubscription': true,
-        'endDate': DateTime.parse(response['current_period_end']),
-        'planType': response['plan_id'],
-        'planName': response['plan_id'], // Can be mapped to display name if needed
+        'endDate': DateTime.parse(response['end_date']),
+        'planType': response['subscription_plan_id'],
+        'planName': response['subscription_plan_id'], // Can be mapped to display name if needed
       };
     } catch (e) {
       print('Error getting subscription details: $e');
