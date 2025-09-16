@@ -15,13 +15,30 @@ jobs:
     name: Test notification system (runs every minute)
 
     steps:
-      - name: 🔔 Test Notification System
+      - name: 🔔 Daily Notification System
         run: |
-          echo "🕘 Starting notification test at $(date)"
-          echo "📱 Testing subscription expiry and inactive user notifications"
+          echo "🕘 Starting daily notifications at $(date)"
+          echo "📱 Running subscription expiry, inactive user, and new content notifications"
+
+          # Check for new video content in the last 24 hours and send notifications
+          echo "📹 Checking for new video content published in last 24 hours..."
+          new_content_response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/notification-triggers" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "x-client-info: github-cron-daily" \
+            -d '{
+              "type": "daily_content_check",
+              "data": {
+                "check_hours": 24,
+                "content_types": ["video_kitab", "video_episodes", "ebooks"]
+              },
+              "target_roles": ["student"]
+            }')
 
           # Test subscription expiry notifications
-          echo "⏰ Testing subscription expiry notifications..."
+          echo "⏰ Checking subscription expiry notifications..."
           expiry_response=$(curl -s -w "\n%{http_code}" -X POST \
             "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/trigger_subscription_expiry_check" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
@@ -29,7 +46,7 @@ jobs:
             -H "Content-Type: application/json")
 
           # Test inactive user notifications
-          echo "👥 Testing inactive user notifications..."
+          echo "👥 Checking inactive user notifications..."
           inactive_response=$(curl -s -w "\n%{http_code}" -X POST \
             "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/trigger_inactive_user_notification" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \

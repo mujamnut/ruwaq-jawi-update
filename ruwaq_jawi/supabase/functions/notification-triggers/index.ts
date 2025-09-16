@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 interface NotificationTrigger {
-  type: 'payment_success' | 'content_published' | 'subscription_expiring' | 'admin_announcement' | 'system_maintenance' | 'inactive_user_engagement';
+  type: 'payment_success' | 'content_published' | 'subscription_expiring' | 'admin_announcement' | 'system_maintenance' | 'inactive_user_engagement' | 'daily_content_check';
   data: any;
   target_users?: string[]; // Specific user IDs, if null = all users
   target_roles?: string[]; // Target specific roles: 'student', 'admin'
@@ -79,6 +79,46 @@ Deno.serve(async (req: Request) => {
         notificationData = await handleInactiveUserEngagement(supabaseClient, trigger);
         targetUserIds = trigger.target_users || [];
         break;
+
+      case 'daily_content_check':
+        const contentResults = await handleDailyContentCheck(supabaseClient, trigger);
+        if (contentResults.length === 0) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              message: 'No new content found in the specified time period',
+              target_users_count: 0
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            },
+          );
+        }
+
+        // Send notifications for all new content found
+        let totalNotificationsSent = 0;
+        for (const contentItem of contentResults) {
+          const contentTargetUsers = await getTargetUsers(supabaseClient, {
+            ...trigger,
+            data: contentItem.data
+          });
+          await sendToUsers(supabaseClient, contentItem.notification, contentTargetUsers, trigger.target_criteria);
+          totalNotificationsSent += contentTargetUsers.length;
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: `Found ${contentResults.length} new content items, sent ${totalNotificationsSent} notifications`,
+            content_items: contentResults.length,
+            target_users_count: totalNotificationsSent
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200,
+          },
+        );
 
       default:
         throw new Error(`Unknown notification type: ${trigger.type}`);
@@ -256,6 +296,137 @@ async function handleSystemMaintenance(supabaseClient: any, trigger: Notificatio
       description
     }
   };
+}
+
+// Handle daily content check - find new content published in the last X hours
+async function handleDailyContentCheck(supabaseClient: any, trigger: NotificationTrigger): Promise<Array<{notification: NotificationData, data: any}>> {
+  const { check_hours = 24, content_types = ['video_kitab', 'video_episodes', 'ebooks'] } = trigger.data;
+  const hoursAgo = new Date();
+  hoursAgo.setHours(hoursAgo.getHours() - check_hours);
+
+  const results = [];
+
+  // Check video_kitab table
+  if (content_types.includes('video_kitab')) {
+    const { data: videoKitabs, error } = await supabaseClient
+      .from('video_kitab')
+      .select(`
+        id, title, author, is_active, created_at, updated_at,
+        categories (name)
+      `)
+      .eq('is_active', true)
+      .or(`created_at.gte.${hoursAgo.toISOString()},updated_at.gte.${hoursAgo.toISOString()}`)
+      .order('created_at', { ascending: false });
+
+    if (!error && videoKitabs) {
+      for (const video of videoKitabs) {
+        const notification = await handleContentPublished(supabaseClient, {
+          type: 'content_published',
+          data: {
+            content_type: 'video_kitab',
+            title: video.title,
+            author: video.author || 'Penulis',
+            category: video.categories?.name || 'Kategori Umum'
+          }
+        } as NotificationTrigger);
+
+        results.push({
+          notification,
+          data: {
+            content_type: 'video_kitab',
+            title: video.title,
+            author: video.author || 'Penulis',
+            category: video.categories?.name || 'Kategori Umum'
+          }
+        });
+      }
+    }
+  }
+
+  // Check video_episodes table
+  if (content_types.includes('video_episodes')) {
+    const { data: episodes, error } = await supabaseClient
+      .from('video_episodes')
+      .select(`
+        id, title, part_number, is_active, created_at, updated_at,
+        video_kitab (
+          title,
+          categories (name)
+        )
+      `)
+      .eq('is_active', true)
+      .or(`created_at.gte.${hoursAgo.toISOString()},updated_at.gte.${hoursAgo.toISOString()}`)
+      .order('created_at', { ascending: false });
+
+    if (!error && episodes) {
+      for (const episode of episodes) {
+        const notification = await handleContentPublished(supabaseClient, {
+          type: 'content_published',
+          data: {
+            content_type: 'video_episode',
+            title: episode.title,
+            author: 'Penulis',
+            category: episode.video_kitab?.categories?.name || 'Kategori Umum',
+            parent_kitab: episode.video_kitab?.title,
+            episode_number: episode.part_number
+          }
+        } as NotificationTrigger);
+
+        results.push({
+          notification,
+          data: {
+            content_type: 'video_episode',
+            title: episode.title,
+            author: 'Penulis',
+            category: episode.video_kitab?.categories?.name || 'Kategori Umum',
+            parent_kitab: episode.video_kitab?.title,
+            episode_number: episode.part_number
+          }
+        });
+      }
+    }
+  }
+
+  // Check ebooks table
+  if (content_types.includes('ebooks')) {
+    const { data: ebooks, error } = await supabaseClient
+      .from('ebooks')
+      .select(`
+        id, title, author, is_active, created_at, updated_at,
+        categories (name)
+      `)
+      .eq('is_active', true)
+      .or(`created_at.gte.${hoursAgo.toISOString()},updated_at.gte.${hoursAgo.toISOString()}`)
+      .order('created_at', { ascending: false });
+
+    if (!error && ebooks) {
+      for (const ebook of ebooks) {
+        const notification = await handleContentPublished(supabaseClient, {
+          type: 'content_published',
+          data: {
+            content_type: 'ebook',
+            title: ebook.title,
+            author: ebook.author || 'Penulis',
+            category: ebook.categories?.name || 'Kategori Umum'
+          }
+        } as NotificationTrigger);
+
+        results.push({
+          notification,
+          data: {
+            content_type: 'ebook',
+            title: ebook.title,
+            author: ebook.author || 'Penulis',
+            category: ebook.categories?.name || 'Kategori Umum'
+          }
+        });
+      }
+    }
+  }
+
+  console.log(`🔍 Daily content check found ${results.length} new content items in the last ${check_hours} hours`);
+
+  return results;
 }
 
 // Get target users based on criteria
