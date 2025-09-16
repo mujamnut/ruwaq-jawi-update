@@ -43,11 +43,12 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
+            -H "x-client-info: github-actions" \
             -d '{
               "type": "admin_announcement",
               "data": {
-                "title": "Test Notification",
-                "message": "This is a test notification from GitHub Actions",
+                "title": "Test Notification from GitHub",
+                "message": "This is an automated test notification from GitHub Actions cron job",
                 "priority": "low"
               },
               "target_roles": ["admin"]

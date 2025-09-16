@@ -5,6 +5,10 @@
 ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS
 target_criteria JSONB DEFAULT '{}';
 
+-- Add last_seen_at column to profiles for better inactive user tracking (optional)
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS
+last_seen_at TIMESTAMP WITH TIME ZONE;
+
 -- Add indexes for better performance on new targeting
 CREATE INDEX IF NOT EXISTS idx_user_notifications_target_criteria
 ON user_notifications USING GIN (target_criteria);
@@ -15,6 +19,10 @@ purchase_id UUID REFERENCES payments(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_user_notifications_purchase_id
 ON user_notifications(purchase_id);
+
+-- Add index for last_seen_at for better performance
+CREATE INDEX IF NOT EXISTS idx_profiles_last_seen_at
+ON profiles(last_seen_at);
 
 -- Create function for purchase notification triggers
 CREATE OR REPLACE FUNCTION trigger_purchase_notification()
@@ -134,8 +142,7 @@ BEGIN
               ELSE NULL
             END
           ),
-          'target_roles', ARRAY['student'],
-          'target_subscription', ARRAY['active']
+          'target_roles', ARRAY['student']
         )
       );
   END IF;
@@ -184,8 +191,7 @@ BEGIN
               ELSE NULL
             END
           ),
-          'target_roles', ARRAY['student'],
-          'target_subscription', ARRAY['active']
+          'target_roles', ARRAY['student']
         )
       );
   END IF;
@@ -213,16 +219,21 @@ DECLARE
 BEGIN
   -- Find users whose subscription expires in 3 days
   FOR expiring_user IN
-    SELECT p.id as user_id, p.subscription_end_date, sp.name as plan_name
-    FROM profiles p
-    JOIN subscription_plans sp ON p.subscription_plan_id = sp.id
-    WHERE p.subscription_status = 'active'
-    AND p.subscription_end_date <= (CURRENT_DATE + INTERVAL '3 days')
-    AND p.subscription_end_date > CURRENT_DATE
+    SELECT
+      us.user_id,
+      us.end_date as subscription_end_date,
+      sp.name as plan_name,
+      p.full_name
+    FROM user_subscriptions us
+    JOIN subscription_plans sp ON us.subscription_plan_id = sp.id
+    JOIN profiles p ON us.user_id = p.id
+    WHERE us.status = 'active'
+    AND us.end_date <= (CURRENT_DATE + INTERVAL '3 days')
+    AND us.end_date > CURRENT_DATE
     -- Only notify once per day
     AND NOT EXISTS (
       SELECT 1 FROM user_notifications un
-      WHERE un.user_id = p.id
+      WHERE un.user_id = us.user_id
       AND un.metadata->>'type' = 'subscription_expiring'
       AND un.delivered_at::date = CURRENT_DATE
     )
@@ -241,7 +252,8 @@ BEGIN
           'data', jsonb_build_object(
             'days_remaining', (expiring_user.subscription_end_date - CURRENT_DATE),
             'plan_name', expiring_user.plan_name,
-            'expiry_date', expiring_user.subscription_end_date
+            'expiry_date', expiring_user.subscription_end_date,
+            'user_name', expiring_user.full_name
           ),
           'target_users', ARRAY[expiring_user.user_id::text]
         )
@@ -256,13 +268,27 @@ RETURNS void AS $$
 DECLARE
   inactive_user RECORD;
 BEGIN
-  -- Find users who haven't logged in for 7 days
+  -- Find users who haven't been active for 7 days and have active subscription
+  -- Using last_seen_at if available, otherwise fall back to updated_at
   FOR inactive_user IN
-    SELECT p.id as user_id, p.full_name, p.last_seen_at
+    SELECT
+      p.id as user_id,
+      p.full_name,
+      p.updated_at,
+      p.last_seen_at,
+      COALESCE(
+        p.last_seen_at,
+        GREATEST(p.updated_at, us.updated_at)
+      ) as last_activity
     FROM profiles p
+    JOIN user_subscriptions us ON us.user_id = p.id
     WHERE p.role = 'student'
-    AND p.subscription_status = 'active'
-    AND (p.last_seen_at IS NULL OR p.last_seen_at < (NOW() - INTERVAL '7 days'))
+    AND us.status = 'active'
+    AND us.end_date > NOW()
+    AND COALESCE(
+      p.last_seen_at,
+      GREATEST(p.updated_at, us.updated_at)
+    ) < (NOW() - INTERVAL '7 days')
     -- Only notify once per week
     AND NOT EXISTS (
       SELECT 1 FROM user_notifications un
@@ -284,10 +310,8 @@ BEGIN
           'type', 'inactive_user_engagement',
           'data', jsonb_build_object(
             'user_name', inactive_user.full_name,
-            'days_inactive', CASE
-              WHEN inactive_user.last_seen_at IS NULL THEN 'lebih dari 7'
-              ELSE EXTRACT(DAY FROM (NOW() - inactive_user.last_seen_at))::text
-            END
+            'days_inactive', EXTRACT(DAY FROM (NOW() - inactive_user.last_activity))::text,
+            'last_activity', inactive_user.last_activity
           ),
           'target_users', ARRAY[inactive_user.user_id::text]
         )
@@ -302,6 +326,22 @@ COMMENT ON COLUMN user_notifications.purchase_id IS 'Reference to specific purch
 COMMENT ON FUNCTION trigger_purchase_notification() IS 'Triggers notifications when users make successful payments';
 COMMENT ON FUNCTION trigger_subscription_expiry_check() IS 'Checks for expiring subscriptions and sends warnings';
 COMMENT ON FUNCTION trigger_inactive_user_notification() IS 'Re-engages inactive users with targeted notifications';
+
+-- Create function to update user last seen timestamp
+CREATE OR REPLACE FUNCTION update_user_last_seen(user_uuid UUID)
+RETURNS void AS $$
+BEGIN
+  UPDATE profiles
+  SET last_seen_at = NOW(),
+      updated_at = NOW()
+  WHERE id = user_uuid;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+COMMENT ON FUNCTION update_user_last_seen(UUID) IS 'Updates user last_seen_at timestamp for activity tracking';
+
+-- Grant execution to authenticated users so they can update their own last_seen_at
+GRANT EXECUTE ON FUNCTION update_user_last_seen(UUID) TO authenticated;
 
 -- Add sample target_criteria examples for documentation
 -- This would be used when inserting notifications with specific targeting:

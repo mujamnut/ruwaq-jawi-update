@@ -78,7 +78,55 @@ SELECT
 FROM information_schema.triggers
 WHERE trigger_name LIKE '%notification%';
 
--- 7. Test payment notification trigger
+-- 7. Check subscription data structure and profile columns
+SELECT
+  us.id,
+  us.user_id,
+  us.subscription_plan_id,
+  us.status,
+  us.start_date,
+  us.end_date,
+  sp.name as plan_name,
+  p.full_name,
+  p.role,
+  p.updated_at as profile_last_activity,
+  us.updated_at as subscription_last_activity
+FROM user_subscriptions us
+JOIN subscription_plans sp ON us.subscription_plan_id = sp.id
+JOIN profiles p ON us.user_id = p.id
+ORDER BY us.created_at DESC
+LIMIT 5;
+
+-- Check profiles table structure
+SELECT column_name, data_type, is_nullable
+FROM information_schema.columns
+WHERE table_name = 'profiles'
+ORDER BY ordinal_position;
+
+-- Test update_user_last_seen function
+SELECT update_user_last_seen(id) as last_seen_update
+FROM profiles
+WHERE role = 'admin'
+LIMIT 1;
+
+-- View profiles with last_seen_at info
+SELECT
+  id,
+  full_name,
+  role,
+  updated_at,
+  last_seen_at,
+  CASE
+    WHEN last_seen_at IS NULL THEN 'Never logged activity'
+    WHEN last_seen_at < (NOW() - INTERVAL '7 days') THEN 'Inactive > 7 days'
+    WHEN last_seen_at < (NOW() - INTERVAL '1 day') THEN 'Inactive > 1 day'
+    ELSE 'Active'
+  END as activity_status
+FROM profiles
+ORDER BY last_seen_at DESC NULLS LAST
+LIMIT 10;
+
+-- 8. Test payment notification trigger
 -- This simulates a successful payment
 UPDATE payments
 SET status = 'completed'
@@ -86,7 +134,7 @@ WHERE status = 'pending'
 AND user_id IS NOT NULL
 LIMIT 1;
 
--- 8. Test content notification trigger
+-- 9. Test content notification trigger
 -- This simulates activating new content
 UPDATE video_kitab
 SET is_active = true

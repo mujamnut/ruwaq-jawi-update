@@ -32,6 +32,8 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    console.log('🔔 Notification trigger endpoint called');
+
     // Initialize Supabase client with service role key for admin access
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -258,40 +260,80 @@ async function handleSystemMaintenance(supabaseClient: any, trigger: Notificatio
 
 // Get target users based on criteria
 async function getTargetUsers(supabaseClient: any, trigger: NotificationTrigger): Promise<string[]> {
-  let query = supabaseClient.from('profiles').select('id, last_seen_at, subscription_status, role');
+  // If specific users are targeted, use those instead
+  if (trigger.target_users && trigger.target_users.length > 0) {
+    return trigger.target_users;
+  }
+
+  let query = supabaseClient.from('profiles').select('id, updated_at, last_seen_at, role');
 
   // Filter by roles
   if (trigger.target_roles && trigger.target_roles.length > 0) {
     query = query.in('role', trigger.target_roles);
   }
 
-  // Filter by subscription status
+  // Filter by subscription status - check user_subscriptions table
   if (trigger.target_subscription && trigger.target_subscription.length > 0) {
-    query = query.in('subscription_status', trigger.target_subscription);
-  }
+    // Join with user_subscriptions to check active subscriptions
+    const { data: activeUsers, error: subError } = await supabaseClient
+      .from('user_subscriptions')
+      .select('user_id')
+      .in('status', trigger.target_subscription)
+      .gt('end_date', new Date().toISOString());
 
-  // If specific users are targeted, use those instead
-  if (trigger.target_users && trigger.target_users.length > 0) {
-    return trigger.target_users;
+    if (subError) {
+      console.error('Error fetching subscription users:', subError);
+      return [];
+    }
+
+    const activeUserIds = activeUsers.map(u => u.user_id);
+    if (activeUserIds.length === 0) return [];
+
+    query = query.in('id', activeUserIds);
   }
 
   // Apply additional filtering based on target_criteria
   if (trigger.target_criteria) {
     const criteria = trigger.target_criteria;
 
-    // Filter by purchase history
+    // Filter by purchase history - check user_subscriptions table
     if (criteria.has_purchased && criteria.plan_id) {
-      query = query.not('subscription_plan_id', 'is', null);
-      if (criteria.plan_id !== 'any') {
-        query = query.eq('subscription_plan_id', criteria.plan_id);
+      const { data: purchasedUsers, error: purchaseError } = await supabaseClient
+        .from('user_subscriptions')
+        .select('user_id')
+        .eq('subscription_plan_id', criteria.plan_id);
+
+      if (purchaseError) {
+        console.error('Error fetching purchased users:', purchaseError);
+        return [];
       }
+
+      const purchasedUserIds = purchasedUsers.map(u => u.user_id);
+      if (purchasedUserIds.length === 0) return [];
+
+      query = query.in('id', purchasedUserIds);
     }
 
-    // Filter by activity level
+    // Filter by activity level (using last_seen_at if available, otherwise updated_at)
     if (criteria.inactive_days) {
       const daysAgo = new Date();
       daysAgo.setDate(daysAgo.getDate() - criteria.inactive_days);
-      query = query.or(`last_seen_at.is.null,last_seen_at.lt.${daysAgo.toISOString()}`);
+
+      // Use a complex filter to handle both last_seen_at and updated_at
+      const { data: users, error } = await query;
+      if (error) {
+        console.error('Error fetching users for activity filter:', error);
+        return [];
+      }
+
+      const activeUserIds = users
+        .filter(user => {
+          const lastActivity = user.last_seen_at ? new Date(user.last_seen_at) : new Date(user.updated_at);
+          return lastActivity < daysAgo;
+        })
+        .map(user => user.id);
+
+      return activeUserIds;
     }
 
     // Filter by content engagement
