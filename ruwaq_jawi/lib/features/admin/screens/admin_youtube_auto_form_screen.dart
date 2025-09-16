@@ -4,6 +4,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:io';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../widgets/admin_app_bar.dart';
@@ -565,6 +567,24 @@ class _AdminYouTubeAutoFormScreenState
     }
   }
 
+  Future<bool> _checkNetworkConnectivity() async {
+    try {
+      final connectivityResults = await Connectivity().checkConnectivity();
+
+      if (connectivityResults.contains(ConnectivityResult.none) ||
+          connectivityResults.isEmpty) {
+        return false;
+      }
+
+      // Additional DNS check
+      final result = await InternetAddress.lookup('supabase.co');
+      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+    } catch (e) {
+      print('Network connectivity check failed: $e');
+      return false;
+    }
+  }
+
   Future<void> _syncPlaylist() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -580,6 +600,24 @@ class _AdminYouTubeAutoFormScreenState
       print('Category ID: $_selectedCategoryId');
       print('Is Premium: $_isPremium');
       print('Is Active: $_isActive');
+
+      // Check network connectivity first
+      print('Checking network connectivity...');
+      final hasConnectivity = await _checkNetworkConnectivity();
+      if (!hasConnectivity) {
+        print('No network connectivity detected');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No internet connection. Please check your network and try again.'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+      print('Network connectivity confirmed');
 
       // Show loading dialog
       if (mounted) {
@@ -666,9 +704,8 @@ class _AdminYouTubeAutoFormScreenState
 
                 // Approve and publish the playlist
                 final approveResponse = await Supabase.instance.client.functions.invoke(
-                  'youtube-admin-tools',
+                  'youtube-admin-tools?action=approve_playlist',
                   body: {
-                    'action': 'approve_playlist',
                     'playlist_id': syncData['playlist_id'],
                   },
                 );
@@ -717,10 +754,9 @@ class _AdminYouTubeAutoFormScreenState
 
                 // Delete the synced playlist
                 final rejectResponse = await Supabase.instance.client.functions.invoke(
-                  'youtube-admin-tools',
+                  'youtube-admin-tools?action=delete-kitab',
                   body: {
-                    'action': 'delete_playlist',
-                    'playlist_id': syncData['playlist_id'],
+                    'kitab_id': syncData['playlist_id'],
                   },
                 );
 
@@ -774,11 +810,34 @@ class _AdminYouTubeAutoFormScreenState
         // Close loading dialog if open
         Navigator.of(context).pop();
 
+        // Provide user-friendly error messages based on error type
+        String userMessage;
+        if (e.toString().contains('Failed host lookup') ||
+            e.toString().contains('SocketException') ||
+            e.toString().contains('No address associated with hostname')) {
+          userMessage = 'Network connection error. Please check your internet connection and try again.';
+        } else if (e.toString().contains('timeout') ||
+                   e.toString().contains('TimeoutException')) {
+          userMessage = 'Request timed out. Please check your connection and try again.';
+        } else if (e.toString().contains('403') ||
+                   e.toString().contains('Forbidden')) {
+          userMessage = 'Access denied. Please check your permissions or try again later.';
+        } else if (e.toString().contains('404') ||
+                   e.toString().contains('Not Found')) {
+          userMessage = 'Service not found. Please try again later or contact support.';
+        } else if (e.toString().contains('500') ||
+                   e.toString().contains('Internal Server Error')) {
+          userMessage = 'Server error. Please try again later.';
+        } else {
+          userMessage = 'Error syncing playlist: ${e.toString()}';
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error syncing playlist: ${e.toString()}'),
+            content: Text(userMessage),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 6),
           ),
         );
       }
