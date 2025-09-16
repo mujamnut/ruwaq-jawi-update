@@ -23,18 +23,13 @@ jobs:
           # Check for new video content in the last 24 hours and send notifications
           echo "📹 Checking for new video content published in last 24 hours..."
           new_content_response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/notification-triggers" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/daily-notifications" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
             -H "x-client-info: github-cron-daily" \
             -d '{
-              "type": "daily_content_check",
-              "data": {
-                "check_hours": 24,
-                "content_types": ["video_kitab", "video_episodes", "ebooks"]
-              },
-              "target_roles": ["student"]
+              "check_hours": 24
             }')
 
           # Test subscription expiry notifications
@@ -53,40 +48,18 @@ jobs:
             -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json")
 
-          # Test general notification endpoint
-          echo "🧪 Testing notification-triggers function..."
-          response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/notification-triggers" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -H "x-client-info: github-actions" \
-            -d '{
-              "type": "admin_announcement",
-              "data": {
-                "title": "Test Notification from GitHub",
-                "message": "This is an automated test notification from GitHub Actions cron job",
-                "priority": "low"
-              },
-              "target_roles": ["admin"]
-            }')
+          # Extract and display content check results
+          content_http_code=$(echo "$new_content_response" | tail -n1)
+          content_response_body=$(echo "$new_content_response" | head -n -1)
 
-          # Extract HTTP status code (last line)
-          http_code=$(echo "$response" | tail -n1)
+          echo "📊 Content Check Response Code: $content_http_code"
+          echo "📄 Content Check Response: $content_response_body"
 
-          # Extract response body (all lines except last)
-          response_body=$(echo "$response" | head -n -1)
-
-          echo "📊 Response Code: $http_code"
-          echo "📄 Response Body: $response_body"
-
-          # Check if request was successful
-          if [ "$http_code" = "200" ]; then
-            echo "✅ Notification test completed successfully!"
-            echo "Response: $response_body"
+          if [ "$content_http_code" = "200" ]; then
+            echo "✅ New content check completed successfully!"
           else
-            echo "❌ Notification test failed with code: $http_code"
-            echo "Error details: $response_body"
+            echo "❌ New content check failed with code: $content_http_code"
+            echo "Error details: $content_response_body"
           fi
 
           echo "🏁 Notification test completed at $(date)"
