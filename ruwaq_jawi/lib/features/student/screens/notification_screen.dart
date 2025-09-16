@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import '../../../core/providers/notifications_provider.dart';
+import '../../../core/services/unified_notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -13,15 +14,44 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
+  List<UnifiedNotification> unifiedNotifications = [];
+  bool isLoadingUnified = true;
+  int unreadCount = 0;
+
   @override
   void initState() {
     super.initState();
-    // Load inbox on open
+    // Load both old and new notifications
+    _loadUnifiedNotifications();
+    _loadUnreadCount();
     Future.microtask(() => context.read<NotificationsProvider>().loadInbox());
   }
 
+  Future<void> _loadUnifiedNotifications() async {
+    setState(() => isLoadingUnified = true);
+    try {
+      final notifications = await UnifiedNotificationService.getNotifications(limit: 50);
+      setState(() {
+        unifiedNotifications = notifications;
+        isLoadingUnified = false;
+      });
+    } catch (e) {
+      setState(() => isLoadingUnified = false);
+      print('Error loading unified notifications: $e');
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final count = await UnifiedNotificationService.getUnreadCount();
+    setState(() => unreadCount = count);
+  }
+
   Future<void> _refresh() async {
-    await context.read<NotificationsProvider>().loadInbox();
+    await Future.wait([
+      _loadUnifiedNotifications(),
+      _loadUnreadCount(),
+      context.read<NotificationsProvider>().loadInbox(),
+    ]);
   }
 
   @override

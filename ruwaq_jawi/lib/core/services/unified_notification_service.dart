@@ -33,7 +33,7 @@ class UnifiedNotificationService {
           .from('user_notifications')
           .select('*')
           .or(
-            'user_id.eq.${user.id},' + // Individual notifications for this user
+            'user_id.eq.${user.id},' // Individual notifications for this user
             'and(user_id.eq.$globalUserId,metadata->>target_roles.cs.["$userRole"])' // Global notifications for user's role
           );
 
@@ -45,7 +45,6 @@ class UnifiedNotificationService {
           .order('delivered_at', ascending: false)
           .limit(limit);
 
-      if (response == null) return [];
 
       final List<UnifiedNotification> notifications = (response as List)
           .map((json) => UnifiedNotification.fromJson(json))
@@ -80,14 +79,14 @@ class UnifiedNotificationService {
 
       final response = await _supabase
           .from('user_notifications')
-          .select('id', const FetchOptions(count: CountOption.exact))
+          .select('id')
           .eq('status', 'unread')
           .or(
-            'user_id.eq.${user.id},' + // Individual unread
+            'user_id.eq.${user.id},' // Individual unread
             'and(user_id.eq.$globalUserId,metadata->>target_roles.cs.["$userRole"])' // Global unread
           );
 
-      return response.count ?? 0;
+      return (response as List).length;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error getting unread count: $e');
@@ -106,11 +105,13 @@ class UnifiedNotificationService {
       // For individual notifications, update the record directly
 
       // First check if it's a global notification
-      final { data: notification } = await _supabase
+      final notificationResponse = await _supabase
           .from('user_notifications')
           .select('user_id, metadata')
           .eq('id', notificationId)
           .single();
+
+      final notification = notificationResponse;
 
       if (notification['user_id'] == globalUserId) {
         // Global notification - create read tracking in metadata or separate tracking
@@ -131,7 +132,7 @@ class UnifiedNotificationService {
         // Individual notification - mark as read normally
         await _supabase
             .from('user_notifications')
-            .update({'status': 'read', 'read_at': DateTime.now().toIso8601String()})
+            .update({'status': 'read'})
             .eq('id', notificationId)
             .eq('user_id', user.id);
       }
@@ -162,14 +163,6 @@ class UnifiedNotificationService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return false;
-
-      final profileResponse = await _supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-      final userRole = profileResponse['role'] ?? 'student';
 
       // Get all notifications for processing
       final notifications = await getNotifications(unreadOnly: true);
@@ -226,16 +219,17 @@ class UnifiedNotificationService {
           ...(metadata ?? {})
         },
         'status': 'unread',
-        'delivery_status': 'delivered',
         'delivered_at': DateTime.now().toIso8601String(),
         'target_criteria': {
           'individual_notification': true,
         }
       };
 
-      final { error } = await _supabase
+      final response = await _supabase
           .from('user_notifications')
           .insert(notification);
+
+      final error = response.error;
 
       if (error != null) {
         throw Exception('Failed to create individual notification: ${error.message}');
@@ -253,11 +247,13 @@ class UnifiedNotificationService {
   /// Admin function: Get notification statistics
   static Future<NotificationStats?> getNotificationStats(String notificationId) async {
     try {
-      final { data: notification } = await _supabase
+      final notificationResponse = await _supabase
           .from('user_notifications')
           .select('user_id, metadata')
           .eq('id', notificationId)
           .single();
+
+      final notification = notificationResponse;
 
       if (notification['user_id'] == globalUserId) {
         // Global notification stats
