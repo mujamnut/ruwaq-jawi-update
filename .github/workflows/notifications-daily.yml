@@ -23,13 +23,14 @@ jobs:
           # Check for new video content in the last 24 hours and send notifications
           echo "📹 Checking for new video content published in last 24 hours..."
           new_content_response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/daily-notifications" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/smart-notifications" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
             -H "x-client-info: github-cron-daily" \
             -d '{
-              "check_hours": 24
+              "check_hours": 24,
+              "batch_mode": true
             }')
 
           # Test subscription expiry notifications

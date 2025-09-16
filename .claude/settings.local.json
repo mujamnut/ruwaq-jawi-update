@@ -22,7 +22,10 @@
       "mcp__supabase__get_anon_key",
       "mcp__supabase__list_extensions",
       "Bash(find:*)",
-      "Bash(del \"C:\\Users\\kumar\\OneDrive\\Desktop\\RUWAQ JAWI\\RUWAQ-JAWI-main\\ruwaq_jawi\\lib\\features\\admin\\screens\\admin_content_enhanced.dart\")"
+      "Bash(del \"C:\\Users\\kumar\\OneDrive\\Desktop\\RUWAQ JAWI\\RUWAQ-JAWI-main\\ruwaq_jawi\\lib\\features\\admin\\screens\\admin_content_enhanced.dart\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
