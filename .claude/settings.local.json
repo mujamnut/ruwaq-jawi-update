@@ -19,7 +19,10 @@
       "Bash(del test_youtube.dart)",
       "mcp__supabase__get_project_url",
       "Bash(curl:*)",
-      "mcp__supabase__get_anon_key"
+      "mcp__supabase__get_anon_key",
+      "mcp__supabase__list_extensions",
+      "Bash(find:*)",
+      "Bash(del \"C:\\Users\\kumar\\OneDrive\\Desktop\\RUWAQ JAWI\\RUWAQ-JAWI-main\\ruwaq_jawi\\lib\\features\\admin\\screens\\admin_content_enhanced.dart\")"
     ],
     "deny": [],
     "ask": []

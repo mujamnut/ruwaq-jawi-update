@@ -23,13 +23,14 @@ class AdminVideoKitabFormScreen extends StatefulWidget {
   final VideoKitab? videoKitab; // data untuk edit
 
   const AdminVideoKitabFormScreen({
-    super.key, 
-    this.videoKitabId, 
-    this.videoKitab
+    super.key,
+    this.videoKitabId,
+    this.videoKitab,
   });
 
   @override
-  State<AdminVideoKitabFormScreen> createState() => _AdminVideoKitabFormScreenState();
+  State<AdminVideoKitabFormScreen> createState() =>
+      _AdminVideoKitabFormScreenState();
 }
 
 class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
@@ -39,7 +40,6 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
   final _authorController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _totalPagesController = TextEditingController();
-  final _sortOrderController = TextEditingController();
 
   late AdminCategoryService _categoryService;
   late TabController _tabController;
@@ -55,19 +55,20 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
   List<Map<String, dynamic>> _categories = [];
   List<VideoEpisode> _episodes = [];
-  
+
   // Track the current video kitab ID (can be updated when creating new kitab)
   String? _currentVideoKitabId;
 
   bool get _isEditing => widget.videoKitabId != null;
-  String? get _effectiveVideoKitabId => _currentVideoKitabId ?? widget.videoKitabId;
+  String? get _effectiveVideoKitabId =>
+      _currentVideoKitabId ?? widget.videoKitabId;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _categoryService = AdminCategoryService(SupabaseService.client);
-    
+
     // Initialize current video kitab ID
     _currentVideoKitabId = widget.videoKitabId;
 
@@ -76,8 +77,8 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
   Future<void> _loadInitialData() async {
     await Future.wait([
-      _loadCategories(), 
-      if (_isEditing) _loadVideoKitabData()
+      _loadCategories(),
+      if (_isEditing) _loadVideoKitabData(),
     ]);
   }
 
@@ -101,7 +102,6 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       _authorController.text = data.author ?? '';
       _descriptionController.text = data.description ?? '';
       _totalPagesController.text = data.totalPages?.toString() ?? '';
-      _sortOrderController.text = data.sortOrder.toString();
       _selectedCategoryId = data.categoryId;
       _isPremium = data.isPremium;
       _isActive = data.isActive;
@@ -123,7 +123,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       });
       return;
     }
-    
+
     try {
       final episodes = await VideoEpisodeService.getEpisodesForVideoKitab(
         videoKitabId,
@@ -148,13 +148,12 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     _authorController.dispose();
     _descriptionController.dispose();
     _totalPagesController.dispose();
-    _sortOrderController.dispose();
     _tabController.dispose();
     super.dispose();
   }
 
   // =====================================================
-  // HELPER METHODS 
+  // HELPER METHODS
   // =====================================================
 
   // YouTube helper methods
@@ -173,16 +172,19 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
       // Call YouTube Data API to get video duration
       final url = YouTubeApiConfig.getVideoDetailsUrl(videoId);
-      
+
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['items'] != null && data['items'].isNotEmpty) {
           final duration = data['items'][0]['contentDetails']['duration'];
           final durationInMinutes = _parseDurationToMinutes(duration);
-          
+
           // Update duration field if found in episode form
-          _showSnackBar('Durasi video: $durationInMinutes minit', isError: false);
+          _showSnackBar(
+            'Durasi video: $durationInMinutes minit',
+            isError: false,
+          );
         }
       }
     } catch (e) {
@@ -198,7 +200,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       RegExp(r'(?:youtu\.be/)([a-zA-Z0-9_-]{11})'),
       RegExp(r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})'),
     ];
-    
+
     for (final pattern in patterns) {
       final match = pattern.firstMatch(url);
       if (match != null) {
@@ -212,13 +214,15 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     // Parse ISO 8601 duration format (PT#M#S)
     final regex = RegExp(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?');
     final match = regex.firstMatch(duration);
-    
+
     if (match != null) {
       final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
       final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
       final seconds = int.tryParse(match.group(3) ?? '0') ?? 0;
-      
-      return hours * 60 + minutes + (seconds > 0 ? 1 : 0); // Round up if has seconds
+
+      return hours * 60 +
+          minutes +
+          (seconds > 0 ? 1 : 0); // Round up if has seconds
     }
     return 0;
   }
@@ -229,17 +233,20 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       // Use pdfx package to read PDF and get page count
       final document = await pdfx.PdfDocument.openFile(pdfFile.path);
       final pageCount = document.pagesCount;
-      
+
       setState(() {
         _totalPagesController.text = pageCount.toString();
       });
-      
+
       _showSnackBar('Jumlah halaman PDF: $pageCount', isError: false);
-      
+
       // Close the document to free memory
       await document.close();
     } catch (e) {
-      _showSnackBar('Tidak dapat mengira halaman PDF secara automatik. Sila masukkan secara manual.', isError: false);
+      _showSnackBar(
+        'Tidak dapat mengira halaman PDF secara automatik. Sila masukkan secara manual.',
+        isError: false,
+      );
     }
   }
 
@@ -248,7 +255,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(_isEditing ? 'Edit Video Kitab' : 'Tambah Video Kitab Baru'),
+        title: Text(
+          _isEditing ? 'Edit Video Kitab' : 'Tambah Video Kitab Baru',
+        ),
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
         actions: [
@@ -268,12 +277,12 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             )
           else
             TextButton(
-              onPressed: _currentVideoKitabId != null && !_isEditing 
-                  ? () => Navigator.of(context).pop(true) 
+              onPressed: _currentVideoKitabId != null && !_isEditing
+                  ? () => Navigator.of(context).pop(true)
                   : _saveVideoKitab,
               child: Text(
-                _currentVideoKitabId != null && !_isEditing 
-                    ? 'Selesai' 
+                _currentVideoKitabId != null && !_isEditing
+                    ? 'Selesai'
                     : (_isEditing ? 'Kemaskini' : 'Simpan'),
                 style: const TextStyle(
                   color: Colors.white,
@@ -288,19 +297,33 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           tabs: const [
-            Tab(text: 'Maklumat Asas', icon: HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.grey)),
-            Tab(text: 'Media', icon: HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.grey)),
-            Tab(text: 'Episode', icon: HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: Colors.grey)),
+            Tab(
+              text: 'Maklumat Asas',
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedInformationCircle,
+                color: Colors.grey,
+              ),
+            ),
+            Tab(
+              text: 'Media',
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedImage01,
+                color: Colors.grey,
+              ),
+            ),
+            Tab(
+              text: 'Episode',
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedVideo01,
+                color: Colors.grey,
+              ),
+            ),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildBasicInfoTab(),
-          _buildMediaTab(),
-          _buildEpisodeTab(),
-        ],
+        children: [_buildBasicInfoTab(), _buildMediaTab(), _buildEpisodeTab()],
       ),
     );
   }
@@ -321,7 +344,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Tajuk Video Kitab *',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
+                prefixIcon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedAlignLeft,
+                  color: Colors.grey,
+                ),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
@@ -339,7 +365,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Pengarang',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.grey),
+                prefixIcon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedUser,
+                  color: Colors.grey,
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -350,7 +379,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Kategori *',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedGrid, color: Colors.grey),
+                prefixIcon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedGrid,
+                  color: Colors.grey,
+                ),
               ),
               items: _categories.map((category) {
                 return DropdownMenuItem<String>(
@@ -378,7 +410,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Penerangan',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
+                prefixIcon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedFile01,
+                  color: Colors.grey,
+                ),
                 alignLabelWithHint: true,
               ),
               maxLines: 4,
@@ -398,7 +433,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               ),
               child: Row(
                 children: [
-                  const HugeIcon(icon: HugeIcons.strokeRoundedStar, color: Colors.amber),
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedStar,
+                    color: Colors.amber,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -406,15 +444,15 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                       children: [
                         Text(
                           'Status Premium',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          _isPremium ? 'Video kitab premium' : 'Video kitab percuma',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          _isPremium
+                              ? 'Video kitab premium'
+                              : 'Video kitab percuma',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                       ],
                     ),
@@ -443,7 +481,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               child: Row(
                 children: [
                   Icon(
-                    _isActive ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
+                    _isActive
+                        ? HugeIcons.strokeRoundedView
+                        : HugeIcons.strokeRoundedViewOff,
                     color: _isActive ? Colors.green : Colors.grey,
                   ),
                   const SizedBox(width: 12),
@@ -453,15 +493,15 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                       children: [
                         Text(
                           'Status Aktif',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         Text(
-                          _isActive ? 'Ditunjukkan kepada pengguna' : 'Tersembunyi dari pengguna',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          _isActive
+                              ? 'Ditunjukkan kepada pengguna'
+                              : 'Tersembunyi dari pengguna',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                       ],
                     ),
@@ -480,26 +520,6 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             ),
             const SizedBox(height: 16),
 
-            // Sort Order Field
-            TextFormField(
-              controller: _sortOrderController,
-              decoration: const InputDecoration(
-                labelText: 'Urutan Paparan',
-                border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSortingAZ01, color: Colors.grey),
-                hintText: 'Contoh: 1, 2, 3... (semakin kecil, semakin atas)',
-              ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  final intValue = int.tryParse(value);
-                  if (intValue == null) {
-                    return 'Sila masukkan nombor yang sah';
-                  }
-                }
-                return null;
-              },
-            ),
             const SizedBox(height: 24),
           ],
         ),
@@ -540,14 +560,19 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               Expanded(
                 child: Text(
                   'Episode Video (${_episodes.length})',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               ElevatedButton.icon(
-                onPressed: _effectiveVideoKitabId != null ? _addNewEpisode : null,
-                icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlusSign, color: Colors.white),
+                onPressed: _effectiveVideoKitabId != null
+                    ? _addNewEpisode
+                    : null,
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedPlusSign,
+                  color: Colors.white,
+                ),
                 label: const Text('Tambah Episode'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
@@ -557,7 +582,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             ],
           ),
         ),
-        
+
         // Episodes List
         Expanded(
           child: _episodes.isEmpty
@@ -618,18 +643,21 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         children: [
           Row(
             children: [
-              const HugeIcon(icon: HugeIcons.strokeRoundedImage01, color: Colors.blue),
+              const HugeIcon(
+                icon: HugeIcons.strokeRoundedImage01,
+                color: Colors.blue,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Gambar Kecil Video Kitab',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Current thumbnail preview
           if (_selectedThumbnail != null || _thumbnailUrl != null) ...[
             Container(
@@ -644,8 +672,12 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 child: _selectedThumbnail != null
                     ? Image.file(_selectedThumbnail!, fit: BoxFit.cover)
                     : (_thumbnailUrl != null
-                        ? Image.network(_thumbnailUrl!, fit: BoxFit.cover)
-                        : const HugeIcon(icon: HugeIcons.strokeRoundedImage01, size: 48, color: Colors.grey)),
+                          ? Image.network(_thumbnailUrl!, fit: BoxFit.cover)
+                          : const HugeIcon(
+                              icon: HugeIcons.strokeRoundedImage01,
+                              size: 48,
+                              color: Colors.grey,
+                            )),
               ),
             ),
             const SizedBox(height: 12),
@@ -656,7 +688,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             children: [
               ElevatedButton.icon(
                 onPressed: _pickThumbnailImage,
-                icon: const HugeIcon(icon: HugeIcons.strokeRoundedUpload01, color: Colors.white),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedUpload01,
+                  color: Colors.white,
+                ),
                 label: const Text('Pilih Gambar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.secondaryColor,
@@ -667,8 +702,14 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _removeThumbnail,
-                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedDelete01, color: Colors.red),
-                  label: const Text('Buang', style: TextStyle(color: Colors.red)),
+                  icon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedDelete01,
+                    color: Colors.red,
+                  ),
+                  label: const Text(
+                    'Buang',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ],
             ],
@@ -690,13 +731,16 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         children: [
           Row(
             children: [
-              const HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.red),
+              const HugeIcon(
+                icon: HugeIcons.strokeRoundedPdf01,
+                color: Colors.red,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Dokumen PDF',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -712,7 +756,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               ),
               child: Row(
                 children: [
-                  const HugeIcon(icon: HugeIcons.strokeRoundedPdf01, color: Colors.red),
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedPdf01,
+                    color: Colors.red,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -728,10 +775,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                     ),
                   ),
                   if (_pdfUrl != null)
-                    TextButton(
-                      onPressed: _openPdf,
-                      child: const Text('Lihat'),
-                    ),
+                    TextButton(onPressed: _openPdf, child: const Text('Lihat')),
                 ],
               ),
             ),
@@ -744,9 +788,13 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             decoration: const InputDecoration(
               labelText: 'Jumlah Halaman PDF',
               border: OutlineInputBorder(),
-              prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
+              prefixIcon: const HugeIcon(
+                icon: HugeIcons.strokeRoundedFile01,
+                color: Colors.grey,
+              ),
               hintText: 'Auto-dikesan apabila PDF dipilih',
-              helperText: 'Akan cuba mengesan bilangan halaman secara automatik',
+              helperText:
+                  'Akan cuba mengesan bilangan halaman secara automatik',
             ),
             keyboardType: TextInputType.number,
             validator: (value) {
@@ -766,7 +814,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             children: [
               ElevatedButton.icon(
                 onPressed: _pickPdfFile,
-                icon: const HugeIcon(icon: HugeIcons.strokeRoundedUpload01, color: Colors.white),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedUpload01,
+                  color: Colors.white,
+                ),
                 label: const Text('Pilih PDF'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
@@ -777,8 +828,14 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 const SizedBox(width: 8),
                 TextButton.icon(
                   onPressed: _removePdf,
-                  icon: const HugeIcon(icon: HugeIcons.strokeRoundedDelete01, color: Colors.red),
-                  label: const Text('Buang', style: TextStyle(color: Colors.red)),
+                  icon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedDelete01,
+                    color: Colors.red,
+                  ),
+                  label: const Text(
+                    'Buang',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ),
               ],
             ],
@@ -793,23 +850,32 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: episode.isActive ? AppTheme.primaryColor : Colors.grey,
+          backgroundColor: episode.isActive
+              ? AppTheme.primaryColor
+              : Colors.grey,
           child: Text(
             episode.partNumber.toString(),
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         title: Text(
           episode.title,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            color: episode.isActive ? AppTheme.textPrimaryColor : AppTheme.textSecondaryColor,
+            color: episode.isActive
+                ? AppTheme.textPrimaryColor
+                : AppTheme.textSecondaryColor,
           ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${episode.durationMinutes} minit${episode.isActive ? '' : ' • Tidak aktif'}'),
+            Text(
+              '${episode.durationMinutes} minit${episode.isActive ? '' : ' • Tidak aktif'}',
+            ),
             if (episode.isPreview)
               Container(
                 margin: const EdgeInsets.only(top: 4),
@@ -833,7 +899,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlayCircle, color: Colors.blue),
+              icon: const HugeIcon(
+                icon: HugeIcons.strokeRoundedPlayCircle,
+                color: Colors.blue,
+              ),
               onPressed: () => _previewEpisode(episode),
               tooltip: 'Preview video',
             ),
@@ -844,7 +913,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                   value: 'edit',
                   child: Row(
                     children: [
-                      HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.blue),
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedEdit01,
+                        color: Colors.blue,
+                      ),
                       SizedBox(width: 8),
                       Text('Edit'),
                     ],
@@ -854,7 +926,11 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                   value: episode.isActive ? 'deactivate' : 'activate',
                   child: Row(
                     children: [
-                      Icon(episode.isActive ? HugeIcons.strokeRoundedViewOff : HugeIcons.strokeRoundedView),
+                      Icon(
+                        episode.isActive
+                            ? HugeIcons.strokeRoundedViewOff
+                            : HugeIcons.strokeRoundedView,
+                      ),
                       SizedBox(width: 8),
                       Text(episode.isActive ? 'Nyahaktif' : 'Aktifkan'),
                     ],
@@ -879,7 +955,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
   }
 
   void _previewEpisode(VideoEpisode episode) async {
-    final youtubeUrl = VideoEpisodeService.getYouTubeWatchUrl(episode.youtubeVideoId);
+    final youtubeUrl = VideoEpisodeService.getYouTubeWatchUrl(
+      episode.youtubeVideoId,
+    );
     final uri = Uri.parse(youtubeUrl);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
@@ -927,7 +1005,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           _selectedPdf = pdfFile;
           _pdfUrl = null; // Clear existing URL when new file is selected
         });
-        
+
         // Auto-detect PDF page count
         await _detectPdfPageCount(pdfFile);
       }
@@ -966,24 +1044,29 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
   void _addNewEpisode() {
     final videoKitabId = _effectiveVideoKitabId;
     if (videoKitabId == null) {
-      _showSnackBar('Sila simpan video kitab terlebih dahulu sebelum menambah episode', isError: true);
+      _showSnackBar(
+        'Sila simpan video kitab terlebih dahulu sebelum menambah episode',
+        isError: true,
+      );
       return;
     }
-    
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => AdminEpisodeFormScreen(
-          videoKitabId: videoKitabId,
-          videoKitabTitle: _titleController.text.trim().isEmpty 
-              ? 'Video Kitab' 
-              : _titleController.text.trim(),
-        ),
-      ),
-    ).then((result) {
-      if (result == true) {
-        _loadEpisodes(); // Refresh episodes list
-      }
-    });
+
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute(
+            builder: (context) => AdminEpisodeFormScreen(
+              videoKitabId: videoKitabId,
+              videoKitabTitle: _titleController.text.trim().isEmpty
+                  ? 'Video Kitab'
+                  : _titleController.text.trim(),
+            ),
+          ),
+        )
+        .then((result) {
+          if (result == true) {
+            _loadEpisodes(); // Refresh episodes list
+          }
+        });
   }
 
   void _handleEpisodeAction(VideoEpisode episode, String action) async {
@@ -991,27 +1074,32 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       case 'edit':
         final videoKitabId = _effectiveVideoKitabId;
         if (videoKitabId == null) return;
-        
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => AdminEpisodeFormScreen(
-              videoKitabId: videoKitabId,
-              episode: episode,
-              videoKitabTitle: _titleController.text.trim().isEmpty 
-                  ? 'Video Kitab' 
-                  : _titleController.text.trim(),
-            ),
-          ),
-        ).then((result) {
-          if (result == true) {
-            _loadEpisodes();
-          }
-        });
+
+        Navigator.of(context)
+            .push(
+              MaterialPageRoute(
+                builder: (context) => AdminEpisodeFormScreen(
+                  videoKitabId: videoKitabId,
+                  episode: episode,
+                  videoKitabTitle: _titleController.text.trim().isEmpty
+                      ? 'Video Kitab'
+                      : _titleController.text.trim(),
+                ),
+              ),
+            )
+            .then((result) {
+              if (result == true) {
+                _loadEpisodes();
+              }
+            });
         break;
       case 'activate':
       case 'deactivate':
         try {
-          await VideoEpisodeService.toggleEpisodeStatus(episode.id, !episode.isActive);
+          await VideoEpisodeService.toggleEpisodeStatus(
+            episode.id,
+            !episode.isActive,
+          );
           _showSnackBar('Status episode berjaya dikemaskini');
           _loadEpisodes();
         } catch (e) {
@@ -1023,7 +1111,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Padam Episode'),
-            content: Text('Adakah anda pasti untuk memadam episode "${episode.title}"?'),
+            content: Text(
+              'Adakah anda pasti untuk memadam episode "${episode.title}"?',
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(false),
@@ -1037,7 +1127,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             ],
           ),
         );
-        
+
         if (confirmed == true) {
           try {
             await VideoEpisodeService.deleteEpisode(episode.id);
@@ -1071,50 +1161,56 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       String? uploadedPdfUrl = _pdfUrl;
       String? uploadedPdfStoragePath;
       int? uploadedPdfFileSize;
-      
+
       print('DEBUG: Starting file upload process...');
-      
+
       // Upload thumbnail if new file selected
       if (_selectedThumbnail != null) {
         try {
           print('DEBUG: Starting thumbnail upload...');
-          final fileName = 'video_kitab_thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final fileName =
+              'video_kitab_thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final storagePath = 'thumbnails/$fileName';
-          
+
           print('DEBUG: Uploading thumbnail to: $storagePath');
           await SupabaseService.client.storage
               .from('video-kitab-files')
               .upload(storagePath, _selectedThumbnail!);
-          
+
           uploadedThumbnailUrl = SupabaseService.client.storage
               .from('video-kitab-files')
               .getPublicUrl(storagePath);
-          print('DEBUG: Thumbnail uploaded successfully: $uploadedThumbnailUrl');
+          print(
+            'DEBUG: Thumbnail uploaded successfully: $uploadedThumbnailUrl',
+          );
         } catch (e) {
           print('DEBUG: Thumbnail upload error: $e');
           _showSnackBar('Ralat upload thumbnail: $e', isError: true);
           // Don't stop execution - continue with PDF upload
         }
       }
-      
+
       // Upload PDF if new file selected
       if (_selectedPdf != null) {
         try {
           print('DEBUG: Starting PDF upload...');
-          final fileName = 'video_kitab_${DateTime.now().millisecondsSinceEpoch}.pdf';
+          final fileName =
+              'video_kitab_${DateTime.now().millisecondsSinceEpoch}.pdf';
           final storagePath = 'pdfs/$fileName';
-          
+
           print('DEBUG: Uploading PDF to: $storagePath');
           await SupabaseService.client.storage
               .from('video-kitab-files')
               .upload(storagePath, _selectedPdf!);
-          
+
           uploadedPdfUrl = SupabaseService.client.storage
               .from('video-kitab-files')
               .getPublicUrl(storagePath);
           uploadedPdfStoragePath = storagePath;
           uploadedPdfFileSize = await _selectedPdf!.length();
-          print('DEBUG: PDF uploaded successfully: $uploadedPdfUrl, Size: $uploadedPdfFileSize bytes');
+          print(
+            'DEBUG: PDF uploaded successfully: $uploadedPdfUrl, Size: $uploadedPdfFileSize bytes',
+          );
         } catch (e) {
           print('DEBUG: PDF upload error: $e');
           _showSnackBar('Ralat upload PDF: $e', isError: true);
@@ -1125,23 +1221,20 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       print('DEBUG: Preparing video kitab data...');
       final videoKitabData = {
         'title': _titleController.text.trim(),
-        'author': _authorController.text.trim().isEmpty 
-            ? null 
+        'author': _authorController.text.trim().isEmpty
+            ? null
             : _authorController.text.trim(),
-        'description': _descriptionController.text.trim().isEmpty 
-            ? null 
+        'description': _descriptionController.text.trim().isEmpty
+            ? null
             : _descriptionController.text.trim(),
         'category_id': _selectedCategoryId,
         'thumbnail_url': uploadedThumbnailUrl,
         'pdf_url': uploadedPdfUrl,
         'pdf_storage_path': uploadedPdfStoragePath,
         'pdf_file_size': uploadedPdfFileSize,
-        'total_pages': _totalPagesController.text.trim().isEmpty 
-            ? null 
+        'total_pages': _totalPagesController.text.trim().isEmpty
+            ? null
             : int.tryParse(_totalPagesController.text.trim()),
-        'sort_order': _sortOrderController.text.trim().isEmpty 
-            ? 0 
-            : int.tryParse(_sortOrderController.text.trim()) ?? 0,
         'is_premium': _isPremium,
         'is_active': _isActive,
       };
@@ -1149,8 +1242,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
       if (_isEditing) {
         // Update existing video kitab
-        print('DEBUG: Updating existing video kitab with ID: ${widget.videoKitabId}');
-        await VideoKitabService.updateVideoKitab(
+        print(
+          'DEBUG: Updating existing video kitab with ID: ${widget.videoKitabId}',
+        );
+        await VideoKitabService.updateVideoKitabAdmin(
           widget.videoKitabId!,
           videoKitabData,
         );
@@ -1159,16 +1254,20 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       } else {
         // Create new video kitab
         print('DEBUG: Creating new video kitab...');
-        final createdVideoKitab = await VideoKitabService.createVideoKitab(videoKitabData);
+        final createdVideoKitab = await VideoKitabService.createVideoKitab(
+          videoKitabData,
+        );
         print('DEBUG: Created video kitab with ID: ${createdVideoKitab.id}');
-        
+
         // Update our state with the new video kitab ID so episodes can be managed
         setState(() {
           _currentVideoKitabId = createdVideoKitab.id;
         });
-        
-        _showSnackBar('Video Kitab baru berjaya ditambah! Anda kini boleh menambah episode.');
-        
+
+        _showSnackBar(
+          'Video Kitab baru berjaya ditambah! Anda kini boleh menambah episode.',
+        );
+
         // Don't pop immediately for new video kitabs - allow user to add episodes
         return;
       }
@@ -1179,7 +1278,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     } catch (e) {
       print('DEBUG: Save error: $e');
       print('DEBUG: Error type: ${e.runtimeType}');
-      _showSnackBar('Ralat menyimpan video kitab: ${e.toString()}', isError: true);
+      _showSnackBar(
+        'Ralat menyimpan video kitab: ${e.toString()}',
+        isError: true,
+      );
     } finally {
       print('DEBUG: Save operation completed, setting loading to false');
       setState(() {

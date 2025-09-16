@@ -21,7 +21,7 @@ import '../../features/student/screens/ebook_screen.dart';
 import '../../features/student/screens/ebook_detail_screen.dart';
 import '../../features/student/screens/preview_video_player_screen.dart';
 import '../../features/admin/screens/admin_dashboard_screen.dart';
-import '../../features/admin/screens/admin_content_enhanced.dart';
+import '../../features/admin/screens/admin_video_list_screen.dart';
 import '../../features/admin/screens/admin_search_screen.dart';
 import '../../features/admin/screens/admin_users_screen.dart';
 import '../../features/admin/screens/admin_user_detail_screen.dart';
@@ -339,7 +339,7 @@ class AppRouter {
         GoRoute(
           path: '/admin/content',
           name: 'admin-content',
-          builder: (context, state) => const AdminContentEnhanced(),
+          builder: (context, state) => const AdminVideoListScreen(),
         ),
         GoRoute(
           path: '/admin/search',

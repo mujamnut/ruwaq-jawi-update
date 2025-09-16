@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/kitab.dart';
-import '../../../core/services/admin_kitab_service.dart';
-import '../../../core/services/admin_video_service.dart';
-import '../../../core/services/supabase_service.dart';
+import '../../../core/services/video_kitab_service.dart';
+import '../../../core/services/video_episode_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminKitabDetailScreen extends StatefulWidget {
@@ -21,8 +20,7 @@ class AdminKitabDetailScreen extends StatefulWidget {
 }
 
 class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
-  late final AdminKitabService _kitabService;
-  late final AdminVideoService _videoService;
+  // Using static methods from VideoKitabService and VideoEpisodeService
   
   Kitab? _kitab;
   String? _previewVideoId;
@@ -41,8 +39,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _kitabService = AdminKitabService(SupabaseService.client);
-    _videoService = AdminVideoService(SupabaseService.client);
+    // Services are now static methods
     _loadKitabDetail();
   }
 
@@ -60,8 +57,11 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       setState(() => _isLoading = true);
       
       // Load kitab data
-      final kitabData = await _kitabService.getKitabById(widget.kitabId);
-      _kitab = Kitab.fromJson(kitabData);
+      final videoKitab = await VideoKitabService.getVideoKitabById(widget.kitabId);
+      if (videoKitab == null) {
+        throw Exception('Kitab tidak dijumpai');
+      }
+      _kitab = Kitab.fromJson(videoKitab.toJson());
       
       // Load preview video
       if (_kitab?.youtubeVideoUrl != null) {
@@ -70,11 +70,12 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       }
       
       // Load episodes
-      _episodes = await _videoService.getKitabEpisodes(
-        kitabId: widget.kitabId,
+      final episodesList = await VideoEpisodeService.getEpisodesForVideoKitab(
+        widget.kitabId,
         orderBy: 'part_number',
         ascending: true,
       );
+      _episodes = episodesList.map((e) => e.toJson()).toList();
       
       // Setup episode controllers
       _setupEpisodeControllers();
@@ -105,54 +106,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     }
   }
 
-  String? _extractYouTubeVideoId(String input) {
-    final trimmed = input.trim();
-    
-    // Check if already a video ID (11 characters, alphanumeric and - and _ only, no spaces or special chars)
-    final idRegex = RegExp(r'^[A-Za-z0-9_-]{11}$');
-    if (idRegex.hasMatch(trimmed)) return trimmed;
 
-    Uri? uri;
-    try {
-      uri = Uri.parse(trimmed);
-    } catch (_) {
-      return null;
-    }
-    
-    if (uri.host.isEmpty) return null;
-
-    final host = uri.host.replaceFirst('www.', '');
-    final segs = uri.pathSegments;
-
-    String? extractedId;
-    
-    // youtu.be/VIDEO_ID format
-    if (host == 'youtu.be') {
-      extractedId = segs.isNotEmpty ? segs.first : null;
-    }
-    // youtube.com formats
-    else if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
-      // Watch URL: /watch?v=VIDEO_ID
-      if (uri.path == '/watch' && uri.queryParameters.containsKey('v')) {
-        extractedId = uri.queryParameters['v'];
-      }
-      // Embed/shorts/live: /embed/VIDEO_ID, /shorts/VIDEO_ID, /live/VIDEO_ID
-      else if (segs.length >= 2 && 
-          (segs[0] == 'embed' || segs[0] == 'shorts' || segs[0] == 'live' || segs[0] == 'v')) {
-        extractedId = segs[1];
-      }
-    }
-    
-    // Validate extracted ID (must be exactly 11 characters)
-    if (extractedId != null && idRegex.hasMatch(extractedId)) {
-      return extractedId;
-    }
-    
-    return null;
-  }
-
-  String _defaultThumbnailFor(String id) => 
-      'https://img.youtube.com/vi/$id/hqdefault.jpg';
+  String _defaultThumbnailFor(String id) =>
+      VideoEpisodeService.getYouTubeThumbnailUrl(id);
 
   void _addNewEpisode() {
     setState(() {
@@ -180,40 +136,39 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       String? previewVideoUrl = _previewUrlController.text.trim();
       
       if (previewVideoUrl.isNotEmpty) {
-        previewVideoId = _extractYouTubeVideoId(previewVideoUrl);
+        previewVideoId = VideoEpisodeService.extractYouTubeVideoId(previewVideoUrl);
         if (previewVideoId == null) {
           throw Exception('URL preview video tidak sah');
         }
       }
       
       // Update kitab with preview video
-      await _kitabService.updateKitab(
-        kitabId: widget.kitabId,
-        youtubeVideoId: previewVideoId,
-        youtubeVideoUrl: previewVideoUrl.isEmpty ? null : previewVideoUrl,
-      );
+      await VideoKitabService.updateVideoKitabAdmin(widget.kitabId, {
+        'youtube_video_id': previewVideoId,
+        'youtube_video_url': previewVideoUrl.isEmpty ? null : previewVideoUrl,
+      });
       
       // Clear existing episodes
       for (final episode in _episodes) {
-        await _videoService.deleteEpisode(episode['id']);
+        await VideoEpisodeService.deleteEpisode(episode['id']);
       }
       
       // Save new episodes
       for (int i = 0; i < _episodeControllers.length; i++) {
         final url = _episodeControllers[i].text.trim();
         if (url.isNotEmpty) {
-          final videoId = _extractYouTubeVideoId(url);
+          final videoId = VideoEpisodeService.extractYouTubeVideoId(url);
           if (videoId != null) {
-            await _videoService.addEpisode(
-              kitabId: widget.kitabId,
-              title: '${_kitab!.title} - Episode ${i + 1}',
-              youtubeVideoId: videoId,
-              youtubeVideoUrl: url,
-              thumbnailUrl: _defaultThumbnailFor(videoId),
-              partNumber: i + 1,
-              isPreview: !_episodePremiumFlags[i], // Invert: true = free, false = premium
-              isActive: true,
-            );
+            await VideoEpisodeService.createEpisode({
+              'video_kitab_id': widget.kitabId,
+              'title': '${_kitab!.title} - Episode ${i + 1}',
+              'youtube_video_id': videoId,
+              'youtube_video_url': url,
+              'thumbnail_url': _defaultThumbnailFor(videoId),
+              'part_number': i + 1,
+              'is_preview': !_episodePremiumFlags[i], // Invert: true = free, false = premium
+              'is_active': true,
+            });
           }
         }
       }
@@ -440,7 +395,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               maxLines: 2,
               onChanged: (value) {
                 setState(() {
-                  _previewVideoId = _extractYouTubeVideoId(value.trim());
+                  _previewVideoId = VideoEpisodeService.extractYouTubeVideoId(value.trim());
                 });
               },
             ),
@@ -651,7 +606,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   Widget _buildEpisodeCard(int index) {
     final controller = _episodeControllers[index];
     final isPremium = _episodePremiumFlags[index];
-    final videoId = _extractYouTubeVideoId(controller.text);
+    final videoId = VideoEpisodeService.extractYouTubeVideoId(controller.text);
     
     return Container(
       margin: const EdgeInsets.only(bottom: 16),

@@ -21,7 +21,7 @@ class VideoKitabService {
           .select('''
             id, title, author, description, category_id, pdf_url,
             pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-            total_videos, total_duration_minutes, is_premium, sort_order, 
+            total_videos, total_duration_minutes, is_premium,
             is_active, views_count, created_at, updated_at,
             categories(id, name)
           ''');
@@ -32,7 +32,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -44,7 +44,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -55,7 +55,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -66,7 +66,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -77,7 +77,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -87,7 +87,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -97,7 +97,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -110,7 +110,7 @@ class VideoKitabService {
             .select('''
               id, title, author, description, category_id, pdf_url,
               pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-              total_videos, total_duration_minutes, is_premium, sort_order,
+              total_videos, total_duration_minutes, is_premium,
               is_active, views_count, created_at, updated_at,
               categories(id, name)
             ''')
@@ -148,7 +148,7 @@ class VideoKitabService {
           .select('''
             id, title, author, description, category_id, pdf_url,
             pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-            total_videos, total_duration_minutes, is_premium, sort_order,
+            total_videos, total_duration_minutes, is_premium,
             is_active, views_count, created_at, updated_at,
             categories(id, name)
           ''')
@@ -171,7 +171,6 @@ class VideoKitabService {
         'updated_at': DateTime.now().toIso8601String(),
         'is_active': kitabData['is_active'] ?? true,
         'is_premium': kitabData['is_premium'] ?? true,
-        'sort_order': kitabData['sort_order'] ?? 0,
         'total_videos': kitabData['total_videos'] ?? 0,
         'total_duration_minutes': kitabData['total_duration_minutes'] ?? 0,
         'views_count': 0,
@@ -182,7 +181,7 @@ class VideoKitabService {
           .select('''
             id, title, author, description, category_id, pdf_url,
             pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-            total_videos, total_duration_minutes, is_premium, sort_order,
+            total_videos, total_duration_minutes, is_premium,
             is_active, views_count, created_at, updated_at,
             categories(id, name)
           ''')
@@ -197,8 +196,26 @@ class VideoKitabService {
   // Update video kitab
   static Future<VideoKitab> updateVideoKitab(String id, Map<String, dynamic> updates) async {
     try {
+      // Clean the updates data to remove any null values or invalid fields
+      final cleanedUpdates = <String, dynamic>{};
+
+      // Only include valid fields that exist in the table
+      final validFields = [
+        'title', 'author', 'description', 'category_id', 'pdf_url',
+        'pdf_storage_path', 'pdf_file_size', 'thumbnail_url', 'total_pages',
+        'total_videos', 'total_duration_minutes', 'is_premium', 'is_active',
+        'views_count', 'youtube_playlist_id', 'youtube_playlist_url',
+        'auto_sync_enabled', 'last_synced_at'
+      ];
+
+      for (final entry in updates.entries) {
+        if (validFields.contains(entry.key) && entry.value != null) {
+          cleanedUpdates[entry.key] = entry.value;
+        }
+      }
+
       final data = {
-        ...updates,
+        ...cleanedUpdates,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
@@ -208,7 +225,7 @@ class VideoKitabService {
           .select('''
             id, title, author, description, category_id, pdf_url,
             pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
-            total_videos, total_duration_minutes, is_premium, sort_order,
+            total_videos, total_duration_minutes, is_premium,
             is_active, views_count, created_at, updated_at,
             categories(id, name)
           ''')
@@ -216,6 +233,42 @@ class VideoKitabService {
 
       return VideoKitab.fromJson(response);
     } catch (e) {
+      throw Exception('Failed to update video kitab: $e');
+    }
+  }
+
+  // Admin update function - direct update without triggers (triggers removed)
+  static Future<VideoKitab> updateVideoKitabAdmin(String id, Map<String, dynamic> updates) async {
+    print('=== VideoKitabService.updateVideoKitabAdmin DEBUG ===');
+    print('Kitab ID: $id');
+    print('Updates: $updates');
+
+    try {
+      print('Calling Supabase update...');
+
+      // Direct update - no triggers causing issues anymore
+      final response = await SupabaseService.from(_tableName)
+          .update(updates)
+          .eq('id', id)
+          .select('''
+            id, title, author, description, category_id, pdf_url,
+            pdf_storage_path, pdf_file_size, thumbnail_url, total_pages,
+            total_videos, total_duration_minutes, is_premium,
+            is_active, views_count, created_at, updated_at,
+            categories(id, name)
+          ''')
+          .single();
+
+      print('Supabase update successful! Response: $response');
+
+      final videoKitab = VideoKitab.fromJson(response);
+      print('VideoKitab object created successfully');
+
+      return videoKitab;
+    } catch (e, stackTrace) {
+      print('=== ERROR in updateVideoKitabAdmin ===');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
       throw Exception('Failed to update video kitab: $e');
     }
   }
@@ -233,6 +286,15 @@ class VideoKitabService {
   static Future<VideoKitab> toggleVideoKitabStatus(String id, bool isActive) async {
     try {
       return await updateVideoKitab(id, {'is_active': isActive});
+    } catch (e) {
+      throw Exception('Failed to toggle video kitab status: $e');
+    }
+  }
+
+  // Admin-specific toggle - direct update (no triggers)
+  static Future<VideoKitab> toggleVideoKitabStatusAdmin(String id, bool isActive) async {
+    try {
+      return await updateVideoKitabAdmin(id, {'is_active': isActive});
     } catch (e) {
       throw Exception('Failed to toggle video kitab status: $e');
     }

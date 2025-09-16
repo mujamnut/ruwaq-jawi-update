@@ -7,11 +7,13 @@ const corsHeaders = {
 };
 
 interface NotificationTrigger {
-  type: 'payment_success' | 'content_published' | 'subscription_expiring' | 'admin_announcement' | 'system_maintenance';
+  type: 'payment_success' | 'content_published' | 'subscription_expiring' | 'admin_announcement' | 'system_maintenance' | 'inactive_user_engagement';
   data: any;
   target_users?: string[]; // Specific user IDs, if null = all users
   target_roles?: string[]; // Target specific roles: 'student', 'admin'
   target_subscription?: string[]; // Target subscription status: 'active', 'inactive', 'expired'
+  target_criteria?: Record<string, any>; // Flexible targeting criteria
+  purchase_id?: string; // For purchase-specific notifications
 }
 
 interface NotificationData {
@@ -71,12 +73,17 @@ Deno.serve(async (req: Request) => {
         targetUserIds = await getTargetUsers(supabaseClient, trigger);
         break;
 
+      case 'inactive_user_engagement':
+        notificationData = await handleInactiveUserEngagement(supabaseClient, trigger);
+        targetUserIds = trigger.target_users || [];
+        break;
+
       default:
         throw new Error(`Unknown notification type: ${trigger.type}`);
     }
 
     // Send notification directly to target users
-    await sendToUsers(supabaseClient, notificationData, targetUserIds);
+    await sendToUsers(supabaseClient, notificationData, targetUserIds, trigger.target_criteria, trigger.purchase_id);
 
     console.log(`✅ Notification sent to ${targetUserIds.length} users`);
 
@@ -106,18 +113,18 @@ Deno.serve(async (req: Request) => {
 
 // Handle payment success notification
 async function handlePaymentSuccess(supabaseClient: any, trigger: NotificationTrigger): Promise<NotificationData> {
-  const { user_id, plan_name, amount, bill_id } = trigger.data;
+  const { user_id, payment_id, amount, reference_number } = trigger.data;
 
   return {
     title: '🎉 Pembayaran Berjaya!',
-    body: `Langganan ${plan_name} anda telah diaktifkan. Terima kasih atas pembayaran RM${amount}.`,
+    body: `Pembayaran anda sebanyak RM${amount} telah berjaya diproses. Terima kasih!`,
     type: 'payment_success',
     icon: '✅',
     action_url: '/subscription',
     data: {
-      bill_id,
+      payment_id,
       amount,
-      plan_name,
+      reference_number,
       user_id
     }
   };
@@ -125,22 +132,55 @@ async function handlePaymentSuccess(supabaseClient: any, trigger: NotificationTr
 
 // Handle new content published notification
 async function handleContentPublished(supabaseClient: any, trigger: NotificationTrigger): Promise<NotificationData> {
-  const { content_type, title, author, category } = trigger.data;
+  const { content_type, title, author, category, parent_kitab, episode_number } = trigger.data;
 
-  const contentTypeText = content_type === 'video_kitab' ? 'Kitab Video' : 'E-Book';
-  const icon = content_type === 'video_kitab' ? '📹' : '📚';
+  let contentTypeText = '';
+  let icon = '';
+  let body = '';
+  let actionUrl = '';
+
+  switch (content_type) {
+    case 'video_kitab':
+      contentTypeText = 'Kitab Video';
+      icon = '📹';
+      body = `"${title}" oleh ${author || 'Penulis'} telah ditambah dalam kategori ${category}.`;
+      actionUrl = '/kitab';
+      break;
+
+    case 'video_episode':
+      contentTypeText = 'Episode Baharu';
+      icon = '🎬';
+      body = `Episode ${episode_number}: "${title}" telah ditambah dalam kitab "${parent_kitab}".`;
+      actionUrl = '/kitab';
+      break;
+
+    case 'ebook':
+      contentTypeText = 'E-Book';
+      icon = '📚';
+      body = `"${title}" oleh ${author || 'Penulis'} telah ditambah dalam kategori ${category}.`;
+      actionUrl = '/ebook';
+      break;
+
+    default:
+      contentTypeText = 'Kandungan';
+      icon = '📖';
+      body = `"${title}" telah ditambah.`;
+      actionUrl = '/home';
+  }
 
   return {
     title: `${icon} ${contentTypeText} Baharu!`,
-    body: `"${title}" oleh ${author || 'Penulis'} telah ditambah dalam kategori ${category}.`,
+    body,
     type: 'content_published',
     icon,
-    action_url: content_type === 'video_kitab' ? '/kitab' : '/ebook',
+    action_url: actionUrl,
     data: {
       content_type,
       title,
       author,
-      category
+      category,
+      parent_kitab,
+      episode_number
     }
   };
 }
@@ -181,6 +221,23 @@ async function handleAdminAnnouncement(supabaseClient: any, trigger: Notificatio
   };
 }
 
+// Handle inactive user engagement notification
+async function handleInactiveUserEngagement(supabaseClient: any, trigger: NotificationTrigger): Promise<NotificationData> {
+  const { user_name, days_inactive } = trigger.data;
+
+  return {
+    title: '👋 Kami Rindu Anda!',
+    body: `Hai ${user_name || 'Pengguna'}! Anda tidak aktif selama ${days_inactive} hari. Mari kembali belajar dengan kandungan terbaru kami.`,
+    type: 'inactive_user_engagement',
+    icon: '📚',
+    action_url: '/home',
+    data: {
+      days_inactive,
+      re_engagement: true
+    }
+  };
+}
+
 // Handle system maintenance notification
 async function handleSystemMaintenance(supabaseClient: any, trigger: NotificationTrigger): Promise<NotificationData> {
   const { scheduled_time, duration, description } = trigger.data;
@@ -201,7 +258,7 @@ async function handleSystemMaintenance(supabaseClient: any, trigger: Notificatio
 
 // Get target users based on criteria
 async function getTargetUsers(supabaseClient: any, trigger: NotificationTrigger): Promise<string[]> {
-  let query = supabaseClient.from('profiles').select('id');
+  let query = supabaseClient.from('profiles').select('id, last_seen_at, subscription_status, role');
 
   // Filter by roles
   if (trigger.target_roles && trigger.target_roles.length > 0) {
@@ -218,6 +275,32 @@ async function getTargetUsers(supabaseClient: any, trigger: NotificationTrigger)
     return trigger.target_users;
   }
 
+  // Apply additional filtering based on target_criteria
+  if (trigger.target_criteria) {
+    const criteria = trigger.target_criteria;
+
+    // Filter by purchase history
+    if (criteria.has_purchased && criteria.plan_id) {
+      query = query.not('subscription_plan_id', 'is', null);
+      if (criteria.plan_id !== 'any') {
+        query = query.eq('subscription_plan_id', criteria.plan_id);
+      }
+    }
+
+    // Filter by activity level
+    if (criteria.inactive_days) {
+      const daysAgo = new Date();
+      daysAgo.setDate(daysAgo.getDate() - criteria.inactive_days);
+      query = query.or(`last_seen_at.is.null,last_seen_at.lt.${daysAgo.toISOString()}`);
+    }
+
+    // Filter by content engagement
+    if (criteria.content_category_id) {
+      // This would require joining with user activity tables
+      // For now, we'll return all matching users
+    }
+  }
+
   const { data: users, error } = await query;
 
   if (error) {
@@ -229,7 +312,13 @@ async function getTargetUsers(supabaseClient: any, trigger: NotificationTrigger)
 }
 
 // Send notification directly to users (using existing user_notifications structure)
-async function sendToUsers(supabaseClient: any, notificationData: NotificationData, userIds: string[]): Promise<void> {
+async function sendToUsers(
+  supabaseClient: any,
+  notificationData: NotificationData,
+  userIds: string[],
+  targetCriteria?: Record<string, any>,
+  purchaseId?: string
+): Promise<void> {
   if (userIds.length === 0) {
     console.log('No target users specified');
     return;
@@ -255,7 +344,9 @@ async function sendToUsers(supabaseClient: any, notificationData: NotificationDa
     metadata: metadata,
     status: 'unread',
     delivery_status: 'delivered',
-    delivered_at: new Date().toISOString()
+    delivered_at: new Date().toISOString(),
+    target_criteria: targetCriteria || {},
+    purchase_id: purchaseId || null
   }));
 
   const { error } = await supabaseClient

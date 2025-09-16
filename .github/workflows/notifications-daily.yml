@@ -1,0 +1,95 @@
+name: Notification Testing (Every Minute)
+
+on:
+  schedule:
+    # TESTING: Run every minute for testing purposes
+    # TODO: Change back to daily after testing: '0 9 * * *'
+    - cron: '* * * * *'
+
+  # Allow manual trigger from GitHub Actions tab
+  workflow_dispatch:
+
+jobs:
+  notification-batch:
+    runs-on: ubuntu-latest
+    name: Test notification system (runs every minute)
+
+    steps:
+      - name: 🔔 Test Notification System
+        run: |
+          echo "🕘 Starting notification test at $(date)"
+          echo "📱 Testing subscription expiry and inactive user notifications"
+
+          # Test subscription expiry notifications
+          echo "⏰ Testing subscription expiry notifications..."
+          expiry_response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/trigger_subscription_expiry_check" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json")
+
+          # Test inactive user notifications
+          echo "👥 Testing inactive user notifications..."
+          inactive_response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/trigger_inactive_user_notification" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json")
+
+          # Test general notification endpoint
+          echo "🧪 Testing notification-triggers function..."
+          response=$(curl -s -w "\n%{http_code}" -X POST \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/notification-triggers" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "type": "admin_announcement",
+              "data": {
+                "title": "Test Notification",
+                "message": "This is a test notification from GitHub Actions",
+                "priority": "low"
+              },
+              "target_roles": ["admin"]
+            }')
+
+          # Extract HTTP status code (last line)
+          http_code=$(echo "$response" | tail -n1)
+
+          # Extract response body (all lines except last)
+          response_body=$(echo "$response" | head -n -1)
+
+          echo "📊 Response Code: $http_code"
+          echo "📄 Response Body: $response_body"
+
+          # Check if request was successful
+          if [ "$http_code" = "200" ]; then
+            echo "✅ Notification test completed successfully!"
+            echo "Response: $response_body"
+          else
+            echo "❌ Notification test failed with code: $http_code"
+            echo "Error details: $response_body"
+          fi
+
+          echo "🏁 Notification test completed at $(date)"
+
+      - name: 📊 Test Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ Notification system test completed successfully"
+            echo "📱 Check Supabase database for new test notifications"
+            echo "🔄 Next test will run in 1 minute"
+            echo "⚠️ REMEMBER: Change cron back to daily after testing!"
+          else
+            echo "❌ Notification test failed - check logs above"
+            echo "⚠️ Admin should review the error and fix any issues"
+          fi
+
+      - name: 🧹 Test Status
+        if: success()
+        run: |
+          echo "🧪 This is TESTING MODE - running every minute"
+          echo "📧 Check Supabase Edge Function logs for detailed insights"
+          echo "📋 Monitor user_notifications table for new entries"
+          echo "⚠️ TODO: Change cron schedule back to daily after testing"

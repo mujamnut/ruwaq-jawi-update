@@ -626,15 +626,15 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       );
     }
 
-    // Sort episodes: Preview episodes first, then regular episodes by sort_order
+    // Sort episodes: Preview episodes first, then regular episodes by part_number
     final sortedEpisodes = List<VideoEpisode>.from(_cachedEpisodes!);
     sortedEpisodes.sort((a, b) {
       // Preview videos go to top
       if (a.isPreview && !b.isPreview) return -1;
       if (!a.isPreview && b.isPreview) return 1;
 
-      // If both are preview or both are regular, sort by sort_order (ascending)
-      return a.sortOrder.compareTo(b.sortOrder);
+      // If both are preview or both are regular, sort by part_number (ascending)
+      return a.partNumber.compareTo(b.partNumber);
     });
 
     return ListView.builder(

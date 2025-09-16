@@ -4,3 +4,4 @@ ui always use the shadcn flutter,icon use phosphor for whole this project. make 
 analyze the error after every edit file for sure the error.
   - AppBar: Transparent background (bukan hijau lagi), phosphor back button
   - SearchBar: Grey background, rounded, dengan X button untuk clear
+  jangan guna icon terlalu banyak dalam satu page,guna yang penting penting saja.

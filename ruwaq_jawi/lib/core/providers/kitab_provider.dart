@@ -76,7 +76,7 @@ class KitabProvider extends ChangeNotifier {
     try {
       final response = await SupabaseService.from(
         'categories',
-      ).select().order('sort_order');
+      ).select().order('name');
 
       _categories = (response as List)
           .map((json) => Category.fromJson(json))
@@ -107,7 +107,7 @@ class KitabProvider extends ChangeNotifier {
   //       query = query.eq('category_id', categoryId);
   //     }
 
-  //     final response = await query.order('sort_order');
+  //     final response = await query.order('title');
 
   //     _kitabList = (response as List)
   //         .map((json) => Kitab.fromJson(json))
@@ -133,7 +133,7 @@ class KitabProvider extends ChangeNotifier {
 
       final response = await query
           .eq('is_active', true)
-          .order('sort_order');
+          .order('title');
 
       _videoKitabList = (response as List)
           .map((json) => VideoKitab.fromJson(json))
@@ -159,7 +159,7 @@ class KitabProvider extends ChangeNotifier {
 
       final response = await query
           .eq('is_active', true)
-          .order('sort_order');
+          .order('title');
 
       _ebookList = (response as List)
           .map((json) => Ebook.fromJson(json))
@@ -422,7 +422,7 @@ class KitabProvider extends ChangeNotifier {
       final response = await SupabaseService.from('video_episodes')
           .select()
           .eq('video_kitab_id', kitabId)
-          .order('sort_order');
+          .order('part_number');
 
       final videos = (response as List)
           .map((json) => VideoEpisode.fromJson(json))
@@ -464,7 +464,7 @@ class KitabProvider extends ChangeNotifier {
           .eq('video_kitab_id', kitabId)
           .eq('is_active', true)  // Only show active preview videos
           .eq('is_preview', true)
-          .order('sort_order');
+          .order('part_number');
 
       final previewVideos = (response as List)
           .map((json) => VideoEpisode.fromJson(json))

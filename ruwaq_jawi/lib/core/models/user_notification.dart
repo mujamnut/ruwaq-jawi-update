@@ -9,6 +9,9 @@ class UserNotificationItem {
   final DateTime deliveredAt;
   final DateTime? readAt;
   final DateTime updatedAt;
+  final Map<String, dynamic>? targetCriteria; // Enhanced targeting info
+  final String? purchaseId; // Reference to specific purchase
+  final String? notificationId; // Foreign key to notifications table
 
   const UserNotificationItem({
     required this.id,
@@ -21,6 +24,9 @@ class UserNotificationItem {
     required this.deliveredAt,
     this.readAt,
     required this.updatedAt,
+    this.targetCriteria,
+    this.purchaseId,
+    this.notificationId,
   });
 
   factory UserNotificationItem.fromMap(Map<String, dynamic> map) {
@@ -35,6 +41,9 @@ class UserNotificationItem {
       deliveredAt: DateTime.parse(map['delivered_at'] as String),
       readAt: map['read_at'] == null ? null : DateTime.parse(map['read_at'] as String),
       updatedAt: DateTime.parse(map['updated_at'] as String),
+      targetCriteria: map['target_criteria'] as Map<String, dynamic>?,
+      purchaseId: map['purchase_id'] as String?,
+      notificationId: map['notification_id'] as String?,
     );
   }
 
@@ -93,4 +102,42 @@ class UserNotificationItem {
   }
 
   bool get isRead => readAt != null || status == 'read';
+
+  // Helper getters for enhanced targeting info
+  bool get isPurchaseRelated => purchaseId != null;
+
+  bool get isAdminAnnouncement => type == 'admin_announcement';
+
+  bool get isContentNotification => type == 'content_published';
+
+  bool get isPaymentNotification => type == 'payment_success';
+
+  bool get isSubscriptionNotification => type == 'subscription_expiring';
+
+  bool get isReEngagementNotification => type == 'inactive_user_engagement';
+
+  // Get targeting criteria details
+  String? get targetingType {
+    if (targetCriteria == null) return null;
+    if (targetCriteria!['purchase_specific'] == true) return 'purchase_specific';
+    if (targetCriteria!['role_based'] == true) return 'role_based';
+    if (targetCriteria!['content_specific'] == true) return 'content_specific';
+    if (targetCriteria!['admin_announcement'] == true) return 'admin_announcement';
+    if (targetCriteria!['re_engagement'] == true) return 're_engagement';
+    return 'general';
+  }
+
+  // Get priority level
+  String get priority {
+    if (metadata != null && metadata!['priority'] != null) {
+      return metadata!['priority'] as String;
+    }
+    if (targetCriteria != null && targetCriteria!['priority'] != null) {
+      return targetCriteria!['priority'] as String;
+    }
+    return 'medium';
+  }
+
+  // Check if notification has high priority
+  bool get isHighPriority => priority == 'high';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../../core/theme/app_theme.dart';
@@ -10,15 +11,17 @@ import '../../../core/models/video_kitab.dart';
 import '../../../core/models/category.dart';
 import '../widgets/admin_bottom_nav.dart';
 import 'admin_video_kitab_form_screen.dart';
+import 'admin_kitab_form_screen.dart';
+import 'admin_youtube_auto_form_screen.dart';
 
-class AdminContentEnhanced extends StatefulWidget {
-  const AdminContentEnhanced({Key? key}) : super(key: key);
+class AdminVideoListScreen extends StatefulWidget {
+  const AdminVideoListScreen({Key? key}) : super(key: key);
 
   @override
-  _AdminContentEnhancedState createState() => _AdminContentEnhancedState();
+  _AdminVideoListScreenState createState() => _AdminVideoListScreenState();
 }
 
-class _AdminContentEnhancedState extends State<AdminContentEnhanced>
+class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     with TickerProviderStateMixin {
   List<VideoKitab> _kitabList = [];
   List<Category> _categories = [];
@@ -26,7 +29,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
   String? _error;
   String _selectedFilter = 'all';
   String _searchQuery = '';
-  
+
   final _searchController = TextEditingController();
   late AnimationController _fabAnimationController;
   late AnimationController _listAnimationController;
@@ -35,12 +38,11 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
   ScrollController _scrollController = ScrollController();
   bool _isAppBarVisible = true;
 
-
   @override
   void initState() {
     super.initState();
     _searchController.text = _searchQuery;
-    
+
     // Initialize animation controllers
     _fabAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
@@ -50,27 +52,29 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     // Setup FAB animations
-    _fabScaleAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fabAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    
-    _fabRotationAnimation = Tween<double>(
-      begin: 0.0,
-      end: 0.125, // 45 degrees
-    ).animate(CurvedAnimation(
-      parent: _fabAnimationController,
-      curve: Curves.easeInOut,
-    ));
-    
+    _fabScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fabAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    _fabRotationAnimation =
+        Tween<double>(
+          begin: 0.0,
+          end: 0.125, // 45 degrees
+        ).animate(
+          CurvedAnimation(
+            parent: _fabAnimationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
     // Setup scroll listener for app bar visibility
     _scrollController.addListener(_onScroll);
-    
+
     _refreshData();
     _fabAnimationController.forward();
   }
@@ -83,7 +87,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   void _onScroll() {
     if (_scrollController.hasClients) {
       final bool shouldShowAppBar = _scrollController.offset <= 50;
@@ -99,7 +103,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
   Future<void> _refreshData() async {
     // Load from cache first for instant display
     await _loadFromCache();
-    
+
     // Then load fresh data from database
     await _loadDataFromDB();
   }
@@ -107,15 +111,17 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
   Future<void> _loadFromCache() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Load cached kitab list
       final cachedKitabJson = prefs.getString('cached_kitab_list');
       final cachedCategoriesJson = prefs.getString('cached_categories');
-      
+
       if (cachedKitabJson != null && cachedCategoriesJson != null) {
         final List<dynamic> kitabJsonList = jsonDecode(cachedKitabJson);
-        final List<dynamic> categoriesJsonList = jsonDecode(cachedCategoriesJson);
-        
+        final List<dynamic> categoriesJsonList = jsonDecode(
+          cachedCategoriesJson,
+        );
+
         final List<VideoKitab> cachedKitabList = kitabJsonList
             .map((json) => VideoKitab.fromJson(json))
             .toList();
@@ -123,7 +129,6 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
             .map((json) => Category.fromJson(json))
             .toList();
 
-        
         setState(() {
           _kitabList = cachedKitabList;
           _categories = cachedCategories;
@@ -151,7 +156,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
         _isLoading = false;
         _error = null;
       });
-      
+
       // Start list animation after data loads
       _listAnimationController.forward();
     } catch (e) {
@@ -162,16 +167,24 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
     }
   }
 
-  Future<void> _cacheData(List<VideoKitab> kitabList, List<Category> categories) async {
+  Future<void> _cacheData(
+    List<VideoKitab> kitabList,
+    List<Category> categories,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Convert to JSON and cache
       final kitabJsonList = kitabList.map((kitab) => kitab.toJson()).toList();
-      final categoriesJsonList = categories.map((category) => category.toJson()).toList();
-      
+      final categoriesJsonList = categories
+          .map((category) => category.toJson())
+          .toList();
+
       await prefs.setString('cached_kitab_list', jsonEncode(kitabJsonList));
-      await prefs.setString('cached_categories', jsonEncode(categoriesJsonList));
+      await prefs.setString(
+        'cached_categories',
+        jsonEncode(categoriesJsonList),
+      );
     } catch (e) {
       debugPrint('Cache save error: $e');
     }
@@ -182,7 +195,8 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
       final query = _searchQuery.toLowerCase();
       final titleMatch = kitab.title.toLowerCase().contains(query);
       final authorMatch = kitab.author?.toLowerCase().contains(query) ?? false;
-      final descriptionMatch = kitab.description?.toLowerCase().contains(query) ?? false;
+      final descriptionMatch =
+          kitab.description?.toLowerCase().contains(query) ?? false;
       return titleMatch || authorMatch || descriptionMatch;
     }).toList();
 
@@ -222,10 +236,10 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
               child: _isLoading
                   ? _buildModernLoadingState()
                   : _error != null
-                      ? _buildModernErrorState()
-                      : _filteredKitab.isEmpty
-                          ? _buildModernEmptyState()
-                          : _buildModernContentList(),
+                  ? _buildModernErrorState()
+                  : _filteredKitab.isEmpty
+                  ? _buildModernEmptyState()
+                  : _buildModernContentList(),
             ),
           ],
         ),
@@ -235,11 +249,10 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
     );
   }
 
-
   PreferredSizeWidget _buildModernAppBar() {
     return AppBar(
       title: const Text(
-        'Kandungan',
+        'Video Kitab',
         style: TextStyle(
           fontWeight: FontWeight.w700,
           fontSize: 24,
@@ -255,10 +268,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.primaryLightColor,
-            ],
+            colors: [AppTheme.primaryColor, AppTheme.primaryLightColor],
           ),
           boxShadow: [
             BoxShadow(
@@ -304,10 +314,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
               decoration: InputDecoration(
                 hintText: 'Cari kitab, pengarang, atau kategori...',
                 hintStyle: TextStyle(
@@ -335,9 +342,9 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
               },
             ),
           ),
-          
+
           const SizedBox(height: 20),
-          
+
           // Filter Label
           Text(
             'Filter Kandungan',
@@ -348,19 +355,39 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
               letterSpacing: 0.5,
             ),
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Modern Filter Chips
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildModernFilterChip('all', 'Semua', HugeIcons.strokeRoundedGridView),
-                _buildModernFilterChip('active', 'Aktif', HugeIcons.strokeRoundedCheckmarkCircle02),
-                _buildModernFilterChip('inactive', 'Tidak Aktif', HugeIcons.strokeRoundedCancel01),
-                _buildModernFilterChip('premium', 'Premium', HugeIcons.strokeRoundedStar),
-                _buildModernFilterChip('free', 'Percuma', HugeIcons.strokeRoundedGift),
+                _buildModernFilterChip(
+                  'all',
+                  'Semua',
+                  HugeIcons.strokeRoundedGridView,
+                ),
+                _buildModernFilterChip(
+                  'active',
+                  'Aktif',
+                  HugeIcons.strokeRoundedCheckmarkCircle02,
+                ),
+                _buildModernFilterChip(
+                  'inactive',
+                  'Tidak Aktif',
+                  HugeIcons.strokeRoundedCancel01,
+                ),
+                _buildModernFilterChip(
+                  'premium',
+                  'Premium',
+                  HugeIcons.strokeRoundedStar,
+                ),
+                _buildModernFilterChip(
+                  'free',
+                  'Percuma',
+                  HugeIcons.strokeRoundedGift,
+                ),
               ],
             ),
           ),
@@ -371,7 +398,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
 
   Widget _buildModernFilterChip(String value, String label, IconData icon) {
     final isSelected = _selectedFilter == value;
-    
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -390,29 +417,29 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
             duration: const Duration(milliseconds: 300),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: isSelected 
-                  ? AppTheme.primaryColor 
-                  : Colors.white,
+              color: isSelected ? AppTheme.primaryColor : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isSelected 
-                    ? AppTheme.primaryColor 
+                color: isSelected
+                    ? AppTheme.primaryColor
                     : AppTheme.borderColor,
                 width: isSelected ? 0 : 1,
               ),
-              boxShadow: isSelected ? [
-                BoxShadow(
-                  color: AppTheme.primaryColor.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ] : [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ]
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -420,16 +447,16 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                 HugeIcon(
                   icon: icon,
                   size: 16,
-                  color: isSelected 
-                      ? Colors.white 
+                  color: isSelected
+                      ? Colors.white
                       : AppTheme.textSecondaryColor,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   label,
                   style: TextStyle(
-                    color: isSelected 
-                        ? Colors.white 
+                    color: isSelected
+                        ? Colors.white
                         : AppTheme.textSecondaryColor,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                     fontSize: 14,
@@ -457,7 +484,9 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
             ),
             child: const Center(
               child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  AppTheme.primaryColor,
+                ),
                 strokeWidth: 3,
               ),
             ),
@@ -553,9 +582,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                   SizedBox(width: 8),
                   Text(
                     'Cuba Lagi',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -624,9 +651,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
               ),
               child: const Text(
                 'Kosongkan Penapis',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -752,7 +777,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                       )
                     else
                       _buildEnhancedPlaceholder(),
-                    
+
                     // Status Badges with Better Styling
                     Positioned(
                       top: 12,
@@ -769,7 +794,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                         ],
                       ),
                     ),
-                    
+
                     // Gradient Overlay
                     Positioned.fill(
                       child: Container(
@@ -792,7 +817,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                   ],
                 ),
               ),
-              
+
               // Enhanced Content Info
               Padding(
                 padding: const EdgeInsets.all(20),
@@ -812,7 +837,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-                    
+
                     // Author
                     Row(
                       children: [
@@ -835,7 +860,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                       ],
                     ),
                     const SizedBox(height: 12),
-                    
+
                     // Category Badge
                     Container(
                       padding: const EdgeInsets.symmetric(
@@ -871,18 +896,18 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // Status Row
                     Row(
                       children: [
                         // Active Status
                         _buildInfoChip(
-                          icon: kitab.isActive 
-                              ? HugeIcons.strokeRoundedCheckmarkCircle02 
+                          icon: kitab.isActive
+                              ? HugeIcons.strokeRoundedCheckmarkCircle02
                               : HugeIcons.strokeRoundedCancel01,
                           label: kitab.isActive ? 'Aktif' : 'Tidak Aktif',
-                          color: kitab.isActive 
-                              ? AppTheme.successColor 
+                          color: kitab.isActive
+                              ? AppTheme.successColor
                               : AppTheme.errorColor,
                         ),
                         const Spacer(),
@@ -921,11 +946,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          HugeIcon(
-            icon: icon,
-            size: 12,
-            color: Colors.white,
-          ),
+          HugeIcon(icon: icon, size: 12, color: Colors.white),
           const SizedBox(width: 4),
           Text(
             label,
@@ -948,11 +969,7 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        HugeIcon(
-          icon: icon,
-          size: 16,
-          color: color,
-        ),
+        HugeIcon(icon: icon, size: 16, color: color),
         const SizedBox(width: 6),
         Text(
           label,
@@ -1018,24 +1035,228 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
     return FloatingActionButton(
       onPressed: () {
         HapticFeedback.lightImpact();
-        _createNewKitab();
+        _showAddOptionsDialog();
       },
       backgroundColor: const Color(0xFF00BF6D),
       foregroundColor: Colors.white,
-      child: const HugeIcon(
-        icon: HugeIcons.strokeRoundedPlusSign,
-        color: Colors.white,
-        size: 24.0,
+      elevation: 6,
+      child: const Icon(Icons.add, size: 24, color: Colors.white),
+    );
+  }
+
+  void _showAddOptionsDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.85,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.15),
+                  blurRadius: 20,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedPlusSign,
+                        color: AppTheme.primaryColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tambah Video Kitab',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                          ),
+                          Text(
+                            'Pilih kaedah untuk menambah kandungan',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppTheme.textSecondaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Quick Setup Option
+                _buildDialogOption(
+                  icon: PhosphorIcons.youtubeLogo(PhosphorIconsStyle.fill),
+                  title: 'Quick Setup',
+                  subtitle: 'Auto import dari YouTube playlist',
+                  color: Colors.red,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToQuickSetup();
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // Manual Setup Option
+                _buildDialogOption(
+                  icon: HugeIcons.strokeRoundedEdit01,
+                  title: 'Manual Setup',
+                  subtitle: 'Buat secara manual dengan form',
+                  color: AppTheme.primaryColor,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _navigateToManualSetup();
+                  },
+                ),
+
+                const SizedBox(height: 20),
+
+                // Cancel Button
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: Text(
+                    'Batal',
+                    style: TextStyle(
+                      color: AppTheme.textSecondaryColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogOption({
+    required dynamic icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: AppTheme.borderColor.withOpacity(0.5),
+              width: 1,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: icon is PhosphorIconData
+                      ? PhosphorIcon(
+                          icon as PhosphorIconData,
+                          color: color,
+                          size: 24,
+                        )
+                      : HugeIcon(icon: icon, color: color, size: 24),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight01,
+                color: AppTheme.textSecondaryColor,
+                size: 20,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  void _createNewKitab() {
+  void _navigateToQuickSetup() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AdminVideoKitabFormScreen(),
+        builder: (context) => const AdminYouTubeAutoFormScreen(),
       ),
+    ).then((result) {
+      if (result != null) {
+        _refreshData();
+      }
+    });
+  }
+
+  void _navigateToManualSetup() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AdminKitabFormScreen()),
     ).then((result) {
       if (result != null) {
         _refreshData();
@@ -1047,10 +1268,8 @@ class _AdminContentEnhancedState extends State<AdminContentEnhanced>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminVideoKitabFormScreen(
-          videoKitabId: kitab.id,
-          videoKitab: kitab,
-        ),
+        builder: (context) =>
+            AdminKitabFormScreen(kitabId: kitab.id, kitabData: kitab.toJson()),
       ),
     ).then((result) {
       if (result != null) {

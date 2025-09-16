@@ -9,7 +9,6 @@ class VideoEpisode {
   final int partNumber;
   final int durationMinutes;
   final int? durationSeconds;
-  final int sortOrder;
   final bool isActive;
   final bool isPreview;
   final DateTime createdAt;
@@ -26,7 +25,6 @@ class VideoEpisode {
     required this.partNumber,
     this.durationMinutes = 0,
     this.durationSeconds,
-    this.sortOrder = 0,
     this.isActive = true,
     this.isPreview = false,
     required this.createdAt,
@@ -54,7 +52,6 @@ class VideoEpisode {
       partNumber: json['part_number'] as int? ?? 0,
       durationMinutes: json['duration_minutes'] as int? ?? 0,
       durationSeconds: json['duration_seconds'] as int?,
-      sortOrder: json['sort_order'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
       isPreview: json['is_preview'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -74,7 +71,6 @@ class VideoEpisode {
       'part_number': partNumber,
       'duration_minutes': durationMinutes,
       'duration_seconds': durationSeconds,
-      'sort_order': sortOrder,
       'is_active': isActive,
       'is_preview': isPreview,
       'created_at': createdAt.toIso8601String(),
@@ -108,7 +104,6 @@ class VideoEpisode {
     int? partNumber,
     int? durationMinutes,
     int? durationSeconds,
-    int? sortOrder,
     bool? isActive,
     bool? isPreview,
   }) {
@@ -123,7 +118,6 @@ class VideoEpisode {
       partNumber: partNumber ?? this.partNumber,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       durationSeconds: durationSeconds ?? this.durationSeconds,
-      sortOrder: sortOrder ?? this.sortOrder,
       isActive: isActive ?? this.isActive,
       isPreview: isPreview ?? this.isPreview,
       createdAt: createdAt,

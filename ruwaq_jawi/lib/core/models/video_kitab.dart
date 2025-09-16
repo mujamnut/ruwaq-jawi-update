@@ -13,7 +13,6 @@ class VideoKitab {
   final int totalVideos;
   final int totalDurationMinutes;
   final bool isPremium;
-  final int sortOrder;
   final bool isActive;
   final int viewsCount;
   final DateTime createdAt;
@@ -34,7 +33,6 @@ class VideoKitab {
     this.totalVideos = 0,
     this.totalDurationMinutes = 0,
     this.isPremium = true,
-    this.sortOrder = 0,
     this.isActive = true,
     this.viewsCount = 0,
     required this.createdAt,
@@ -58,7 +56,6 @@ class VideoKitab {
       totalVideos: json['total_videos'] as int? ?? 0,
       totalDurationMinutes: json['total_duration_minutes'] as int? ?? 0,
       isPremium: json['is_premium'] as bool? ?? true,
-      sortOrder: json['sort_order'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
       viewsCount: json['views_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
@@ -81,7 +78,6 @@ class VideoKitab {
       'total_videos': totalVideos,
       'total_duration_minutes': totalDurationMinutes,
       'is_premium': isPremium,
-      'sort_order': sortOrder,
       'is_active': isActive,
       'views_count': viewsCount,
       'created_at': createdAt.toIso8601String(),
@@ -102,7 +98,6 @@ class VideoKitab {
     int? totalVideos,
     int? totalDurationMinutes,
     bool? isPremium,
-    int? sortOrder,
     bool? isActive,
     int? viewsCount,
   }) {
@@ -120,7 +115,6 @@ class VideoKitab {
       totalVideos: totalVideos ?? this.totalVideos,
       totalDurationMinutes: totalDurationMinutes ?? this.totalDurationMinutes,
       isPremium: isPremium ?? this.isPremium,
-      sortOrder: sortOrder ?? this.sortOrder,
       isActive: isActive ?? this.isActive,
       viewsCount: viewsCount ?? this.viewsCount,
       createdAt: createdAt,

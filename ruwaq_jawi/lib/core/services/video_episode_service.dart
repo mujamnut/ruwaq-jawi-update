@@ -84,7 +84,6 @@ class VideoEpisodeService {
         'updated_at': DateTime.now().toIso8601String(),
         'is_active': episodeData['is_active'] ?? true,
         'is_preview': episodeData['is_preview'] ?? false,
-        'sort_order': episodeData['sort_order'] ?? episodeData['part_number'] ?? 0,
         'duration_minutes': episodeData['duration_minutes'] ?? 0,
       };
 
@@ -192,41 +191,6 @@ class VideoEpisodeService {
     }
   }
 
-  // Get next available sort order for a video kitab
-  static Future<int> getNextSortOrder(String videoKitabId) async {
-    try {
-      final response = await SupabaseService.from(_tableName)
-          .select('sort_order')
-          .eq('video_kitab_id', videoKitabId)
-          .order('sort_order', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
-      if (response == null) {
-        return 1; // First episode
-      }
-
-      return (response['sort_order'] as int? ?? 0) + 1;
-    } catch (e) {
-      throw Exception('Failed to get next sort order: $e');
-    }
-  }
-
-  // Reorder episodes
-  static Future<void> reorderEpisodes(String videoKitabId, List<String> episodeIds) async {
-    try {
-      for (int i = 0; i < episodeIds.length; i++) {
-        await SupabaseService.from(_tableName)
-            .update({
-              'sort_order': i + 1,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', episodeIds[i]);
-      }
-    } catch (e) {
-      throw Exception('Failed to reorder episodes: $e');
-    }
-  }
 
   // YouTube video ID validation and extraction
   static String? extractYouTubeVideoId(String input) {

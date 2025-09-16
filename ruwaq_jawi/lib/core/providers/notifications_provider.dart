@@ -14,6 +14,25 @@ class NotificationsProvider with ChangeNotifier {
   List<UserNotificationItem> get inbox => List.unmodifiable(_inbox);
   int get unreadCount => _inbox.where((n) => !n.isRead).length;
 
+  // Enhanced getters for different notification types
+  List<UserNotificationItem> get paymentNotifications =>
+      _inbox.where((n) => n.isPaymentNotification).toList();
+
+  List<UserNotificationItem> get contentNotifications =>
+      _inbox.where((n) => n.isContentNotification).toList();
+
+  List<UserNotificationItem> get adminAnnouncements =>
+      _inbox.where((n) => n.isAdminAnnouncement).toList();
+
+  List<UserNotificationItem> get subscriptionNotifications =>
+      _inbox.where((n) => n.isSubscriptionNotification).toList();
+
+  List<UserNotificationItem> get highPriorityNotifications =>
+      _inbox.where((n) => n.isHighPriority).toList();
+
+  int get highPriorityUnreadCount =>
+      _inbox.where((n) => !n.isRead && n.isHighPriority).length;
+
   Future<void> loadInbox() async {
     _loading = true;
     _error = null;
@@ -78,6 +97,9 @@ class NotificationsProvider with ChangeNotifier {
           deliveredAt: item.deliveredAt,
           readAt: DateTime.now(),
           updatedAt: DateTime.now(),
+          targetCriteria: item.targetCriteria,
+          purchaseId: item.purchaseId,
+          notificationId: item.notificationId,
         );
         notifyListeners();
       }

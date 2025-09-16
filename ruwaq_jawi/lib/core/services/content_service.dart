@@ -76,7 +76,7 @@ class ContentService {
       query = query.eq('is_premium', false);
     }
 
-    final response = await query.order('sort_order');
+    final response = await query.order('title');
     return List<Map<String, dynamic>>.from(response);
   }
 

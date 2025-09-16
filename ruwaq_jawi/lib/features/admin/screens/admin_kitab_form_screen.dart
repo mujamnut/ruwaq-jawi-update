@@ -6,8 +6,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/admin_category_service.dart';
-import '../../../core/services/admin_kitab_service.dart';
-import '../../../core/services/admin_video_service.dart';
+import '../../../core/services/video_kitab_service.dart';
+import '../../../core/services/video_episode_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -28,16 +28,15 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
   final _authorController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _totalPagesController = TextEditingController();
-  final _sortOrderController = TextEditingController();
+  // final _sortOrderController = TextEditingController(); // removed
 
   late AdminCategoryService _categoryService;
-  late AdminKitabService _kitabService;
-  late AdminVideoService _videoService;
+  // Use VideoKitabService instead of AdminKitabService
   late TabController _tabController;
 
   bool _isPremium = true;
   bool _isActive = true;
-  bool _isEbookAvailable = false;
+  // bool _isEbookAvailable = false; // field removed
   bool _isLoading = false;
   String? _selectedCategoryId;
   String? _thumbnailUrl;
@@ -47,6 +46,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 
   List<Map<String, dynamic>> _categories = [];
   List<Map<String, dynamic>> _episodes = [];
+  bool _isLoadingEpisodes = false;
 
   bool get _isEditing => widget.kitabId != null;
 
@@ -55,8 +55,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _categoryService = AdminCategoryService(SupabaseService.client);
-    _kitabService = AdminKitabService(SupabaseService.client);
-    _videoService = AdminVideoService(SupabaseService.client);
+    // Using VideoKitabService and VideoEpisodeService instead
 
     _loadInitialData();
   }
@@ -85,11 +84,11 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       _authorController.text = data['author'] ?? '';
       _descriptionController.text = data['description'] ?? '';
       _totalPagesController.text = (data['total_pages'] ?? '').toString();
-      _sortOrderController.text = (data['sort_order'] ?? '').toString();
+      // _sortOrderController.text = (data['sort_order'] ?? '').toString(); // removed
       _selectedCategoryId = data['category_id'];
       _isPremium = data['is_premium'] ?? true;
       _isActive = data['is_active'] ?? true;
-      _isEbookAvailable = data['is_ebook_available'] ?? false;
+      // _isEbookAvailable field doesn't exist in ebooks table
       _thumbnailUrl = data['thumbnail_url'];
       _pdfUrl = data['pdf_url'];
 
@@ -101,17 +100,30 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
   }
 
   Future<void> _loadEpisodes() async {
+    if (widget.kitabId == null) return;
+
+    setState(() {
+      _isLoadingEpisodes = true;
+    });
+
     try {
-      final episodes = await _videoService.getKitabEpisodes(
-        kitabId: widget.kitabId!,
+      final episodes = await VideoEpisodeService.getEpisodesForVideoKitab(
+        widget.kitabId!,
         orderBy: 'part_number',
         ascending: true,
       );
+
       setState(() {
-        _episodes = episodes;
+        _episodes = episodes.map((episode) => episode.toJson()).toList();
+        _isLoadingEpisodes = false;
       });
     } catch (e) {
-      _showSnackBar('Ralat memuatkan episodes: ${e.toString()}', isError: true);
+      if (mounted) {
+        _showSnackBar('Ralat memuatkan episodes: ${e.toString()}', isError: true);
+      }
+      setState(() {
+        _isLoadingEpisodes = false;
+      });
     }
   }
 
@@ -121,69 +133,14 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     _authorController.dispose();
     _descriptionController.dispose();
     _totalPagesController.dispose();
-    _sortOrderController.dispose();
+    // _sortOrderController.dispose(); // removed
     _tabController.dispose();
     super.dispose();
   }
 
-  // =====================================================
-  // YOUTUBE URL PARSING HELPERS
-  // =====================================================
-
-  /// Extract YouTube video ID from various URL formats
-  String? _extractYouTubeVideoId(String input) {
-    final trimmed = input.trim();
-
-    // Check if already a video ID (11 characters, alphanumeric + - and _)
-    final idRegex = RegExp(r'^[0-9A-Za-z_-]{11}$');
-    if (idRegex.hasMatch(trimmed)) return trimmed;
-
-    Uri? uri;
-    try {
-      uri = Uri.parse(trimmed);
-    } catch (_) {
-      return null;
-    }
-
-    if (uri == null || uri.host.isEmpty) return null;
-
-    final host = uri.host.replaceFirst('www.', '');
-    final segs = uri.pathSegments;
-
-    // youtu.be/VIDEO_ID format
-    if (host == 'youtu.be') {
-      return segs.isNotEmpty ? segs.first : null;
-    }
-
-    // youtube.com formats
-    if (host.endsWith('youtube.com') || host.endsWith('youtube-nocookie.com')) {
-      // Watch URL: /watch?v=VIDEO_ID
-      if (uri.path == '/watch' && uri.queryParameters.containsKey('v')) {
-        return uri.queryParameters['v'];
-      }
-
-      // Embed/shorts/live: /embed/VIDEO_ID, /shorts/VIDEO_ID, /live/VIDEO_ID
-      if (segs.length >= 2 &&
-          (segs[0] == 'embed' ||
-              segs[0] == 'shorts' ||
-              segs[0] == 'live' ||
-              segs[0] == 'v')) {
-        return segs[1];
-      }
-    }
-
-    return null;
-  }
-
-  /// Check if input looks like a YouTube URL or ID
-  bool _isLikelyYouTubeUrl(String input) {
-    final id = _extractYouTubeVideoId(input);
-    return id != null;
-  }
-
   /// Generate default YouTube thumbnail URL
   String _defaultThumbnailFor(String id) =>
-      'https://img.youtube.com/vi/$id/hqdefault.jpg';
+      VideoEpisodeService.getYouTubeThumbnailUrl(id);
 
   /// Get next episode number for auto-increment
   int _getNextEpisodeNumber() {
@@ -237,85 +194,105 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
   }
 
   Future<void> _submitForm() async {
-    if (!_formKey.currentState!.validate()) return;
+    print('=== SUBMIT FORM DEBUG START ===');
+    print('Form validation: ${_formKey.currentState?.validate()}');
 
+    if (!_formKey.currentState!.validate()) {
+      print('Form validation failed, returning early');
+      return;
+    }
+
+    print('Setting loading state to true');
     setState(() => _isLoading = true);
 
     try {
       String? thumbnailUrl = _thumbnailUrl;
-      String? pdfUrl = _pdfUrl;
-      String? pdfStoragePath;
-      int? pdfFileSize;
+      print('Thumbnail URL: $thumbnailUrl');
 
       Map<String, dynamic> result;
 
       if (_isEditing) {
-        // Update existing kitab
-        result = await _kitabService.updateKitab(
-          kitabId: widget.kitabId!,
-          title: _titleController.text.trim(),
-          author: _authorController.text.trim().isEmpty
-              ? null
-              : _authorController.text.trim(),
-          description: _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-          categoryId: _selectedCategoryId,
-          thumbnailUrl: thumbnailUrl,
-          isPremium: _isPremium,
-          isActive: _isActive,
-          isEbookAvailable: _isEbookAvailable,
-          totalPages: int.tryParse(_totalPagesController.text),
-          sortOrder: int.tryParse(_sortOrderController.text),
+        print('=== EDITING MODE ===');
+        print('Kitab ID: ${widget.kitabId}');
+
+        // Update existing video kitab
+        final videoKitabData = {
+          'title': _titleController.text.trim(),
+          'author': _authorController.text.trim().isEmpty ? null : _authorController.text.trim(),
+          'description': _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          'category_id': _selectedCategoryId,
+          'thumbnail_url': thumbnailUrl,
+          'is_premium': _isPremium,
+          'is_active': _isActive,
+          'total_pages': int.tryParse(_totalPagesController.text),
+        };
+
+        print('Update data: $videoKitabData');
+        print('Calling VideoKitabService.updateVideoKitabAdmin...');
+
+        final updatedKitab = await VideoKitabService.updateVideoKitabAdmin(
+          widget.kitabId!,
+          videoKitabData,
         );
+
+        print('Update successful! Result: ${updatedKitab.toJson()}');
+        result = updatedKitab.toJson();
 
         _showSnackBar('Kitab berjaya dikemaskini!');
       } else {
-        // Create new kitab
-        result = await _kitabService.createKitab(
-          title: _titleController.text.trim(),
-          author: _authorController.text.trim().isEmpty
-              ? null
-              : _authorController.text.trim(),
-          description: _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-          categoryId: _selectedCategoryId,
-          thumbnailUrl: thumbnailUrl,
-          isPremium: _isPremium,
-          isActive: _isActive,
-          isEbookAvailable: _isEbookAvailable,
-          totalPages: int.tryParse(_totalPagesController.text),
-          sortOrder: int.tryParse(_sortOrderController.text),
-        );
+        print('=== CREATE MODE ===');
+
+        // Create new video kitab
+        final videoKitabData = {
+          'title': _titleController.text.trim(),
+          'author': _authorController.text.trim().isEmpty ? null : _authorController.text.trim(),
+          'description': _descriptionController.text.trim().isEmpty ? null : _descriptionController.text.trim(),
+          'category_id': _selectedCategoryId,
+          'thumbnail_url': thumbnailUrl,
+          'is_premium': _isPremium,
+          'is_active': _isActive,
+          'total_pages': int.tryParse(_totalPagesController.text),
+        };
+
+        print('Create data: $videoKitabData');
+        print('Calling VideoKitabService.createVideoKitab...');
+
+        final createdKitab = await VideoKitabService.createVideoKitab(videoKitabData);
+
+        print('Create successful! Result: ${createdKitab.toJson()}');
+        result = createdKitab.toJson();
 
         _showSnackBar('Kitab berjaya ditambah!');
       }
 
-      final kitabId = result['id'] as String;
+      // kitabId available in result['id'] if needed for future file uploads
 
-      // Upload files if selected
+      // File upload functionality temporarily removed
+      // TODO: Implement file upload using VideoKitabService or direct Supabase storage
       if (_selectedThumbnail != null) {
-        thumbnailUrl = await _kitabService.uploadKitabThumbnail(
-          _selectedThumbnail!,
-          kitabId,
-        );
-        await _kitabService.updateKitab(
-          kitabId: kitabId,
-          thumbnailUrl: thumbnailUrl,
-        );
+        print('WARNING: File upload not implemented yet');
+        _showSnackBar('File upload belum tersedia', isError: true);
       }
 
       if (_selectedPdf != null) {
-        pdfUrl = await _kitabService.uploadKitabPDF(_selectedPdf!, kitabId);
+        print('WARNING: PDF upload not implemented yet');
+        _showSnackBar('PDF upload belum tersedia', isError: true);
       }
 
+      print('Navigating back with result: $result');
       // Navigate back with success result
       Navigator.pop(context, result);
-    } catch (e) {
+
+      print('=== SUBMIT FORM SUCCESS ===');
+    } catch (e, stackTrace) {
+      print('=== ERROR IN SUBMIT FORM ===');
+      print('Error: $e');
+      print('Stack trace: $stackTrace');
       _showSnackBar('Ralat: ${e.toString()}', isError: true);
     } finally {
+      print('Setting loading state to false');
       setState(() => _isLoading = false);
+      print('=== SUBMIT FORM DEBUG END ===');
     }
   }
 
@@ -439,14 +416,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           ),
           const SizedBox(height: 16),
 
-          // Sort Order
-          _buildTextFormField(
-            controller: _sortOrderController,
-            label: 'Susunan',
-            hint: 'Nombor untuk urutan paparan',
-            icon: HugeIcons.strokeRoundedSortingAZ01,
-            keyboardType: TextInputType.number,
-          ),
+          // Sort Order field removed - doesn't exist in video_kitab table
           const SizedBox(height: 24),
 
           // Status toggles
@@ -521,42 +491,46 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 
         // Episodes list
         Expanded(
-          child: _episodes.isEmpty
+          child: _isLoadingEpisodes
               ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        HugeIcons.strokeRoundedVideo01,
-                        size: 64.0,
-                        color: Colors.grey,
-                      ),
-                      SizedBox(height: 16),
-                      Text(
-                        'Belum ada episode video',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Tekan "Tambah Episode" untuk mula',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                    ],
-                  ),
+                  child: CircularProgressIndicator(),
                 )
-              : ReorderableListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _episodes.length,
-                  onReorder: _reorderEpisodes,
-                  itemBuilder: (context, index) {
-                    final episode = _episodes[index];
-                    return _buildEpisodeCard(
-                      episode,
-                      index,
-                      key: ValueKey(episode['id']),
-                    );
-                  },
-                ),
+              : _episodes.isEmpty
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            HugeIcons.strokeRoundedVideo01,
+                            size: 64.0,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Belum ada episode video',
+                            style: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Tekan "Tambah Episode" untuk mula',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ReorderableListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _episodes.length,
+                      onReorder: _reorderEpisodes,
+                      itemBuilder: (context, index) {
+                        final episode = _episodes[index];
+                        return _buildEpisodeCard(
+                          episode,
+                          index,
+                          key: ValueKey(episode['id']),
+                        );
+                      },
+                    ),
         ),
       ],
     );
@@ -634,18 +608,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               : HugeIcons.strokeRoundedLock,
         ),
         const SizedBox(height: 16),
-        _buildToggle(
-          title: 'E-book Tersedia',
-          subtitle: _isEbookAvailable
-              ? 'Kitab boleh dibaca dalam format PDF'
-              : 'Hanya video tersedia',
-          value: _isEbookAvailable,
-          onChanged: (value) => setState(() => _isEbookAvailable = value),
-          icon: _isEbookAvailable
-              ? HugeIcons.strokeRoundedPdf01
-              : HugeIcons.strokeRoundedVideo01,
-        ),
-        const SizedBox(height: 16),
+        // E-book toggle removed as field doesn't exist in ebooks table
         _buildToggle(
           title: 'Status Aktif',
           subtitle: _isActive
@@ -1129,7 +1092,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         onSave: _saveEpisodeFromDialog,
         getNextEpisodeNumber: _getNextEpisodeNumber,
         defaultThumbnailFor: _defaultThumbnailFor,
-        extractYouTubeVideoId: _extractYouTubeVideoId,
+        extractYouTubeVideoId: VideoEpisodeService.extractYouTubeVideoId,
       ),
     );
   }
@@ -1160,29 +1123,28 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 
       if (episodeId == null) {
         // Add new episode
-        await _videoService.addEpisode(
-          kitabId: widget.kitabId!,
-          title: title,
-          youtubeVideoId: youtubeVideoId,
-          partNumber: episodeNumber,
-          youtubeVideoUrl: youtubeUrl,
-          thumbnailUrl: finalThumbnailUrl,
-          isPreview: isPreview,
-          isActive: isActive,
-        );
+        await VideoEpisodeService.createEpisode({
+          'video_kitab_id': widget.kitabId!,
+          'title': title,
+          'youtube_video_id': youtubeVideoId,
+          'part_number': episodeNumber,
+          'youtube_video_url': youtubeUrl,
+          'thumbnail_url': finalThumbnailUrl,
+          'is_preview': isPreview,
+          'is_active': isActive,
+        });
         _showSnackBar('Episode berjaya ditambah!');
       } else {
         // Update existing episode
-        await _videoService.updateEpisode(
-          episodeId: episodeId,
-          title: title,
-          youtubeVideoId: youtubeVideoId,
-          youtubeVideoUrl: youtubeUrl,
-          thumbnailUrl: finalThumbnailUrl,
-          partNumber: episodeNumber,
-          isPreview: isPreview,
-          isActive: isActive,
-        );
+        await VideoEpisodeService.updateEpisode(episodeId, {
+          'title': title,
+          'youtube_video_id': youtubeVideoId,
+          'youtube_video_url': youtubeUrl,
+          'thumbnail_url': finalThumbnailUrl,
+          'part_number': episodeNumber,
+          'is_preview': isPreview,
+          'is_active': isActive,
+        });
         _showSnackBar('Episode berjaya dikemaskini!');
       }
 
@@ -1214,7 +1176,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 
     if (confirmed == true) {
       try {
-        await _videoService.deleteEpisode(episodeId);
+        await VideoEpisodeService.deleteEpisode(episodeId);
         _showSnackBar('Episode berjaya dipadam!');
         await _loadEpisodes();
       } catch (e) {
@@ -1234,8 +1196,30 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 
     // Update episode order in database
     if (widget.kitabId != null) {
-      final episodeIds = _episodes.map((e) => e['id'] as String).toList();
-      _videoService.reorderEpisodes(widget.kitabId!, episodeIds);
+      // Note: VideoEpisodeService doesn't have reorderEpisodes method
+      // Episodes are ordered by part_number, so reordering updates part numbers
+      _updateEpisodePartNumbers();
+    }
+  }
+
+  Future<void> _updateEpisodePartNumbers() async {
+    try {
+      // Update part numbers based on current order
+      for (int i = 0; i < _episodes.length; i++) {
+        final episode = _episodes[i];
+        final episodeId = episode['id'] as String;
+        final newPartNumber = i + 1;
+
+        if (episode['part_number'] != newPartNumber) {
+          await VideoEpisodeService.updateEpisode(episodeId, {
+            'part_number': newPartNumber,
+          });
+          // Update local data to reflect changes
+          _episodes[i]['part_number'] = newPartNumber;
+        }
+      }
+    } catch (e) {
+      _showSnackBar('Ralat mengemas kini susunan episode: ${e.toString()}', isError: true);
     }
   }
 }
@@ -1278,7 +1262,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
   late final TextEditingController _thumbnailUrlController;
 
   String? _youtubeVideoId;
-  String? _previewTitle;
+  // String? _previewTitle; // Not used in current implementation
   String? _previewThumbnailUrl;
   bool _isFetchingPreview = false;
   String? _urlErrorMessage;
@@ -1356,7 +1340,6 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
           _urlErrorMessage = 'Sila masukkan URL YouTube yang sah';
           _isFetchingPreview = false;
           _youtubeVideoId = null;
-          _previewTitle = null;
           _previewThumbnailUrl = null;
         });
         return;
@@ -1364,7 +1347,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
 
       setState(() {
         _youtubeVideoId = id;
-        _previewTitle = 'Video YouTube';
+        // _previewTitle = 'Video YouTube'; // Not used in current UI
 
         // Use custom thumbnail if provided, otherwise use default
         if (_useCustomThumbnail &&
