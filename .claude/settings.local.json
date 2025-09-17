@@ -34,6 +34,8 @@
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "supabase"
+    "supabase",
+    "shadcn",
+    "hugeicons"
   ]
 }

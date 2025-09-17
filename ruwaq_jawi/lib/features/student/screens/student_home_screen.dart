@@ -190,6 +190,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
               // Continue reading section
               _buildContinueReadingSection(),
+
+              // Add bottom padding to prevent overflow with bottom navigation
+              const SizedBox(height: 100),
             ],
           ),
         ),
@@ -438,8 +441,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               ),
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 200,
+            ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: 180,
+                maxHeight: 220,
+              ),
               child: ListView.builder(
                 controller: _featuredScrollController,
                 scrollDirection: Axis.horizontal,
@@ -779,11 +785,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 240,
+            ConstrainedBox(
+              constraints: const BoxConstraints(
+                minHeight: 220,
+                maxHeight: 260,
+              ),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: displayContent.length,
+                physics: const BouncingScrollPhysics(),
                 itemBuilder: (context, index) {
                   return Container(
                     width: 160,
@@ -837,49 +847,56 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     }
 
     if (thumbnailUrl.isNotEmpty) {
-      return Image.network(
-        thumbnailUrl,
+      return SizedBox(
         width: double.infinity,
-        height: 120,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return Container(
-            width: double.infinity,
-            height: 120,
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            child: Center(
-              child: PhosphorIcon(
-                PhosphorIcons.videoCamera(),
-                size: 48,
-                color: AppTheme.primaryColor,
-              ),
-            ),
-          );
-        },
-        loadingBuilder: (context, child, loadingProgress) {
-          if (loadingProgress == null) return child;
-          return Container(
-            width: double.infinity,
-            height: 120,
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            child: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppTheme.primaryColor,
+        height: double.infinity,
+        child: Image.network(
+          thumbnailUrl,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              child: Center(
+                child: PhosphorIcon(
+                  PhosphorIcons.videoCamera(),
+                  size: 48,
+                  color: AppTheme.primaryColor,
                 ),
-                strokeWidth: 2,
               ),
-            ),
-          );
-        },
+            );
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: double.infinity,
+              height: double.infinity,
+              color: AppTheme.primaryColor.withOpacity(0.1),
+              child: Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.primaryColor,
+                  ),
+                  strokeWidth: 2,
+                ),
+              ),
+            );
+          },
+        ),
       );
     } else {
       // Fallback to icon if no YouTube URL
-      return Center(
-        child: PhosphorIcon(
-          PhosphorIcons.videoCamera(),
-          size: 48,
-          color: AppTheme.primaryColor,
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: AppTheme.primaryColor.withOpacity(0.1),
+        child: Center(
+          child: PhosphorIcon(
+            PhosphorIcons.videoCamera(),
+            size: 48,
+            color: AppTheme.primaryColor,
+          ),
         ),
       );
     }
@@ -900,80 +917,94 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
+            // Thumbnail section with proper constraints
+            SizedBox(
               height: 120,
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12),
+              width: double.infinity,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
                 ),
-              ),
-              child: isEbook
-                  ? // Keep icon for ebooks
-                    Center(
-                      child: PhosphorIcon(
-                        PhosphorIcons.filePdf(),
-                        size: 48,
-                        color: AppTheme.primaryColor,
-                      ),
-                    )
-                  : // Use thumbnail for video kitab
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(12),
-                      ),
-                      child: _buildVideoThumbnail(content),
-                    ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    content.title,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    content.author ?? 'Unknown Author',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Show appropriate info based on content type
-                  Row(
-                    children: [
-                      PhosphorIcon(
-                        isEbook
-                            ? PhosphorIcons.filePdf()
-                            : PhosphorIcons.videoCamera(),
-                        size: 16,
-                        color: AppTheme.primaryColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isEbook
-                            ? (content.totalPages != null
-                                  ? '${content.totalPages} hal'
-                                  : 'E-book')
-                            : (content.totalVideos > 0
-                                  ? '${content.totalVideos} episod'
-                                  : '1 episod'),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                child: isEbook
+                    ? // Keep icon for ebooks
+                      Center(
+                        child: PhosphorIcon(
+                          PhosphorIcons.filePdf(),
+                          size: 48,
                           color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.w500,
                         ),
+                      )
+                    : // Use thumbnail for video kitab with proper clipping
+                      ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                        child: _buildVideoThumbnail(content),
                       ),
-                    ],
-                  ),
-                ],
+              ),
+            ),
+            // Content section with flexible height
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      content.title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      content.author ?? 'Unknown Author',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    // Show appropriate info based on content type
+                    Row(
+                      children: [
+                        PhosphorIcon(
+                          isEbook
+                              ? PhosphorIcons.filePdf()
+                              : PhosphorIcons.videoCamera(),
+                          size: 16,
+                          color: AppTheme.primaryColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            isEbook
+                                ? (content.totalPages != null
+                                      ? '${content.totalPages} hal'
+                                      : 'E-book')
+                                : (content.totalVideos > 0
+                                      ? '${content.totalVideos} episod'
+                                      : '1 episod'),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
