@@ -11,8 +11,8 @@ class ReadingProgress {
   final DateTime createdAt;
   final DateTime updatedAt;
   // ✅ NEW: Add these properties for enhanced features
-  final List<dynamic> bookmarks;     // JSON array for bookmarks
-  final Map<String, dynamic> notes;  // JSON object for notes
+  final List<dynamic> bookmarks; // JSON array for bookmarks
+  final Map<String, dynamic> notes; // JSON object for notes
 
   ReadingProgress({
     required this.id,
@@ -26,8 +26,8 @@ class ReadingProgress {
     required this.lastAccessed,
     required this.createdAt,
     required this.updatedAt,
-    this.bookmarks = const [],       // ✅ NEW: Default empty list
-    this.notes = const {},           // ✅ NEW: Default empty map
+    this.bookmarks = const [], // ✅ NEW: Default empty list
+    this.notes = const {}, // ✅ NEW: Default empty map
   });
 
   factory ReadingProgress.fromJson(Map<String, dynamic> json) {
@@ -37,15 +37,22 @@ class ReadingProgress {
       kitabId: json['kitab_id'] as String,
       videoProgress: json['video_progress'] as int? ?? 0,
       videoDuration: json['video_duration'] as int? ?? 0,
-      pdfPage: json['current_page'] as int? ?? 1,                    // ✅ CHANGE: pdf_page → current_page
-      pdfTotalPages: json['total_pages'] as int?,                    // ✅ CHANGE: pdf_total_pages → total_pages
-      completionPercentage: double.parse((json['progress_percentage'] ?? 0.0).toString()), // ✅ CHANGE: completion_percentage → progress_percentage
+      pdfPage:
+          json['current_page'] as int? ??
+          1, // ✅ CHANGE: pdf_page → current_page
+      pdfTotalPages:
+          json['total_pages']
+              as int?, // ✅ CHANGE: pdf_total_pages → total_pages
+      completionPercentage: double.parse(
+        (json['progress_percentage'] ?? 0.0).toString(),
+      ), // ✅ CHANGE: completion_percentage → progress_percentage
       lastAccessed: DateTime.parse(json['last_accessed'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       // ✅ NEW FEATURES AVAILABLE:
-      bookmarks: json['bookmarks'] as List<dynamic>? ?? [],          // ✅ NEW: JSON bookmarks
-      notes: json['notes'] as Map<String, dynamic>? ?? {},           // ✅ NEW: JSON notes
+      bookmarks:
+          json['bookmarks'] as List<dynamic>? ?? [], // ✅ NEW: JSON bookmarks
+      notes: json['notes'] as Map<String, dynamic>? ?? {}, // ✅ NEW: JSON notes
     );
   }
 
@@ -56,12 +63,13 @@ class ReadingProgress {
       'kitab_id': kitabId,
       'video_progress': videoProgress,
       'video_duration': videoDuration,
-      'current_page': pdfPage,                         // ✅ CHANGE: pdf_page → current_page
-      'total_pages': pdfTotalPages,                    // ✅ CHANGE: pdf_total_pages → total_pages
-      'progress_percentage': completionPercentage,     // ✅ CHANGE: completion_percentage → progress_percentage
+      'current_page': pdfPage, // ✅ CHANGE: pdf_page → current_page
+      'total_pages': pdfTotalPages, // ✅ CHANGE: pdf_total_pages → total_pages
+      'progress_percentage':
+          completionPercentage, // ✅ CHANGE: completion_percentage → progress_percentage
       'last_accessed': lastAccessed.toIso8601String(),
-      'bookmarks': bookmarks,                          // ✅ NEW: Save bookmarks as JSON
-      'notes': notes,                                  // ✅ NEW: Save notes as JSON
+      'bookmarks': bookmarks, // ✅ NEW: Save bookmarks as JSON
+      'notes': notes, // ✅ NEW: Save notes as JSON
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -79,8 +87,8 @@ class ReadingProgress {
     DateTime? lastAccessed,
     DateTime? createdAt,
     DateTime? updatedAt,
-    List<dynamic>? bookmarks,           // ✅ NEW: Add bookmarks parameter
-    Map<String, dynamic>? notes,        // ✅ NEW: Add notes parameter
+    List<dynamic>? bookmarks, // ✅ NEW: Add bookmarks parameter
+    Map<String, dynamic>? notes, // ✅ NEW: Add notes parameter
   }) {
     return ReadingProgress(
       id: id ?? this.id,
@@ -94,8 +102,8 @@ class ReadingProgress {
       lastAccessed: lastAccessed ?? this.lastAccessed,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
-      bookmarks: bookmarks ?? this.bookmarks,     // ✅ NEW: Include bookmarks
-      notes: notes ?? this.notes,                 // ✅ NEW: Include notes
+      bookmarks: bookmarks ?? this.bookmarks, // ✅ NEW: Include bookmarks
+      notes: notes ?? this.notes, // ✅ NEW: Include notes
     );
   }
 
@@ -103,7 +111,7 @@ class ReadingProgress {
     final hours = videoProgress ~/ 3600;
     final minutes = (videoProgress % 3600) ~/ 60;
     final seconds = videoProgress % 60;
-    
+
     if (hours > 0) {
       return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     }
@@ -122,24 +130,20 @@ class ReadingProgress {
 
   bool get hasVideoProgress => videoProgress > 0;
   bool get hasPdfProgress => pdfPage > 1;
-  
+
   // ✅ NEW: Helper methods for bookmarks & notes
   void addBookmark(Map<String, dynamic> bookmark) {
-    if (bookmarks is List<dynamic>) {
-      (bookmarks as List<dynamic>).add(bookmark);
-    }
+    (bookmarks).add(bookmark);
   }
-  
+
   void addNote(String key, dynamic value) {
-    if (notes is Map<String, dynamic>) {
-      (notes as Map<String, dynamic>)[key] = value;
-    }
+    (notes)[key] = value;
   }
-  
+
   List<Map<String, dynamic>> get bookmarksList {
     return bookmarks.cast<Map<String, dynamic>>();
   }
-  
+
   bool get hasBookmarks => bookmarks.isNotEmpty;
   bool get hasNotes => notes.isNotEmpty;
 }

@@ -1,16 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminBottomNav extends StatelessWidget {
   final int currentIndex;
 
-  const AdminBottomNav({
-    super.key,
-    required this.currentIndex,
-  });
+  const AdminBottomNav({super.key, required this.currentIndex});
 
   @override
   Widget build(BuildContext context) {
@@ -63,26 +59,10 @@ class AdminBottomNav extends StatelessWidget {
               'Dashboard',
               0,
             ),
-            _buildNavItem(
-              HugeIcons.strokeRoundedLibrary,
-              'Kandungan',
-              1,
-            ),
-            _buildNavItem(
-              HugeIcons.strokeRoundedBook02,
-              'E-book',
-              2,
-            ),
-            _buildNavItem(
-              HugeIcons.strokeRoundedUserMultiple,
-              'Pengguna',
-              3,
-            ),
-            _buildNavItem(
-              HugeIcons.strokeRoundedAnalytics01,
-              'Analitik',
-              4,
-            ),
+            _buildNavItem(HugeIcons.strokeRoundedLibrary, 'Kandungan', 1),
+            _buildNavItem(HugeIcons.strokeRoundedBook02, 'E-book', 2),
+            _buildNavItem(HugeIcons.strokeRoundedUserMultiple, 'Pengguna', 3),
+            _buildNavItem(HugeIcons.strokeRoundedAnalytics01, 'Analitik', 4),
           ],
         ),
       ),
@@ -104,7 +84,10 @@ class AdminBottomNav extends StatelessWidget {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
-              ? Border.all(color: const Color(0xFF00BF6D).withOpacity(0.3), width: 1)
+              ? Border.all(
+                  color: const Color(0xFF00BF6D).withOpacity(0.3),
+                  width: 1,
+                )
               : null,
         ),
         child: AnimatedSwitcher(
@@ -113,9 +96,7 @@ class AdminBottomNav extends StatelessWidget {
             key: ValueKey(isSelected),
             icon: icon,
             size: 22.0,
-            color: isSelected 
-                ? const Color(0xFF00BF6D)
-                : Colors.grey.shade600,
+            color: isSelected ? const Color(0xFF00BF6D) : Colors.grey.shade600,
           ),
         ),
       ),

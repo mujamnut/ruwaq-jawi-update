@@ -39,13 +39,18 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
       if (cachedUsers != null && cachedSubscriptions != null) {
         final usersJson = jsonDecode(cachedUsers) as List;
-        final subscriptionsJson = jsonDecode(cachedSubscriptions) as Map<String, dynamic>;
+        final subscriptionsJson =
+            jsonDecode(cachedSubscriptions) as Map<String, dynamic>;
 
-        final users = usersJson.map((json) => UserProfile.fromJson(json)).toList();
+        final users = usersJson
+            .map((json) => UserProfile.fromJson(json))
+            .toList();
         final subscriptions = <String, Subscription?>{};
-        
+
         subscriptionsJson.forEach((key, value) {
-          subscriptions[key] = value != null ? Subscription.fromJson(value) : null;
+          subscriptions[key] = value != null
+              ? Subscription.fromJson(value)
+              : null;
         });
 
         setState(() {
@@ -59,19 +64,25 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     }
   }
 
-  Future<void> _cacheData(List<UserProfile> users, Map<String, Subscription?> subscriptions) async {
+  Future<void> _cacheData(
+    List<UserProfile> users,
+    Map<String, Subscription?> subscriptions,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
+
       final usersJson = users.map((user) => user.toJson()).toList();
       final subscriptionsJson = <String, dynamic>{};
-      
+
       subscriptions.forEach((key, value) {
         subscriptionsJson[key] = value?.toJson();
       });
 
       await prefs.setString('cached_admin_users', jsonEncode(usersJson));
-      await prefs.setString('cached_user_subscriptions', jsonEncode(subscriptionsJson));
+      await prefs.setString(
+        'cached_user_subscriptions',
+        jsonEncode(subscriptionsJson),
+      );
     } catch (e) {
       print('Error caching users: $e');
     }
@@ -87,18 +98,21 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       // Load all user profiles with real email from auth.users
       List usersResponse;
       try {
-        usersResponse = await SupabaseService.client.rpc('get_all_profiles_with_email') as List;
+        usersResponse =
+            await SupabaseService.client.rpc('get_all_profiles_with_email')
+                as List;
       } catch (e) {
         // Fallback to normal profiles query if RPC fails
         print('RPC failed, using fallback: $e');
-        final profilesResponse = await SupabaseService.from('profiles')
-            .select()
-            .order('created_at', ascending: false);
-        
+        final profilesResponse = await SupabaseService.from(
+          'profiles',
+        ).select().order('created_at', ascending: false);
+
         usersResponse = (profilesResponse as List).map((json) {
           // Add dummy email as fallback
           final updatedJson = Map<String, dynamic>.from(json);
-          updatedJson['email'] = '${json['full_name']?.toString().toLowerCase().replaceAll(' ', '')}@domain.com';
+          updatedJson['email'] =
+              '${json['full_name']?.toString().toLowerCase().replaceAll(' ', '')}@domain.com';
           return updatedJson;
         }).toList();
       }
@@ -143,9 +157,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
   String _getErrorMessage(dynamic error) {
     final errorString = error.toString().toLowerCase();
-    
+
     // Connection related errors
-    if (errorString.contains('socketexception') || 
+    if (errorString.contains('socketexception') ||
         errorString.contains('failed host lookup') ||
         errorString.contains('no address associated with hostname') ||
         errorString.contains('network is unreachable') ||
@@ -153,54 +167,60 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         errorString.contains('connection timed out')) {
       return 'Tiada sambungan internet. Sila semak sambungan anda dan cuba lagi.';
     }
-    
+
     // Authentication errors
     if (errorString.contains('authretryablefetchexception') ||
         errorString.contains('invalid_grant') ||
         errorString.contains('unauthorized')) {
       return 'Sesi anda telah tamat. Sila log masuk semula.';
     }
-    
+
     // Server errors
-    if (errorString.contains('500') || errorString.contains('internal server error')) {
+    if (errorString.contains('500') ||
+        errorString.contains('internal server error')) {
       return 'Pelayan mengalami masalah. Sila cuba lagi dalam beberapa minit.';
     }
-    
+
     // Timeout errors
     if (errorString.contains('timeout')) {
       return 'Permintaan mengambil masa terlalu lama. Sila cuba lagi.';
     }
-    
+
     // Generic network error
-    if (errorString.contains('clientexception') || errorString.contains('httperror')) {
+    if (errorString.contains('clientexception') ||
+        errorString.contains('httperror')) {
       return 'Masalah sambungan rangkaian. Sila semak sambungan internet anda.';
     }
-    
+
     // Default fallback
     return 'Ralat tidak dijangka berlaku. Sila cuba lagi atau hubungi sokongan teknikal.';
   }
 
   IconData _getErrorIcon(String error) {
-    if (error.contains('sambungan internet') || error.contains('sambungan rangkaian')) {
+    if (error.contains('sambungan internet') ||
+        error.contains('sambungan rangkaian')) {
       return HugeIcons.strokeRoundedWifiDisconnected02;
     } else if (error.contains('sesi') || error.contains('log masuk')) {
       return HugeIcons.strokeRoundedLockPassword;
     } else if (error.contains('pelayan') || error.contains('server')) {
       return HugeIcons.strokeRoundedCloud;
-    } else if (error.contains('masa terlalu lama') || error.contains('timeout')) {
+    } else if (error.contains('masa terlalu lama') ||
+        error.contains('timeout')) {
       return HugeIcons.strokeRoundedClock01;
     }
     return HugeIcons.strokeRoundedAlert02;
   }
 
   String _getErrorTitle(String error) {
-    if (error.contains('sambungan internet') || error.contains('sambungan rangkaian')) {
+    if (error.contains('sambungan internet') ||
+        error.contains('sambungan rangkaian')) {
       return 'Tiada Sambungan Internet';
     } else if (error.contains('sesi') || error.contains('log masuk')) {
       return 'Sesi Tamat Tempoh';
     } else if (error.contains('pelayan') || error.contains('server')) {
       return 'Masalah Pelayan';
-    } else if (error.contains('masa terlalu lama') || error.contains('timeout')) {
+    } else if (error.contains('masa terlalu lama') ||
+        error.contains('timeout')) {
       return 'Sambungan Terputus';
     }
     return 'Ralat Sistem';
@@ -209,7 +229,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   List<UserProfile> get _filteredUsers {
     var filtered = _users;
 
-      // Apply search filter
+    // Apply search filter
     if (_searchQuery.isNotEmpty) {
       filtered = filtered.where((user) {
         final query = _searchQuery.toLowerCase();
@@ -258,7 +278,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
         tooltip: 'Tambah Admin',
-        child: const HugeIcon(icon: HugeIcons.strokeRoundedUserSettings01, color: Colors.white),
+        child: const HugeIcon(
+          icon: HugeIcons.strokeRoundedUserSettings01,
+          color: Colors.white,
+        ),
       ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
     );
@@ -333,12 +356,19 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: AppTheme.textLightColor,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    icon: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, size: 20, color: Colors.white),
+                    icon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedRefresh,
+                      size: 20,
+                      color: Colors.white,
+                    ),
                     label: const Text('Cuba Lagi'),
                   ),
                 ],
@@ -368,7 +398,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           TextField(
             decoration: InputDecoration(
               hintText: 'Cari nama atau email pengguna...',
-              prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedSearch01, color: Colors.grey),
+              prefixIcon: const HugeIcon(
+                icon: HugeIcons.strokeRoundedSearch01,
+                color: Colors.grey,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(25),
                 borderSide: BorderSide.none,
@@ -533,7 +566,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         ? Colors.purple.withOpacity(0.1)
                         : AppTheme.primaryColor.withOpacity(0.1),
                     child: HugeIcon(
-                      icon: user.isAdmin ? HugeIcons.strokeRoundedUserSettings01 : HugeIcons.strokeRoundedUser,
+                      icon: user.isAdmin
+                          ? HugeIcons.strokeRoundedUserSettings01
+                          : HugeIcons.strokeRoundedUser,
                       color: user.isAdmin
                           ? Colors.purple
                           : AppTheme.primaryColor,
@@ -554,9 +589,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         Text(
                           user.email ?? 'No email',
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppTheme.textSecondaryColor,
-                              ),
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         ),
                       ],
                     ),
@@ -572,7 +605,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                         value: 'view',
                         child: Row(
                           children: [
-                            HugeIcon(icon: HugeIcons.strokeRoundedView, color: Colors.blue),
+                            HugeIcon(
+                              icon: HugeIcons.strokeRoundedView,
+                              color: Colors.blue,
+                            ),
                             SizedBox(width: 8),
                             Text('Lihat Detail'),
                           ],
@@ -589,7 +625,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                 icon: hasActiveSubscription
                                     ? HugeIcons.strokeRoundedCancel01
                                     : HugeIcons.strokeRoundedCheckmarkCircle02,
-                                color: hasActiveSubscription ? Colors.red : Colors.green,
+                                color: hasActiveSubscription
+                                    ? Colors.red
+                                    : Colors.green,
                               ),
                               const SizedBox(width: 8),
                               Text(
@@ -604,7 +642,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                           value: 'promote',
                           child: Row(
                             children: [
-                              HugeIcon(icon: HugeIcons.strokeRoundedUserSettings01, color: Colors.green),
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedUserSettings01,
+                                color: Colors.green,
+                              ),
                               SizedBox(width: 8),
                               Text('Jadikan Admin'),
                             ],
@@ -702,8 +743,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   void _navigateToUserDetail(UserProfile user) {
     context.push('/admin/users/${user.id}');
   }
-
-
 
   void _handleUserAction(UserProfile user, String action) async {
     switch (action) {
@@ -838,7 +877,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Nama Penuh',
                   border: OutlineInputBorder(),
-                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedUser, color: Colors.grey),
+                  prefixIcon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedUser,
+                    color: Colors.grey,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -847,7 +889,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Email',
                   border: OutlineInputBorder(),
-                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedMail01, color: Colors.grey),
+                  prefixIcon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedMail01,
+                    color: Colors.grey,
+                  ),
                 ),
                 keyboardType: TextInputType.emailAddress,
               ),
@@ -857,7 +902,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Kata Laluan',
                   border: OutlineInputBorder(),
-                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedLockPassword, color: Colors.grey),
+                  prefixIcon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedLockPassword,
+                    color: Colors.grey,
+                  ),
                 ),
                 obscureText: true,
               ),
@@ -870,7 +918,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
                 child: const Row(
                   children: [
-                    HugeIcon(icon: HugeIcons.strokeRoundedInformationCircle, color: Colors.blue, size: 20),
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedInformationCircle,
+                      color: Colors.blue,
+                      size: 20,
+                    ),
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -905,7 +957,11 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
-  Future<void> _createAdminUser(String name, String email, String password) async {
+  Future<void> _createAdminUser(
+    String name,
+    String email,
+    String password,
+  ) async {
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -963,7 +1019,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       }
     } catch (e) {
       Navigator.of(context).pop(); // Close loading dialog
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Ralat mencipta admin: ${e.toString()}'),

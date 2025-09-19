@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -8,11 +7,9 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/models/video_kitab.dart';
-import '../../../core/models/kitab_video.dart';
 import '../../../core/models/video_episode.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../../../core/services/local_favorites_service.dart';
 import '../../../core/services/video_progress_service.dart';
 import '../../../core/services/pdf_cache_service.dart';
@@ -78,17 +75,16 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       _loadRealData();
     });
 
-
     // Start progress tracking timer
-    _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      _saveProgress();
-    });
+    _progressTimer = Timer.periodic(const Duration(seconds: 5), (_) {});
   }
 
   void _checkSaveStatus() {
     if (_currentEpisode != null) {
       setState(() {
-        _isSaved = LocalFavoritesService.isVideoEpisodeFavorite(_currentEpisode!.id);
+        _isSaved = LocalFavoritesService.isVideoEpisodeFavorite(
+          _currentEpisode!.id,
+        );
       });
     }
   }
@@ -108,7 +104,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   Future<void> _downloadPdfIfNeeded() async {
     if (_kitab?.pdfUrl == null || _kitab!.pdfUrl!.isEmpty) return;
-    
+
     // Check if already cached
     if (PdfCacheService.isPdfCached(_kitab!.pdfUrl!)) {
       _cachedPdfPath = PdfCacheService.getCachedPdfPath(_kitab!.pdfUrl!);
@@ -155,7 +151,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               ),
               backgroundColor: AppTheme.primaryColor,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -178,7 +176,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         );
       }
@@ -192,9 +192,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       // Get VideoKitab data from Supabase
       final videoKitabList = kitabProvider.activeVideoKitab;
       try {
-        _kitab = videoKitabList.firstWhere(
-          (vk) => vk.id == widget.kitabId,
-        );
+        _kitab = videoKitabList.firstWhere((vk) => vk.id == widget.kitabId);
       } catch (e) {
         print('VideoKitab not found: $e');
         setState(() {
@@ -256,8 +254,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   }
 
   void _switchToEpisode(int index) {
-    if (index < 0 || index >= _episodes.length || index == _currentEpisodeIndex)
+    if (index < 0 ||
+        index >= _episodes.length ||
+        index == _currentEpisodeIndex) {
       return;
+    }
 
     // Save current episode position
     try {
@@ -280,11 +281,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     if (_videoController != null) {
       try {
         _videoController!.load(newVideoId);
-        
+
         // Check for saved position first, then fall back to episode position
-        final savedPos = VideoProgressService.getVideoPosition(_currentEpisode!.id);
-        final resumePos = savedPos > 10 ? savedPos : (_episodePositions[_currentEpisode!.id] ?? 0);
-        
+        final savedPos = VideoProgressService.getVideoPosition(
+          _currentEpisode!.id,
+        );
+        final resumePos = savedPos > 10
+            ? savedPos
+            : (_episodePositions[_currentEpisode!.id] ?? 0);
+
         if (resumePos > 0) {
           _videoController!.seekTo(Duration(seconds: resumePos));
         }
@@ -325,8 +330,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
       // Restore saved video position
       if (_currentEpisode != null) {
-        final savedPosition = VideoProgressService.getVideoPosition(_currentEpisode!.id);
-        if (savedPosition > 10) { // Only restore if more than 10 seconds
+        final savedPosition = VideoProgressService.getVideoPosition(
+          _currentEpisode!.id,
+        );
+        if (savedPosition > 10) {
+          // Only restore if more than 10 seconds
           _videoController!.seekTo(Duration(seconds: savedPosition));
         }
       }
@@ -346,31 +354,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     setState(() {
       _isPdfLoading = false;
     });
-  }
-
-  void _saveProgress() async {
-    try {
-      // Save video progress for current episode
-      if (_currentEpisode != null && _videoController != null) {
-        final currentPosition = _videoController!.value.position.inSeconds;
-        if (currentPosition > 0) {
-          await VideoProgressService.saveVideoPosition(
-            _currentEpisode!.id, 
-            currentPosition
-          );
-        }
-      }
-      
-      if (kDebugMode) {
-        print(
-          'Progress saved: Video ${_lastVideoPosition}s, PDF page $_currentPdfPage',
-        );
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error saving video progress: $e');
-      }
-    }
   }
 
   Future<bool> _onWillPop() async {
@@ -396,7 +379,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   // Clean resume banner with modern design
   Widget _buildResumeBanner(int seconds) {
-    final label = 'Sambung dari ${VideoProgressService.formatDuration(seconds)}';
+    final label =
+        'Sambung dari ${VideoProgressService.formatDuration(seconds)}';
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -463,19 +447,17 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       _tabController.animateTo(0);
     }
     _videoController!.seekTo(Duration(seconds: seconds));
-    
+
     // Show feedback
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
-            PhosphorIcon(
-              PhosphorIcons.play(),
-              color: Colors.white,
-              size: 16,
-            ),
+            PhosphorIcon(PhosphorIcons.play(), color: Colors.white, size: 16),
             const SizedBox(width: 8),
-            Text('Meneruskan dari ${VideoProgressService.formatDuration(seconds)}'),
+            Text(
+              'Meneruskan dari ${VideoProgressService.formatDuration(seconds)}',
+            ),
           ],
         ),
         backgroundColor: AppTheme.primaryColor,
@@ -489,7 +471,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   @override
   void dispose() {
     _progressTimer?.cancel();
-    _saveProgress();
     _videoController?.dispose();
     _tabController.dispose();
     super.dispose();
@@ -527,9 +508,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     // Show loading screen while data is loading
     if (_isDataLoading) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: AppTheme.backgroundColor,
+          backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: PhosphorIcon(
@@ -568,7 +549,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     // Show error if kitab not found
     if (_kitab == null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Colors.white,
         appBar: _buildAppBar(),
         body: Center(
           child: Column(
@@ -621,7 +602,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     // Build main content with YouTube player
     if (_videoController == null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Colors.white,
         appBar: _buildAppBar(),
         body: WillPopScope(
           onWillPop: _onWillPop,
@@ -633,7 +614,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     return YoutubePlayerBuilder(
       builder: (context, player) {
         return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
+          backgroundColor: Colors.white,
           appBar: _buildAppBar(),
           body: WillPopScope(
             onWillPop: _onWillPop,
@@ -670,7 +651,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Colors.white,
       foregroundColor: AppTheme.textPrimaryColor,
       elevation: 0,
       leading: IconButton(
@@ -702,7 +683,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                   ),
                 )
               : PhosphorIcon(
-                  _isSaved 
+                  _isSaved
                       ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
                       : PhosphorIcons.heart(),
                   color: _isSaved ? Colors.red : AppTheme.textSecondaryColor,
@@ -713,7 +694,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       ],
     );
   }
-
 
   Widget _buildNormalView(Widget? player) {
     return Column(
@@ -876,13 +856,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         if (_currentEpisode != null && _tabController.index == 0) ...[
           Builder(
             builder: (context) {
-              final savedPosition = VideoProgressService.getVideoPosition(_currentEpisode!.id);
-              
+              final savedPosition = VideoProgressService.getVideoPosition(
+                _currentEpisode!.id,
+              );
+
               // Show saved position banner if we have saved progress > 10 seconds
               if (savedPosition > 10) {
                 return _buildResumeBanner(savedPosition);
               }
-              
+
               return const SizedBox.shrink();
             },
           ),
@@ -906,65 +888,21 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Clean video info card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
-            ),
+          // Clean video info
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title and premium badge
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        (_kitab?.hasVideos ?? false && _currentEpisode != null)
-                            ? _currentEpisode!.title
-                            : _kitab?.title ?? 'Kitab',
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimaryColor,
-                            ),
-                      ),
-                    ),
-                    if (_kitab?.isPremium == true)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            PhosphorIcon(
-                              PhosphorIcons.crown(),
-                              size: 12,
-                              color: Colors.white,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'PREMIUM',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
+                // Title
+                Text(
+                  (_kitab?.hasVideos ?? false && _currentEpisode != null)
+                      ? _currentEpisode!.title
+                      : _kitab?.title ?? 'Kitab',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textPrimaryColor,
+                  ),
                 ),
                 if (_kitab?.author != null) ...[
                   const SizedBox(height: 8),
@@ -1044,9 +982,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               ),
               const Spacer(),
               // Cache status indicator
-              if (_cachedPdfPath != null && _cachedPdfPath != 'ONLINE_VIEW') ...[
+              if (_cachedPdfPath != null &&
+                  _cachedPdfPath != 'ONLINE_VIEW') ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1074,7 +1016,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                 const SizedBox(width: 8),
               ] else if (_cachedPdfPath == 'ONLINE_VIEW') ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -1112,7 +1057,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                     onPressed: () => _pdfController?.zoomLevel = 1.0,
                     tooltip: 'Zum Keluar',
                     style: IconButton.styleFrom(
-                      backgroundColor: AppTheme.backgroundColor,
+                      backgroundColor: Colors.white,
                       padding: const EdgeInsets.all(8),
                     ),
                   ),
@@ -1125,7 +1070,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                     onPressed: () => _pdfController?.zoomLevel = 2.0,
                     tooltip: 'Zum Masuk',
                     style: IconButton.styleFrom(
-                      backgroundColor: AppTheme.backgroundColor,
+                      backgroundColor: Colors.white,
                       padding: const EdgeInsets.all(8),
                     ),
                   ),
@@ -1136,9 +1081,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         ),
 
         // PDF Viewer with caching support
-        Expanded(
-          child: _buildPdfViewer(),
-        ),
+        Expanded(child: _buildPdfViewer()),
 
         // Modern PDF navigation controls
         Container(
@@ -1498,9 +1441,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               ),
               label: Text(
                 'Lihat online sahaja',
-                style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                ),
+                style: TextStyle(color: AppTheme.textSecondaryColor),
               ),
             ),
           ],
@@ -1510,7 +1451,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   }
 
   // Removed unused _buildChapterList() to resolve lint warning
-
 
   void _shareContent() {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -1543,9 +1483,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     try {
       bool success;
       if (_isSaved) {
-        success = await LocalFavoritesService.removeVideoEpisodeFromFavorites(_currentEpisode!.id);
+        success = await LocalFavoritesService.removeVideoEpisodeFromFavorites(
+          _currentEpisode!.id,
+        );
       } else {
-        success = await LocalFavoritesService.addVideoEpisodeToFavorites(_currentEpisode!.id);
+        success = await LocalFavoritesService.addVideoEpisodeToFavorites(
+          _currentEpisode!.id,
+        );
       }
 
       if (success) {
@@ -1559,19 +1503,25 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               content: Row(
                 children: [
                   PhosphorIcon(
-                    _isSaved 
+                    _isSaved
                         ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
                         : PhosphorIcons.heartBreak(),
                     color: Colors.white,
                     size: 16,
                   ),
                   const SizedBox(width: 8),
-                  Text(_isSaved ? 'Video episod disimpan' : 'Video episod dibuang dari senarai simpan'),
+                  Text(
+                    _isSaved
+                        ? 'Video episod disimpan'
+                        : 'Video episod dibuang dari senarai simpan',
+                  ),
                 ],
               ),
               backgroundColor: _isSaved ? AppTheme.primaryColor : Colors.orange,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               duration: const Duration(seconds: 2),
             ),
           );
@@ -1582,14 +1532,20 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             SnackBar(
               content: Row(
                 children: [
-                  const Icon(Icons.error_outline, color: Colors.white, size: 16),
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 16,
+                  ),
                   const SizedBox(width: 8),
                   const Text('Ralat menyimpan video episod'),
                 ],
               ),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           );
         }
@@ -1607,7 +1563,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
         );
       }
@@ -1624,13 +1582,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     if (_episodes.length <= 1) return [];
 
     return [
-      Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderColor),
-        ),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1643,7 +1596,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Senarai Episod',
+                  'Senarai Episode',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: AppTheme.textPrimaryColor,
@@ -1670,11 +1623,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               ],
             ),
             const SizedBox(height: 16),
-            ..._episodes
-                .asMap()
-                .entries
-                .map((entry) => _buildEpisodeCard(entry.value, entry.key))
-                .toList(),
+            ...(_episodes.asMap().entries.toList()..sort(
+                  (a, b) => a.value.partNumber.compareTo(b.value.partNumber),
+                ))
+                .map((entry) => _buildEpisodeCard(entry.value, entry.key)),
           ],
         ),
       ),
@@ -1688,16 +1640,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isCurrentEpisode
-              ? AppTheme.primaryColor
-              : AppTheme.borderColor,
-          width: isCurrentEpisode ? 2 : 1,
-        ),
-      ),
       child: InkWell(
         onTap: () => _switchToEpisode(index),
         borderRadius: BorderRadius.circular(12),
@@ -1705,10 +1647,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              // Modern thumbnail with play overlay
+              // YouTube-style thumbnail
               Container(
-                width: 100,
-                height: 56,
+                width: 120,
+                height: 68,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: Colors.grey[100],
@@ -1719,13 +1661,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
                         thumbnail,
-                        width: 100,
-                        height: 56,
+                        width: 120,
+                        height: 68,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            width: 100,
-                            height: 56,
+                            width: 120,
+                            height: 68,
                             decoration: BoxDecoration(
                               color: AppTheme.primaryColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
@@ -1734,48 +1676,21 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                               child: PhosphorIcon(
                                 PhosphorIcons.videoCamera(),
                                 color: AppTheme.primaryColor,
-                                size: 24,
+                                size: 28,
                               ),
                             ),
                           );
                         },
                       ),
                     ),
-                    // Play overlay
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.black.withOpacity(0.3),
-                        ),
-                        child: Center(
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: isCurrentEpisode
-                                  ? AppTheme.primaryColor
-                                  : Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: PhosphorIcon(
-                              PhosphorIcons.play(PhosphorIconsStyle.fill),
-                              color: isCurrentEpisode
-                                  ? Colors.white
-                                  : AppTheme.textPrimaryColor,
-                              size: 16,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Duration badge
+                    // Duration badge (bottom right)
                     if (episode.durationMinutes > 0)
                       Positioned(
-                        bottom: 6,
-                        right: 6,
+                        bottom: 4,
+                        right: 4,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
+                            horizontal: 4,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
@@ -1783,7 +1698,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '${episode.formattedDuration}',
+                            episode.formattedDuration,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 10,
@@ -1795,50 +1710,47 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
-              // Episode info
+              const SizedBox(width: 12),
+              // Video info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Title
+                    Text(
+                      episode.title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // Episode number and current status
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isCurrentEpisode
-                                ? AppTheme.primaryColor
-                                : AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Ep ${episode.partNumber}',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: isCurrentEpisode
-                                      ? Colors.white
-                                      : AppTheme.primaryColor,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 11,
-                                ),
-                          ),
+                        Text(
+                          'Episode ${episode.partNumber}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                                fontSize: 12,
+                              ),
                         ),
-                        const Spacer(),
-                        if (isCurrentEpisode)
+                        if (isCurrentEpisode) ...[
+                          const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 6,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.secondaryColor,
+                              color: AppTheme.primaryColor,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'SEMASA',
+                              'PLAYING',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Colors.white,
@@ -1847,17 +1759,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                                   ),
                             ),
                           ),
+                        ],
                       ],
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      episode.title,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
                     if (episode.description?.isNotEmpty == true) ...[
                       const SizedBox(height: 4),
@@ -1866,8 +1769,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppTheme.textSecondaryColor,
                           height: 1.3,
+                          fontSize: 12,
                         ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ],

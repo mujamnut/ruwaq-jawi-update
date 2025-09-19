@@ -10,10 +10,7 @@ import '../../../core/theme/app_theme.dart';
 class AdminKitabDetailScreen extends StatefulWidget {
   final String kitabId;
 
-  const AdminKitabDetailScreen({
-    super.key,
-    required this.kitabId,
-  });
+  const AdminKitabDetailScreen({super.key, required this.kitabId});
 
   @override
   State<AdminKitabDetailScreen> createState() => _AdminKitabDetailScreenState();
@@ -21,17 +18,17 @@ class AdminKitabDetailScreen extends StatefulWidget {
 
 class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   // Using static methods from VideoKitabService and VideoEpisodeService
-  
+
   Kitab? _kitab;
   String? _previewVideoId;
   List<Map<String, dynamic>> _episodes = [];
-  
+
   bool _isLoading = true;
   bool _isSaving = false;
-  
+
   // Controllers untuk preview video
   final _previewUrlController = TextEditingController();
-  
+
   // Controllers untuk episodes (dynamic list)
   final List<TextEditingController> _episodeControllers = [];
   final List<bool> _episodePremiumFlags = [];
@@ -55,20 +52,22 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   Future<void> _loadKitabDetail() async {
     try {
       setState(() => _isLoading = true);
-      
+
       // Load kitab data
-      final videoKitab = await VideoKitabService.getVideoKitabById(widget.kitabId);
+      final videoKitab = await VideoKitabService.getVideoKitabById(
+        widget.kitabId,
+      );
       if (videoKitab == null) {
         throw Exception('Kitab tidak dijumpai');
       }
       _kitab = Kitab.fromJson(videoKitab.toJson());
-      
+
       // Load preview video
       if (_kitab?.youtubeVideoUrl != null) {
         _previewUrlController.text = _kitab!.youtubeVideoUrl!;
         _previewVideoId = _kitab!.youtubeVideoId;
       }
-      
+
       // Load episodes
       final episodesList = await VideoEpisodeService.getEpisodesForVideoKitab(
         widget.kitabId,
@@ -76,10 +75,10 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         ascending: true,
       );
       _episodes = episodesList.map((e) => e.toJson()).toList();
-      
+
       // Setup episode controllers
       _setupEpisodeControllers();
-      
+
       setState(() => _isLoading = false);
     } catch (e) {
       setState(() => _isLoading = false);
@@ -94,7 +93,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     }
     _episodeControllers.clear();
     _episodePremiumFlags.clear();
-    
+
     // Create controllers for existing episodes
     for (final episode in _episodes) {
       final controller = TextEditingController();
@@ -105,7 +104,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       _episodePremiumFlags.add(!(episode['is_preview'] ?? false));
     }
   }
-
 
   String _defaultThumbnailFor(String id) =>
       VideoEpisodeService.getYouTubeThumbnailUrl(id);
@@ -127,32 +125,34 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
 
   Future<void> _saveChanges() async {
     if (_kitab == null) return;
-    
+
     setState(() => _isSaving = true);
-    
+
     try {
       // Save preview video
       String? previewVideoId;
       String? previewVideoUrl = _previewUrlController.text.trim();
-      
+
       if (previewVideoUrl.isNotEmpty) {
-        previewVideoId = VideoEpisodeService.extractYouTubeVideoId(previewVideoUrl);
+        previewVideoId = VideoEpisodeService.extractYouTubeVideoId(
+          previewVideoUrl,
+        );
         if (previewVideoId == null) {
           throw Exception('URL preview video tidak sah');
         }
       }
-      
+
       // Update kitab with preview video
       await VideoKitabService.updateVideoKitabAdmin(widget.kitabId, {
         'youtube_video_id': previewVideoId,
         'youtube_video_url': previewVideoUrl.isEmpty ? null : previewVideoUrl,
       });
-      
+
       // Clear existing episodes
       for (final episode in _episodes) {
         await VideoEpisodeService.deleteEpisode(episode['id']);
       }
-      
+
       // Save new episodes
       for (int i = 0; i < _episodeControllers.length; i++) {
         final url = _episodeControllers[i].text.trim();
@@ -166,16 +166,16 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               'youtube_video_url': url,
               'thumbnail_url': _defaultThumbnailFor(videoId),
               'part_number': i + 1,
-              'is_preview': !_episodePremiumFlags[i], // Invert: true = free, false = premium
+              'is_preview':
+                  !_episodePremiumFlags[i], // Invert: true = free, false = premium
               'is_active': true,
             });
           }
         }
       }
-      
+
       _showSnackBar('Perubahan berjaya disimpan!');
       await _loadKitabDetail(); // Reload data
-      
     } catch (e) {
       _showSnackBar('Ralat menyimpan: ${e.toString()}', isError: true);
     } finally {
@@ -218,7 +218,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         onPressed: _isSaving ? null : _saveChanges,
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
-        icon: _isSaving 
+        icon: _isSaving
             ? const SizedBox(
                 width: 20,
                 height: 20,
@@ -234,7 +234,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     if (_kitab == null) {
       return const Center(child: Text('Kitab tidak dijumpai'));
     }
-    
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -267,7 +267,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            
+
             if (_kitab!.thumbnailUrl != null) ...[
               Center(
                 child: ClipRRect(
@@ -293,26 +293,23 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            
+
             _buildInfoRow('Tajuk', _kitab!.title),
             if (_kitab!.author != null)
               _buildInfoRow('Pengarang', _kitab!.author!),
             if (_kitab!.description != null)
               _buildInfoRow('Penerangan', _kitab!.description!),
-            
+
             Row(
               children: [
                 Expanded(
                   child: _buildInfoRow(
-                    'Status', 
+                    'Status',
                     _kitab!.isPremium ? 'Premium' : 'Percuma',
                   ),
                 ),
                 Expanded(
-                  child: _buildInfoRow(
-                    'Halaman', 
-                    '${_kitab!.totalPages ?? 0}',
-                  ),
+                  child: _buildInfoRow('Halaman', '${_kitab!.totalPages ?? 0}'),
                 ),
               ],
             ),
@@ -340,10 +337,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
           ),
           const Text(': '),
           Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
           ),
         ],
       ),
@@ -374,12 +368,12 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             const SizedBox(height: 8),
             Text(
               'Video preview yang boleh ditonton semua pengguna tanpa langganan',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
-            
+
             TextFormField(
               controller: _previewUrlController,
               decoration: InputDecoration(
@@ -387,21 +381,25 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                 hintText: 'https://www.youtube.com/watch?v=...',
                 prefixIcon: const Icon(Icons.link),
                 border: const OutlineInputBorder(),
-                errorText: _previewUrlController.text.trim().isNotEmpty && 
-                          _previewVideoId == null 
+                errorText:
+                    _previewUrlController.text.trim().isNotEmpty &&
+                        _previewVideoId == null
                     ? 'URL YouTube tidak sah'
                     : null,
               ),
               maxLines: 2,
               onChanged: (value) {
                 setState(() {
-                  _previewVideoId = VideoEpisodeService.extractYouTubeVideoId(value.trim());
+                  _previewVideoId = VideoEpisodeService.extractYouTubeVideoId(
+                    value.trim(),
+                  );
                 });
               },
             ),
-            
+
             // Debug info for invalid URLs
-            if (_previewUrlController.text.trim().isNotEmpty && _previewVideoId == null) ...[
+            if (_previewUrlController.text.trim().isNotEmpty &&
+                _previewVideoId == null) ...[
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(8),
@@ -417,16 +415,16 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                     Expanded(
                       child: Text(
                         'URL tidak sah. Pastikan URL YouTube valid dan video ID 11 karakter.',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.red[700],
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.red[700]),
                       ),
                     ),
                   ],
                 ),
               ),
             ],
-            
+
             if (_previewVideoId != null) ...[
               const SizedBox(height: 12),
               Container(
@@ -456,8 +454,18 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                             child: const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.error_outline, size: 20, color: Colors.grey),
-                                Text('Error', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 20,
+                                  color: Colors.grey,
+                                ),
+                                Text(
+                                  'Error',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ],
                             ),
                           );
@@ -475,7 +483,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                               child: SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               ),
                             ),
                           );
@@ -489,9 +499,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                         children: [
                           Text(
                             'Video ID: $_previewVideoId',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w500),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -509,7 +518,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                     ),
                     IconButton(
                       onPressed: () async {
-                        final url = 'https://www.youtube.com/watch?v=$_previewVideoId';
+                        final url =
+                            'https://www.youtube.com/watch?v=$_previewVideoId';
                         if (await canLaunchUrl(Uri.parse(url))) {
                           await launchUrl(Uri.parse(url));
                         }
@@ -554,7 +564,10 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ],
@@ -562,12 +575,12 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             const SizedBox(height: 8),
             Text(
               'Atur episode dengan status premium/percuma secara individu',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
             ),
             const SizedBox(height: 16),
-            
+
             if (_episodeControllers.isEmpty)
               Container(
                 width: double.infinity,
@@ -607,7 +620,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     final controller = _episodeControllers[index];
     final isPremium = _episodePremiumFlags[index];
     final videoId = VideoEpisodeService.extractYouTubeVideoId(controller.text);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
@@ -646,7 +659,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // URL input
           TextFormField(
             controller: controller,
@@ -660,7 +673,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             onChanged: (value) => setState(() {}),
           ),
           const SizedBox(height: 12),
-          
+
           // Premium toggle
           Row(
             children: [
@@ -671,12 +684,14 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                     _episodePremiumFlags[index] = value;
                   });
                 },
-                activeColor: AppTheme.secondaryColor,
+                activeThumbColor: AppTheme.secondaryColor,
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  isPremium ? 'Premium (Perlu langganan)' : 'Percuma (Semua pengguna)',
+                  isPremium
+                      ? 'Premium (Perlu langganan)'
+                      : 'Percuma (Semua pengguna)',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: isPremium ? AppTheme.secondaryColor : Colors.green,
@@ -685,19 +700,19 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               ),
             ],
           ),
-          
+
           // Video preview
           if (videoId != null) ...[
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isPremium 
+                color: isPremium
                     ? AppTheme.secondaryColor.withOpacity(0.1)
                     : Colors.green.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isPremium 
+                  color: isPremium
                       ? AppTheme.secondaryColor.withOpacity(0.3)
                       : Colors.green.withOpacity(0.3),
                 ),
@@ -722,8 +737,18 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                           child: const Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.error_outline, size: 16, color: Colors.grey),
-                              Text('Error', style: TextStyle(fontSize: 8, color: Colors.grey)),
+                              Icon(
+                                Icons.error_outline,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                              Text(
+                                'Error',
+                                style: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ],
                           ),
                         );
@@ -755,9 +780,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                       children: [
                         Text(
                           'Video ID: $videoId',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w500),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                         ),
@@ -766,7 +790,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                           isPremium ? 'PREMIUM' : 'PERCUMA',
                           style: TextStyle(
                             fontSize: 10,
-                            color: isPremium ? AppTheme.secondaryColor : Colors.green,
+                            color: isPremium
+                                ? AppTheme.secondaryColor
+                                : Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
@@ -10,7 +9,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 class PdfCacheService {
   static const String _boxName = 'pdf_cache';
   static const String _metadataKey = 'pdf_metadata';
-  
+
   static Box<dynamic>? _box;
   static Directory? _cacheDirectory;
 
@@ -18,16 +17,16 @@ class PdfCacheService {
   static Future<void> initialize() async {
     try {
       _box = await Hive.openBox(_boxName);
-      
+
       // Get cache directory
       final appDir = await getApplicationDocumentsDirectory();
       _cacheDirectory = Directory('${appDir.path}/pdf_cache');
-      
+
       // Create cache directory if it doesn't exist
       if (!await _cacheDirectory!.exists()) {
         await _cacheDirectory!.create(recursive: true);
       }
-      
+
       if (kDebugMode) {
         print('PDF Cache Service initialized at: ${_cacheDirectory!.path}');
       }
@@ -41,7 +40,9 @@ class PdfCacheService {
   /// Get the cache box
   static Box<dynamic> get _cacheBox {
     if (_box == null || !_box!.isOpen) {
-      throw Exception('PdfCacheService not initialized. Call initialize() first.');
+      throw Exception(
+        'PdfCacheService not initialized. Call initialize() first.',
+      );
     }
     return _box!;
   }
@@ -57,15 +58,16 @@ class PdfCacheService {
   static bool isPdfCached(String pdfUrl) {
     try {
       if (_cacheDirectory == null) return false;
-      
+
       final key = _generateKey(pdfUrl);
-      final metadata = _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
-      
+      final metadata =
+          _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
+
       if (!metadata.containsKey(key)) return false;
-      
+
       final filePath = '${_cacheDirectory!.path}/$key.pdf';
       final file = File(filePath);
-      
+
       return file.existsSync();
     } catch (e) {
       if (kDebugMode) {
@@ -79,10 +81,10 @@ class PdfCacheService {
   static String? getCachedPdfPath(String pdfUrl) {
     try {
       if (!isPdfCached(pdfUrl)) return null;
-      
+
       final key = _generateKey(pdfUrl);
       final filePath = '${_cacheDirectory!.path}/$key.pdf';
-      
+
       return filePath;
     } catch (e) {
       if (kDebugMode) {
@@ -93,7 +95,8 @@ class PdfCacheService {
   }
 
   /// Download and cache PDF
-  static Future<String?> downloadAndCachePdf(String pdfUrl, {
+  static Future<String?> downloadAndCachePdf(
+    String pdfUrl, {
     Function(double)? onProgress,
   }) async {
     try {
@@ -119,15 +122,17 @@ class PdfCacheService {
 
       // Download PDF
       final response = await http.get(Uri.parse(pdfUrl));
-      
+
       if (response.statusCode == 200) {
         // Save to cache directory
         await file.writeAsBytes(response.bodyBytes);
-        
+
         // Save metadata
-        final metadata = _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
+        final metadata =
+            _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{})
+                as Map;
         final updatedMetadata = Map<String, dynamic>.from(metadata);
-        
+
         updatedMetadata[key] = {
           'url': pdfUrl,
           'file_path': filePath,
@@ -135,13 +140,15 @@ class PdfCacheService {
           'cached_at': DateTime.now().toIso8601String(),
           'last_accessed': DateTime.now().toIso8601String(),
         };
-        
+
         await _cacheBox.put(_metadataKey, updatedMetadata);
-        
+
         if (kDebugMode) {
-          print('PDF cached successfully: $filePath (${response.bodyBytes.length} bytes)');
+          print(
+            'PDF cached successfully: $filePath (${response.bodyBytes.length} bytes)',
+          );
         }
-        
+
         return filePath;
       } else {
         throw Exception('Failed to download PDF: ${response.statusCode}');
@@ -158,11 +165,13 @@ class PdfCacheService {
   static Future<void> updateLastAccessed(String pdfUrl) async {
     try {
       final key = _generateKey(pdfUrl);
-      final metadata = _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
-      
+      final metadata =
+          _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
+
       if (metadata.containsKey(key)) {
         final updatedMetadata = Map<String, dynamic>.from(metadata);
-        updatedMetadata[key]['last_accessed'] = DateTime.now().toIso8601String();
+        updatedMetadata[key]['last_accessed'] = DateTime.now()
+            .toIso8601String();
         await _cacheBox.put(_metadataKey, updatedMetadata);
       }
     } catch (e) {
@@ -175,7 +184,8 @@ class PdfCacheService {
   /// Get all cached PDFs info
   static Map<String, Map<String, dynamic>> getAllCachedPdfs() {
     try {
-      final metadata = _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
+      final metadata =
+          _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
       return Map<String, Map<String, dynamic>>.from(metadata);
     } catch (e) {
       if (kDebugMode) {
@@ -190,11 +200,11 @@ class PdfCacheService {
     try {
       final metadata = getAllCachedPdfs();
       int totalSize = 0;
-      
+
       for (final pdfInfo in metadata.values) {
         totalSize += (pdfInfo['file_size'] as int? ?? 0);
       }
-      
+
       return totalSize;
     } catch (e) {
       if (kDebugMode) {
@@ -208,7 +218,9 @@ class PdfCacheService {
   static String formatCacheSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (bytes < 1024 * 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
     return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
@@ -218,22 +230,23 @@ class PdfCacheService {
       final key = _generateKey(pdfUrl);
       final filePath = '${_cacheDirectory!.path}/$key.pdf';
       final file = File(filePath);
-      
+
       // Remove file
       if (file.existsSync()) {
         await file.delete();
       }
-      
+
       // Remove metadata
-      final metadata = _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
+      final metadata =
+          _cacheBox.get(_metadataKey, defaultValue: <String, dynamic>{}) as Map;
       final updatedMetadata = Map<String, dynamic>.from(metadata);
       updatedMetadata.remove(key);
       await _cacheBox.put(_metadataKey, updatedMetadata);
-      
+
       if (kDebugMode) {
         print('PDF removed from cache: $pdfUrl');
       }
-      
+
       return true;
     } catch (e) {
       if (kDebugMode) {
@@ -255,10 +268,10 @@ class PdfCacheService {
           }
         }
       }
-      
+
       // Clear metadata
       await _cacheBox.delete(_metadataKey);
-      
+
       if (kDebugMode) {
         print('All PDF cache cleared');
       }
@@ -275,17 +288,17 @@ class PdfCacheService {
       final metadata = getAllCachedPdfs();
       final cutoffDate = DateTime.now().subtract(Duration(days: maxDays));
       final keysToRemove = <String>[];
-      
+
       for (final entry in metadata.entries) {
         final key = entry.key;
         final pdfInfo = entry.value;
-        
+
         final lastAccessedStr = pdfInfo['last_accessed'] as String?;
         if (lastAccessedStr != null) {
           final lastAccessed = DateTime.tryParse(lastAccessedStr);
           if (lastAccessed != null && lastAccessed.isBefore(cutoffDate)) {
             keysToRemove.add(key);
-            
+
             // Delete file
             final filePath = '${_cacheDirectory!.path}/$key.pdf';
             final file = File(filePath);
@@ -295,7 +308,7 @@ class PdfCacheService {
           }
         }
       }
-      
+
       // Remove metadata for deleted files
       if (keysToRemove.isNotEmpty) {
         final updatedMetadata = Map<String, dynamic>.from(metadata);
@@ -303,7 +316,7 @@ class PdfCacheService {
           updatedMetadata.remove(key);
         }
         await _cacheBox.put(_metadataKey, updatedMetadata);
-        
+
         if (kDebugMode) {
           print('Cleaned ${keysToRemove.length} old PDFs from cache');
         }

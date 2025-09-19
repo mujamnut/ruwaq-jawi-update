@@ -5,3 +5,4 @@ analyze the error after every edit file for sure the error.
   - AppBar: Transparent background (bukan hijau lagi), phosphor back button
   - SearchBar: Grey background, rounded, dengan X button untuk clear
   jangan guna icon terlalu banyak dalam satu page,guna yang penting penting saja.
+  background tema putih,guna background untuk semua putih abu-abu dan untuk card buat putih bersih supaya nampak clean(jangan guna terlalu card),dan untuk tema gelap pula sebaliknya,background hitam bersih dan card abu-abu.text pula kalau untuk title atau maklumat penting,bagi terang,kalau untuk maklumat tidak penting warna abu-abu.

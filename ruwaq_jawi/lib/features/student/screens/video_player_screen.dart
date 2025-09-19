@@ -629,8 +629,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   color: isLocked
                       ? AppTheme.textSecondaryColor.withOpacity(0.1)
                       : isCurrentEpisode
-                          ? AppTheme.primaryColor
-                          : AppTheme.primaryColor.withOpacity(0.1),
+                      ? AppTheme.primaryColor
+                      : AppTheme.primaryColor.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Center(
@@ -642,12 +642,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                         )
                       : Text(
                           '${episode.partNumber}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isCurrentEpisode
-                                ? Colors.white
-                                : AppTheme.primaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isCurrentEpisode
+                                    ? Colors.white
+                                    : AppTheme.primaryColor,
+                              ),
                         ),
                 ),
               ),
@@ -687,13 +688,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                   isCurrentEpisode
                       ? PhosphorIcons.pause()
                       : isLocked
-                          ? PhosphorIcons.lock()
-                          : PhosphorIcons.play(),
+                      ? PhosphorIcons.lock()
+                      : PhosphorIcons.play(),
                   color: isCurrentEpisode
                       ? AppTheme.primaryColor
                       : isLocked
-                          ? AppTheme.textSecondaryColor
-                          : AppTheme.textSecondaryColor,
+                      ? AppTheme.textSecondaryColor
+                      : AppTheme.textSecondaryColor,
                   size: 20,
                 ),
               ),
@@ -761,7 +762,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               ],
             ),
             const SizedBox(height: 16),
-            ..._episodes.map((episode) => _buildEpisodeCard(episode)).toList(),
+            ..._episodes.map((episode) => _buildEpisodeCard(episode)),
           ],
         ],
       ),
@@ -1012,8 +1013,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   }
 
   void _switchToEpisode(VideoEpisode episode) async {
-    if (_currentEpisode?.id == episode.id)
+    if (_currentEpisode?.id == episode.id) {
       return; // Already playing this episode
+    }
 
     // Save progress for current episode
     await _saveProgress();

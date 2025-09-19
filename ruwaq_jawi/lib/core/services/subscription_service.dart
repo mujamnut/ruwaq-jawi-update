@@ -1,45 +1,61 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SubscriptionService {
   final SupabaseClient _supabase;
+  final String? _toyyibPaySecretKey;
+  final String? _toyyibPayCategoryCode;
+  static const String _toyyibPayApiUrl = 'https://dev.toyyibpay.com';
 
-  SubscriptionService(this._supabase);
+  SubscriptionService(
+    this._supabase, {
+    String? toyyibPaySecretKey,
+    String? toyyibPayCategoryCode,
+  }) : _toyyibPaySecretKey = toyyibPaySecretKey,
+       _toyyibPayCategoryCode = toyyibPayCategoryCode;
 
+  /// Activate subscription - optimized version
   Future<void> activateSubscription({
     required String userId,
-    required String planType,
+    required String planId,
     required double amount,
     required String paymentMethod,
     required String transactionId,
   }) async {
     final now = DateTime.now().toUtc();
-    int durationInDays;
-    String subscriptionPlanId;
-
-    // Set duration and plan ID based on plan type - FIXED to match database structure
-    switch (planType) {
-      case '1month':
-        durationInDays = 30;
-        subscriptionPlanId = 'monthly_basic';    // ✅ 1 month plan
-        break;
-      case '3month':
-        durationInDays = 90;
-        subscriptionPlanId = 'quarterly_pr';     // ✅ FIXED: match database plan ID
-        break;
-      case '6month':
-        durationInDays = 180;
-        subscriptionPlanId = 'monthly_premium';  // ✅ FIXED: database "monthly_premium" is 6 month plan
-        break;
-      case '12month':
-        durationInDays = 365;
-        subscriptionPlanId = 'yearly_premium';   // ✅ 12 month plan
-        break;
-      default:
-        throw Exception('Invalid plan type');
-    }
 
     try {
-      // 1. Check if user already has an active subscription
+      if (kDebugMode) {
+        print('🚀 Activating subscription for user: $userId, plan: $planId');
+      }
+
+      // Get plan details
+      final plan = await _supabase
+          .from('subscription_plans')
+          .select('duration_days, name')
+          .eq('id', planId)
+          .maybeSingle();
+
+      if (plan == null) {
+        throw Exception('Plan not found: $planId');
+      }
+
+      final durationDays = plan['duration_days'] ?? 30;
+      final endDate = now.add(Duration(days: durationDays));
+
+      // Get user profile
+      final profile = await _supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      final userName = profile?['full_name'] ?? 'Unknown User';
+
+      // Check existing active subscription
       final existingSubscription = await _supabase
           .from('user_subscriptions')
           .select()
@@ -48,277 +64,145 @@ class SubscriptionService {
           .gte('end_date', now.toIso8601String())
           .maybeSingle();
 
-      DateTime endDate;
-      String subscriptionId;
-      
       if (existingSubscription != null) {
-        // Extend existing subscription from current end date
-        final currentEndDate = DateTime.parse(existingSubscription['end_date']); // ✅ FIXED: end_date → end_date
-        endDate = currentEndDate.add(Duration(days: durationInDays));
-        subscriptionId = existingSubscription['id'];
-        
-        // Update existing subscription
+        if (kDebugMode) {
+          print('⚠️ User already has active subscription, extending...');
+        }
+        // Extend existing subscription
+        final currentEndDate = DateTime.parse(existingSubscription['end_date']);
+        final newEndDate = currentEndDate.add(Duration(days: durationDays));
+
         await _supabase
             .from('user_subscriptions')
             .update({
-              'end_date': endDate.toIso8601String(),  // ✅ FIXED: end_date → end_date
-              'subscription_plan_id': subscriptionPlanId,                    // ✅ FIXED: plan_type → subscription_plan_id
-              'amount': amount,
+              'end_date': newEndDate.toIso8601String(),
               'updated_at': now.toIso8601String(),
             })
-            .eq('id', subscriptionId);
+            .eq('id', existingSubscription['id']);
       } else {
         // Create new subscription
-        endDate = now.add(Duration(days: durationInDays));
-        
-        // First, deactivate any existing subscriptions
-        await _supabase
-            .from('user_subscriptions')
-            .update({'status': 'replaced'})
-            .eq('user_id', userId)
-            .eq('status', 'active');
-        
-        final subscriptionResponse = await _supabase
-            .from('user_subscriptions')
-            .insert({
-              'user_id': userId,
-              'subscription_plan_id': subscriptionPlanId,                    // ✅ FIXED: plan_type → subscription_plan_id
-              'start_date': now.toIso8601String(),              // ✅ FIXED: start_date → start_date
-              'start_date': now.toIso8601String(),    // ✅ NEW: Add period start
-              'end_date': endDate.toIso8601String(),  // ✅ FIXED: end_date → end_date
-              'status': 'active',
-              'provider': paymentMethod,                        // ✅ FIXED: payment_method → provider
-              'amount': amount,
-              'currency': 'MYR',
-              'auto_renew': false,
-            })
-            .select()
-            .single();
-        
-        subscriptionId = subscriptionResponse['id'];
+        await _supabase.from('user_subscriptions').insert({
+          'user_id': userId,
+          'subscription_plan_id': planId,
+          'status': 'active',
+          'start_date': now.toIso8601String(),
+          'end_date': endDate.toIso8601String(),
+          'created_at': now.toIso8601String(),
+          'updated_at': now.toIso8601String(),
+        });
       }
 
-      // 2. Create payment record (modern table)
-      await _supabase.from('payments').insert({                     // ✅ FIXED: transactions → payments
+      // Create transaction record
+      await _supabase.from('transactions').insert({
         'user_id': userId,
-        'subscription_id': subscriptionId,
-        'amount_cents': (amount * 100).round(),                     // ✅ FIXED: amount → amount_cents
+        'subscription_id': planId,
+        'amount': amount,
         'currency': 'MYR',
-        'provider': paymentMethod,                                   // ✅ FIXED: payment_method → provider
-        'provider_payment_id': transactionId,                       // ✅ FIXED: payment_reference → provider_payment_id
         'status': 'completed',
-        'paid_at': now.toIso8601String(),                          // ✅ NEW: Add paid timestamp
+        'payment_method': paymentMethod,
+        'transaction_id': transactionId,
+        'metadata': {
+          'user_name': userName,
+          'plan_name': plan['name'],
+          'activated_at': now.toIso8601String(),
+        },
+        'created_at': now.toIso8601String(),
       });
 
-      // 3. Update user profile subscription status with end date
-      await _supabase
-          .from('profiles')
-          .update({
-            'subscription_status': 'active',
-            'subscription_end_date': endDate.toIso8601String(),  // ✅ NEW: Add end date to profile
-            'updated_at': now.toIso8601String(),
-          })
-          .eq('id', userId);
-      
-      print('Subscription activated successfully for user: $userId');
-      print('Profile updated to active status for user: $userId');
-      print('Subscription table updated (subscriptions)');
+      if (kDebugMode) {
+        print('✅ Subscription activated successfully');
+      }
     } catch (e) {
-      print('Failed to activate subscription: $e');
-      throw Exception('Failed to activate subscription: $e');
+      if (kDebugMode) {
+        print('❌ Error activating subscription: $e');
+      }
+      rethrow;
     }
   }
 
+  /// Check active subscription
   Future<bool> hasActiveSubscription(String userId) async {
-    final now = DateTime.now().toUtc();
-    
     try {
-      print('Checking subscription for user: $userId at time: ${now.toIso8601String()}');
-      
-      final response = await _supabase
+      final result = await _supabase
           .from('user_subscriptions')
-          .select()
+          .select('id')
           .eq('user_id', userId)
           .eq('status', 'active')
-          .lte('start_date', now.toIso8601String())
-          .gte('end_date', now.toIso8601String())
-          .maybeSingle();
+          .gte('end_date', DateTime.now().toUtc().toIso8601String())
+          .limit(1);
 
-      final hasActive = response != null;
-      print('Active subscription found: $hasActive');
-      if (response != null) {
-        print('Subscription details: start=${response['start_date']}, end=${response['end_date']}');
-      }
-      
-      // Update profile status based on subscription
-      if (hasActive) {
-        print('Setting profile status to active');
-        await _updateProfileSubscriptionStatus(userId, 'active');
-      } else {
-        // Check if there are any subscriptions at all
-        final anySubscription = await _supabase
-            .from('user_subscriptions')
-            .select()
-            .eq('user_id', userId)
-            .maybeSingle();
-            
-        if (anySubscription != null) {
-          print('Found subscription but checking if expired: ${anySubscription['end_date']}');
-          final endDate = DateTime.parse(anySubscription['end_date']);
-          
-          if (endDate.isBefore(now) && anySubscription['status'] == 'active') {
-            print('Marking subscription as expired');
-            // Mark as expired if it actually expired
-            await _supabase
-                .from('user_subscriptions')
-                .update({'status': 'expired', 'updated_at': now.toIso8601String()})
-                .eq('id', anySubscription['id']);
-            
-            await _updateProfileSubscriptionStatus(userId, 'expired');
-          }
-        } else {
-          print('No subscriptions found for user');
-          await _updateProfileSubscriptionStatus(userId, 'inactive');
-        }
-      }
-      
-      return hasActive;
+      return result.isNotEmpty;
     } catch (e) {
-      print('Error checking subscription: $e');
+      if (kDebugMode) {
+        print('Error checking subscription: $e');
+      }
       return false;
     }
   }
 
-  Future<DateTime?> getSubscriptionEndDate(String userId) async {
+  /// Get subscription details
+  Future<Map<String, dynamic>?> getSubscriptionDetails(String userId) async {
     try {
-      final response = await _supabase
+      return await _supabase
           .from('user_subscriptions')
-          .select('end_date')
+          .select('''
+            *,
+            subscription_plans(name, price, duration_days)
+          ''')
           .eq('user_id', userId)
           .eq('status', 'active')
           .gte('end_date', DateTime.now().toUtc().toIso8601String())
-          .order('end_date', ascending: false)
           .maybeSingle();
-
-      if (response != null && response['end_date'] != null) {
-        return DateTime.parse(response['end_date']);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting subscription details: $e');
       }
       return null;
-    } catch (e) {
-      print('Error getting subscription end date: $e');
-      return null;
-    }
-  }
-  
-  Future<void> _updateProfileSubscriptionStatus(String userId, String status) async {
-    try {
-      await _supabase
-          .from('profiles')
-          .update({
-            'subscription_status': status,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('id', userId);
-    } catch (e) {
-      print('Error updating profile subscription status: $e');
-    }
-  }
-  
-  Future<Map<String, dynamic>?> getUserActiveSubscription(String userId) async {
-    try {
-      final now = DateTime.now().toUtc();
-      
-      // Check user_subscriptions table only
-      final subscription = await _supabase
-          .from('user_subscriptions')
-          .select()
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .lte('start_date', now.toIso8601String())
-          .gte('end_date', now.toIso8601String())
-          .order('end_date', ascending: false)
-          .maybeSingle();
-          
-      return subscription;
-    } catch (e) {
-      print('Error getting user subscription: $e');
-      return null;
-    }
-  }
-  
-  /// Get user profile name for subscription records
-  Future<String?> _getUserName(String userId) async {
-    try {
-      final response = await _supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('id', userId)
-          .maybeSingle();
-      return response?['full_name'] as String?;
-    } catch (e) {
-      print('Error getting user name: $e');
-      return null;
     }
   }
 
-  /// Check if subscription is properly synced across both tables
-  Future<void> syncSubscriptionTables(String userId) async {
+  /// Verify payment with ToyyibPay
+  Future<bool> verifyPayment(String billCode) async {
+    if (_toyyibPaySecretKey == null) return false;
+
     try {
-      final now = DateTime.now().toUtc();
-      
-      // Check for active subscription in old table
-      final oldSubscription = await _supabase
-          .from('user_subscriptions')
+      final response = await http.post(
+        Uri.parse('$_toyyibPayApiUrl/index.php/api/getBillTransactions'),
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: {
+          'userSecretKey': _toyyibPaySecretKey!,
+          'billCode': billCode,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data is List && data.isNotEmpty && data[0]['billpaymentStatus'] == '1';
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Payment verification error: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Get all subscription plans
+  Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
+    try {
+      final result = await _supabase
+          .from('subscription_plans')
           .select('*')
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .gte('end_date', now.toIso8601String())
-          .maybeSingle();
+          .eq('is_active', true)
+          .order('price');
 
-      if (oldSubscription != null) {
-        // Check if it exists in new table
-        final newSubscription = await _supabase
-            .from('user_subscriptions')
-            .select('*')
-            .eq('user_id', userId)
-            .eq('status', 'active')
-            .maybeSingle();
-
-        if (newSubscription == null) {
-          // Sync to new table
-          final userName = await _getUserName(userId);
-          await _supabase.from('user_subscriptions').insert({
-            'user_id': userId,
-            'user_name': userName,
-            'subscription_subscription_plan_id': _mapPlanTypeToId(oldSubscription['plan_type']),
-            'status': 'active',
-            'start_date': oldSubscription['start_date'],
-            'end_date': oldSubscription['end_date'],
-            'amount': oldSubscription['amount'],
-            'currency': oldSubscription['currency'],
-            'created_at': oldSubscription['created_at'],
-            'updated_at': now.toIso8601String()
-          });
-          print('Synced subscription from old to new table for user: $userId');
-        }
-      }
+      return List<Map<String, dynamic>>.from(result);
     } catch (e) {
-      print('Error syncing subscription tables: $e');
-    }
-  }
-
-  String _mapPlanTypeToId(String planType) {
-    switch (planType) {
-      case '1month':
-        return 'monthly_premium';  // Default to premium for existing users
-      case '3month':
-        return 'quarterly_premium';
-      case '6month':
-        return 'semiannual_premium';
-      case '12month':
-        return 'yearly_premium';
-      default:
-        return 'monthly_premium';
+      if (kDebugMode) {
+        print('Error getting subscription plans: $e');
+      }
+      return [];
     }
   }
 }

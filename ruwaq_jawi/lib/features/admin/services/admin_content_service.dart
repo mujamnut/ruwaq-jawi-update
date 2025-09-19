@@ -279,7 +279,7 @@ class AdminContentService {
           'kitab_videos',
         ).select('id').eq('kitab_id', kitab['id']).eq('is_active', true);
 
-        if ((hasPdf && hasVideo) || (hasPdf && hasVideoEpisodes.length > 0)) {
+        if ((hasPdf && hasVideo) || (hasPdf && hasVideoEpisodes.isNotEmpty)) {
           completeCount++;
         }
       }

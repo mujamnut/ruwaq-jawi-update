@@ -5,7 +5,6 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/models/video_kitab.dart';
-import '../../../core/models/kitab_video.dart';
 import '../../../core/models/video_episode.dart';
 
 class PreviewVideoSelectionDialog extends StatefulWidget {
@@ -19,10 +18,12 @@ class PreviewVideoSelectionDialog extends StatefulWidget {
   });
 
   @override
-  State<PreviewVideoSelectionDialog> createState() => _PreviewVideoSelectionDialogState();
+  State<PreviewVideoSelectionDialog> createState() =>
+      _PreviewVideoSelectionDialogState();
 }
 
-class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialog> {
+class _PreviewVideoSelectionDialogState
+    extends State<PreviewVideoSelectionDialog> {
   List<VideoEpisode> _previewVideos = [];
   bool _isLoading = true;
 
@@ -35,8 +36,10 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
   Future<void> _loadPreviewVideos() async {
     try {
       final kitabProvider = context.read<KitabProvider>();
-      final previewVideos = await kitabProvider.loadPreviewVideos(widget.kitabId);
-      
+      final previewVideos = await kitabProvider.loadPreviewVideos(
+        widget.kitabId,
+      );
+
       if (mounted) {
         setState(() {
           _previewVideos = previewVideos;
@@ -55,7 +58,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
 
   void _playPreview([VideoEpisode? video]) {
     Navigator.of(context).pop();
-    
+
     if (video != null) {
       // Play specific preview video
       context.push('/preview/${widget.kitabId}?video=${video.id}');
@@ -110,7 +113,9 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: AppTheme.primaryColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -118,18 +123,22 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.secondaryColor,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           'PRATONTON',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textPrimaryColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.textPrimaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
                         ),
                       ),
                       const Spacer(),
@@ -161,7 +170,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                 ],
               ),
             ),
-            
+
             // Content
             Flexible(
               child: _isLoading
@@ -170,8 +179,8 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                       child: Center(child: CircularProgressIndicator()),
                     )
                   : _previewVideos.isEmpty
-                      ? _buildNoPreviewsContent()
-                      : _buildPreviewsList(),
+                  ? _buildNoPreviewsContent()
+                  : _buildPreviewsList(),
             ),
           ],
         ),
@@ -208,7 +217,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
-          
+
           // Action buttons
           Row(
             children: [
@@ -270,7 +279,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
             ],
           ),
         ),
-        
+
         // Preview videos list
         Flexible(
           child: ListView.separated(
@@ -284,14 +293,12 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
             },
           ),
         ),
-        
+
         // Action buttons
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: AppTheme.borderColor),
-            ),
+            border: Border(top: BorderSide(color: AppTheme.borderColor)),
           ),
           child: Row(
             children: [
@@ -358,7 +365,7 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                 ),
               ),
               const SizedBox(width: 12),
-              
+
               // Video info
               Expanded(
                 child: Column(
@@ -369,28 +376,33 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                         Expanded(
                           child: Text(
                             video.title,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimaryColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimaryColor,
+                                ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.secondaryColor,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'PREVIEW',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textPrimaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 9,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 9,
+                                ),
                           ),
                         ),
                       ],
@@ -406,17 +418,18 @@ class _PreviewVideoSelectionDialogState extends State<PreviewVideoSelectionDialo
                         const SizedBox(width: 4),
                         Text(
                           video.formattedDuration,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                       ],
                     ),
                   ],
                 ),
               ),
-              
+
               // Play icon
               PhosphorIcon(
                 PhosphorIcons.play(),

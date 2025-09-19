@@ -1,13 +1,18 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
+import '../utils/auth_utils.dart';
+import '../utils/database_utils.dart';
 
 /// Unified notification service for handling both individual and global notifications
 /// Uses single user_notifications table with special global user ID
 class UnifiedNotificationService {
   static final _supabase = Supabase.instance.client;
 
-  // Special UUID for global notifications
-  static const String globalUserId = '00000000-0000-0000-0000-000000000000';
+  // Special identifier for global notifications (now uses NULL in database)
+  static const String? globalUserId = null;
+
+  /// Get current user ID for convenience
+  static String? get currentUserId => _supabase.auth.currentUser?.id;
 
   /// Get all notifications for current user (including global ones)
   static Future<List<UnifiedNotification>> getNotifications({
@@ -27,31 +32,110 @@ class UnifiedNotificationService {
 
       final userRole = profileResponse['role'] ?? 'student';
 
-      // Build query to get both individual notifications and global notifications
-      // that target the user's role
-      var query = _supabase
+      // Optimized query: Get both individual and global notifications
+      // Using separate queries for better performance than OR condition
+      List<dynamic> individualNotifications = [];
+      List<dynamic> globalNotifications = [];
+
+      // Get individual notifications for user
+      final individualQuery = _supabase
           .from('user_notifications')
           .select('*')
-          .or(
-            'user_id.eq.${user.id},' // Individual notifications for this user
-            'and(user_id.eq.$globalUserId,metadata->>target_roles.cs.["$userRole"])' // Global notifications for user's role
-          );
+          .eq('user_id', user.id);
 
+      // Get global notifications (NULL user_id)
+      final globalQuery = _supabase
+          .from('user_notifications')
+          .select('*')
+          .is_('user_id', null);
+
+      // Apply filters and execute queries in parallel
       if (unreadOnly) {
-        query = query.eq('status', 'unread');
+        individualQuery.eq('status', 'unread');
+        // Global notifications don't have status, check via metadata
       }
 
-      final response = await query
-          .order('delivered_at', ascending: false)
-          .limit(limit);
+      // Execute both queries in parallel for better performance
+      final results = await Future.wait([
+        individualQuery.order('delivered_at', ascending: false).limit(limit ~/ 2),
+        globalQuery.order('delivered_at', ascending: false).limit(limit ~/ 2),
+      ]);
+
+      individualNotifications = results[0] as List<dynamic>;
+      globalNotifications = results[1] as List<dynamic>;
+
+      // Combine and sort by delivered_at
+      final List<dynamic> response = [
+        ...individualNotifications,
+        ...globalNotifications,
+      ];
+
+      // Sort combined results by delivered_at
+      response.sort((a, b) {
+        final aDate = DateTime.parse(a['delivered_at']);
+        final bDate = DateTime.parse(b['delivered_at']);
+        return bDate.compareTo(aDate); // descending order
+      });
+
+      // Apply limit to combined results
+      final limitedResponse = response.take(limit).toList();
 
 
-      final List<UnifiedNotification> notifications = (response as List)
-          .map((json) => UnifiedNotification.fromJson(json))
+      if (kDebugMode) {
+        print('🔍 Individual notifications: ${individualNotifications.length}');
+        print('🔍 Global notifications: ${globalNotifications.length}');
+        print('🔍 Combined response: ${limitedResponse.length} records');
+        print('🔍 User ID: ${user.id}');
+      }
+
+      if (kDebugMode) {
+        print('🔄 Starting mapping ${limitedResponse.length} records to UnifiedNotification objects...');
+      }
+
+      final List<UnifiedNotification> allMapped = limitedResponse
+          .map((json) {
+            try {
+              final notification = UnifiedNotification.fromJson(json);
+              if (kDebugMode) {
+                print('✅ Mapped: ${notification.title} (Global: ${notification.isGlobal})');
+              }
+              return notification;
+            } catch (e) {
+              if (kDebugMode) {
+                print('❌ Mapping error for record: $json');
+                print('❌ Error: $e');
+              }
+              return null;
+            }
+          })
+          .where((notification) => notification != null)
+          .cast<UnifiedNotification>()
+          .toList();
+
+      if (kDebugMode) {
+        print('🔄 Successfully mapped ${allMapped.length} notifications');
+        print('🔄 Starting filtering process...');
+      }
+
+      final List<UnifiedNotification> notifications = allMapped
+          .where((notification) {
+            // Filter out deleted notifications for current user
+            if (notification.isGlobal) {
+              final deletedBy = List<String>.from(notification.metadata['deleted_by'] ?? []);
+              final isDeleted = deletedBy.contains(user.id);
+              if (kDebugMode && isDeleted) {
+                print('🗑️ Filtered out deleted global notification: ${notification.title}');
+              }
+              return !isDeleted;
+            }
+            return true; // Individual notifications are already filtered by user_id
+          })
           .toList();
 
       if (kDebugMode) {
         print('✅ Loaded ${notifications.length} unified notifications (${notifications.where((n) => n.isGlobal).length} global)');
+        print('🔍 User role: $userRole, User ID: ${user.id}');
+        print('🔍 Query used: user_id.eq.${user.id} OR user_id.is.null with target_roles containing $userRole');
       }
 
       return notifications;
@@ -69,24 +153,34 @@ class UnifiedNotificationService {
       final user = _supabase.auth.currentUser;
       if (user == null) return 0;
 
-      final profileResponse = await _supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single();
+      // Optimized: Get unread count using separate queries
+      final results = await Future.wait([
+        // Individual unread notifications
+        _supabase
+            .from('user_notifications')
+            .select('id', const FetchOptions(count: CountOption.exact))
+            .eq('user_id', user.id)
+            .eq('status', 'unread'),
+        // Global notifications (check if user hasn't read them)
+        _supabase
+            .from('user_notifications')
+            .select('id, metadata', const FetchOptions(count: CountOption.exact))
+            .is_('user_id', null),
+      ]);
 
-      final userRole = profileResponse['role'] ?? 'student';
+      final individualCount = (results[0] as List).length;
+      final globalNotifications = results[1] as List;
 
-      final response = await _supabase
-          .from('user_notifications')
-          .select('id')
-          .eq('status', 'unread')
-          .or(
-            'user_id.eq.${user.id},' // Individual unread
-            'and(user_id.eq.$globalUserId,metadata->>target_roles.cs.["$userRole"])' // Global unread
-          );
+      // Count global notifications that user hasn't read
+      int globalUnreadCount = 0;
+      for (final notification in globalNotifications) {
+        final readBy = List<String>.from(notification['metadata']?['read_by'] ?? []);
+        if (!readBy.contains(user.id)) {
+          globalUnreadCount++;
+        }
+      }
 
-      return (response as List).length;
+      return individualCount + globalUnreadCount;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error getting unread count: $e');
@@ -113,7 +207,7 @@ class UnifiedNotificationService {
 
       final notification = notificationResponse;
 
-      if (notification['user_id'] == globalUserId) {
+      if (notification['user_id'] == null) { // Check for global notifications (NULL user_id)
         // Global notification - create read tracking in metadata or separate tracking
         // For simplicity, we'll add user to a 'read_by' array in metadata
         final currentMetadata = Map<String, dynamic>.from(notification['metadata'] ?? {});
@@ -184,6 +278,60 @@ class UnifiedNotificationService {
     }
   }
 
+  /// DEBUG: Test raw database query without filters
+  static Future<void> debugRawQuery() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) {
+        print('❌ No authenticated user');
+        return;
+      }
+
+      print('🔍 DEBUG: Testing raw query...');
+      print('🔍 User ID: ${user.id}');
+      print('🔍 User email: ${user.email}');
+      print('🔍 User role: ${user.userMetadata?['role'] ?? 'Unknown'}');
+
+      // Test basic query first
+      final rawResponse = await _supabase
+          .from('user_notifications')
+          .select('*')
+          .limit(5);
+
+      print('🔍 Raw SELECT * response: ${rawResponse.length} records');
+      if (rawResponse.isNotEmpty) {
+        print('🔍 First record: ${rawResponse[0]}');
+      }
+
+      // Test with OR condition
+      final orResponse = await _supabase
+          .from('user_notifications')
+          .select('*')
+          .or('user_id.eq.${user.id},user_id.is.null')
+          .limit(5);
+
+      print('🔍 OR query response: ${orResponse.length} records');
+      if (orResponse.isNotEmpty) {
+        print('🔍 First OR record: ${orResponse[0]}');
+      }
+
+      // Test just global notifications - use filter for NULL check
+      final globalResponse = await _supabase
+          .from('user_notifications')
+          .select('*')
+          .filter('user_id', 'is', null)
+          .limit(5);
+
+      print('🔍 Global-only response: ${globalResponse.length} records');
+      if (globalResponse.isNotEmpty) {
+        print('🔍 First global record: ${globalResponse[0]}');
+      }
+
+    } catch (e) {
+      print('❌ Debug query error: $e');
+    }
+  }
+
   /// Listen to notifications (including global ones)
   static Stream<List<UnifiedNotification>> watchNotifications() {
     final user = _supabase.auth.currentUser;
@@ -244,6 +392,65 @@ class UnifiedNotificationService {
     }
   }
 
+  /// Delete notification (soft delete for global, hard delete for individual)
+  static Future<bool> deleteNotification(String notificationId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return false;
+
+      // First check if it's a global notification
+      final notificationResponse = await _supabase
+          .from('user_notifications')
+          .select('user_id, metadata')
+          .eq('id', notificationId)
+          .single();
+
+      final notification = notificationResponse;
+
+      if (notification['user_id'] == null) {
+        // Global notification - soft delete by adding user to 'deleted_by' array
+        final currentMetadata = Map<String, dynamic>.from(notification['metadata'] ?? {});
+        final deletedBy = List<String>.from(currentMetadata['deleted_by'] ?? []);
+
+        if (!deletedBy.contains(user.id)) {
+          deletedBy.add(user.id);
+          currentMetadata['deleted_by'] = deletedBy;
+
+          await _supabase
+              .from('user_notifications')
+              .update({'metadata': currentMetadata})
+              .eq('id', notificationId);
+        }
+      } else {
+        // Individual notification - hard delete if it belongs to current user
+        await _supabase
+            .from('user_notifications')
+            .delete()
+            .eq('id', notificationId)
+            .eq('user_id', user.id);
+      }
+
+      if (kDebugMode) {
+        print('✅ Deleted notification: $notificationId');
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error deleting notification: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Check if user has deleted a global notification
+  static bool hasUserDeletedGlobalNotification(UnifiedNotification notification, String userId) {
+    if (!notification.isGlobal) return false;
+
+    final deletedBy = List<String>.from(notification.metadata['deleted_by'] ?? []);
+    return deletedBy.contains(userId);
+  }
+
   /// Admin function: Get notification statistics
   static Future<NotificationStats?> getNotificationStats(String notificationId) async {
     try {
@@ -255,7 +462,7 @@ class UnifiedNotificationService {
 
       final notification = notificationResponse;
 
-      if (notification['user_id'] == globalUserId) {
+      if (notification['user_id'] == null) { // Check for global notifications (NULL user_id)
         // Global notification stats
         final metadata = Map<String, dynamic>.from(notification['metadata'] ?? {});
         final studentCount = metadata['student_count'] ?? 0;
@@ -290,7 +497,7 @@ class UnifiedNotificationService {
 /// Unified notification model
 class UnifiedNotification {
   final String id;
-  final String userId;
+  final String? userId; // Nullable for global notifications
   final String message;
   final Map<String, dynamic> metadata;
   final String status;
@@ -310,7 +517,7 @@ class UnifiedNotification {
   factory UnifiedNotification.fromJson(Map<String, dynamic> json) {
     return UnifiedNotification(
       id: json['id'],
-      userId: json['user_id'],
+      userId: json['user_id'], // This can be null for global notifications
       message: json['message'] ?? '',
       metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
       status: json['status'] ?? 'unread',
@@ -320,7 +527,7 @@ class UnifiedNotification {
   }
 
   /// Check if this is a global notification
-  bool get isGlobal => userId == UnifiedNotificationService.globalUserId;
+  bool get isGlobal => userId == null; // Global notifications have NULL user_id
 
   /// Check if this is an individual notification
   bool get isIndividual => !isGlobal;
@@ -339,6 +546,21 @@ class UnifiedNotification {
 
   /// Get action URL from metadata
   String get actionUrl => metadata['action_url'] ?? '/home';
+
+  /// Check if notification has been read (for compatibility with notification screen)
+  DateTime? get readAt {
+    if (isIndividual) {
+      // Individual notification - check status
+      return status == 'read' ? deliveredAt : null;
+    } else {
+      // Global notification - check if current user has read it
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser == null) return null;
+
+      final readBy = List<String>.from(metadata['read_by'] ?? []);
+      return readBy.contains(currentUser.id) ? deliveredAt : null;
+    }
+  }
 
   /// Check if notification is unread for specific user
   bool isUnreadForUser(String currentUserId) {

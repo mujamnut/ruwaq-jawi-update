@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/providers/kitab_provider.dart';
 import '../widgets/admin_app_bar.dart';
 import '../widgets/youtube_sync_loading_dialog.dart';
 import '../widgets/youtube_preview_dialog.dart';
@@ -170,7 +167,7 @@ class _AdminYouTubeAutoFormScreenState
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _selectedCategoryId,
+                initialValue: _selectedCategoryId,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -609,7 +606,9 @@ class _AdminYouTubeAutoFormScreenState
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('No internet connection. Please check your network and try again.'),
+              content: Text(
+                'No internet connection. Please check your network and try again.',
+              ),
               backgroundColor: Colors.red,
               behavior: SnackBarBehavior.floating,
             ),
@@ -631,12 +630,9 @@ class _AdminYouTubeAutoFormScreenState
       }
 
       print('Calling edge function: youtube-playlist-sync-fixed');
-      print('Request body: ${{
-        'playlist_url': _playlistUrlController.text,
-        'category_id': _selectedCategoryId,
-        'is_premium': _isPremium,
-        'is_active': _isActive,
-      }}');
+      print(
+        'Request body: ${{'playlist_url': _playlistUrlController.text, 'category_id': _selectedCategoryId, 'is_premium': _isPremium, 'is_active': _isActive}}',
+      );
 
       // Call YouTube sync API
       final response = await Supabase.instance.client.functions.invoke(
@@ -703,12 +699,11 @@ class _AdminYouTubeAutoFormScreenState
                 print('Playlist ID: ${syncData['playlist_id']}');
 
                 // Approve and publish the playlist
-                final approveResponse = await Supabase.instance.client.functions.invoke(
-                  'youtube-admin-tools?action=approve_playlist',
-                  body: {
-                    'playlist_id': syncData['playlist_id'],
-                  },
-                );
+                final approveResponse = await Supabase.instance.client.functions
+                    .invoke(
+                      'youtube-admin-tools?action=approve_playlist',
+                      body: {'playlist_id': syncData['playlist_id']},
+                    );
 
                 print('Approve response status: ${approveResponse.status}');
                 print('Approve response data: ${approveResponse.data}');
@@ -753,12 +748,11 @@ class _AdminYouTubeAutoFormScreenState
                 print('Playlist ID: ${syncData['playlist_id']}');
 
                 // Delete the synced playlist
-                final rejectResponse = await Supabase.instance.client.functions.invoke(
-                  'youtube-admin-tools?action=delete-kitab',
-                  body: {
-                    'kitab_id': syncData['playlist_id'],
-                  },
-                );
+                final rejectResponse = await Supabase.instance.client.functions
+                    .invoke(
+                      'youtube-admin-tools?action=delete-kitab',
+                      body: {'kitab_id': syncData['playlist_id']},
+                    );
 
                 print('Reject response status: ${rejectResponse.status}');
                 print('Reject response data: ${rejectResponse.data}');
@@ -815,18 +809,22 @@ class _AdminYouTubeAutoFormScreenState
         if (e.toString().contains('Failed host lookup') ||
             e.toString().contains('SocketException') ||
             e.toString().contains('No address associated with hostname')) {
-          userMessage = 'Network connection error. Please check your internet connection and try again.';
+          userMessage =
+              'Network connection error. Please check your internet connection and try again.';
         } else if (e.toString().contains('timeout') ||
-                   e.toString().contains('TimeoutException')) {
-          userMessage = 'Request timed out. Please check your connection and try again.';
+            e.toString().contains('TimeoutException')) {
+          userMessage =
+              'Request timed out. Please check your connection and try again.';
         } else if (e.toString().contains('403') ||
-                   e.toString().contains('Forbidden')) {
-          userMessage = 'Access denied. Please check your permissions or try again later.';
+            e.toString().contains('Forbidden')) {
+          userMessage =
+              'Access denied. Please check your permissions or try again later.';
         } else if (e.toString().contains('404') ||
-                   e.toString().contains('Not Found')) {
-          userMessage = 'Service not found. Please try again later or contact support.';
+            e.toString().contains('Not Found')) {
+          userMessage =
+              'Service not found. Please try again later or contact support.';
         } else if (e.toString().contains('500') ||
-                   e.toString().contains('Internal Server Error')) {
+            e.toString().contains('Internal Server Error')) {
           userMessage = 'Server error. Please try again later.';
         } else {
           userMessage = 'Error syncing playlist: ${e.toString()}';

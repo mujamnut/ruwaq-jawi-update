@@ -11,12 +11,12 @@ class ToyyibpayPaymentScreen extends StatefulWidget {
   final double? amount;
 
   const ToyyibpayPaymentScreen({
-    Key? key,
+    super.key,
     required this.billCode,
     required this.billUrl,
     this.planId,
     this.amount,
-  }) : super(key: key);
+  });
 
   @override
   State<ToyyibpayPaymentScreen> createState() => _ToyyibpayPaymentScreenState();

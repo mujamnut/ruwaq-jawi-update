@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:timeago/timeago.dart' as timeago;
-import '../../../core/providers/notifications_provider.dart';
 import '../../../core/services/unified_notification_service.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -21,10 +18,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void initState() {
     super.initState();
-    // Load both old and new notifications
+    // Load unified notifications only
     _loadUnifiedNotifications();
     _loadUnreadCount();
-    Future.microtask(() => context.read<NotificationsProvider>().loadInbox());
   }
 
   Future<void> _loadUnifiedNotifications() async {
@@ -37,7 +33,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       });
     } catch (e) {
       setState(() => isLoadingUnified = false);
-      print('Error loading unified notifications: $e');
+      debugPrint('Error loading unified notifications: $e');
     }
   }
 
@@ -50,14 +46,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
     await Future.wait([
       _loadUnifiedNotifications(),
       _loadUnreadCount(),
-      context.read<NotificationsProvider>().loadInbox(),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    timeago.setLocaleMessages('ms', timeago.MsMessages());
-
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
@@ -76,66 +69,52 @@ class _NotificationScreenState extends State<NotificationScreen> {
         foregroundColor: AppTheme.textLightColor,
         elevation: 0,
         actions: [
-          Consumer<NotificationsProvider>(
-            builder: (context, notifier, _) {
-              final hasNotifications = notifier.inbox.isNotEmpty;
-              if (hasNotifications) {
-                return TextButton(
-                  onPressed: () async {
-                    final confirm = await _showClearAllDialog(context);
-                    if (confirm == true) {
-                      // Clear all notifications
-                      for (final notification in notifier.inbox) {
-                        await notifier.deleteNotification(notification.id);
-                      }
-                    }
-                  },
-                  child: Text(
-                    'Padam Semua',
-                    style: TextStyle(
-                      color: AppTheme.textLightColor.withOpacity(0.9),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                );
-              }
-              return const SizedBox.shrink();
-            },
-          ),
+          if (unifiedNotifications.isNotEmpty)
+            TextButton(
+              onPressed: () async {
+                final confirm = await _showClearAllDialog(context);
+                if (confirm == true) {
+                  // Clear all unified notifications
+                  await UnifiedNotificationService.markAllAsRead();
+                  await _loadUnifiedNotifications();
+                }
+              },
+              child: Text(
+                'Tandai Semua Dibaca',
+                style: TextStyle(
+                  color: AppTheme.textLightColor.withValues(alpha: 0.9),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
         ],
       ),
-      body: Consumer<NotificationsProvider>(
-        builder: (context, notifier, _) {
-          final notifications = notifier.inbox;
+      body: _buildUnifiedNotificationsBody(),
+    );
+  }
 
-          if (notifier.isLoading && notifications.isEmpty) {
-            return _buildLoadingState();
-          }
+  Widget _buildUnifiedNotificationsBody() {
+    if (isLoadingUnified && unifiedNotifications.isEmpty) {
+      return _buildLoadingState();
+    }
 
-          if (notifier.error != null && notifications.isEmpty) {
-            return _buildErrorState(notifier.error!, context);
-          }
+    if (unifiedNotifications.isEmpty) {
+      return _buildEmptyState();
+    }
 
-          if (notifications.isEmpty) {
-            return _buildEmptyState();
-          }
-
-          return RefreshIndicator(
-            onRefresh: _refresh,
-            color: AppTheme.primaryColor,
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: notifications.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final item = notifications[index];
-                return AnimatedContainer(
-                  duration: Duration(milliseconds: 200 + (index * 50)),
-                  curve: Curves.easeOutBack,
-                  child: _buildNotificationCard(item, notifier, context),
-                );
-              },
-            ),
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppTheme.primaryColor,
+      child: ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: unifiedNotifications.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 8),
+        itemBuilder: (context, index) {
+          final item = unifiedNotifications[index];
+          return AnimatedContainer(
+            duration: Duration(milliseconds: 200 + (index * 50)),
+            curve: Curves.easeOutBack,
+            child: _buildUnifiedNotificationCard(item, context),
           );
         },
       ),
@@ -161,68 +140,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildErrorState(String error, BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: AppTheme.errorColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: PhosphorIcon(
-                PhosphorIcons.warning(),
-                size: 64,
-                color: AppTheme.errorColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Ralat Memuat Notifikasi',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.textPrimaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: _refresh,
-              icon: PhosphorIcon(
-                PhosphorIcons.arrowClockwise(),
-                color: AppTheme.textLightColor,
-                size: 18,
-              ),
-              label: const Text('Cuba Lagi'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: AppTheme.textLightColor,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyState() {
     return RefreshIndicator(
@@ -237,7 +154,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(32),
                 ),
                 child: PhosphorIcon(
@@ -272,12 +189,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildNotificationCard(
-    dynamic item,
-    NotificationsProvider notifier,
+  Widget _buildUnifiedNotificationCard(
+    UnifiedNotification item,
     BuildContext context,
   ) {
-    final isRead = item.readAt != null;
+    // Check if notification is read - simplified logic
+    final currentUserId = UnifiedNotificationService.currentUserId;
+    final isRead = currentUserId != null ? !item.isUnreadForUser(currentUserId) : true;
+
     final title = item.title;
     final body = item.body;
     final createdAt = item.deliveredAt;
@@ -310,45 +229,79 @@ class _NotificationScreenState extends State<NotificationScreen> {
       ),
       confirmDismiss: (_) => _showDeleteDialog(context),
       onDismissed: (_) async {
-        await notifier.deleteNotification(item.id);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  PhosphorIcon(
-                    PhosphorIcons.checkCircle(),
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  const Text('Notifikasi dipadam'),
-                ],
+        // Capture context before async operations
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+        // Delete notification using service
+        final success = await UnifiedNotificationService.deleteNotification(item.id);
+
+        if (success) {
+          // Refresh notifications list to reflect changes
+          await _loadUnifiedNotifications();
+
+          if (mounted) {
+            scaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.checkCircle(),
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Notifikasi dipadam'),
+                  ],
+                ),
+                backgroundColor: AppTheme.successColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              backgroundColor: AppTheme.successColor,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+            );
+          }
+        } else {
+          // Show error if delete failed
+          if (mounted) {
+            scaffoldMessenger.showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.warningCircle(),
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Gagal memadamkan notifikasi'),
+                  ],
+                ),
+                backgroundColor: AppTheme.errorColor,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-            ),
-          );
+            );
+          }
         }
       },
       child: Container(
         decoration: BoxDecoration(
           color: isRead
               ? AppTheme.surfaceColor
-              : AppTheme.primaryColor.withOpacity(0.05),
+              : AppTheme.primaryColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isRead
                 ? AppTheme.borderColor
-                : AppTheme.primaryColor.withOpacity(0.3),
+                : AppTheme.primaryColor.withValues(alpha: 0.3),
             width: isRead ? 1 : 2,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isRead ? 0.05 : 0.08),
+              color: Colors.black.withValues(alpha: isRead ? 0.05 : 0.08),
               blurRadius: isRead ? 8 : 12,
               offset: const Offset(0, 4),
             ),
@@ -358,11 +311,19 @@ class _NotificationScreenState extends State<NotificationScreen> {
           color: Colors.transparent,
           child: InkWell(
             onTap: () async {
+              // Capture context before async operations
+              final currentContext = context;
+
               if (!isRead) {
-                await notifier.markAsRead(item.id);
+                await UnifiedNotificationService.markAsRead(item.id);
+                // Refresh to update UI
+                await _loadUnifiedNotifications();
               }
+
               // Handle notification tap action
-              _handleNotificationTap(item, context);
+              if (mounted && currentContext.mounted) {
+                _handleNotificationTap(item, currentContext);
+              }
             },
             borderRadius: BorderRadius.circular(16),
             child: Padding(
@@ -377,7 +338,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                     decoration: BoxDecoration(
                       color: _getNotificationColor(
                         notificationType,
-                      ).withOpacity(0.1),
+                      ).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Center(
@@ -438,7 +399,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              timeago.format(createdAt, locale: 'ms'),
+                              _formatTimeAgo(createdAt),
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: AppTheme.textSecondaryColor,
@@ -521,12 +482,30 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  void _handleNotificationTap(dynamic item, BuildContext context) {
-    // Handle notification tap based on type or data
-    final data = item.data;
-    if (data != null && data['action_url'] != null) {
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Baru saja';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minit yang lalu';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} jam yang lalu';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} hari yang lalu';
+    } else {
+      return '${(difference.inDays / 7).floor()} minggu yang lalu';
+    }
+  }
+
+  void _handleNotificationTap(UnifiedNotification item, BuildContext context) {
+    // Handle notification tap based on action URL
+    final actionUrl = item.actionUrl;
+    if (actionUrl.isNotEmpty && actionUrl != '/home') {
       // Navigate to specific URL or screen
-      // context.push(data['action_url']);
+      // context.push(actionUrl);
+      debugPrint('Navigate to: $actionUrl');
     }
   }
 
@@ -581,16 +560,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
         title: Row(
           children: [
             PhosphorIcon(
-              PhosphorIcons.trash(),
-              color: AppTheme.errorColor,
+              PhosphorIcons.checkCircle(),
+              color: AppTheme.primaryColor,
               size: 24,
             ),
             const SizedBox(width: 12),
-            const Text('Padam Semua?'),
+            const Text('Tandai Semua Dibaca?'),
           ],
         ),
         content: const Text(
-          'Anda pasti mahu memadamkan semua notifikasi? Tindakan ini tidak boleh dibatalkan.',
+          'Anda pasti mahu menandakan semua notifikasi sebagai dibaca?',
         ),
         actions: [
           TextButton(
@@ -603,13 +582,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.errorColor,
+              backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text('Padam Semua'),
+            child: const Text('Tandai Dibaca'),
           ),
         ],
       ),

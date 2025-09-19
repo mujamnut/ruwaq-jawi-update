@@ -7,7 +7,6 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/models/kitab.dart';
-import '../../../core/models/kitab_video.dart';
 import '../../../core/models/video_episode.dart';
 
 class PreviewVideoPlayerScreen extends StatefulWidget {
@@ -21,7 +20,8 @@ class PreviewVideoPlayerScreen extends StatefulWidget {
   });
 
   @override
-  State<PreviewVideoPlayerScreen> createState() => _PreviewVideoPlayerScreenState();
+  State<PreviewVideoPlayerScreen> createState() =>
+      _PreviewVideoPlayerScreenState();
 }
 
 class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
@@ -29,16 +29,16 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
   YoutubePlayerController? _controller;
   late TabController _tabController;
   bool _isLoading = true;
-  
+
   Kitab? _kitab;
   List<VideoEpisode> _previewVideos = [];
   VideoEpisode? _currentVideo;
-  
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPreviewData();
     });
@@ -47,25 +47,25 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
   Future<void> _loadPreviewData() async {
     try {
       final kitabProvider = context.read<KitabProvider>();
-      
+
       // Get kitab data
       _kitab = kitabProvider.getKitabById(widget.kitabId);
       if (_kitab == null) {
         await kitabProvider.initialize();
         _kitab = kitabProvider.getKitabById(widget.kitabId);
       }
-      
+
       if (_kitab == null) {
         throw Exception('Kitab not found');
       }
-      
+
       // Load preview videos
       _previewVideos = await kitabProvider.loadPreviewVideos(widget.kitabId);
-      
+
       if (_previewVideos.isEmpty) {
         throw Exception('No preview videos available');
       }
-      
+
       // Find current video to play
       if (widget.videoId != null) {
         _currentVideo = _previewVideos.firstWhere(
@@ -75,10 +75,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
       } else {
         _currentVideo = _previewVideos.first;
       }
-      
+
       // Initialize player
       await _initPlayer();
-      
+
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -97,7 +97,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
 
   Future<void> _initPlayer() async {
     if (_currentVideo == null) return;
-    
+
     _controller = YoutubePlayerController(
       initialVideoId: _currentVideo!.youtubeVideoId,
       flags: const YoutubePlayerFlags(
@@ -180,7 +180,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
         body: const Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     if (_kitab == null || _controller == null || _currentVideo == null) {
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
@@ -196,7 +196,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
             children: [
               Icon(Icons.error_outline, size: 64, color: Colors.grey),
               SizedBox(height: 16),
-              Text('Gagal memuat pratonton', style: TextStyle(color: Colors.grey)),
+              Text(
+                'Gagal memuat pratonton',
+                style: TextStyle(color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -230,7 +233,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
             title: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.secondaryColor,
                     borderRadius: BorderRadius.circular(12),
@@ -248,7 +254,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                 Expanded(
                   child: Text(
                     _currentVideo!.title,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -267,17 +276,17 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
               // Video Player
               AspectRatio(
                 aspectRatio: 16 / 9,
-                child: Container(
-                  color: Colors.black,
-                  child: player,
-                ),
+                child: Container(color: Colors.black, child: player),
               ),
-              
+
               // Preview Notice Banner
               Container(
                 width: double.infinity,
                 color: AppTheme.secondaryColor.withOpacity(0.1),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: Row(
                   children: [
                     Icon(
@@ -300,7 +309,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryColor,
                         foregroundColor: AppTheme.textLightColor,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 4,
+                        ),
                         minimumSize: const Size(60, 24),
                       ),
                       child: Text(
@@ -314,7 +326,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                   ],
                 ),
               ),
-              
+
               // Tab Bar
               Container(
                 color: AppTheme.backgroundColor,
@@ -331,15 +343,12 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                   ],
                 ),
               ),
-              
+
               // Tab Content
               Expanded(
                 child: TabBarView(
                   controller: _tabController,
-                  children: [
-                    _buildPreviewVideosTab(),
-                    _buildKitabInfoTab(),
-                  ],
+                  children: [_buildPreviewVideosTab(), _buildKitabInfoTab()],
                 ),
               ),
             ],
@@ -364,8 +373,8 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
             ),
           ),
           const SizedBox(height: 16),
-          
-          if (_previewVideos.isEmpty) 
+
+          if (_previewVideos.isEmpty)
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -381,7 +390,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
               ),
             )
           else
-            ..._previewVideos.map((video) => _buildPreviewVideoCard(video)).toList(),
+            ..._previewVideos.map((video) => _buildPreviewVideoCard(video)),
         ],
       ),
     );
@@ -389,18 +398,16 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
 
   Widget _buildPreviewVideoCard(VideoEpisode video) {
     final isCurrentVideo = _currentVideo?.id == video.id;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: isCurrentVideo 
+        color: isCurrentVideo
             ? AppTheme.primaryColor.withOpacity(0.1)
             : AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isCurrentVideo 
-              ? AppTheme.primaryColor
-              : AppTheme.borderColor,
+          color: isCurrentVideo ? AppTheme.primaryColor : AppTheme.borderColor,
           width: isCurrentVideo ? 2 : 1,
         ),
       ),
@@ -429,15 +436,16 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                         )
                       : Text(
                           '${video.partNumber}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: AppTheme.primaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                 ),
               ),
               const SizedBox(width: 16),
-              
+
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -447,28 +455,35 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                         Expanded(
                           child: Text(
                             video.title,
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: isCurrentVideo ? FontWeight.bold : FontWeight.w600,
-                              color: AppTheme.textPrimaryColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: isCurrentVideo
+                                      ? FontWeight.bold
+                                      : FontWeight.w600,
+                                  color: AppTheme.textPrimaryColor,
+                                ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
                           margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppTheme.secondaryColor,
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'PREVIEW',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textPrimaryColor,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 10,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10,
+                                ),
                           ),
                         ),
                       ],
@@ -484,10 +499,13 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                   ],
                 ),
               ),
-              
+
               if (isCurrentVideo)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor,
                     borderRadius: BorderRadius.circular(12),
@@ -536,17 +554,20 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Stats
           Row(
             children: [
               _buildStatChip(Icons.access_time, _kitab!.formattedDuration),
               const SizedBox(width: 12),
-              _buildStatChip(Icons.video_library, '${_kitab!.totalVideos} Video'),
+              _buildStatChip(
+                Icons.video_library,
+                '${_kitab!.totalVideos} Video',
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          
+
           Text(
             'Perihal Kitab',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -563,7 +584,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
             ),
           ),
           const SizedBox(height: 24),
-          
+
           // Call to action
           Container(
             width: double.infinity,
@@ -602,7 +623,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
                     foregroundColor: AppTheme.textLightColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text('Langgan Sekarang'),
                 ),
@@ -644,9 +668,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppTheme.surfaceColor,
-        border: Border(
-          top: BorderSide(color: AppTheme.borderColor),
-        ),
+        border: Border(top: BorderSide(color: AppTheme.borderColor)),
       ),
       child: Row(
         children: [
@@ -680,18 +702,18 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
 
   void _switchToVideo(VideoEpisode video) async {
     if (_currentVideo?.id == video.id) return;
-    
+
     // Dispose current controller
     _controller?.dispose();
-    
+
     // Update current video
     setState(() {
       _currentVideo = video;
     });
-    
+
     // Initialize new player
     await _initPlayer();
-    
+
     setState(() {});
   }
 }

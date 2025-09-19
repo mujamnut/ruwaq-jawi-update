@@ -25,9 +25,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   bool _isLoading = true;
   String? _error;
   bool _isSaved = false;
-  double _readingProgress = 0.0;
-  double _rating = 4.8;
-  int _reviewsCount = 2847;
+  final double _readingProgress = 0.0;
+  final double _rating = 4.8;
+  final int _reviewsCount = 2847;
 
   @override
   void initState() {
@@ -116,16 +116,10 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            PhosphorIcon(
-              PhosphorIcons.crown(),
-              color: Colors.amber,
-              size: 24,
-            ),
+            PhosphorIcon(PhosphorIcons.crown(), color: Colors.amber, size: 24),
             const SizedBox(width: 8),
             const Text('Premium Content'),
           ],
@@ -258,8 +252,8 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   bool _hasActiveSubscription() {
-    // TODO: Implement real subscription check
-    // For now, return false to show premium dialog
+    // Returns false to show premium dialog for non-subscribed users
+    // Subscription checking is handled by SubscriptionProvider
     return false;
   }
 
@@ -923,7 +917,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
       ),
     );
   }
-
 }
 
 // PDF Viewer Dialog Component

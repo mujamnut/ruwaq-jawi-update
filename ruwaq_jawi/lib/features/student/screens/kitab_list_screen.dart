@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/models/video_kitab.dart';
+import '../../../core/utils/youtube_utils.dart';
 import '../widgets/student_bottom_nav.dart';
 
 class KitabListScreen extends StatefulWidget {
@@ -83,7 +84,7 @@ class _KitabListScreenState extends State<KitabListScreen> {
     return Consumer<KitabProvider>(
       builder: (context, kitabProvider, child) {
         return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
+          backgroundColor: Colors.white,
           appBar: AppBar(
             title: Text(
               'Pengajian Kitab',
@@ -92,7 +93,7 @@ class _KitabListScreenState extends State<KitabListScreen> {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            backgroundColor: _isScrolled ? Colors.white : AppTheme.backgroundColor,
+            backgroundColor: Colors.white,
             iconTheme: IconThemeData(color: Colors.black),
             elevation: _isScrolled ? 2 : 0,
             centerTitle: false,
@@ -182,7 +183,7 @@ class _KitabListScreenState extends State<KitabListScreen> {
               .name;
 
     return Container(
-      color: AppTheme.backgroundColor,
+      color: Colors.white,
       child: Column(
         children: [
           // Search Bar
@@ -303,138 +304,222 @@ class _KitabListScreenState extends State<KitabListScreen> {
     );
   }
 
-  Widget _buildKitabCard(VideoKitab kitab) {
-    final hasVideo = kitab.totalVideos > 0;
-    final hasEbook = kitab.pdfUrl != null && kitab.pdfUrl!.isNotEmpty;
+  Widget _buildVideoThumbnail(VideoKitab kitab) {
+    // Use the existing thumbnailUrl from VideoKitab if available
+    String? thumbnailUrl = kitab.thumbnailUrl;
 
-    return GestureDetector(
-      onTap: () => context.push('/kitab/${kitab.id}'),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppTheme.borderColor.withValues(alpha: 0.2),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-            ),
-          ],
+    // If no thumbnailUrl, try to generate from YouTube utils (for future episodes)
+    if (thumbnailUrl == null || thumbnailUrl.isEmpty) {
+      // In a real implementation, you might want to fetch the first episode
+      // and get its YouTube URL, but for now we'll use the default thumbnail
+      thumbnailUrl = YouTubeUtils.getThumbnailUrl(null, quality: YouTubeThumbnailQuality.hqdefault);
+    }
+
+    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          thumbnailUrl,
+          width: 120,
+          height: 68,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildDefaultThumbnail();
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: 120,
+              height: 68,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          },
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Video camera icon with circular background
-              Container(
-                width: 55,
-                height: 55,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: PhosphorIcon(
-                    PhosphorIcons.videoCamera(PhosphorIconsStyle.fill),
-                    color: Colors.white,
-                    size: 35,
-                  ),
-                ),
-              ),
+      );
+    } else {
+      return _buildDefaultThumbnail();
+    }
+  }
 
-              const SizedBox(width: 16),
-
-              // Content
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Title with crown
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              kitab.title,
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (kitab.isPremium) ...[
-                            const SizedBox(width: 6),
-                            PhosphorIcon(
-                              PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                              color: const Color(0xFFFFD700),
-                              size: 16,
-                            ),
-                          ],
-                        ],
-                      ),
-
-                      const SizedBox(height: 2),
-
-                      // Category
-                      Text(
-                        kitab.categoryName ?? 'Kategori Umum',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-
-                      const SizedBox(height: 2),
-
-                      // Episode info
-                      Text(
-                        hasVideo && kitab.totalVideos > 0
-                            ? '${kitab.totalVideos} episod'
-                            : hasEbook
-                            ? 'PDF tersedia'
-                            : '1 episod',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Arrow icon
-              PhosphorIcon(
-                PhosphorIcons.caretRight(),
-                color: Colors.grey,
-                size: 16,
-              ),
-            ],
-          ),
+  Widget _buildDefaultThumbnail() {
+    return Container(
+      width: 120,
+      height: 68,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: PhosphorIcon(
+          PhosphorIcons.videoCamera(),
+          size: 32,
+          color: AppTheme.primaryColor,
         ),
       ),
     );
+  }
+
+  Widget _buildKitabCard(VideoKitab kitab) {
+    return GestureDetector(
+      onTap: () => context.push('/kitab/${kitab.id}'),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail
+            Stack(
+              children: [
+                _buildVideoThumbnail(kitab),
+                // Duration badge (bottom right)
+                if (kitab.totalDurationMinutes > 0)
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        kitab.formattedDuration,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Premium badge (top left)
+                if (kitab.isPremium)
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFD700),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'PREMIUM',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(width: 12),
+
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    kitab.title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // Author/Category
+                  Text(
+                    kitab.author ?? kitab.categoryName ?? 'Kategori Umum',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 2),
+
+                  // Views and time
+                  Row(
+                    children: [
+                      Text(
+                        '${_formatViews(kitab.viewsCount)} tontonan',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const Text(
+                        ' • ',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        _formatTimeAgo(kitab.createdAt),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+
+            // Menu button
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: PhosphorIcon(
+                PhosphorIcons.dotsThreeVertical(),
+                color: Colors.grey,
+                size: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatViews(int views) {
+    if (views < 1000) return views.toString();
+    if (views < 1000000) return '${(views / 1000).toStringAsFixed(0)}K';
+    return '${(views / 1000000).toStringAsFixed(1)}M';
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} hari yang lalu';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} jam yang lalu';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minit yang lalu';
+    } else {
+      return 'Baru sahaja';
+    }
   }
 
   Widget _buildEmptyState() {

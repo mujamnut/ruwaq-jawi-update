@@ -11,11 +11,11 @@ class PaymentCallbackPage extends StatefulWidget {
   final double amount;
 
   const PaymentCallbackPage({
-    Key? key,
+    super.key,
     required this.billId,
     required this.planId,
     required this.amount,
-  }) : super(key: key);
+  });
 
   @override
   State<PaymentCallbackPage> createState() => _PaymentCallbackPageState();
@@ -41,7 +41,10 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         _message = 'Mengesahkan status pembayaran...';
       });
 
-      final subscriptionProvider = Provider.of<SubscriptionProvider>(context, listen: false);
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(
+        context,
+        listen: false,
+      );
 
       // Store pending payment first jika belum ada
       try {
@@ -56,7 +59,9 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
 
       // PAYMENT IS CONFIRMED SUCCESSFUL - we reached callback page
       print('💡 Payment callback reached - PAYMENT CONFIRMED SUCCESSFUL!');
-      print('📋 Bill ID: ${widget.billId}, Plan: ${widget.planId}, Amount: RM${widget.amount}');
+      print(
+        '📋 Bill ID: ${widget.billId}, Plan: ${widget.planId}, Amount: RM${widget.amount}',
+      );
 
       bool success = true; // Default to success since we're in callback
 
@@ -67,21 +72,27 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
           print('🎯 Activating subscription (payment already confirmed)...');
 
           // Try direct activation
-          final activationResult = await subscriptionProvider.manualDirectActivation(
-            billId: widget.billId,
-            planId: widget.planId,
-            userId: user.id,
-            amount: widget.amount, // Pass actual amount from callback
-            reason: 'Payment successful via ToyyibPay callback - Bill: ${widget.billId} - Amount: RM${widget.amount}',
-          );
+          final activationResult = await subscriptionProvider
+              .manualDirectActivation(
+                billId: widget.billId,
+                planId: widget.planId,
+                userId: user.id,
+                amount: widget.amount, // Pass actual amount from callback
+                reason:
+                    'Payment successful via ToyyibPay callback - Bill: ${widget.billId} - Amount: RM${widget.amount}',
+              );
 
           if (activationResult) {
             print('✅ Subscription activated via direct activation!');
 
             // FORCE REFRESH AuthProvider to update subscription status
             try {
-              final authProvider = Provider.of<AuthProvider>(context, listen: false);
-              await authProvider.checkActiveSubscription(); // This method refreshes profile automatically
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
+              await authProvider
+                  .checkActiveSubscription(); // This method refreshes profile automatically
               print('🔄 AuthProvider refreshed - subscription status updated');
             } catch (e) {
               print('⚠️ Error refreshing AuthProvider: $e');
@@ -96,7 +107,9 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         }
       } catch (e) {
         print('⚠️ Error during activation: $e');
-        print('💡 Payment was successful, activation can be done manually if needed');
+        print(
+          '💡 Payment was successful, activation can be done manually if needed',
+        );
         // Keep success = true since payment was confirmed successful
       }
 
@@ -109,7 +122,8 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         if (success) {
           _message = 'Pembayaran berjaya! Langganan anda telah diaktifkan.';
         } else {
-          _message = 'Pembayaran tidak berjaya atau dibatalkan. Tiada bayaran dikenakan.';
+          _message =
+              'Pembayaran tidak berjaya atau dibatalkan. Tiada bayaran dikenakan.';
         }
       });
 
@@ -120,7 +134,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
           context.go('/subscription');
         }
       }
-
     } catch (e) {
       setState(() {
         _isVerifying = false;
@@ -137,7 +150,8 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
       await _verifyPayment();
     } else {
       setState(() {
-        _message = 'Tidak dapat mengesahkan pembayaran selepas beberapa cubaan. Sila hubungi support.';
+        _message =
+            'Tidak dapat mengesahkan pembayaran selepas beberapa cubaan. Sila hubungi support.';
       });
     }
   }
@@ -171,22 +185,14 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
             else if (_paymentSuccess)
               Column(
                 children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 80,
-                  ),
+                  Icon(Icons.check_circle, color: Colors.green, size: 80),
                   SizedBox(height: 20),
                 ],
               )
             else
               Column(
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    color: Colors.orange,
-                    size: 80,
-                  ),
+                  Icon(Icons.error_outline, color: Colors.orange, size: 80),
                   SizedBox(height: 20),
                 ],
               ),
@@ -195,10 +201,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
             Text(
               _message,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
 
             SizedBox(height: 40),
@@ -215,17 +218,13 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
                 children: [
                   Text(
                     'Maklumat Pembayaran:',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   SizedBox(height: 8),
                   Text('Bill ID: ${widget.billId}'),
                   Text('Plan ID: ${widget.planId}'),
                   Text('Jumlah: RM${widget.amount.toStringAsFixed(2)}'),
-                  if (_retryCount > 0) 
-                    Text('Cubaan: ${_retryCount + 1}'),
+                  if (_retryCount > 0) Text('Cubaan: ${_retryCount + 1}'),
                 ],
               ),
             ),
@@ -244,9 +243,9 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
                   ),
                   child: Text('Cuba Lagi'),
                 ),
-              
+
               SizedBox(height: 16),
-              
+
               OutlinedButton(
                 onPressed: () {
                   context.go('/subscription');
@@ -267,11 +266,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
                   padding: EdgeInsets.all(16),
                   child: Column(
                     children: [
-                      Icon(
-                        Icons.info_outline,
-                        color: Colors.orange,
-                        size: 32,
-                      ),
+                      Icon(Icons.info_outline, color: Colors.orange, size: 32),
                       SizedBox(height: 8),
                       Text(
                         'Jika pembayaran sudah dibuat, ia mungkin mengambil masa untuk diproses. Sila tunggu beberapa minit dan cuba semak semula.',
@@ -285,7 +280,9 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
                           // This prevents false positive activations
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Sila hubungi support jika pembayaran sebenarnya berjaya'),
+                              content: Text(
+                                'Sila hubungi support jika pembayaran sebenarnya berjaya',
+                              ),
                               duration: Duration(seconds: 3),
                             ),
                           );

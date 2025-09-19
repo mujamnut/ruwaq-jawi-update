@@ -27,7 +27,7 @@ class SubscriptionPlan {
       final months = (durationDays / 30).floor();
       return months == 1 ? 'month' : '$months months';
     } else {
-      return '${durationDays} days';
+      return '$durationDays days';
     }
   }
 

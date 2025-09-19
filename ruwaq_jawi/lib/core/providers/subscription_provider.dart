@@ -1,10 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
-import '../services/supabase_service.dart';
-import '../services/subscription_service_new.dart';
+import 'package:http/http.dart' as http;
+
 import '../models/subscription.dart';
 import '../models/transaction.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
+import '../services/subscription_service.dart';
+import '../services/supabase_service.dart';
 
 class SubscriptionProvider with ChangeNotifier {
   List<Subscription> _subscriptions = [];

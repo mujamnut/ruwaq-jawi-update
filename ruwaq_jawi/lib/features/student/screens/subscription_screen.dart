@@ -4,12 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/payment_provider.dart';
-import '../../../core/services/subscription_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/payment_models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/student_bottom_nav.dart';
-import 'payment_screen.dart';
 
 // Enum for subscription actions
 enum SubscriptionAction {
@@ -38,7 +36,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   Future<void> _loadPlans() async {
     try {
-      final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+      final paymentProvider = Provider.of<PaymentProvider>(
+        context,
+        listen: false,
+      );
       await paymentProvider.loadSubscriptionPlans();
 
       // Set initial plan selection after loading plans
@@ -77,10 +78,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
             onPressed: () async {
               try {
-                final authProvider = Provider.of<AuthProvider>(context, listen: false);
+                final authProvider = Provider.of<AuthProvider>(
+                  context,
+                  listen: false,
+                );
 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Refreshing subscription status...')),
+                  const SnackBar(
+                    content: Text('Refreshing subscription status...'),
+                  ),
                 );
 
                 await authProvider.checkActiveSubscription();
@@ -90,17 +96,20 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   SnackBar(
                     content: Text(
                       authProvider.hasActiveSubscription
-                        ? 'Subscription: AKTIF ✅'
-                        : 'Subscription: TIDAK AKTIF ❌'
+                          ? 'Subscription: AKTIF ✅'
+                          : 'Subscription: TIDAK AKTIF ❌',
                     ),
                     backgroundColor: authProvider.hasActiveSubscription
-                      ? Colors.green
-                      : Colors.orange,
+                        ? Colors.green
+                        : Colors.orange,
                   ),
                 );
               } catch (e) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                  SnackBar(
+                    content: Text('Error: $e'),
+                    backgroundColor: Colors.red,
+                  ),
                 );
               }
             },
@@ -111,9 +120,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         future: _loadPlansFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
           return Consumer<PaymentProvider>(
@@ -182,10 +189,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        ...benefits.map((benefit) => _buildBenefitItem(
-          benefit['title'] as String,
-          benefit['icon'] as PhosphorIconData,
-        )).toList(),
+        ...benefits.map(
+          (benefit) => _buildBenefitItem(
+            benefit['title'] as String,
+            benefit['icon'] as PhosphorIconData,
+          ),
+        ),
       ],
     );
   }
@@ -203,11 +212,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
               color: AppTheme.primaryColor,
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: Colors.white,
-              size: 16,
-            ),
+            child: Icon(icon, color: Colors.white, size: 16),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -228,7 +233,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
   Widget _buildSubscriptionPlans(List<SubscriptionPlan> plans) {
     // Sort plans by duration (shortest first)
     final sortedPlans = [...plans];
-    sortedPlans.sort((a, b) => (a.durationDays ?? 0).compareTo(b.durationDays ?? 0));
+    sortedPlans.sort(
+      (a, b) => (a.durationDays ?? 0).compareTo(b.durationDays ?? 0),
+    );
 
     return Column(
       children: sortedPlans.map((plan) => _buildPlanCard(plan)).toList(),
@@ -299,10 +306,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: isSelected ? AppTheme.primaryColor : Colors.grey[400]!,
+                          color: isSelected
+                              ? AppTheme.primaryColor
+                              : Colors.grey[400]!,
                           width: 2,
                         ),
-                        color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+                        color: isSelected
+                            ? AppTheme.primaryColor
+                            : Colors.transparent,
                       ),
                       child: isSelected
                           ? const Icon(
@@ -327,7 +338,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         ),
                       ),
                       TextSpan(
-                        text: 'every ${_getPlanDisplayName(plan).toLowerCase()}',
+                        text:
+                            'every ${_getPlanDisplayName(plan).toLowerCase()}',
                         style: const TextStyle(
                           fontSize: 14,
                           color: Colors.grey,
@@ -344,7 +356,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 top: -8,
                 right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor,
                     borderRadius: BorderRadius.circular(12),
@@ -386,10 +401,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         Text(
           'FREE for 7-days, then RM${selectedPlan.price.toStringAsFixed(2)} every ${_getPlanDisplayName(selectedPlan).toLowerCase()}',
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.grey,
-          ),
+          style: const TextStyle(fontSize: 14, color: Colors.grey),
         ),
         const SizedBox(height: 20),
 
@@ -409,10 +421,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
             ),
             child: Text(
               'Start your 7-days FREE trial',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
           ),
         ),
@@ -423,10 +432,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         Text(
           'By subscribing, you agree to our Terms of Service and Privacy Policy. Your subscription will automatically renew.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
       ],
     );
@@ -434,13 +440,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
   String _getPlanDisplayName(SubscriptionPlan plan) {
     switch (plan.id) {
-      case 'monthly_basic':        // ← FIXED: Actual 1 month plan ID
+      case 'monthly_basic': // ← FIXED: Actual 1 month plan ID
         return '1 month';
       case 'quarterly_pr':
         return '3 months';
-      case 'monthly_premium':      // ← FIXED: This is actually 6 month plan in database
+      case 'monthly_premium': // ← FIXED: This is actually 6 month plan in database
         return '6 months';
-      case 'yearly_premium':       // ← FIXED: Use correct yearly plan ID
+      case 'yearly_premium': // ← FIXED: Use correct yearly plan ID
         return '12 months';
       default:
         return '${(plan.durationDays ?? 30) ~/ 30} months';
@@ -469,7 +475,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       }
 
       // Get available plans from provider
-      final paymentProvider = Provider.of<PaymentProvider>(context, listen: false);
+      final paymentProvider = Provider.of<PaymentProvider>(
+        context,
+        listen: false,
+      );
       final availablePlans = paymentProvider.subscriptionPlans;
 
       // Get the selected plan based on user choice
@@ -478,15 +487,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         orElse: () => selectedPlan,
       );
 
-      print('DEBUG: Selected plan: ${chosenPlan.id}, Price: RM${chosenPlan.price}');
+      print(
+        'DEBUG: Selected plan: ${chosenPlan.id}, Price: RM${chosenPlan.price}',
+      );
 
       // Show loading
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       // Create ToyyibPay bill
@@ -505,16 +514,18 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
       if (paymentResponse != null) {
         // Navigate to ToyyibPay payment screen
-        context.push('/payment/toyyibpay', extra: {
-          'billCode': paymentResponse.id,
-          'billUrl': paymentResponse.url,
-          'planId': chosenPlan.id,
-          'amount': chosenPlan.price,
-        });
+        context.push(
+          '/payment/toyyibpay',
+          extra: {
+            'billCode': paymentResponse.id,
+            'billUrl': paymentResponse.url,
+            'planId': chosenPlan.id,
+            'amount': chosenPlan.price,
+          },
+        );
       } else {
         throw Exception('Gagal membuat bil pembayaran');
       }
-
     } catch (e) {
       // Hide loading if still showing
       if (context.mounted && Navigator.canPop(context)) {
@@ -522,10 +533,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Ralat: $e'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Ralat: $e'), backgroundColor: Colors.red),
       );
     }
   }

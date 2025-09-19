@@ -13,9 +13,9 @@ class VideoEpisodeService {
     bool ascending = true,
   }) async {
     try {
-      dynamic query = SupabaseService.from(_tableName)
-          .select()
-          .eq('video_kitab_id', videoKitabId);
+      dynamic query = SupabaseService.from(
+        _tableName,
+      ).select().eq('video_kitab_id', videoKitabId);
 
       if (isActive != null) {
         query = query.eq('is_active', isActive);
@@ -26,10 +26,10 @@ class VideoEpisodeService {
       }
 
       final response = await query.order(orderBy, ascending: ascending);
-      
-      return List<Map<String, dynamic>>.from(response)
-          .map((json) => VideoEpisode.fromJson(json))
-          .toList();
+
+      return List<Map<String, dynamic>>.from(
+        response,
+      ).map((json) => VideoEpisode.fromJson(json)).toList();
     } catch (e) {
       throw Exception('Failed to fetch episodes: $e');
     }
@@ -38,10 +38,9 @@ class VideoEpisodeService {
   // Get single episode by ID
   static Future<VideoEpisode?> getEpisodeById(String id) async {
     try {
-      final response = await SupabaseService.from(_tableName)
-          .select()
-          .eq('id', id)
-          .maybeSingle();
+      final response = await SupabaseService.from(
+        _tableName,
+      ).select().eq('id', id).maybeSingle();
 
       if (response == null) return null;
       return VideoEpisode.fromJson(response);
@@ -51,16 +50,21 @@ class VideoEpisodeService {
   }
 
   // Create new episode
-  static Future<VideoEpisode> createEpisode(Map<String, dynamic> episodeData) async {
+  static Future<VideoEpisode> createEpisode(
+    Map<String, dynamic> episodeData,
+  ) async {
     try {
       // Validate required fields
-      if (episodeData['video_kitab_id'] == null || episodeData['video_kitab_id'].toString().isEmpty) {
+      if (episodeData['video_kitab_id'] == null ||
+          episodeData['video_kitab_id'].toString().isEmpty) {
         throw Exception('Video Kitab ID is required');
       }
-      if (episodeData['title'] == null || episodeData['title'].toString().isEmpty) {
+      if (episodeData['title'] == null ||
+          episodeData['title'].toString().isEmpty) {
         throw Exception('Episode title is required');
       }
-      if (episodeData['youtube_video_id'] == null || episodeData['youtube_video_id'].toString().isEmpty) {
+      if (episodeData['youtube_video_id'] == null ||
+          episodeData['youtube_video_id'].toString().isEmpty) {
         throw Exception('YouTube Video ID is required');
       }
       if (episodeData['part_number'] == null) {
@@ -75,7 +79,9 @@ class VideoEpisodeService {
           .maybeSingle();
 
       if (existingEpisode != null) {
-        throw Exception('Part number ${episodeData['part_number']} already exists for this video kitab');
+        throw Exception(
+          'Part number ${episodeData['part_number']} already exists for this video kitab',
+        );
       }
 
       final data = {
@@ -87,10 +93,9 @@ class VideoEpisodeService {
         'duration_minutes': episodeData['duration_minutes'] ?? 0,
       };
 
-      final response = await SupabaseService.from(_tableName)
-          .insert(data)
-          .select()
-          .single();
+      final response = await SupabaseService.from(
+        _tableName,
+      ).insert(data).select().single();
 
       // Note: Video kitab stats are automatically updated by database trigger
       // No need to manually call _updateVideoKitabStats
@@ -102,7 +107,10 @@ class VideoEpisodeService {
   }
 
   // Update episode
-  static Future<VideoEpisode> updateEpisode(String id, Map<String, dynamic> updates) async {
+  static Future<VideoEpisode> updateEpisode(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     try {
       // Get existing episode to validate video kitab ID
       final existing = await getEpisodeById(id);
@@ -111,7 +119,8 @@ class VideoEpisodeService {
       }
 
       // If part number is being changed, validate uniqueness
-      if (updates.containsKey('part_number') && updates['part_number'] != existing.partNumber) {
+      if (updates.containsKey('part_number') &&
+          updates['part_number'] != existing.partNumber) {
         final conflictingEpisode = await SupabaseService.from(_tableName)
             .select('id')
             .eq('video_kitab_id', existing.videoKitabId)
@@ -120,20 +129,17 @@ class VideoEpisodeService {
             .maybeSingle();
 
         if (conflictingEpisode != null) {
-          throw Exception('Part number ${updates['part_number']} already exists for this video kitab');
+          throw Exception(
+            'Part number ${updates['part_number']} already exists for this video kitab',
+          );
         }
       }
 
-      final data = {
-        ...updates,
-        'updated_at': DateTime.now().toIso8601String(),
-      };
+      final data = {...updates, 'updated_at': DateTime.now().toIso8601String()};
 
-      final response = await SupabaseService.from(_tableName)
-          .update(data)
-          .eq('id', id)
-          .select()
-          .single();
+      final response = await SupabaseService.from(
+        _tableName,
+      ).update(data).eq('id', id).select().single();
 
       // Update video kitab stats
       await _updateVideoKitabStats(existing.videoKitabId);
@@ -163,7 +169,10 @@ class VideoEpisodeService {
   }
 
   // Toggle episode active status
-  static Future<VideoEpisode> toggleEpisodeStatus(String id, bool isActive) async {
+  static Future<VideoEpisode> toggleEpisodeStatus(
+    String id,
+    bool isActive,
+  ) async {
     try {
       return await updateEpisode(id, {'is_active': isActive});
     } catch (e) {
@@ -191,7 +200,6 @@ class VideoEpisodeService {
     }
   }
 
-
   // YouTube video ID validation and extraction
   static String? extractYouTubeVideoId(String input) {
     final trimmed = input.trim();
@@ -207,7 +215,7 @@ class VideoEpisodeService {
       return null;
     }
 
-    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.host.isEmpty) return null;
 
     final host = uri.host.replaceFirst('www.', '');
     final segs = uri.pathSegments;
@@ -252,7 +260,10 @@ class VideoEpisodeService {
     return 'https://www.youtube.com/embed/$videoId';
   }
 
-  static String getYouTubeThumbnailUrl(String videoId, {String quality = 'hqdefault'}) {
+  static String getYouTubeThumbnailUrl(
+    String videoId, {
+    String quality = 'hqdefault',
+  }) {
     return 'https://img.youtube.com/vi/$videoId/$quality.jpg';
   }
 
@@ -261,7 +272,7 @@ class VideoEpisodeService {
     try {
       // Get active episodes for this video kitab
       final episodes = await getEpisodesForVideoKitab(
-        videoKitabId, 
+        videoKitabId,
         isActive: true,
         orderBy: 'part_number',
         ascending: true,
@@ -269,7 +280,7 @@ class VideoEpisodeService {
 
       final totalVideos = episodes.length;
       final totalDuration = episodes.fold<int>(
-        0, 
+        0,
         (sum, episode) => sum + episode.durationMinutes,
       );
 

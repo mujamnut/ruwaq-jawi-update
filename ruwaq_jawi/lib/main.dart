@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 
 import 'core/config/app_config.dart';
 import 'core/config/environment.dart';
@@ -30,7 +30,6 @@ import 'core/services/video_progress_service.dart';
 import 'core/services/pdf_cache_service.dart';
 import 'core/services/local_saved_items_service.dart';
 import 'core/widgets/offline_banner.dart';
-import 'core/utils/connection_test.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,10 +54,7 @@ void main() async {
     EnvironmentConfig.setEnvironment(Environment.development);
     AppConfig.setEnvironment(Environment.development);
 
-    // Test connection before initializing Supabase
-    if (kDebugMode) {
-      await ConnectionTest.testSupabaseConnection();
-    }
+    // Connection test removed - handled by Supabase initialization
     
     // Initialize Supabase with timeout
     await SupabaseService.initialize().timeout(

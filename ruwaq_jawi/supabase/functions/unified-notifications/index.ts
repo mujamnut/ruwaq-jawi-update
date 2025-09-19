@@ -7,7 +7,8 @@ const corsHeaders = {
 };
 
 // Special UUID for global notifications (all students)
-const GLOBAL_USER_ID = '00000000-0000-0000-0000-000000000000';
+// NULL user_id = global notification visible to all students
+const GLOBAL_USER_ID = null;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -70,16 +71,19 @@ Deno.serve(async (req) => {
     }
 
     // 1. Check new content (existing logic)
-    await checkNewContent(supabaseClient, hoursAgo, studentCount, contentFound, unifiedNotificationsCreated);
+    const contentResult = await checkNewContent(supabaseClient, hoursAgo, studentCount, contentFound);
+    unifiedNotificationsCreated += contentResult.created;
 
     // 2. Check payment notifications
     if (check_payments) {
-      await checkPaymentNotifications(supabaseClient, hoursAgo, studentCount, paymentNotifications, unifiedNotificationsCreated);
+      const paymentResult = await checkPaymentNotifications(supabaseClient, hoursAgo, studentCount, paymentNotifications);
+      unifiedNotificationsCreated += paymentResult.created;
     }
 
     // 3. Check subscription notifications
     if (check_subscriptions) {
-      await checkSubscriptionNotifications(supabaseClient, studentCount, subscriptionNotifications, unifiedNotificationsCreated);
+      const subscriptionResult = await checkSubscriptionNotifications(supabaseClient, studentCount, subscriptionNotifications);
+      unifiedNotificationsCreated += subscriptionResult.created;
     }
 
     const totalNotifications = contentFound.length + paymentNotifications.length + subscriptionNotifications.length;
@@ -105,8 +109,8 @@ Deno.serve(async (req) => {
       },
       checked_hours: check_hours,
       approach: 'UNIFIED_TABLE_APPROACH',
-      global_user_id: GLOBAL_USER_ID,
-      explanation: 'Uses special global UUID (00000000-0000-0000-0000-000000000000) for notifications visible to all students',
+      global_user_id: 'null_for_global',
+      explanation: 'Uses NULL user_id for notifications visible to all students',
       timestamp: new Date().toISOString()
     };
 
@@ -131,25 +135,37 @@ Deno.serve(async (req) => {
 });
 
 // Helper function for content notifications
-async function checkNewContent(supabaseClient: any, hoursAgo: Date, studentCount: number, contentFound: string[], unifiedNotificationsCreated: number) {
-  // Check video_kitab
-  const { data: videoKitabs } = await supabaseClient
+async function checkNewContent(supabaseClient: any, hoursAgo: Date, studentCount: number, contentFound: string[]) {
+  let notificationsCreated = 0;
+
+  console.log(`🔍 Checking video_kitab created/updated after: ${hoursAgo.toISOString()}`);
+
+  // Check video_kitab - FIX: Split OR conditions into separate queries
+  const { data: videoKitabs, error: videoKitabError } = await supabaseClient
     .from('video_kitab')
     .select(`id, title, author, created_at, updated_at, categories (name)`)
     .eq('is_active', true)
-    .or(`created_at.gte.${hoursAgo.toISOString()},updated_at.gte.${hoursAgo.toISOString()}`)
+    .gte('updated_at', hoursAgo.toISOString())
     .order('created_at', { ascending: false });
+
+  if (videoKitabError) {
+    console.error('❌ Error fetching video_kitab:', videoKitabError);
+  }
+
+  console.log(`📊 Query returned ${videoKitabs?.length || 0} video kitabs`);
 
   if (videoKitabs && videoKitabs.length > 0) {
     console.log(`📹 Found ${videoKitabs.length} new video kitabs`);
 
     for (const video of videoKitabs) {
-      // Check if already notified
+      console.log(`🔍 Processing video: ${video.title} (ID: ${video.id})`);
+
+      // Check if already notified - Simplified duplicate detection
       const { data: existingUnified } = await supabaseClient
         .from('user_notifications')
         .select('id')
-        .eq('user_id', GLOBAL_USER_ID)
-        .eq('metadata->>content_id', video.id)
+        .is('user_id', null) // Global notifications only
+        .eq('metadata->>content_id', video.id.toString())
         .eq('metadata->>content_type', 'video_kitab')
         .limit(1);
 
@@ -157,6 +173,8 @@ async function checkNewContent(supabaseClient: any, hoursAgo: Date, studentCount
         console.log(`⏭️ Skipping ${video.title} - already notified`);
         continue;
       }
+
+      console.log(`✨ Creating new notification for: ${video.title}`);
 
       // Create unified notification
       const unifiedNotification = {
@@ -184,28 +202,190 @@ async function checkNewContent(supabaseClient: any, hoursAgo: Date, studentCount
           target_all_students: true,
           content_type: 'video_kitab',
           approach: 'unified_table_system',
-          global_user_id: GLOBAL_USER_ID
+          global_user_id: 'null_for_global'
         }
       };
 
       const { error } = await supabaseClient.from('user_notifications').insert(unifiedNotification);
 
       if (error) {
-        console.error('Error creating unified notification:', error);
+        console.error(`❌ Error creating unified notification for ${video.title}:`, error);
+        // Log the full error details
+        console.error('Full error details:', JSON.stringify(error, null, 2));
       } else {
-        unifiedNotificationsCreated++;
+        notificationsCreated++;
         contentFound.push(`Video Kitab: ${video.title}`);
         console.log(`✅ Created unified notification for: ${video.title}`);
+        console.log(`📊 Total notifications created so far: ${notificationsCreated}`);
       }
     }
+  } else {
+    console.log('📹 No new video kitabs found in time range');
   }
 
-  // Similar logic for episodes and ebooks...
-  // (Keeping existing logic for brevity)
+  // Check video_episodes
+  console.log('🎬 Checking for new video episodes...');
+  const { data: videoEpisodes, error: episodeError } = await supabaseClient
+    .from('video_episodes')
+    .select(`
+      id, title, part_number, created_at, updated_at,
+      video_kitab (id, title, categories (name))
+    `)
+    .eq('is_active', true)
+    .gte('updated_at', hoursAgo.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (episodeError) {
+    console.error('❌ Error fetching video episodes:', episodeError);
+  }
+
+  console.log(`📊 Episode query returned ${videoEpisodes?.length || 0} episodes`);
+
+  if (videoEpisodes && videoEpisodes.length > 0) {
+    console.log(`🎬 Found ${videoEpisodes.length} new video episodes`);
+
+    for (const episode of videoEpisodes) {
+      // Check if already notified - Simplified duplicate detection
+      const { data: existingUnified } = await supabaseClient
+        .from('user_notifications')
+        .select('id')
+        .is('user_id', null) // Global notifications only
+        .eq('metadata->>content_id', episode.id.toString())
+        .eq('metadata->>content_type', 'video_episode')
+        .limit(1);
+
+      if (existingUnified && existingUnified.length > 0) {
+        console.log(`⏭️ Skipping episode ${episode.title} - already notified`);
+        continue;
+      }
+
+      const unifiedNotification = {
+        id: crypto.randomUUID(),
+        user_id: GLOBAL_USER_ID,
+        message: `🎬 Episode Baharu!\nEpisode ${episode.part_number}: "${episode.title}" telah ditambah dalam kitab "${episode.video_kitab?.title || 'Kitab'}".`,
+        metadata: {
+          title: '🎬 Episode Baharu!',
+          body: `Episode ${episode.part_number}: "${episode.title}" telah ditambah dalam kitab "${episode.video_kitab?.title || 'Kitab'}".`,
+          type: 'content_published',
+          content_type: 'video_episode',
+          content_id: episode.id,
+          parent_kitab: episode.video_kitab?.title,
+          episode_number: episode.part_number,
+          icon: '🎬',
+          action_url: '/kitab',
+          source: 'unified_notifications',
+          created_at: new Date().toISOString(),
+          target_roles: ['student'],
+          student_count: studentCount,
+          is_global: true
+        },
+        status: 'unread',
+        delivered_at: new Date().toISOString(),
+        target_criteria: {
+          unified_notification: true,
+          target_all_students: true,
+          content_type: 'video_episode',
+          approach: 'unified_table_system',
+          global_user_id: 'null_for_global'
+        }
+      };
+
+      const { error } = await supabaseClient.from('user_notifications').insert(unifiedNotification);
+
+      if (error) {
+        console.error('❌ Error creating episode notification:', error);
+      } else {
+        notificationsCreated++;
+        contentFound.push(`Video Episode: ${episode.title} (${episode.video_kitab?.title})`);
+        console.log(`✅ Created unified notification for episode: ${episode.title}`);
+      }
+    }
+  } else {
+    console.log('🎬 No new video episodes found in time range');
+  }
+
+  // Check ebooks
+  console.log('📚 Checking for new ebooks...');
+  const { data: ebooks, error: ebookError } = await supabaseClient
+    .from('ebooks')
+    .select(`id, title, author, created_at, updated_at, categories (name)`)
+    .eq('is_active', true)
+    .gte('updated_at', hoursAgo.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (ebookError) {
+    console.error('❌ Error fetching ebooks:', ebookError);
+  }
+
+  console.log(`📊 Ebook query returned ${ebooks?.length || 0} ebooks`);
+
+  if (ebooks && ebooks.length > 0) {
+    console.log(`📚 Found ${ebooks.length} new ebooks`);
+
+    for (const ebook of ebooks) {
+      // Check if already notified
+      const { data: existingUnified } = await supabaseClient
+        .from('user_notifications')
+        .select('id')
+        .is('user_id', null) // Check for global notifications (NULL user_id)
+        .contains('metadata', { content_id: ebook.id, content_type: 'ebook' })
+        .limit(1);
+
+      if (existingUnified && existingUnified.length > 0) {
+        console.log(`⏭️ Skipping ebook ${ebook.title} - already notified`);
+        continue;
+      }
+
+      const unifiedNotification = {
+        id: crypto.randomUUID(),
+        user_id: GLOBAL_USER_ID,
+        message: `📚 E-Book Baharu!\n"${ebook.title}" oleh ${ebook.author || 'Penulis'} telah ditambah dalam kategori ${ebook.categories?.name || 'Kategori Umum'}.`,
+        metadata: {
+          title: '📚 E-Book Baharu!',
+          body: `"${ebook.title}" oleh ${ebook.author || 'Penulis'} telah ditambah dalam kategori ${ebook.categories?.name || 'Kategori Umum'}.`,
+          type: 'content_published',
+          content_type: 'ebook',
+          content_id: ebook.id,
+          icon: '📚',
+          action_url: '/ebook',
+          source: 'unified_notifications',
+          created_at: new Date().toISOString(),
+          target_roles: ['student'],
+          student_count: studentCount,
+          is_global: true
+        },
+        status: 'unread',
+        delivered_at: new Date().toISOString(),
+        target_criteria: {
+          unified_notification: true,
+          target_all_students: true,
+          content_type: 'ebook',
+          approach: 'unified_table_system',
+          global_user_id: 'null_for_global'
+        }
+      };
+
+      const { error } = await supabaseClient.from('user_notifications').insert(unifiedNotification);
+
+      if (error) {
+        console.error('❌ Error creating ebook notification:', error);
+      } else {
+        notificationsCreated++;
+        contentFound.push(`E-Book: ${ebook.title}`);
+        console.log(`✅ Created unified notification for ebook: ${ebook.title}`);
+      }
+    }
+  } else {
+    console.log('📚 No new ebooks found in time range');
+  }
+
+  console.log(`🎯 Content check completed: ${notificationsCreated} notifications created`);
+  return { created: notificationsCreated };
 }
 
 // Helper function for payment notifications
-async function checkPaymentNotifications(supabaseClient: any, hoursAgo: Date, studentCount: number, paymentNotifications: string[], unifiedNotificationsCreated: number) {
+async function checkPaymentNotifications(supabaseClient: any, hoursAgo: Date, studentCount: number, paymentNotifications: string[]) {
+  let notificationsCreated = 0;
   console.log('💳 Checking for recent successful payments...');
 
   // Check for successful payments in last N hours
@@ -276,16 +456,19 @@ async function checkPaymentNotifications(supabaseClient: any, hoursAgo: Date, st
       if (error) {
         console.error('Error creating payment notification:', error);
       } else {
-        unifiedNotificationsCreated++;
+        notificationsCreated++;
         paymentNotifications.push(`Payment Success: RM${payment.amount} - ${payment.profiles?.full_name || payment.profiles?.email}`);
         console.log(`✅ Created payment notification for: ${payment.id}`);
       }
     }
   }
+
+  return { created: notificationsCreated };
 }
 
 // Helper function for subscription notifications
-async function checkSubscriptionNotifications(supabaseClient: any, studentCount: number, subscriptionNotifications: string[], unifiedNotificationsCreated: number) {
+async function checkSubscriptionNotifications(supabaseClient: any, studentCount: number, subscriptionNotifications: string[]) {
+  let notificationsCreated = 0;
   console.log('📅 Checking for subscription expiry warnings...');
 
   // Check for subscriptions expiring in next 7 days
@@ -367,7 +550,7 @@ async function checkSubscriptionNotifications(supabaseClient: any, studentCount:
       if (error) {
         console.error('Error creating subscription notification:', error);
       } else {
-        unifiedNotificationsCreated++;
+        notificationsCreated++;
         subscriptionNotifications.push(`Expiry Warning: ${subscription.plan_type} - ${daysUntilExpiry} days - ${subscription.profiles?.full_name || subscription.profiles?.email}`);
         console.log(`✅ Created expiry notification for: ${subscription.id} (${daysUntilExpiry} days)`);
       }
@@ -439,10 +622,12 @@ async function checkSubscriptionNotifications(supabaseClient: any, studentCount:
       if (error) {
         console.error('Error creating expired notification:', error);
       } else {
-        unifiedNotificationsCreated++;
+        notificationsCreated++;
         subscriptionNotifications.push(`Expired: ${expiredSub.plan_type} - ${expiredSub.profiles?.full_name || expiredSub.profiles?.email}`);
         console.log(`✅ Created expired notification for: ${expiredSub.id}`);
       }
     }
   }
+
+  return { created: notificationsCreated };
 }

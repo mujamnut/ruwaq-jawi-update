@@ -10,7 +10,8 @@ class SubscriptionDetailScreen extends StatefulWidget {
   const SubscriptionDetailScreen({super.key});
 
   @override
-  State<SubscriptionDetailScreen> createState() => _SubscriptionDetailScreenState();
+  State<SubscriptionDetailScreen> createState() =>
+      _SubscriptionDetailScreenState();
 }
 
 class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
@@ -72,10 +73,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _refreshData,
-              child: _buildContent(),
-            ),
+          : RefreshIndicator(onRefresh: _refreshData, child: _buildContent()),
     );
   }
 
@@ -123,16 +121,16 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Colors.grey[600]!,
-                  Colors.grey[700]!,
-                ],
+                colors: [Colors.grey[600]!, Colors.grey[700]!],
               ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: (subscription?.isActive == true ? AppTheme.primaryColor : Colors.grey)
-                .withOpacity(0.3),
+            color:
+                (subscription?.isActive == true
+                        ? AppTheme.primaryColor
+                        : Colors.grey)
+                    .withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -163,7 +161,9 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      subscription?.isActive == true ? 'Premium Active' : 'Basic Access',
+                      subscription?.isActive == true
+                          ? 'Premium Active'
+                          : 'Basic Access',
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -256,18 +256,17 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
     );
   }
 
-  Widget _buildStatusRow(String label, String value, dynamic icon, Color color) {
+  Widget _buildStatusRow(
+    String label,
+    String value,
+    dynamic icon,
+    Color color,
+  ) {
     return Row(
       children: [
         PhosphorIcon(icon, color: color, size: 16),
         const SizedBox(width: 12),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: 14,
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.white70, fontSize: 14)),
         const Spacer(),
         Text(
           value,
@@ -281,18 +280,15 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
     );
   }
 
-
-
-
   Widget _buildSubscriptionHistory(List subscriptions) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Sejarah Langganan',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         if (subscriptions.isEmpty)
@@ -322,13 +318,15 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
             ),
           )
         else
-          ...subscriptions.map((sub) => _buildHistoryItem(
-            sub.planDisplayName,
-            _formatDate(sub.startDate) + ' - ' + _formatDate(sub.endDate),
-            sub.formattedAmount,
-            _getStatusText(sub.status),
-            _getStatusColor(sub.status),
-          )),
+          ...subscriptions.map(
+            (sub) => _buildHistoryItem(
+              sub.planDisplayName,
+              '${_formatDate(sub.startDate)} - ${_formatDate(sub.endDate)}',
+              sub.formattedAmount,
+              _getStatusText(sub.status),
+              _getStatusColor(sub.status),
+            ),
+          ),
       ],
     );
   }
@@ -339,9 +337,9 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
       children: [
         Text(
           'Sejarah Transaksi',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         if (transactions.isEmpty)
@@ -371,18 +369,26 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
             ),
           )
         else
-          ...transactions.map((transaction) => _buildHistoryItem(
-            'Pembayaran ${transaction.paymentMethod}',
-            _formatDate(transaction.createdAt),
-            'RM ${transaction.amount.toStringAsFixed(2)}',
-            transaction.status,
-            _getStatusColor(transaction.status),
-          )),
+          ...transactions.map(
+            (transaction) => _buildHistoryItem(
+              'Pembayaran ${transaction.paymentMethod}',
+              _formatDate(transaction.createdAt),
+              'RM ${transaction.amount.toStringAsFixed(2)}',
+              transaction.status,
+              _getStatusColor(transaction.status),
+            ),
+          ),
       ],
     );
   }
 
-  Widget _buildHistoryItem(String title, String subtitle, String amount, String status, Color statusColor) {
+  Widget _buildHistoryItem(
+    String title,
+    String subtitle,
+    String amount,
+    String status,
+    Color statusColor,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -414,10 +420,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                amount,
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+              Text(amount, style: const TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -495,5 +498,4 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
   String _formatDate(DateTime date) {
     return '${date.day}/${date.month}/${date.year}';
   }
-
 }

@@ -1,14 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
+import '../config/env_config.dart';
 import '../models/user_profile.dart';
 import '../models/category.dart';
 import '../models/kitab.dart';
-import '../models/subscription.dart';
 import '../models/transaction.dart';
 import '../models/saved_item.dart';
 import '../models/reading_progress.dart';
 import '../models/app_settings.dart';
-import '../models/admin_log.dart';
 import '../models/kitab_video_part.dart';
 
 class SupabaseService {
@@ -25,11 +25,13 @@ class SupabaseService {
   static SupabaseClient get supabase => client;
 
   static Future<void> initialize() async {
-    // These will be configured with actual Supabase project details
-    const String supabaseUrl =
-        'https://ckgxglvozrsognqqkpkk.supabase.co'; // To be replaced
-    const String supabaseAnonKey =
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZ3hnbHZvenJzb2ducXFrcGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyOTIwMDYsImV4cCI6MjA3MTg2ODAwNn0.AnTcS1uSC83m7pYT9UxAb_enhcEGCIor49AhuyCTkiQ'; // To be replaced
+    // Load configuration from environment
+    final String supabaseUrl = EnvConfig.supabaseUrl;
+    final String supabaseAnonKey = EnvConfig.supabaseAnonKey;
+
+    if (kDebugMode) {
+      EnvConfig.printConfig();
+    }
 
     await Supabase.initialize(
       url: supabaseUrl,

@@ -14,13 +14,13 @@ class PaymentScreen extends StatelessWidget {
   final String userId;
 
   const PaymentScreen({
-    Key? key,
+    super.key,
     required this.plan,
     required this.userEmail,
     required this.userName,
     required this.userPhone,
     required this.userId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -127,8 +127,10 @@ class PaymentScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       // Launch Toyyibpay payment page
-      print('🚀 Launching ToyyibPay with Plan ID: ${plan.id}, Amount: ${plan.price}');
-      
+      print(
+        '🚀 Launching ToyyibPay with Plan ID: ${plan.id}, Amount: ${plan.price}',
+      );
+
       final paymentResult = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -149,15 +151,17 @@ class PaymentScreen extends StatelessWidget {
           // Refresh subscription status
           final authProvider = context.read<AuthProvider>();
           await authProvider.refreshSubscriptionStatus();
-          
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Payment successful! Premium content is now unlocked.'),
+              content: Text(
+                'Payment successful! Premium content is now unlocked.',
+              ),
               backgroundColor: Colors.green,
             ),
           );
-          
+
           // Navigate back to subscription screen or home
           if (context.canPop()) {
             context.pop(true);

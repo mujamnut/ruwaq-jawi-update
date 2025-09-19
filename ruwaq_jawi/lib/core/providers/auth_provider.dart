@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,6 +12,7 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? _userProfile;
   String? _errorMessage;
   User? _user;
+  bool _hasActiveSubscription = false;
 
   AuthStatus get status => _status;
   UserProfile? get userProfile => _userProfile;
@@ -28,7 +30,9 @@ class AuthProvider extends ChangeNotifier {
     
     try {
       final now = DateTime.now().toUtc();
-      print('AuthProvider: Checking subscription for user: ${_user!.id}');
+      if (kDebugMode) {
+        print('AuthProvider: Checking subscription for user: ${_user!.id}');
+      }
       
       final response = await SupabaseService.from('user_subscriptions')
           .select()
@@ -39,13 +43,17 @@ class AuthProvider extends ChangeNotifier {
           .maybeSingle();
       
       final hasActive = response != null;
-      print('AuthProvider: Active subscription found: $hasActive');
+      if (kDebugMode) {
+        print('AuthProvider: Active subscription found: $hasActive');
+      }
       
       // Update profile status based on subscription
       if (hasActive) {
         final currentProfileStatus = _userProfile?.subscriptionStatus;
         if (currentProfileStatus != 'active') {
-          print('AuthProvider: Updating profile status to active');
+          if (kDebugMode) {
+            print('AuthProvider: Updating profile status to active');
+          }
           await _updateProfileSubscriptionStatus('active');
         }
       } else {
@@ -57,7 +65,9 @@ class AuthProvider extends ChangeNotifier {
             .maybeSingle();
             
         if (expiredSub != null) {
-          print('AuthProvider: Found expired subscription, updating profile status');
+          if (kDebugMode) {
+            print('AuthProvider: Found expired subscription, updating profile status');
+          }
           await _updateProfileSubscriptionStatus('expired');
         } else {
           // No subscription found at all
@@ -67,7 +77,9 @@ class AuthProvider extends ChangeNotifier {
       
       return hasActive;
     } catch (e) {
-      print('AuthProvider: Error checking subscription: $e');
+      if (kDebugMode) {
+        print('AuthProvider: Error checking subscription: $e');
+      }
       return false;
     }
   }
@@ -89,7 +101,9 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('Error updating profile subscription status: $e');
+      if (kDebugMode) {
+        print('Error updating profile subscription status: $e');
+      }
     }
   }
 
@@ -187,12 +201,16 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadUserProfile() async {
     try {
       if (_user == null) {
-        print('DEBUG: No user found, setting unauthenticated');
+        if (kDebugMode) {
+          print('DEBUG: No user found, setting unauthenticated');
+        }
         _scheduleStatus(AuthStatus.unauthenticated);
         return;
       }
 
-      print('DEBUG: Loading profile for user: ${_user!.id}');
+      if (kDebugMode) {
+        print('DEBUG: Loading profile for user: ${_user!.id}');
+      }
 
       final response = await SupabaseService.from('profiles')
           .select()
@@ -205,28 +223,38 @@ class AuthProvider extends ChangeNotifier {
             },
           );
 
-      print('DEBUG: Profile loaded successfully');
+      if (kDebugMode) {
+        print('DEBUG: Profile loaded successfully');
+      }
       _userProfile = UserProfile.fromJson(response);
       
       _scheduleStatus(AuthStatus.authenticated);
     } catch (e) {
-      print('DEBUG: Profile load error: $e');
+      if (kDebugMode) {
+        print('DEBUG: Profile load error: $e');
+      }
       
       // If profile doesn't exist, create it first
       if (e.toString().contains('No rows returned') || 
           e.toString().contains('PGRST116')) {
-        print('DEBUG: Profile not found, creating new profile');
+        if (kDebugMode) {
+          print('DEBUG: Profile not found, creating new profile');
+        }
         try {
           await _createUserProfile();
           return;
         } catch (createError) {
-          print('DEBUG: Profile creation failed: $createError');
+          if (kDebugMode) {
+            print('DEBUG: Profile creation failed: $createError');
+          }
           _setError('Failed to create user profile: ${createError.toString()}');
           return;
         }
       }
       
-      print('DEBUG: Setting error and unauthenticated status');
+      if (kDebugMode) {
+        print('DEBUG: Setting error and unauthenticated status');
+      }
       _setError('Failed to load user profile: ${e.toString()}');
     }
   }
@@ -235,13 +263,17 @@ class AuthProvider extends ChangeNotifier {
     if (_user == null) return;
     
     try {
-      print('DEBUG: Creating profile for user: ${_user!.id}');
+      if (kDebugMode) {
+        print('DEBUG: Creating profile for user: ${_user!.id}');
+      }
       
       // Get user metadata
       final fullName = _user!.userMetadata?['full_name'] as String? ?? 
                       _user!.email?.split('@').first ?? 'User';
       
-      print('DEBUG: Profile data - fullName: $fullName');
+      if (kDebugMode) {
+        print('DEBUG: Profile data - fullName: $fullName');
+      }
       
       // Create profile
       await SupabaseService.from('profiles').insert({
@@ -251,12 +283,16 @@ class AuthProvider extends ChangeNotifier {
         'subscription_status': 'inactive',
       });
       
-      print('DEBUG: Profile created, loading profile...');
+      if (kDebugMode) {
+        print('DEBUG: Profile created, loading profile...');
+      }
       
       // Load the newly created profile
       await _loadUserProfile();
     } catch (e) {
-      print('DEBUG: Profile creation error: $e');
+      if (kDebugMode) {
+        print('DEBUG: Profile creation error: $e');
+      }
       throw Exception('Profile creation failed: ${e.toString()}');
     }
   }
@@ -307,18 +343,24 @@ class AuthProvider extends ChangeNotifier {
       _scheduleStatus(AuthStatus.loading);
       clearError();
 
-      print('DEBUG: Starting sign in for $email');
+      if (kDebugMode) {
+        print('DEBUG: Starting sign in for $email');
+      }
 
       final response = await SupabaseService.signIn(
         email: email,
         password: password,
       );
 
-      print('DEBUG: Sign in response received, user: ${response.user?.id}');
+      if (kDebugMode) {
+        print('DEBUG: Sign in response received, user: ${response.user?.id}');
+      }
 
       if (response.user != null) {
         _user = response.user;
-        print('DEBUG: Loading user profile...');
+        if (kDebugMode) {
+          print('DEBUG: Loading user profile...');
+        }
         await _loadUserProfile();
         
         // Check subscription after profile is loaded
@@ -326,15 +368,21 @@ class AuthProvider extends ChangeNotifier {
           await checkActiveSubscription();
         }
         
-        print('DEBUG: Sign in completed successfully');
+        if (kDebugMode) {
+          print('DEBUG: Sign in completed successfully');
+        }
         return true;
       } else {
-        print('DEBUG: Sign in failed - no user returned');
+        if (kDebugMode) {
+          print('DEBUG: Sign in failed - no user returned');
+        }
         _setError('Invalid email or password');
         return false;
       }
     } catch (e) {
-      print('DEBUG: Sign in error: $e');
+      if (kDebugMode) {
+        print('DEBUG: Sign in error: $e');
+      }
       _setError(_getSignInErrorMessage(e));
       return false;
     }
@@ -401,9 +449,26 @@ class AuthProvider extends ChangeNotifier {
       await SupabaseService.signOut();
       _user = null;
       _userProfile = null;
+      _hasActiveSubscription = false;
       _scheduleStatus(AuthStatus.unauthenticated);
+
+      // Clear any cached data to free memory
+      _clearUserData();
     } catch (e) {
       _setError('Sign out failed: ${e.toString()}');
+    }
+  }
+
+  /// Clear user data and notify providers to clear their caches
+  void _clearUserData() {
+    // Reset all user-related data
+    _user = null;
+    _userProfile = null;
+    _hasActiveSubscription = false;
+
+    // Note: Provider caches should be cleared by listening to auth state changes
+    if (kDebugMode) {
+      print('🧹 Auth provider user data cleared');
     }
   }
 
@@ -478,7 +543,9 @@ class AuthProvider extends ChangeNotifier {
       
       return true;
     } catch (e) {
-      print('Change password error: $e');
+      if (kDebugMode) {
+        print('Change password error: $e');
+      }
       if (e.toString().contains('Same password')) {
         _setError('Kata laluan baru mestilah berbeza daripada kata laluan lama');
       } else if (e.toString().contains('Password should be at least')) {

@@ -372,7 +372,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Tajuk E-book *',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(
+            prefixIcon: HugeIcon(
               icon: HugeIcons.strokeRoundedAlignLeft,
               color: Colors.grey,
             ),
@@ -390,7 +390,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Pengarang',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(
+            prefixIcon: HugeIcon(
               icon: HugeIcons.strokeRoundedUser,
               color: Colors.grey,
             ),
@@ -398,11 +398,11 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<String>(
-          value: _selectedCategoryId,
+          initialValue: _selectedCategoryId,
           decoration: const InputDecoration(
             labelText: 'Kategori',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(
+            prefixIcon: HugeIcon(
               icon: HugeIcons.strokeRoundedGrid,
               color: Colors.grey,
             ),
@@ -426,7 +426,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Penerangan',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(
+            prefixIcon: HugeIcon(
               icon: HugeIcons.strokeRoundedFile01,
               color: Colors.grey,
             ),
@@ -439,7 +439,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
           decoration: const InputDecoration(
             labelText: 'Jumlah Muka Surat',
             border: OutlineInputBorder(),
-            prefixIcon: const HugeIcon(
+            prefixIcon: HugeIcon(
               icon: HugeIcons.strokeRoundedFile01,
               color: Colors.grey,
             ),
@@ -628,7 +628,7 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
                 : 'Boleh diakses secara percuma',
           ),
           value: _isPremium,
-          activeColor: AppTheme.primaryColor,
+          activeThumbColor: AppTheme.primaryColor,
           onChanged: (value) {
             setState(() {
               _isPremium = value;

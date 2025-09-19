@@ -1,8 +1,10 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:provider/provider.dart';
+
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
@@ -43,14 +45,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
       // Update dots based on scroll position when user scrolls manually
       if (_totalCards > 0 && _featuredScrollController.hasClients) {
-        final cardWidth = 316.0; // 300 + 16 margin
         final screenWidth = MediaQuery.of(context).size.width;
-        final centerOffset = (screenWidth - 300) / 2;
-        final currentOffset = _featuredScrollController.offset + centerOffset;
+        final cardWidth = screenWidth - 40 + 16; // Full width card plus margin
+        final currentOffset = _featuredScrollController.offset;
         final rawCardIndex = (currentOffset / cardWidth).round();
 
-        // Clamp to valid range and handle infinite scroll
-        final newCardIndex = rawCardIndex.clamp(0, (_totalCards * 2) - 1);
+        // Handle infinite scroll - always mod by total cards to get correct dot position
+        final newCardIndex = rawCardIndex % _totalCards;
 
         if (newCardIndex != _currentCardIndex) {
           setState(() {
@@ -111,43 +112,30 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   void _scrollToNextCard() {
     if (_totalCards == 0) return;
 
-    // Update current card index for dots indicator
-    final previousIndex = _currentCardIndex % _totalCards;
-    _currentCardIndex =
-        (_currentCardIndex + 1) % (_totalCards * 2); // Use doubled content
-    final currentDisplayIndex = _currentCardIndex % _totalCards;
-
-    final cardWidth = 316.0; // 300 + 16 margin
     final screenWidth = MediaQuery.of(context).size.width;
-    final centerOffset = (screenWidth - 300) / 2; // Center the card
-    final targetOffset = (_currentCardIndex * cardWidth) - centerOffset;
+    final cardWidth = screenWidth - 40 + 16; // Full width card plus margin
+
+    // Current scroll position
+    final currentOffset = _featuredScrollController.offset;
+    final currentCardPosition = currentOffset / cardWidth;
+    final nextCardPosition = currentCardPosition + 1;
+
+    // Move to next card
+    _currentCardIndex = (_currentCardIndex + 1) % _totalCards;
 
     // Trigger rebuild for dots indicator
     setState(() {});
 
-    _featuredScrollController
-        .animateTo(
-          targetOffset.clamp(
-            0.0,
-            _featuredScrollController.position.maxScrollExtent,
-          ),
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOut,
-        )
-        .then((_) {
-          // Reset position for infinite scroll when we reach the end of first set
-          if (_currentCardIndex >= _totalCards) {
-            _currentCardIndex = _currentCardIndex - _totalCards;
-            final resetOffset = (_currentCardIndex * cardWidth) - centerOffset;
-            _featuredScrollController.jumpTo(
-              resetOffset.clamp(
-                0.0,
-                _featuredScrollController.position.maxScrollExtent,
-              ),
-            );
-            setState(() {}); // Update dots after reset
-          }
-        });
+    final targetOffset = nextCardPosition * cardWidth;
+
+    _featuredScrollController.animateTo(
+      targetOffset.clamp(
+        0.0,
+        _featuredScrollController.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -161,35 +149,46 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header with greeting and search
-              _buildHeader(),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: _buildHeader(),
+              ),
 
               const SizedBox(height: 24),
 
-              // Featured content section
+              // Featured content section (full width with margins)
               _buildFeaturedSection(),
 
               const SizedBox(height: 24),
 
               // Categories section
-              _buildCategoriesSection(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _buildCategoriesSection(),
+              ),
 
               const SizedBox(height: 24),
 
               // Recent content section
-              _buildRecentSection(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _buildRecentSection(),
+              ),
 
               const SizedBox(height: 24),
 
               // Continue reading section
-              _buildContinueReadingSection(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: _buildContinueReadingSection(),
+              ),
 
               // Add bottom padding to prevent overflow with bottom navigation
               const SizedBox(height: 100),
@@ -376,7 +375,6 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             // Search bar
             GestureDetector(
               onTap: () {
-                // TODO: Navigate to search screen
                 context.push('/search');
               },
               child: Container(
@@ -427,37 +425,47 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         // Update total cards count for auto-scroll
         _totalCards = featuredContent.length;
 
-        // Create infinite content by duplicating the original content
-        final infiniteContent = [...featuredContent, ...featuredContent];
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Pilihan Utama',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.textPrimaryColor,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Text(
+                'Pilihan Utama',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
             ),
             const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: 180,
-                maxHeight: 220,
-              ),
-              child: ListView.builder(
-                controller: _featuredScrollController,
-                scrollDirection: Axis.horizontal,
-                itemCount: infiniteContent.length,
-                physics: const BouncingScrollPhysics(),
-                itemBuilder: (context, index) {
-                  return Container(
-                    width: 300,
-                    margin: const EdgeInsets.only(right: 16),
-                    child: _buildFeaturedCard(infiniteContent[index]),
-                  );
-                },
+            Container(
+              color: Colors.white,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: 180,
+                  maxHeight: 220,
+                ),
+                child: ListView.builder(
+                  controller: _featuredScrollController,
+                  scrollDirection: Axis.horizontal,
+                  itemBuilder: (context, index) {
+                    // Infinite scroll logic - cycle through original content
+                    final actualIndex = index % featuredContent.length;
+                    final content = featuredContent[actualIndex];
+
+                    final screenWidth = MediaQuery.of(context).size.width;
+                    final cardWidth = screenWidth - 40; // Full width minus 20px margins on each side
+                    return Container(
+                      width: cardWidth,
+                      margin: const EdgeInsets.only(right: 16),
+                      child: _buildFeaturedCard(content),
+                    );
+                  },
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -528,17 +536,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
     return GestureDetector(
       onTap: () => context.push(route),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              AppTheme.primaryColor,
-              AppTheme.primaryColor.withOpacity(0.8),
-            ],
-          ),
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 20,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
         child: Stack(
           children: [
@@ -548,13 +557,13 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppTheme.secondaryColor,
+                  color: AppTheme.primaryColor,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   'PREMIUM',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.textPrimaryColor,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -569,7 +578,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   Text(
                     content.title,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textLightColor,
+                      color: AppTheme.textPrimaryColor,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -580,7 +589,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                             ? 'E-book premium dengan kandungan berkualiti tinggi'
                             : 'Video kitab premium dengan kandungan berkualiti tinggi'),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textLightColor.withOpacity(0.9),
+                      color: AppTheme.textSecondaryColor,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,

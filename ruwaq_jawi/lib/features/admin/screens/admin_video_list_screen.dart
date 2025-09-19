@@ -10,12 +10,11 @@ import '../../../core/services/video_kitab_service.dart';
 import '../../../core/models/video_kitab.dart';
 import '../../../core/models/category.dart';
 import '../widgets/admin_bottom_nav.dart';
-import 'admin_video_kitab_form_screen.dart';
 import 'admin_kitab_form_screen.dart';
 import 'admin_youtube_auto_form_screen.dart';
 
 class AdminVideoListScreen extends StatefulWidget {
-  const AdminVideoListScreen({Key? key}) : super(key: key);
+  const AdminVideoListScreen({super.key});
 
   @override
   _AdminVideoListScreenState createState() => _AdminVideoListScreenState();
@@ -35,7 +34,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   late AnimationController _listAnimationController;
   late Animation<double> _fabScaleAnimation;
   late Animation<double> _fabRotationAnimation;
-  ScrollController _scrollController = ScrollController();
+  final ScrollController _scrollController = ScrollController();
   bool _isAppBarVisible = true;
 
   @override
@@ -1196,11 +1195,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                 ),
                 child: Center(
                   child: icon is PhosphorIconData
-                      ? PhosphorIcon(
-                          icon as PhosphorIconData,
-                          color: color,
-                          size: 24,
-                        )
+                      ? PhosphorIcon(icon, color: color, size: 24)
                       : HugeIcon(icon: icon, color: color, size: 24),
                 ),
               ),

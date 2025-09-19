@@ -1,17 +1,23 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Color Palette - Islamic-inspired colors
-  static const Color primaryColor = Color(0xFF00BF6D); // Bright green accent
+  // Color Palette - Following 60-30-10 rule
+  // 10% - Accent colors (use sparingly for highlights, buttons, important icons)
+  static const Color primaryColor = Color(0xFF00BF6D); // Bright green accent - ONLY for buttons/highlights
   static const Color primaryLightColor = Color(0xFF40D68A);
   static const Color primaryDarkColor = Color(0xFF00A85C);
 
+  // 30% - Secondary colors (for surfaces, cards, secondary elements)
   static const Color secondaryColor = Color(0xFFD4AF37); // Gold
   static const Color secondaryLightColor = Color(0xFFE6C757);
   static const Color secondaryDarkColor = Color(0xFFB8941F);
+  static const Color surfaceColor = Color(0xFFFFFFFF); // 30% - Cards and surfaces
 
-  static const Color backgroundColor = Color(0xFFF8F9FA);
-  static const Color surfaceColor = Color(0xFFFFFFFF);
+  // 60% - Neutral colors (for backgrounds, majority of UI)
+  static const Color backgroundColor = Color(0xFFF8F9FA); // 60% - Main background
+  static const Color neutralGray = Color(0xFFF1F3F4); // Additional neutral option
+
+  // Status colors
   static const Color errorColor = Color(0xFFDC3545);
   static const Color successColor = Color(0xFF28A745);
   static const Color warningColor = Color(0xFFFFC107);
@@ -33,27 +39,27 @@ class AppTheme {
         brightness: Brightness.light,
       ),
 
-      // App Bar Theme
+      // App Bar Theme - Transparent background as per CLAUDE.md
       appBarTheme: const AppBarTheme(
-        backgroundColor: primaryColor,
-        foregroundColor: textLightColor,
+        backgroundColor: Colors.transparent,
+        foregroundColor: textPrimaryColor,
         elevation: 0,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: textLightColor,
+          color: textPrimaryColor,
         ),
       ),
 
-      // Elevated Button Theme
+      // Elevated Button Theme - Primary buttons use xl radius
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryColor,
           foregroundColor: textLightColor,
           elevation: 2,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)), // xl radius for primary buttons
         ),
       ),
 
@@ -65,14 +71,14 @@ class AppTheme {
         ),
       ),
 
-      // Input Decoration Theme
+      // Input Decoration Theme - Medium radius for inputs
       inputDecorationTheme: InputDecorationTheme(
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12), // md radius for inputs
           borderSide: const BorderSide(color: textSecondaryColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12), // md radius for inputs
           borderSide: const BorderSide(color: primaryColor, width: 2),
         ),
         contentPadding: const EdgeInsets.symmetric(
@@ -89,12 +95,12 @@ class AppTheme {
         fillColor: surfaceColor,
       ),
 
-      // Card Theme - Pastikan teks dalam card boleh dibaca
+      // Card Theme - Context-based rounded corners
       cardTheme: CardThemeData(
         color: surfaceColor,
         elevation: 2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16), // xl radius for cards
           side: const BorderSide(color: borderColor, width: 1),
         ),
       ),
@@ -112,7 +118,7 @@ class AppTheme {
         ),
         backgroundColor: surfaceColor,
         elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)), // 2xl radius for dialogs
       ),
 
       // Text Theme - Pastikan semua teks mempunyai kontras yang baik

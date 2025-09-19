@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../core/theme/app_theme.dart';
 
 class DashboardStatCard extends StatelessWidget {
@@ -50,11 +49,7 @@ class DashboardStatCard extends StatelessWidget {
                       color: color.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: HugeIcon(
-                      icon: icon,
-                      size: 24.0,
-                      color: color,
-                    ),
+                    child: HugeIcon(icon: icon, size: 24.0, color: color),
                   ),
                   if (onTap != null)
                     HugeIcon(
@@ -75,9 +70,9 @@ class DashboardStatCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),

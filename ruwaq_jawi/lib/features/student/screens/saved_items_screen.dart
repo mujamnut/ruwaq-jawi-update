@@ -7,7 +7,6 @@ import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/providers/bookmark_provider.dart';
 import '../../../core/models/kitab.dart';
 import '../../../core/services/local_saved_items_service.dart';
-import '../widgets/student_bottom_nav.dart';
 
 class SavedItemsScreen extends StatefulWidget {
   const SavedItemsScreen({super.key});
@@ -16,7 +15,8 @@ class SavedItemsScreen extends StatefulWidget {
   State<SavedItemsScreen> createState() => _SavedItemsScreenState();
 }
 
-class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProviderStateMixin {
+class _SavedItemsScreenState extends State<SavedItemsScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
 
   @override
@@ -30,7 +30,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
       if (!bm.isLoading && bm.bookmarks.isEmpty) {
         bm.loadBookmarks();
       }
-      
+
       // Add test data for demonstration
       _addTestData();
     });
@@ -45,7 +45,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
   void _addTestData() async {
     try {
       final provider = context.read<SavedItemsProvider>();
-      
+
       // Add sample kitab data untuk test
       final sampleKitab = Kitab(
         id: 'test_kitab_1',
@@ -60,10 +60,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      
+
       await provider.addKitabToLocal(sampleKitab);
-      
-      // Add sample video data untuk test  
+
+      // Add sample video data untuk test
       await LocalSavedItemsService.saveVideo({
         'kitabId': 'test_kitab_1',
         'episodeId': 'test_episode_1',
@@ -71,7 +71,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
         'description': 'Video test untuk local storage',
         'createdAt': DateTime.now().toIso8601String(),
       });
-      
+
       print('Test data added successfully');
     } catch (e) {
       print('Error adding test data: $e');
@@ -117,10 +117,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [
-          _buildKitabAndVideoTab(),
-          _buildEbookTab(),
-        ],
+        children: [_buildKitabAndVideoTab(), _buildEbookTab()],
       ),
     );
   }
@@ -128,8 +125,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
   Widget _buildKitabAndVideoTab() {
     return Consumer2<SavedItemsProvider, BookmarkProvider>(
       builder: (context, savedItemsProvider, bookmarkProvider, child) {
-        final isLoading = savedItemsProvider.isLoading || bookmarkProvider.isLoading;
-        
+        final isLoading =
+            savedItemsProvider.isLoading || bookmarkProvider.isLoading;
+
         if (isLoading) {
           return const Center(child: CircularProgressIndicator());
         }
@@ -142,11 +140,14 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
           builder: (context, snapshot) {
             final localVideos = snapshot.data ?? [];
             final allVideos = [...videoBookmarks, ...localVideos];
-            
+
             final hasItems = savedKitabs.isNotEmpty || allVideos.isNotEmpty;
-            
+
             if (!hasItems) {
-              return _buildEmptyState('Tiada simpanan', 'Simpan kitab dan video kegemaran anda untuk akses mudah');
+              return _buildEmptyState(
+                'Tiada simpanan',
+                'Simpan kitab dan video kegemaran anda untuk akses mudah',
+              );
             }
 
             return SingleChildScrollView(
@@ -155,13 +156,23 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (savedKitabs.isNotEmpty) ...[
-                    Text('Kitab', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Kitab',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     ...savedKitabs.map((kitab) => _buildKitabCard(kitab)),
                     const SizedBox(height: 16),
                   ],
                   if (allVideos.isNotEmpty) ...[
-                    Text('Video', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Video',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     ...allVideos.map((video) => _buildVideoCard(video)),
                   ],
@@ -178,9 +189,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
     return Consumer<SavedItemsProvider>(
       builder: (context, savedItemsProvider, child) {
         if (savedItemsProvider.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
+          return const Center(child: CircularProgressIndicator());
         }
 
         if (savedItemsProvider.error != null) {
@@ -223,7 +232,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
         }
 
         if (savedItemsProvider.savedKitab.isEmpty) {
-          return _buildEmptyState('Tiada kitab disimpan', 'Simpan kitab kegemaran anda untuk akses mudah');
+          return _buildEmptyState(
+            'Tiada kitab disimpan',
+            'Simpan kitab kegemaran anda untuk akses mudah',
+          );
         }
 
         return ListView.builder(
@@ -249,14 +261,26 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.error_outline, size: 64, color: AppTheme.textSecondaryColor),
+                Icon(
+                  Icons.error_outline,
+                  size: 64,
+                  color: AppTheme.textSecondaryColor,
+                ),
                 const SizedBox(height: 16),
-                Text('Ralat memuatkan video disimpan',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppTheme.textPrimaryColor)),
+                Text(
+                  'Ralat memuatkan video disimpan',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text(bmProvider.error!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondaryColor),
-                    textAlign: TextAlign.center),
+                Text(
+                  bmProvider.error!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => bmProvider.loadBookmarks(),
@@ -273,7 +297,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
 
         final videos = bmProvider.getBookmarksByType('video');
         if (videos.isEmpty) {
-          return _buildEmptyState('Tiada video disimpan', 'Simpan video kegemaran anda untuk tontonan kemudian');
+          return _buildEmptyState(
+            'Tiada video disimpan',
+            'Simpan video kegemaran anda untuk tontonan kemudian',
+          );
         }
 
         return ListView.builder(
@@ -306,7 +333,11 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                           color: AppTheme.primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.play_circle_fill, color: Colors.red, size: 30),
+                        child: const Icon(
+                          Icons.play_circle_fill,
+                          color: Colors.red,
+                          size: 30,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -315,7 +346,8 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                           children: [
                             Text(
                               title,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
                                     fontWeight: FontWeight.w600,
                                     color: AppTheme.textPrimaryColor,
                                   ),
@@ -325,7 +357,8 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                             const SizedBox(height: 4),
                             Text(
                               'Kitab: ${v.kitabId}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
                                     color: AppTheme.textSecondaryColor,
                                   ),
                             ),
@@ -335,15 +368,21 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                       PopupMenuButton<String>(
                         onSelected: (value) async {
                           if (value == 'remove') {
-                            final ok = await context.read<BookmarkProvider>().removeBookmark(v.kitabId);
+                            final ok = await context
+                                .read<BookmarkProvider>()
+                                .removeBookmark(v.kitabId);
                             if (ok && mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Video dibuang dari simpanan')),
+                                const SnackBar(
+                                  content: Text('Video dibuang dari simpanan'),
+                                ),
                               );
                             }
                           } else if (value == 'share') {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Pautan "${title}" dikongsi')),
+                              SnackBar(
+                                content: Text('Pautan "$title" dikongsi'),
+                              ),
                             );
                           }
                         },
@@ -351,13 +390,21 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                           PopupMenuItem(
                             value: 'remove',
                             child: Row(
-                              children: [Icon(Icons.bookmark_remove), SizedBox(width: 8), Text('Buang')],
+                              children: [
+                                Icon(Icons.bookmark_remove),
+                                SizedBox(width: 8),
+                                Text('Buang'),
+                              ],
                             ),
                           ),
                           PopupMenuItem(
                             value: 'share',
                             child: Row(
-                              children: [Icon(Icons.share), SizedBox(width: 8), Text('Kongsi')],
+                              children: [
+                                Icon(Icons.share),
+                                SizedBox(width: 8),
+                                Text('Kongsi'),
+                              ],
                             ),
                           ),
                         ],
@@ -395,11 +442,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                   color: AppTheme.primaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(
-                  Icons.book,
-                  color: AppTheme.primaryColor,
-                  size: 30,
-                ),
+                child: Icon(Icons.book, color: AppTheme.primaryColor, size: 30),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -411,26 +454,31 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                         Expanded(
                           child: Text(
                             kitab.title,
-                            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.textPrimaryColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimaryColor,
+                                ),
                           ),
                         ),
                         if (kitab.isPremium)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppTheme.secondaryColor,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               'PREMIUM',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppTheme.textLightColor,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: AppTheme.textLightColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 10,
+                                  ),
                             ),
                           ),
                       ],
@@ -448,9 +496,8 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
                         // Get category name from provider
                         return Text(
                           'Category',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: AppTheme.textSecondaryColor),
                         );
                       },
                     ),
@@ -502,7 +549,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
   Widget _buildEbookTab() {
     // For now, show placeholder for e-book saved items
     // This will need to be connected to actual e-book saved items provider
-    return _buildEmptyState('Tiada e-book disimpan', 'Simpan e-book kegemaran anda untuk akses mudah');
+    return _buildEmptyState(
+      'Tiada e-book disimpan',
+      'Simpan e-book kegemaran anda untuk akses mudah',
+    );
   }
 
   Widget _buildVideoCard(dynamic bookmark) {
@@ -529,18 +579,20 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
           ),
         ),
         title: Text(
-          bookmark is Map ? (bookmark['title'] ?? 'Video') : (bookmark.title ?? 'Video'),
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+          bookmark is Map
+              ? (bookmark['title'] ?? 'Video')
+              : (bookmark.title ?? 'Video'),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
         subtitle: Text(
           'Video tersimpan',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppTheme.textSecondaryColor,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondaryColor),
         ),
         trailing: PopupMenuButton<String>(
           onSelected: (value) => _handleVideoAction(value, bookmark),
@@ -569,8 +621,12 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
         ),
         onTap: () {
           // Navigate to video player
-          final kitabId = bookmark is Map ? bookmark['kitabId'] : bookmark.kitabId;
-          final episodeId = bookmark is Map ? bookmark['episodeId'] : bookmark.episodeId;
+          final kitabId = bookmark is Map
+              ? bookmark['kitabId']
+              : bookmark.kitabId;
+          final episodeId = bookmark is Map
+              ? bookmark['episodeId']
+              : bookmark.episodeId;
           context.push('/video/$kitabId?episode=$episodeId');
         },
       ),
@@ -643,7 +699,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Buang dari Simpanan'),
-        content: Text('Adakah anda pasti ingin membuang video ini dari simpanan?'),
+        content: Text(
+          'Adakah anda pasti ingin membuang video ini dari simpanan?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -652,8 +710,12 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final kitabId = bookmark is Map ? bookmark['kitabId'] : bookmark.kitabId;
-              final success = await context.read<BookmarkProvider>().removeBookmark(kitabId);
+              final kitabId = bookmark is Map
+                  ? bookmark['kitabId']
+                  : bookmark.kitabId;
+              final success = await context
+                  .read<BookmarkProvider>()
+                  .removeBookmark(kitabId);
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -688,7 +750,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Buang dari Simpanan'),
-        content: Text('Adakah anda pasti ingin membuang "${kitab.title}" dari simpanan?'),
+        content: Text(
+          'Adakah anda pasti ingin membuang "${kitab.title}" dari simpanan?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -697,7 +761,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with TickerProvider
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final success = await context.read<SavedItemsProvider>().removeFromSaved(kitab.id);
+              final success = await context
+                  .read<SavedItemsProvider>()
+                  .removeFromSaved(kitab.id);
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

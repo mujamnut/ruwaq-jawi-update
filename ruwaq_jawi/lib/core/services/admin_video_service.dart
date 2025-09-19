@@ -34,10 +34,10 @@ class AdminVideoService {
       }
 
       // Apply ordering dan execute query
-      final response = ascending 
+      final response = ascending
           ? await query.order(orderBy)
           : await query.order(orderBy, ascending: false);
-          
+
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
       throw Exception('Ralat mendapatkan episodes: $e');
@@ -106,7 +106,9 @@ class AdminVideoService {
       }
       if (durationSeconds == null && videoInfo.containsKey('duration')) {
         durationSeconds = videoInfo['duration'];
-        durationMinutes = durationSeconds != null ? (durationSeconds / 60).ceil() : 0;
+        durationMinutes = durationSeconds != null
+            ? (durationSeconds / 60).ceil()
+            : 0;
       }
 
       // Dapatkan sort_order seterusnya jika tidak diberikan
@@ -118,7 +120,7 @@ class AdminVideoService {
             .order('sort_order', ascending: false)
             .limit(1)
             .maybeSingle();
-        
+
         sortOrder = (maxOrderResult?['sort_order'] as int? ?? 0) + 1;
       }
 
@@ -202,12 +204,20 @@ class AdminVideoService {
 
       if (title != null) updateData['title'] = title;
       if (description != null) updateData['description'] = description;
-      if (youtubeVideoId != null) updateData['youtube_video_id'] = youtubeVideoId;
-      if (youtubeVideoUrl != null) updateData['youtube_video_url'] = youtubeVideoUrl;
+      if (youtubeVideoId != null) {
+        updateData['youtube_video_id'] = youtubeVideoId;
+      }
+      if (youtubeVideoUrl != null) {
+        updateData['youtube_video_url'] = youtubeVideoUrl;
+      }
       if (thumbnailUrl != null) updateData['thumbnail_url'] = thumbnailUrl;
       if (partNumber != null) updateData['part_number'] = partNumber;
-      if (durationMinutes != null) updateData['duration_minutes'] = durationMinutes;
-      if (durationSeconds != null) updateData['duration_seconds'] = durationSeconds;
+      if (durationMinutes != null) {
+        updateData['duration_minutes'] = durationMinutes;
+      }
+      if (durationSeconds != null) {
+        updateData['duration_seconds'] = durationSeconds;
+      }
       if (sortOrder != null) updateData['sort_order'] = sortOrder;
       if (isActive != null) updateData['is_active'] = isActive;
       if (isPreview != null) updateData['is_preview'] = isPreview;
@@ -240,10 +250,7 @@ class AdminVideoService {
 
       final kitabId = episode['kitab_id'];
 
-      await _supabase
-          .from('kitab_videos')
-          .delete()
-          .eq('id', episodeId);
+      await _supabase.from('kitab_videos').delete().eq('id', episodeId);
 
       // Update kitab counters selepas delete
       await _updateKitabVideoStats(kitabId);
@@ -268,10 +275,7 @@ class AdminVideoService {
 
       // Use individual deletes as fallback (more reliable)
       for (final episodeId in episodeIds) {
-        await _supabase
-            .from('kitab_videos')
-            .delete()
-            .eq('id', episodeId);
+        await _supabase.from('kitab_videos').delete().eq('id', episodeId);
       }
 
       // Update kitab counters
@@ -316,7 +320,7 @@ class AdminVideoService {
   Future<void> reorderEpisodes(String kitabId, List<String> episodeIds) async {
     try {
       final batch = <Map<String, dynamic>>[];
-      
+
       for (int i = 0; i < episodeIds.length; i++) {
         batch.add({
           'id': episodeIds[i],
@@ -325,9 +329,7 @@ class AdminVideoService {
         });
       }
 
-      await _supabase
-          .from('kitab_videos')
-          .upsert(batch);
+      await _supabase.from('kitab_videos').upsert(batch);
     } catch (e) {
       throw Exception('Ralat menyusun semula episodes: $e');
     }
@@ -344,7 +346,7 @@ class AdminVideoService {
           .order('sort_order', ascending: true);
 
       final batch = <Map<String, dynamic>>[];
-      
+
       for (int i = 0; i < episodes.length; i++) {
         batch.add({
           'id': episodes[i]['id'],
@@ -355,9 +357,7 @@ class AdminVideoService {
       }
 
       if (batch.isNotEmpty) {
-        await _supabase
-            .from('kitab_videos')
-            .upsert(batch);
+        await _supabase.from('kitab_videos').upsert(batch);
       }
     } catch (e) {
       throw Exception('Ralat auto-renumber episodes: $e');
@@ -365,7 +365,10 @@ class AdminVideoService {
   }
 
   /// Duplicate episode
-  Future<Map<String, dynamic>> duplicateEpisode(String episodeId, String newTitle) async {
+  Future<Map<String, dynamic>> duplicateEpisode(
+    String episodeId,
+    String newTitle,
+  ) async {
     try {
       // Get original episode
       final original = await _supabase
@@ -392,7 +395,7 @@ class AdminVideoService {
       duplicateData['part_number'] = nextPartNumber;
       duplicateData['created_at'] = DateTime.now().toIso8601String();
       duplicateData['updated_at'] = DateTime.now().toIso8601String();
-      
+
       // Set sebagai inactive by default
       duplicateData['is_active'] = false;
 
@@ -418,12 +421,15 @@ class AdminVideoService {
       // Get kitab info
       final kitab = await _supabase
           .from('kitab')
-          .select('youtube_video_id, youtube_video_url, title, duration_minutes')
+          .select(
+            'youtube_video_id, youtube_video_url, title, duration_minutes',
+          )
           .eq('id', kitabId)
           .single();
 
       // Jika ada single video, buat episode pertama
-      if (kitab['youtube_video_id'] != null && kitab['youtube_video_id'].isNotEmpty) {
+      if (kitab['youtube_video_id'] != null &&
+          kitab['youtube_video_id'].isNotEmpty) {
         await addEpisode(
           kitabId: kitabId,
           title: '${kitab['title']} - Episode 1',
@@ -465,11 +471,13 @@ class AdminVideoService {
           .eq('kitab_id', kitabId)
           .eq('is_active', true);
 
-      final activeEpisodes = List<Map<String, dynamic>>.from(activeEpisodesResponse);
+      final activeEpisodes = List<Map<String, dynamic>>.from(
+        activeEpisodesResponse,
+      );
       final totalVideos = activeEpisodes.length;
       final totalDurationSeconds = activeEpisodes.fold<int>(
-        0, 
-        (sum, episode) => sum + (episode['duration_seconds'] as int? ?? 0)
+        0,
+        (sum, episode) => sum + (episode['duration_seconds'] as int? ?? 0),
       );
       final totalDurationMinutes = (totalDurationSeconds / 60).ceil();
 
@@ -524,7 +532,7 @@ class AdminVideoService {
       return null;
     }
 
-    if (uri == null || uri.host.isEmpty) return null;
+    if (uri.host.isEmpty) return null;
 
     final host = uri.host.replaceFirst('www.', '');
     final segs = uri.pathSegments;
@@ -555,7 +563,10 @@ class AdminVideoService {
   }
 
   /// Generate default YouTube thumbnail URL
-  String getDefaultThumbnailUrl(String videoId, {String quality = 'hqdefault'}) {
+  String getDefaultThumbnailUrl(
+    String videoId, {
+    String quality = 'hqdefault',
+  }) {
     // Available qualities: default, mqdefault, hqdefault, sddefault, maxresdefault
     return 'https://img.youtube.com/vi/$videoId/$quality.jpg';
   }

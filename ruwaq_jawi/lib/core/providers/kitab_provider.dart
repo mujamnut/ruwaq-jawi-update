@@ -4,17 +4,16 @@ import '../models/video_kitab.dart';
 import '../models/ebook.dart';
 import '../models/category.dart';
 import '../models/reading_progress.dart';
-import '../models/kitab_video.dart';
 import '../models/video_episode.dart';
 import '../services/supabase_service.dart';
 
 class KitabProvider extends ChangeNotifier {
-  List<Kitab> _kitabList = [];
+  final List<Kitab> _kitabList = [];
   List<VideoKitab> _videoKitabList = [];
   List<Ebook> _ebookList = [];
   List<Category> _categories = [];
   Map<String, ReadingProgress> _userProgress = {};
-  Map<String, List<VideoEpisode>> _kitabVideosCache = {};
+  final Map<String, List<VideoEpisode>> _kitabVideosCache = {};
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -31,17 +30,23 @@ class KitabProvider extends ChangeNotifier {
   // Filtered lists
   List<Kitab> get premiumKitab => _kitabList.where((k) => k.isPremium).toList();
   List<Kitab> get freeKitab => _kitabList.where((k) => !k.isPremium).toList();
-  List<Kitab> get availableEbooks => _kitabList.where((k) => k.isEbookAvailable).toList();
-  
+  List<Kitab> get availableEbooks =>
+      _kitabList.where((k) => k.isEbookAvailable).toList();
+
   // Video Kitab filtered lists
-  List<VideoKitab> get activeVideoKitab => _videoKitabList.where((vk) => vk.isActive).toList();
-  List<VideoKitab> get premiumVideoKitab => _videoKitabList.where((vk) => vk.isPremium && vk.isActive).toList();
-  List<VideoKitab> get freeVideoKitab => _videoKitabList.where((vk) => !vk.isPremium && vk.isActive).toList();
-  
+  List<VideoKitab> get activeVideoKitab =>
+      _videoKitabList.where((vk) => vk.isActive).toList();
+  List<VideoKitab> get premiumVideoKitab =>
+      _videoKitabList.where((vk) => vk.isPremium && vk.isActive).toList();
+  List<VideoKitab> get freeVideoKitab =>
+      _videoKitabList.where((vk) => !vk.isPremium && vk.isActive).toList();
+
   // Ebook filtered lists
   List<Ebook> get activeEbooks => _ebookList.where((e) => e.isActive).toList();
-  List<Ebook> get premiumEbooks => _ebookList.where((e) => e.isPremium && e.isActive).toList();
-  List<Ebook> get freeEbooks => _ebookList.where((e) => !e.isPremium && e.isActive).toList();
+  List<Ebook> get premiumEbooks =>
+      _ebookList.where((e) => e.isPremium && e.isActive).toList();
+  List<Ebook> get freeEbooks =>
+      _ebookList.where((e) => !e.isPremium && e.isActive).toList();
 
   void _setLoading(bool loading) {
     _isLoading = loading;
@@ -60,7 +65,7 @@ class KitabProvider extends ChangeNotifier {
       _setError(null);
 
       await Future.wait([
-        loadCategories(), 
+        loadCategories(),
         loadVideoKitabList(),
         loadEbookList(),
       ]);
@@ -92,7 +97,7 @@ class KitabProvider extends ChangeNotifier {
   // Future<void> loadKitabList({String? categoryId}) async {
   //   try {
   //     var query = SupabaseService.from('kitab').select('''
-  //       *, 
+  //       *,
   //       categories(*),
   //       pdf_storage_path,
   //       pdf_file_size,
@@ -131,9 +136,7 @@ class KitabProvider extends ChangeNotifier {
         query = query.eq('category_id', categoryId);
       }
 
-      final response = await query
-          .eq('is_active', true)
-          .order('title');
+      final response = await query.eq('is_active', true).order('title');
 
       _videoKitabList = (response as List)
           .map((json) => VideoKitab.fromJson(json))
@@ -157,9 +160,7 @@ class KitabProvider extends ChangeNotifier {
         query = query.eq('category_id', categoryId);
       }
 
-      final response = await query
-          .eq('is_active', true)
-          .order('title');
+      final response = await query.eq('is_active', true).order('title');
 
       _ebookList = (response as List)
           .map((json) => Ebook.fromJson(json))
@@ -205,7 +206,9 @@ class KitabProvider extends ChangeNotifier {
 
   /// Get video kitab by category
   List<VideoKitab> getVideoKitabByCategory(String categoryId) {
-    return _videoKitabList.where((videoKitab) => videoKitab.categoryId == categoryId).toList();
+    return _videoKitabList
+        .where((videoKitab) => videoKitab.categoryId == categoryId)
+        .toList();
   }
 
   /// Search video kitab by title or author
@@ -352,10 +355,10 @@ class KitabProvider extends ChangeNotifier {
       // TODO: Update this method to work with new video_kitab and ebooks tables
       // For now, return empty list to prevent errors
       return [];
-      
+
       // final user = SupabaseService.currentUser;
       // if (user == null) return [];
-      
+
       // final response = await SupabaseService.from('reading_progress')
       //     .select('''
       //       *,
@@ -369,7 +372,7 @@ class KitabProvider extends ChangeNotifier {
       //     .gt('progress_percentage', 0) // Only show items with some progress
       //     .order('last_accessed', ascending: false)
       //     .limit(limit);
-          
+
       // final results = <dynamic>[];
       // for (final item in response as List) {
       //   if (item['kitab'] != null) {
@@ -384,7 +387,7 @@ class KitabProvider extends ChangeNotifier {
       //     });
       //   }
       // }
-      
+
       // return results;
     } catch (e) {
       print('Error loading continue reading: $e');
@@ -419,10 +422,9 @@ class KitabProvider extends ChangeNotifier {
       }
 
       // Load ALL episodes (including inactive ones) to fix missing 4th episode issue
-      final response = await SupabaseService.from('video_episodes')
-          .select()
-          .eq('video_kitab_id', kitabId)
-          .order('part_number');
+      final response = await SupabaseService.from(
+        'video_episodes',
+      ).select().eq('video_kitab_id', kitabId).order('part_number');
 
       final videos = (response as List)
           .map((json) => VideoEpisode.fromJson(json))
@@ -462,7 +464,7 @@ class KitabProvider extends ChangeNotifier {
       final response = await SupabaseService.from('video_episodes')
           .select()
           .eq('video_kitab_id', kitabId)
-          .eq('is_active', true)  // Only show active preview videos
+          .eq('is_active', true) // Only show active preview videos
           .eq('is_preview', true)
           .order('part_number');
 
@@ -514,12 +516,11 @@ class KitabProvider extends ChangeNotifier {
       final previewVideos = (response as List)
           .map((json) => VideoEpisode.fromJson(json))
           .toList();
-      
+
       return previewVideos;
     } catch (e) {
       print('Error loading all preview videos: $e');
       return [];
     }
   }
-
 }

@@ -51,7 +51,8 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       final episode = widget.episode!;
       _titleController.text = episode.title;
       _descriptionController.text = episode.description ?? '';
-      _youtubeUrlController.text = episode.youtubeVideoUrl ?? episode.youtubeWatchUrl;
+      _youtubeUrlController.text =
+          episode.youtubeVideoUrl ?? episode.youtubeWatchUrl;
       _partNumberController.text = episode.partNumber.toString();
       _durationController.text = episode.durationMinutes.toString();
       _isActive = episode.isActive;
@@ -61,7 +62,9 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
     } else {
       // For new episode, get next part number
       try {
-        final nextPartNumber = await VideoEpisodeService.getNextPartNumber(widget.videoKitabId);
+        final nextPartNumber = await VideoEpisodeService.getNextPartNumber(
+          widget.videoKitabId,
+        );
         _partNumberController.text = nextPartNumber.toString();
       } catch (e) {
         _partNumberController.text = '1';
@@ -83,11 +86,11 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
     final videoId = VideoEpisodeService.extractYouTubeVideoId(value);
     setState(() {
       _extractedVideoId = videoId;
-      _thumbnailUrl = videoId != null 
+      _thumbnailUrl = videoId != null
           ? VideoEpisodeService.getYouTubeThumbnailUrl(videoId)
           : null;
     });
-    
+
     // Auto-detect video duration
     if (videoId != null) {
       _detectVideoDurationFromYouTube(value);
@@ -112,8 +115,8 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       final episodeData = {
         'video_kitab_id': widget.videoKitabId,
         'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim().isEmpty 
-            ? null 
+        'description': _descriptionController.text.trim().isEmpty
+            ? null
             : _descriptionController.text.trim(),
         'youtube_video_id': _extractedVideoId!,
         'youtube_video_url': _youtubeUrlController.text.trim(),
@@ -125,7 +128,10 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       };
 
       if (_isEditing) {
-        await VideoEpisodeService.updateEpisode(widget.episode!.id, episodeData);
+        await VideoEpisodeService.updateEpisode(
+          widget.episode!.id,
+          episodeData,
+        );
         _showSnackBar('Episode berjaya dikemaskini!');
       } else {
         await VideoEpisodeService.createEpisode(episodeData);
@@ -146,7 +152,9 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
 
   void _previewVideo() {
     if (_extractedVideoId != null) {
-      final youtubeUrl = VideoEpisodeService.getYouTubeWatchUrl(_extractedVideoId!);
+      final youtubeUrl = VideoEpisodeService.getYouTubeWatchUrl(
+        _extractedVideoId!,
+      );
       _launchUrl(youtubeUrl);
     }
   }
@@ -184,20 +192,23 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
 
       // Call YouTube Data API to get video duration
       final url = YouTubeApiConfig.getVideoDetailsUrl(videoId);
-      
+
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['items'] != null && data['items'].isNotEmpty) {
           final duration = data['items'][0]['contentDetails']['duration'];
           final durationInMinutes = _parseDurationToMinutes(duration);
-          
+
           // Update duration field
           setState(() {
             _durationController.text = durationInMinutes.toString();
           });
-          
-          _showSnackBar('Durasi video dikesan: $durationInMinutes minit', isError: false);
+
+          _showSnackBar(
+            'Durasi video dikesan: $durationInMinutes minit',
+            isError: false,
+          );
         }
       }
     } catch (e) {
@@ -210,13 +221,15 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
     // Parse ISO 8601 duration format (PT#M#S)
     final regex = RegExp(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?');
     final match = regex.firstMatch(duration);
-    
+
     if (match != null) {
       final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
       final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
       final seconds = int.tryParse(match.group(3) ?? '0') ?? 0;
-      
-      return hours * 60 + minutes + (seconds > 0 ? 1 : 0); // Round up if has seconds
+
+      return hours * 60 +
+          minutes +
+          (seconds > 0 ? 1 : 0); // Round up if has seconds
     }
     return 0;
   }
@@ -271,19 +284,25 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                    border: Border.all(
+                      color: AppTheme.primaryColor.withOpacity(0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      HugeIcon(icon: HugeIcons.strokeRoundedVideo01, color: AppTheme.primaryColor),
+                      HugeIcon(
+                        icon: HugeIcons.strokeRoundedVideo01,
+                        color: AppTheme.primaryColor,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Video Kitab: ${widget.videoKitabTitle}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
                         ),
                       ),
                     ],
@@ -295,14 +314,17 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
               // Basic Information Section
               _buildSectionTitle('Maklumat Asas Episode'),
               const SizedBox(height: 16),
-              
+
               // Title Field
               TextFormField(
                 controller: _titleController,
                 decoration: const InputDecoration(
                   labelText: 'Tajuk Episode *',
                   border: OutlineInputBorder(),
-                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedAlignLeft, color: Colors.grey),
+                  prefixIcon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedAlignLeft,
+                    color: Colors.grey,
+                  ),
                   hintText: 'Contoh: Pengenalan Bacaan Jawi',
                 ),
                 validator: (value) {
@@ -324,7 +346,10 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Nombor Bahagian *',
                         border: OutlineInputBorder(),
-                        prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedTextNumberSign, color: Colors.grey),
+                        prefixIcon: HugeIcon(
+                          icon: HugeIcons.strokeRoundedTextNumberSign,
+                          color: Colors.grey,
+                        ),
                         hintText: 'Contoh: 1',
                       ),
                       keyboardType: TextInputType.number,
@@ -347,9 +372,13 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Durasi (minit)',
                         border: OutlineInputBorder(),
-                        prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedClock01, color: Colors.grey),
+                        prefixIcon: HugeIcon(
+                          icon: HugeIcons.strokeRoundedClock01,
+                          color: Colors.grey,
+                        ),
                         hintText: 'Auto-dikesan dari URL YouTube',
-                        helperText: 'Akan cuba mengesan durasi secara automatik',
+                        helperText:
+                            'Akan cuba mengesan durasi secara automatik',
                       ),
                       keyboardType: TextInputType.number,
                       validator: (value) {
@@ -373,9 +402,13 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Penerangan Episode',
                   border: OutlineInputBorder(),
-                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedFile01, color: Colors.grey),
+                  prefixIcon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedFile01,
+                    color: Colors.grey,
+                  ),
                   alignLabelWithHint: true,
-                  hintText: 'Penerangan ringkas tentang kandungan episode ini...',
+                  hintText:
+                      'Penerangan ringkas tentang kandungan episode ini...',
                 ),
                 maxLines: 3,
               ),
@@ -384,13 +417,16 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
               // YouTube Video Section
               _buildSectionTitle('Video YouTube'),
               const SizedBox(height: 16),
-              
+
               TextFormField(
                 controller: _youtubeUrlController,
                 decoration: const InputDecoration(
                   labelText: 'URL atau ID Video YouTube *',
                   border: OutlineInputBorder(),
-                  prefixIcon: const HugeIcon(icon: HugeIcons.strokeRoundedCameraVideo, color: Colors.grey),
+                  prefixIcon: HugeIcon(
+                    icon: HugeIcons.strokeRoundedCameraVideo,
+                    color: Colors.grey,
+                  ),
                   hintText: 'https://www.youtube.com/watch?v=... atau ID video',
                 ),
                 onChanged: _onYouTubeUrlChanged,
@@ -419,18 +455,23 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                     children: [
                       Row(
                         children: [
-                          const HugeIcon(icon: HugeIcons.strokeRoundedView, color: Colors.blue),
+                          const HugeIcon(
+                            icon: HugeIcons.strokeRoundedView,
+                            color: Colors.blue,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Preview Video',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           const Spacer(),
                           ElevatedButton.icon(
                             onPressed: _previewVideo,
-                            icon: const HugeIcon(icon: HugeIcons.strokeRoundedPlay, color: Colors.white),
+                            icon: const HugeIcon(
+                              icon: HugeIcons.strokeRoundedPlay,
+                              color: Colors.white,
+                            ),
                             label: const Text('Tonton'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.red,
@@ -458,7 +499,10 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                                 errorBuilder: (context, error, stackTrace) {
                                   return Container(
                                     color: Colors.grey.shade200,
-                                    child: const HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.grey),
+                                    child: const HugeIcon(
+                                      icon: HugeIcons.strokeRoundedAlert02,
+                                      color: Colors.grey,
+                                    ),
                                   );
                                 },
                               ),
@@ -471,17 +515,17 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                               children: [
                                 Text(
                                   'Video ID: $_extractedVideoId',
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontFamily: 'monospace',
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(fontFamily: 'monospace'),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
                                   'YouTube URL yang dikesan dan sah',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w500,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                 ),
                               ],
                             ),
@@ -508,7 +552,9 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      _isActive ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedViewOff,
+                      _isActive
+                          ? HugeIcons.strokeRoundedView
+                          : HugeIcons.strokeRoundedViewOff,
                       color: _isActive ? Colors.green : Colors.grey,
                     ),
                     const SizedBox(width: 12),
@@ -518,17 +564,15 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                         children: [
                           Text(
                             'Status Aktif',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            _isActive 
-                                ? 'Episode ini akan ditunjukkan kepada pengguna' 
+                            _isActive
+                                ? 'Episode ini akan ditunjukkan kepada pengguna'
                                 : 'Episode ini akan disembunyikan dari pengguna',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppTheme.textSecondaryColor),
                           ),
                         ],
                       ),
@@ -540,7 +584,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                           _isActive = value;
                         });
                       },
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                   ],
                 ),
@@ -557,7 +601,9 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 child: Row(
                   children: [
                     Icon(
-                      _isPreview ? HugeIcons.strokeRoundedView : HugeIcons.strokeRoundedLockPassword,
+                      _isPreview
+                          ? HugeIcons.strokeRoundedView
+                          : HugeIcons.strokeRoundedLockPassword,
                       color: _isPreview ? Colors.orange : AppTheme.primaryColor,
                     ),
                     const SizedBox(width: 12),
@@ -567,17 +613,15 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                         children: [
                           Text(
                             'Status Preview',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           Text(
-                            _isPreview 
-                                ? 'Episode ini boleh ditonton oleh pengguna percuma sebagai preview' 
+                            _isPreview
+                                ? 'Episode ini boleh ditonton oleh pengguna percuma sebagai preview'
                                 : 'Episode ini hanya untuk pengguna premium',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: AppTheme.textSecondaryColor),
                           ),
                         ],
                       ),
@@ -589,7 +633,7 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                           _isPreview = value;
                         });
                       },
-                      activeColor: Colors.orange,
+                      activeThumbColor: Colors.orange,
                     ),
                   ],
                 ),

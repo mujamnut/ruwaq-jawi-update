@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/subscription_provider.dart';
@@ -15,15 +16,19 @@ class BackgroundPaymentService {
   /// Start background payment verification
   static void startBackgroundVerification(BuildContext context) {
     if (_isRunning) {
-      print('🔄 Background payment verification already running');
+      if (kDebugMode) {
+        print('🔄 Background payment verification already running');
+      }
       return;
     }
 
-    print('🚀 Starting background payment verification...');
-    print('⚠️ NOTE: Background verification disabled - pending_payments table does not exist');
-    
-    // Temporarily disable background verification to prevent error logs
-    // TODO: Re-enable when pending_payments table is created or logic is updated
+    if (kDebugMode) {
+      print('🚀 Starting background payment verification...');
+      print('⚠️ NOTE: Background verification disabled - pending_payments table does not exist');
+    }
+
+    // Feature temporarily disabled - requires pending_payments table
+    // Will be enabled when database schema is updated
     return;
     
     _isRunning = true;

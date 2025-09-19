@@ -5,10 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/settings_provider.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../widgets/admin_bottom_nav.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
-  const AdminSettingsScreen({Key? key}) : super(key: key);
+  const AdminSettingsScreen({super.key});
 
   @override
   State<AdminSettingsScreen> createState() => _AdminSettingsScreenState();
@@ -34,7 +33,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   void _loadSettings() {
     final settings = context.read<SettingsProvider>();
     settings.loadSettings();
-    
+
     _appNameController.text = settings.appName;
     _appVersionController.text = settings.appVersion;
     _supportEmailController.text = settings.supportEmail;
@@ -68,7 +67,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
         actions: [
           IconButton(
             onPressed: _saveSettings,
-            icon: const HugeIcon(icon: HugeIcons.strokeRoundedFloppyDisk, color: Colors.white),
+            icon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedFloppyDisk,
+              color: Colors.white,
+            ),
           ),
         ],
       ),
@@ -118,9 +120,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Maklumat Aplikasi',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -183,9 +185,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Tetapan Langganan',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
@@ -200,19 +202,27 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Harga Langganan Bulanan'),
               subtitle: Text('RM ${settings.monthlyPrice.toStringAsFixed(2)}'),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedEdit01,
+                color: Colors.grey,
+              ),
               onTap: () => _showPriceDialog('monthly', settings.monthlyPrice),
             ),
             ListTile(
               title: const Text('Harga Langganan Tahunan'),
               subtitle: Text('RM ${settings.yearlyPrice.toStringAsFixed(2)}'),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedEdit01,
+                color: Colors.grey,
+              ),
               onTap: () => _showPriceDialog('yearly', settings.yearlyPrice),
             ),
             const Divider(),
             SwitchListTile(
               title: const Text('Percubaan Percuma'),
-              subtitle: const Text('7 hari percubaan percuma untuk pengguna baru'),
+              subtitle: const Text(
+                '7 hari percubaan percuma untuk pengguna baru',
+              ),
               value: settings.enableFreeTrial,
               onChanged: (value) {
                 settings.updateFreeTrial(value);
@@ -233,14 +243,16 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Tetapan Kandungan',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Auto-approve Kandungan'),
-              subtitle: const Text('Kandungan baru akan diluluskan secara automatik'),
+              subtitle: const Text(
+                'Kandungan baru akan diluluskan secara automatik',
+              ),
               value: settings.autoApproveContent,
               onChanged: (value) {
                 settings.updateAutoApproveContent(value);
@@ -249,7 +261,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             const Divider(),
             SwitchListTile(
               title: const Text('Aktifkan Muat Turun'),
-              subtitle: const Text('Membolehkan pengguna memuat turun kandungan'),
+              subtitle: const Text(
+                'Membolehkan pengguna memuat turun kandungan',
+              ),
               value: settings.enableDownloads,
               onChanged: (value) {
                 settings.updateDownloads(value);
@@ -259,7 +273,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Saiz Maksimum Fail'),
               subtitle: Text('${settings.maxFileSize} MB'),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedEdit01,
+                color: Colors.grey,
+              ),
               onTap: () => _showFileSizeDialog(settings.maxFileSize),
             ),
             const Divider(),
@@ -286,9 +303,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Tetapan Notifikasi',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
@@ -332,9 +349,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Tetapan Keselamatan',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
@@ -358,7 +375,10 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Masa Session (minit)'),
               subtitle: Text('${settings.sessionTimeoutMinutes} minit'),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.grey),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedEdit01,
+                color: Colors.grey,
+              ),
               onTap: () => _showTimeoutDialog(settings.sessionTimeoutMinutes),
             ),
             const Divider(),
@@ -385,9 +405,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Dokumen Undang-undang',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -431,9 +451,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Tetapan Sistem',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
@@ -457,22 +477,34 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             ListTile(
               title: const Text('Bersihkan Cache'),
               subtitle: const Text('Kosongkan cache aplikasi'),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedDelete01, color: Colors.grey),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedDelete01,
+                color: Colors.grey,
+              ),
               onTap: () => _showClearCacheDialog(),
             ),
             const Divider(),
             ListTile(
               title: const Text('Reset Tetapan'),
               subtitle: const Text('Kembalikan semua tetapan kepada default'),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Colors.grey),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedRefresh,
+                color: Colors.grey,
+              ),
               onTap: () => _showResetDialog(),
             ),
             const Divider(),
             ListTile(
               title: const Text('Log Keluar'),
               subtitle: const Text('Keluar dari akaun admin'),
-              leading: const HugeIcon(icon: HugeIcons.strokeRoundedLogout01, color: Colors.red),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, color: Colors.grey),
+              leading: const HugeIcon(
+                icon: HugeIcons.strokeRoundedLogout01,
+                color: Colors.red,
+              ),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight02,
+                color: Colors.grey,
+              ),
               onTap: () => _showLogoutDialog(),
             ),
           ],
@@ -490,24 +522,36 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           children: [
             Text(
               'Sandaran & Pemulihan',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             ListTile(
               title: const Text('Buat Sandaran'),
               subtitle: const Text('Sandaran data dan tetapan'),
-              leading: const HugeIcon(icon: HugeIcons.strokeRoundedCloudUpload, color: Colors.blue),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, color: Colors.grey),
+              leading: const HugeIcon(
+                icon: HugeIcons.strokeRoundedCloudUpload,
+                color: Colors.blue,
+              ),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight02,
+                color: Colors.grey,
+              ),
               onTap: () => _createBackup(),
             ),
             const Divider(),
             ListTile(
               title: const Text('Pulihkan dari Sandaran'),
               subtitle: const Text('Pulihkan data dari fail sandaran'),
-              leading: const HugeIcon(icon: HugeIcons.strokeRoundedRefresh, color: Colors.orange),
-              trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, color: Colors.grey),
+              leading: const HugeIcon(
+                icon: HugeIcons.strokeRoundedRefresh,
+                color: Colors.orange,
+              ),
+              trailing: const HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowRight02,
+                color: Colors.grey,
+              ),
               onTap: () => _restoreBackup(),
             ),
             const Divider(),
@@ -534,7 +578,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Tetapkan Harga ${type == 'monthly' ? 'Bulanan' : 'Tahunan'}'),
+        title: Text(
+          'Tetapkan Harga ${type == 'monthly' ? 'Bulanan' : 'Tahunan'}',
+        ),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -619,7 +665,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
           ElevatedButton(
             onPressed: () {
               final timeout = int.tryParse(controller.text) ?? 30;
-              context.read<SettingsProvider>().updateSessionTimeoutMinutes(timeout);
+              context.read<SettingsProvider>().updateSessionTimeoutMinutes(
+                timeout,
+              );
               Navigator.pop(context);
             },
             child: const Text('Simpan'),
@@ -634,7 +682,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Bersihkan Cache'),
-        content: const Text('Adakah anda pasti mahu membersihkan cache? Tindakan ini tidak boleh dibatalkan.'),
+        content: const Text(
+          'Adakah anda pasti mahu membersihkan cache? Tindakan ini tidak boleh dibatalkan.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -661,7 +711,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Reset Tetapan'),
-        content: const Text('Adakah anda pasti mahu mereset semua tetapan kepada default? Tindakan ini tidak boleh dibatalkan.'),
+        content: const Text(
+          'Adakah anda pasti mahu mereset semua tetapan kepada default? Tindakan ini tidak boleh dibatalkan.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -686,9 +738,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
 
   void _createBackup() {
     context.read<SettingsProvider>().createBackup();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Sandaran sedang dibuat...')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Sandaran sedang dibuat...')));
   }
 
   void _restoreBackup() {
@@ -703,7 +755,9 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Log Keluar'),
-        content: const Text('Adakah anda pasti mahu log keluar dari akaun admin?'),
+        content: const Text(
+          'Adakah anda pasti mahu log keluar dari akaun admin?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
@@ -713,12 +767,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
             onPressed: () async {
               // Close confirmation dialog first
               Navigator.pop(dialogContext);
-              
+
               // Store context reference before async operations
               final navigator = Navigator.of(context);
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               final authProvider = context.read<AuthProvider>();
-              
+
               // Show loading dialog
               showDialog(
                 context: context,
@@ -734,11 +788,11 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
                   ),
                 ),
               );
-              
+
               try {
                 // Perform logout
                 await authProvider.signOut();
-                
+
                 // Close loading dialog and navigate
                 if (mounted) {
                   navigator.pop(); // Close loading dialog
@@ -765,24 +819,24 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   void _saveSettings() {
     if (_formKey.currentState?.validate() ?? false) {
       final settings = context.read<SettingsProvider>();
-      
+
       settings.updateAppInfo(
         _appNameController.text,
         _appVersionController.text,
         _supportEmailController.text,
       );
-      
+
       settings.updateLegalDocuments(
         _privacyPolicyController.text,
         _termsController.text,
         _aboutController.text,
       );
-      
+
       settings.saveSettings();
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tetapan telah disimpan')),
-      );
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Tetapan telah disimpan')));
     }
   }
 }

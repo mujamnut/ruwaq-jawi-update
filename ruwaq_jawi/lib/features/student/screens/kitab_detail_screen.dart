@@ -166,40 +166,12 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
               ),
             ),
           ),
-          // Icon and text
+          // Icon only
           Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(
-                  PhosphorIcons.bookOpen(),
-                  size: 64,
-                  color: AppTheme.textSecondaryColor,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _kitab?.title ?? 'Kitab',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (_kitab?.author != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _kitab!.author!,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
+            child: PhosphorIcon(
+              PhosphorIcons.bookOpen(),
+              size: 64,
+              color: AppTheme.textSecondaryColor,
             ),
           ),
         ],
@@ -211,9 +183,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: AppTheme.backgroundColor,
+          backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: PhosphorIcon(
@@ -231,9 +203,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
 
     if (_kitab == null) {
       return Scaffold(
-        backgroundColor: AppTheme.backgroundColor,
+        backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: AppTheme.backgroundColor,
+          backgroundColor: Colors.white,
           elevation: 0,
           leading: IconButton(
             icon: PhosphorIcon(
@@ -272,7 +244,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
     }
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Colors.white,
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
           if (scrollInfo is ScrollUpdateNotification) {
@@ -280,7 +252,11 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
             final expandedHeight = 280.0;
             final toolbarHeight = kToolbarHeight;
 
-            final newCollapseRatio = ((scrollOffset) / (expandedHeight - toolbarHeight)).clamp(0.0, 1.0);
+            final newCollapseRatio =
+                ((scrollOffset) / (expandedHeight - toolbarHeight)).clamp(
+                  0.0,
+                  1.0,
+                );
 
             if (_collapseRatio != newCollapseRatio) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -303,7 +279,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
                 SliverToBoxAdapter(
                   child: Column(
                     children: [
-                      _buildActionButtons(),
                       _buildDescription(),
                       if (_kitab!.totalVideos > 1) _buildEpisodesSection(),
                       const SizedBox(height: 100),
@@ -330,12 +305,16 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
                         : PhosphorIcons.heart(),
                     color: _isSaved
                         ? Colors.red
-                        : (_collapseRatio > 0.5 ? AppTheme.textSecondaryColor : Colors.white),
+                        : (_collapseRatio > 0.5
+                              ? AppTheme.textSecondaryColor
+                              : Colors.white),
                   ),
                   onPressed: _toggleSaved,
                 ),
               ),
             ),
+            // Fixed bottom button
+            _buildBottomButton(),
           ],
         ),
       ),
@@ -349,16 +328,18 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       pinned: true,
       snap: false,
       forceElevated: false,
-      backgroundColor: AppTheme.backgroundColor,
+      backgroundColor: Colors.white,
       foregroundColor: AppTheme.textPrimaryColor,
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.1),
-      surfaceTintColor: AppTheme.backgroundColor,
+      surfaceTintColor: Colors.white,
       title: null,
       leading: IconButton(
         icon: PhosphorIcon(
           PhosphorIcons.caretLeft(),
-          color: AppTheme.textPrimaryColor,
+          color: _collapseRatio > 0.5
+              ? AppTheme.textPrimaryColor
+              : Colors.white,
         ),
         onPressed: () => context.pop(),
       ),
@@ -447,71 +428,61 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
+  Widget _buildBottomButton() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final canAccess =
             !_kitab!.isPremium || authProvider.hasActiveSubscription;
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Column(
-            children: [
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: canAccess
-                      ? _startReading
-                      : _showSubscriptionDialog,
-                  icon: PhosphorIcon(
-                    canAccess
-                        ? PhosphorIcons.playCircle()
-                        : PhosphorIcons.lock(),
-                    size: 20,
-                    color: Colors.white,
+        return Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 16,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+            ),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.white.withOpacity(0.5), Colors.white],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, -2),
+                ),
+              ],
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: canAccess ? _startReading : _showSubscriptionDialog,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: canAccess
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondaryColor,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
                   ),
-                  label: Text(
-                    canAccess ? 'Watch' : 'Premium Required',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: canAccess
-                        ? AppTheme.primaryColor
-                        : AppTheme.textSecondaryColor,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
+                ),
+                child: Text(
+                  canAccess ? 'Tonton Sekarang' : 'Premium Diperlukan',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: OutlinedButton.icon(
-                  onPressed: _previewContent,
-                  icon: PhosphorIcon(
-                    PhosphorIcons.eye(),
-                    size: 16,
-                    color: AppTheme.primaryColor,
-                  ),
-                  label: const Text('Preview'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.primaryColor,
-                    side: BorderSide(color: AppTheme.primaryColor),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         );
       },
@@ -522,15 +493,8 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
     if (_kitab!.description?.isEmpty ?? true) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 10),
       width: double.infinity,
-      constraints: const BoxConstraints(minHeight: 140),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderColor),
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -557,44 +521,41 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
 
   Widget _buildEpisodesSection() {
     return Container(
-          margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      margin: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Text(
-                    'Episode',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${_kitab!.totalVideos}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
+              Text(
+                'Episode',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimaryColor,
+                ),
               ),
-              const SizedBox(height: 16),
-              _buildEpisodesList(),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${_kitab!.totalVideos}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppTheme.primaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
-        );
+          const SizedBox(height: 16),
+          _buildEpisodesList(),
+        ],
+      ),
+    );
   }
 
   Widget _buildEpisodesList() {
@@ -602,9 +563,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: CircularProgressIndicator(
-            color: AppTheme.primaryColor,
-          ),
+          child: CircularProgressIndicator(color: AppTheme.primaryColor),
         ),
       );
     }
@@ -619,8 +578,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
         child: Center(
           child: Text(
             'No episodes available.',
-            style: Theme.of(context).textTheme.bodyMedium
-                ?.copyWith(color: AppTheme.textSecondaryColor),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.textSecondaryColor,
+            ),
           ),
         ),
       );
@@ -637,18 +597,78 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       return a.partNumber.compareTo(b.partNumber);
     });
 
+    // Limit to 6 episodes only
+    final limitedEpisodes = sortedEpisodes.take(6).toList();
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: sortedEpisodes.length,
+      itemCount: limitedEpisodes.length,
       padding: EdgeInsets.zero,
       itemBuilder: (context, index) {
-        final episode = sortedEpisodes[index];
+        final episode = limitedEpisodes[index];
         // Use partNumber from database instead of calculated index
         return RepaintBoundary(
           child: _buildEpisodeCard(episode, episode.partNumber),
         );
       },
+    );
+  }
+
+  Widget _buildVideoThumbnail(VideoEpisode episode) {
+    // Use YouTube utils to get thumbnail
+    final thumbnailUrl = YouTubeUtils.getThumbnailUrl(
+      episode.youtubeVideoId,
+      quality: YouTubeThumbnailQuality.hqdefault,
+    );
+
+    if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          thumbnailUrl,
+          width: 120,
+          height: 68,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) {
+            return _buildDefaultThumbnail();
+          },
+          loadingBuilder: (context, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              width: 120,
+              height: 68,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            );
+          },
+        ),
+      );
+    } else {
+      return _buildDefaultThumbnail();
+    }
+  }
+
+  Widget _buildDefaultThumbnail() {
+    return Container(
+      width: 120,
+      height: 68,
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: PhosphorIcon(
+          PhosphorIcons.videoCamera(),
+          size: 32,
+          color: AppTheme.primaryColor,
+        ),
+      ),
     );
   }
 
@@ -677,152 +697,134 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
             : (isLocked
                   ? _showSubscriptionDialog
                   : () => _playEpisode(episode)),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isLocked ? Colors.white.withValues(alpha: 0.7) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppTheme.borderColor.withValues(alpha: 0.3),
-              width: 1,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              // Video camera icon circle
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: isLocked
-                      ? AppTheme.textSecondaryColor.withValues(alpha: 0.1)
-                      : AppTheme.primaryColor.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: PhosphorIcon(
-                    isLocked
-                        ? PhosphorIcons.lock()
-                        : PhosphorIcons.videoCamera(),
-                    color: isLocked
-                        ? AppTheme.textSecondaryColor
-                        : AppTheme.primaryColor,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-
-              // Episode content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Episode title with badges
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            episode.title,
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: isLocked
-                                      ? AppTheme.textSecondaryColor
-                                      : AppTheme.textPrimaryColor,
-                                ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Thumbnail
+            Stack(
+              children: [
+                _buildVideoThumbnail(episode),
+                // Duration badge (bottom right)
+                if (episode.durationMinutes > 0)
+                  Positioned(
+                    bottom: 4,
+                    right: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.8),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        episode.displayDuration,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
                         ),
-                        if (episode.isPreview)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.secondaryColor,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'PREVIEW',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 9,
-                                  ),
-                            ),
-                          ),
-                        if (!episode.isActive)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.orange,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              'SEGERA',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 9,
-                                  ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Duration
-                    Text(
-                      episode.formattedDuration,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondaryColor,
                       ),
                     ),
-                  ],
-                ),
-              ),
+                  ),
+                // Preview badge (top left)
+                if (episode.isPreview)
+                  Positioned(
+                    top: 4,
+                    left: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppTheme.secondaryColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'PREVIEW',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                // Locked overlay
+                if (isLocked)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: PhosphorIcon(
+                          PhosphorIcons.lock(),
+                          color: Colors.white,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
 
-              // Action icons (Love + Play/Lock)
-              Row(
-                mainAxisSize: MainAxisSize.min,
+            const SizedBox(width: 12),
+
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Love icon (save) - only show for non-preview videos that user can access
-                  if (!episode.isPreview && !isLocked)
-                    _buildEpisodeSaveButton(episode),
-                  const SizedBox(width: 8),
-                  // Play/Lock indicator
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    child: PhosphorIcon(
-                      isLocked ? PhosphorIcons.lock() : PhosphorIcons.play(),
+                  // Title
+                  Text(
+                    episode.title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
                       color: isLocked
                           ? AppTheme.textSecondaryColor
-                          : AppTheme.primaryColor,
-                      size: 20,
+                          : Colors.black,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 4),
+
+                  // Episode number/info
+                  Text(
+                    'Episode ${episode.partNumber}',
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: 2),
+
+                  // Duration
+                  Text(
+                    episode.formattedDuration,
+                    style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+
+            // Menu button
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: PhosphorIcon(
+                PhosphorIcons.dotsThreeVertical(),
+                color: Colors.grey,
+                size: 16,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -7,13 +7,11 @@ import '../../../core/theme/app_theme.dart';
 class AdminVideoEpisodesScreen extends StatefulWidget {
   final Kitab kitab;
 
-  const AdminVideoEpisodesScreen({
-    super.key,
-    required this.kitab,
-  });
+  const AdminVideoEpisodesScreen({super.key, required this.kitab});
 
   @override
-  State<AdminVideoEpisodesScreen> createState() => _AdminVideoEpisodesScreenState();
+  State<AdminVideoEpisodesScreen> createState() =>
+      _AdminVideoEpisodesScreenState();
 }
 
 class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
@@ -34,10 +32,9 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
         _error = null;
       });
 
-      final response = await SupabaseService.from('kitab_videos')
-          .select()
-          .eq('kitab_id', widget.kitab.id)
-          .order('part_number');
+      final response = await SupabaseService.from(
+        'kitab_videos',
+      ).select().eq('kitab_id', widget.kitab.id).order('part_number');
 
       final videos = (response as List)
           .map((json) => KitabVideo.fromJson(json))
@@ -66,7 +63,10 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
             const Text('Video Episodes'),
             Text(
               widget.kitab.title,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.normal,
+              ),
             ),
           ],
         ),
@@ -118,9 +118,9 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
             const SizedBox(height: 16),
             Text(
               'Ralat',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -188,7 +188,12 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -236,9 +241,9 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
             const SizedBox(height: 16),
             Text(
               'Tiada Episode',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -305,8 +310,8 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: video.isActive 
-                          ? AppTheme.primaryColor 
+                      color: video.isActive
+                          ? AppTheme.primaryColor
                           : Colors.grey,
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -328,12 +333,13 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                       children: [
                         Text(
                           video.title,
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: video.isActive 
-                                ? AppTheme.textPrimaryColor 
-                                : AppTheme.textSecondaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: video.isActive
+                                    ? AppTheme.textPrimaryColor
+                                    : AppTheme.textSecondaryColor,
+                              ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -341,9 +347,8 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                           const SizedBox(height: 4),
                           Text(
                             video.description!,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.textSecondaryColor),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -383,7 +388,11 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                         value: video.isActive ? 'deactivate' : 'activate',
                         child: Row(
                           children: [
-                            Icon(video.isActive ? Icons.visibility_off : Icons.visibility),
+                            Icon(
+                              video.isActive
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
                             const SizedBox(width: 8),
                             Text(video.isActive ? 'Nyahaktif' : 'Aktifkan'),
                           ],
@@ -402,19 +411,19 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                     ],
                   ),
                   // Reorder handle
-                  Icon(
-                    Icons.drag_handle,
-                    color: AppTheme.textSecondaryColor,
-                  ),
+                  Icon(Icons.drag_handle, color: AppTheme.textSecondaryColor),
                 ],
               ),
               const SizedBox(height: 12),
               // Video details
               Row(
                 children: [
-                  if (video.youtubeVideoId != null) ...[
+                  ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -430,25 +439,29 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                           const SizedBox(width: 4),
                           Text(
                             'YouTube',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.red,
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.w500,
+                                ),
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 8),
                   ],
-                  if (video.durationMinutes != null) ...[
+                  ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.blue.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
-                        _formatDuration(video.durationMinutes!),
+                        _formatDuration(video.durationMinutes),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.blue,
                           fontWeight: FontWeight.w500,
@@ -459,7 +472,10 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                   ],
                   if (!video.isActive) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
@@ -502,7 +518,7 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays > 0) {
       return '${difference.inDays} hari lalu';
     } else if (difference.inHours > 0) {
@@ -551,10 +567,10 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
       // Update episode numbers
       for (int i = 0; i < _videos.length; i++) {
         if (_videos[i].partNumber != i + 1) {
-          await SupabaseService.from('kitab_videos')
-              .update({'part_number': i + 1})
-              .eq('id', _videos[i].id);
-          
+          await SupabaseService.from(
+            'kitab_videos',
+          ).update({'part_number': i + 1}).eq('id', _videos[i].id);
+
           _videos[i] = _videos[i].copyWith(partNumber: i + 1);
         }
       }
@@ -628,9 +644,9 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
 
   Future<void> _toggleVideoStatus(KitabVideo video) async {
     try {
-      await SupabaseService.from('kitab_videos')
-          .update({'is_active': !video.isActive})
-          .eq('id', video.id);
+      await SupabaseService.from(
+        'kitab_videos',
+      ).update({'is_active': !video.isActive}).eq('id', video.id);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -657,7 +673,9 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Padam Episode'),
-        content: Text('Adakah anda pasti untuk memadam episode "${video.title}"?'),
+        content: Text(
+          'Adakah anda pasti untuk memadam episode "${video.title}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -745,7 +763,7 @@ class _VideoFormDialogState extends State<_VideoFormDialog> {
     _descriptionController.text = video.description ?? '';
     _videoIdController.text = video.youtubeVideoId ?? '';
     _videoUrlController.text = video.youtubeVideoUrl ?? '';
-    _durationController.text = video.durationMinutes?.toString() ?? '';
+    _durationController.text = video.durationMinutes.toString() ?? '';
     _episodeController.text = video.partNumber.toString();
     _isActive = video.isActive;
   }
@@ -793,9 +811,7 @@ class _VideoFormDialogState extends State<_VideoFormDialog> {
             ),
           ),
           // Form
-          Expanded(
-            child: _buildForm(),
-          ),
+          Expanded(child: _buildForm()),
           // Actions
           Container(
             padding: const EdgeInsets.all(20),
@@ -851,15 +867,18 @@ class _VideoFormDialogState extends State<_VideoFormDialog> {
                     ),
                     keyboardType: TextInputType.number,
                     validator: (value) {
-                      if (value?.isEmpty == true) return 'Nombor episode diperlukan';
+                      if (value?.isEmpty == true) {
+                        return 'Nombor episode diperlukan';
+                      }
                       final episode = int.tryParse(value!);
                       if (episode == null || episode < 1) {
                         return 'Nombor episode tidak sah';
                       }
                       // Check for duplicates (exclude current video if editing)
                       final existing = widget.existingVideos.where(
-                        (v) => v.partNumber == episode && 
-                               (_isEditMode ? v.id != widget.video!.id : true),
+                        (v) =>
+                            v.partNumber == episode &&
+                            (_isEditMode ? v.id != widget.video!.id : true),
                       );
                       if (existing.isNotEmpty) {
                         return 'Nombor episode sudah digunakan';
@@ -883,7 +902,8 @@ class _VideoFormDialogState extends State<_VideoFormDialog> {
                 labelText: 'Tajuk Episode',
                 border: OutlineInputBorder(),
               ),
-              validator: (value) => value?.isEmpty == true ? 'Tajuk episode diperlukan' : null,
+              validator: (value) =>
+                  value?.isEmpty == true ? 'Tajuk episode diperlukan' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -945,30 +965,38 @@ class _VideoFormDialogState extends State<_VideoFormDialog> {
       final videoData = {
         'kitab_id': widget.kitab.id,
         'title': _titleController.text.trim(),
-        'description': _descriptionController.text.trim().isEmpty 
-            ? null : _descriptionController.text.trim(),
-        'youtube_video_id': _videoIdController.text.trim().isEmpty 
-            ? null : _videoIdController.text.trim(),
-        'youtube_video_url': _videoUrlController.text.trim().isEmpty 
-            ? null : _videoUrlController.text.trim(),
-        'duration_minutes': _durationController.text.trim().isEmpty 
-            ? null : int.tryParse(_durationController.text.trim()),
+        'description': _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        'youtube_video_id': _videoIdController.text.trim().isEmpty
+            ? null
+            : _videoIdController.text.trim(),
+        'youtube_video_url': _videoUrlController.text.trim().isEmpty
+            ? null
+            : _videoUrlController.text.trim(),
+        'duration_minutes': _durationController.text.trim().isEmpty
+            ? null
+            : int.tryParse(_durationController.text.trim()),
         'part_number': int.parse(_episodeController.text.trim()),
         'is_active': _isActive,
         'updated_at': DateTime.now().toIso8601String(),
       };
 
       if (_isEditMode) {
-        await SupabaseService.from('kitab_videos')
-            .update(videoData)
-            .eq('id', widget.video!.id);
+        await SupabaseService.from(
+          'kitab_videos',
+        ).update(videoData).eq('id', widget.video!.id);
       } else {
         await SupabaseService.from('kitab_videos').insert(videoData);
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_isEditMode ? 'Episode berjaya dikemaskini' : 'Episode berjaya ditambah'),
+          content: Text(
+            _isEditMode
+                ? 'Episode berjaya dikemaskini'
+                : 'Episode berjaya ditambah',
+          ),
           backgroundColor: Colors.green,
         ),
       );

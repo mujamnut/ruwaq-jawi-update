@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../widgets/admin_bottom_nav.dart';
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({super.key});
@@ -28,12 +27,18 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const HugeIcon(icon: HugeIcons.strokeRoundedArrowLeft02, color: Colors.white),
+          icon: const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft02,
+            color: Colors.white,
+          ),
           onPressed: () => context.go('/admin/dashboard'),
         ),
         actions: [
           IconButton(
-            icon: const HugeIcon(icon: HugeIcons.strokeRoundedEdit01, color: Colors.white),
+            icon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedEdit01,
+              color: Colors.white,
+            ),
             onPressed: () => _showEditProfileDialog(context),
             tooltip: 'Edit Profile',
           ),
@@ -43,7 +48,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         builder: (context, authProvider, child) {
           final user = authProvider.user;
           final profile = authProvider.userProfile;
-          
+
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -145,17 +150,23 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           children: [
             Text(
               'Maklumat Profile',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildInfoRow('Nama Penuh', profile?.fullName ?? '-'),
             _buildInfoRow('Email', user?.email ?? '-'),
             _buildInfoRow('Nombor Telefon', profile?.phoneNumber ?? '-'),
             _buildInfoRow('Role', 'Administrator'),
-            _buildInfoRow('Tarikh Daftar', _formatDate(user?.createdAt?.toString())),
-            _buildInfoRow('Terakhir Login', _formatDate(profile?.updatedAt?.toString())),
+            _buildInfoRow(
+              'Tarikh Daftar',
+              _formatDate(user?.createdAt?.toString()),
+            ),
+            _buildInfoRow(
+              'Terakhir Login',
+              _formatDate(profile?.updatedAt?.toString()),
+            ),
           ],
         ),
       ),
@@ -171,9 +182,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           children: [
             Text(
               'Ciri-ciri Admin',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildFeatureItem(
@@ -215,9 +226,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           children: [
             Text(
               'Maklumat Sistem',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             _buildInfoRow('Versi Aplikasi', '1.0.0'),
@@ -249,14 +260,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: _isLoading ? null : () => _handleLogout(authProvider),
+                onPressed: _isLoading
+                    ? null
+                    : () => _handleLogout(authProvider),
                 icon: _isLoading
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const HugeIcon(icon: HugeIcons.strokeRoundedLogout01, color: Colors.white),
+                    : const HugeIcon(
+                        icon: HugeIcons.strokeRoundedLogout01,
+                        color: Colors.white,
+                      ),
                 label: Text(_isLoading ? 'Sedang Log Keluar...' : 'Log Keluar'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.red,
@@ -305,7 +321,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
-  Widget _buildFeatureItem(String title, String description, IconData icon, VoidCallback onTap) {
+  Widget _buildFeatureItem(
+    String title,
+    String description,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -313,18 +334,15 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           color: AppTheme.primaryColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Icon(
-          icon,
-          color: AppTheme.primaryColor,
-          size: 24.0,
-        ),
+        child: Icon(icon, color: AppTheme.primaryColor, size: 24.0),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
       subtitle: Text(description),
-      trailing: const HugeIcon(icon: HugeIcons.strokeRoundedArrowRight02, size: 16, color: Colors.grey),
+      trailing: const HugeIcon(
+        icon: HugeIcons.strokeRoundedArrowRight02,
+        size: 16,
+        color: Colors.grey,
+      ),
       onTap: onTap,
     );
   }
@@ -341,8 +359,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
   void _showEditProfileDialog(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
-    final nameController = TextEditingController(text: authProvider.userProfile?.fullName ?? '');
-    final phoneController = TextEditingController(text: authProvider.userProfile?.phoneNumber ?? '');
+    final nameController = TextEditingController(
+      text: authProvider.userProfile?.fullName ?? '',
+    );
+    final phoneController = TextEditingController(
+      text: authProvider.userProfile?.phoneNumber ?? '',
+    );
 
     showDialog(
       context: context,
@@ -375,7 +397,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              // TODO: Implement profile update logic
+              // Profile update functionality - pending implementation
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -396,7 +418,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Pengesahan'),
-        content: const Text('Adakah anda pasti mahu log keluar dari sistem admin?'),
+        content: const Text(
+          'Adakah anda pasti mahu log keluar dari sistem admin?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

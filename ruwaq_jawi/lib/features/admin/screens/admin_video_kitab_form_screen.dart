@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -135,7 +136,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       });
     } catch (e) {
       // Don't show error for episodes - just log it
-      print('Could not load episodes: $e');
+      if (kDebugMode) {
+        print('Could not load episodes: $e');
+      }
       setState(() {
         _episodes = [];
       });
@@ -189,7 +192,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       }
     } catch (e) {
       // Silently fail - don't bother user with API errors in video kitab form
-      print('Could not detect video duration: $e');
+      if (kDebugMode) {
+        print('Could not detect video duration: $e');
+      }
     }
   }
 
@@ -344,7 +349,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Tajuk Video Kitab *',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(
+                prefixIcon: HugeIcon(
                   icon: HugeIcons.strokeRoundedAlignLeft,
                   color: Colors.grey,
                 ),
@@ -365,7 +370,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Pengarang',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(
+                prefixIcon: HugeIcon(
                   icon: HugeIcons.strokeRoundedUser,
                   color: Colors.grey,
                 ),
@@ -375,11 +380,11 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
             // Category Dropdown
             DropdownButtonFormField<String>(
-              value: _selectedCategoryId,
+              initialValue: _selectedCategoryId,
               decoration: const InputDecoration(
                 labelText: 'Kategori *',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(
+                prefixIcon: HugeIcon(
                   icon: HugeIcons.strokeRoundedGrid,
                   color: Colors.grey,
                 ),
@@ -410,7 +415,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               decoration: const InputDecoration(
                 labelText: 'Penerangan',
                 border: OutlineInputBorder(),
-                prefixIcon: const HugeIcon(
+                prefixIcon: HugeIcon(
                   icon: HugeIcons.strokeRoundedFile01,
                   color: Colors.grey,
                 ),
@@ -464,7 +469,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                         _isPremium = value;
                       });
                     },
-                    activeColor: AppTheme.primaryColor,
+                    activeThumbColor: AppTheme.primaryColor,
                   ),
                 ],
               ),
@@ -513,7 +518,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                         _isActive = value;
                       });
                     },
-                    activeColor: AppTheme.primaryColor,
+                    activeThumbColor: AppTheme.primaryColor,
                   ),
                 ],
               ),
@@ -788,7 +793,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             decoration: const InputDecoration(
               labelText: 'Jumlah Halaman PDF',
               border: OutlineInputBorder(),
-              prefixIcon: const HugeIcon(
+              prefixIcon: HugeIcon(
                 icon: HugeIcons.strokeRoundedFile01,
                 color: Colors.grey,
               ),
@@ -1162,17 +1167,23 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       String? uploadedPdfStoragePath;
       int? uploadedPdfFileSize;
 
-      print('DEBUG: Starting file upload process...');
+      if (kDebugMode) {
+        print('DEBUG: Starting file upload process...');
+      }
 
       // Upload thumbnail if new file selected
       if (_selectedThumbnail != null) {
         try {
-          print('DEBUG: Starting thumbnail upload...');
+          if (kDebugMode) {
+            print('DEBUG: Starting thumbnail upload...');
+          }
           final fileName =
               'video_kitab_thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final storagePath = 'thumbnails/$fileName';
 
-          print('DEBUG: Uploading thumbnail to: $storagePath');
+          if (kDebugMode) {
+            print('DEBUG: Uploading thumbnail to: $storagePath');
+          }
           await SupabaseService.client.storage
               .from('video-kitab-files')
               .upload(storagePath, _selectedThumbnail!);
@@ -1180,11 +1191,15 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           uploadedThumbnailUrl = SupabaseService.client.storage
               .from('video-kitab-files')
               .getPublicUrl(storagePath);
-          print(
-            'DEBUG: Thumbnail uploaded successfully: $uploadedThumbnailUrl',
-          );
+          if (kDebugMode) {
+            print(
+              'DEBUG: Thumbnail uploaded successfully: $uploadedThumbnailUrl',
+            );
+          }
         } catch (e) {
-          print('DEBUG: Thumbnail upload error: $e');
+          if (kDebugMode) {
+            print('DEBUG: Thumbnail upload error: $e');
+          }
           _showSnackBar('Ralat upload thumbnail: $e', isError: true);
           // Don't stop execution - continue with PDF upload
         }
@@ -1193,12 +1208,16 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       // Upload PDF if new file selected
       if (_selectedPdf != null) {
         try {
-          print('DEBUG: Starting PDF upload...');
+          if (kDebugMode) {
+            print('DEBUG: Starting PDF upload...');
+          }
           final fileName =
               'video_kitab_${DateTime.now().millisecondsSinceEpoch}.pdf';
           final storagePath = 'pdfs/$fileName';
 
-          print('DEBUG: Uploading PDF to: $storagePath');
+          if (kDebugMode) {
+            print('DEBUG: Uploading PDF to: $storagePath');
+          }
           await SupabaseService.client.storage
               .from('video-kitab-files')
               .upload(storagePath, _selectedPdf!);
@@ -1208,17 +1227,23 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               .getPublicUrl(storagePath);
           uploadedPdfStoragePath = storagePath;
           uploadedPdfFileSize = await _selectedPdf!.length();
-          print(
-            'DEBUG: PDF uploaded successfully: $uploadedPdfUrl, Size: $uploadedPdfFileSize bytes',
-          );
+          if (kDebugMode) {
+            print(
+              'DEBUG: PDF uploaded successfully: $uploadedPdfUrl, Size: $uploadedPdfFileSize bytes',
+            );
+          }
         } catch (e) {
-          print('DEBUG: PDF upload error: $e');
+          if (kDebugMode) {
+            print('DEBUG: PDF upload error: $e');
+          }
           _showSnackBar('Ralat upload PDF: $e', isError: true);
           // Don't stop execution - continue with save
         }
       }
 
-      print('DEBUG: Preparing video kitab data...');
+      if (kDebugMode) {
+        print('DEBUG: Preparing video kitab data...');
+      }
       final videoKitabData = {
         'title': _titleController.text.trim(),
         'author': _authorController.text.trim().isEmpty
@@ -1238,26 +1263,36 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         'is_premium': _isPremium,
         'is_active': _isActive,
       };
-      print('DEBUG: Video kitab data: $videoKitabData');
+      if (kDebugMode) {
+        print('DEBUG: Video kitab data: $videoKitabData');
+      }
 
       if (_isEditing) {
         // Update existing video kitab
-        print(
-          'DEBUG: Updating existing video kitab with ID: ${widget.videoKitabId}',
-        );
+        if (kDebugMode) {
+          print(
+            'DEBUG: Updating existing video kitab with ID: ${widget.videoKitabId}',
+          );
+        }
         await VideoKitabService.updateVideoKitabAdmin(
           widget.videoKitabId!,
           videoKitabData,
         );
-        print('DEBUG: Update successful');
+        if (kDebugMode) {
+          print('DEBUG: Update successful');
+        }
         _showSnackBar('Video Kitab berjaya dikemaskini!');
       } else {
         // Create new video kitab
-        print('DEBUG: Creating new video kitab...');
+        if (kDebugMode) {
+          print('DEBUG: Creating new video kitab...');
+        }
         final createdVideoKitab = await VideoKitabService.createVideoKitab(
           videoKitabData,
         );
-        print('DEBUG: Created video kitab with ID: ${createdVideoKitab.id}');
+        if (kDebugMode) {
+          print('DEBUG: Created video kitab with ID: ${createdVideoKitab.id}');
+        }
 
         // Update our state with the new video kitab ID so episodes can be managed
         setState(() {
@@ -1276,14 +1311,18 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         Navigator.of(context).pop(true); // Return true to indicate success
       }
     } catch (e) {
-      print('DEBUG: Save error: $e');
-      print('DEBUG: Error type: ${e.runtimeType}');
+      if (kDebugMode) {
+        print('DEBUG: Save error: $e');
+        print('DEBUG: Error type: ${e.runtimeType}');
+      }
       _showSnackBar(
         'Ralat menyimpan video kitab: ${e.toString()}',
         isError: true,
       );
     } finally {
-      print('DEBUG: Save operation completed, setting loading to false');
+      if (kDebugMode) {
+        print('DEBUG: Save operation completed, setting loading to false');
+      }
       setState(() {
         _isLoading = false;
       });
