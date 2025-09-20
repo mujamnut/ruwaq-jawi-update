@@ -40,24 +40,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize scroll controller
     _scrollController = ScrollController();
     _scrollController.addListener(_onScroll);
-    
+
     // Initialize animation controllers - start in visible state
     _appBarAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
       value: 0.0, // Start visible
     );
-    
+
     _titleAnimationController = AnimationController(
       duration: const Duration(milliseconds: 400),
       vsync: this,
       value: 0.0, // Start visible
     );
-    
+
     // Create animations
     _appBarAnimation = Tween<double>(
       begin: 0.0,
@@ -66,7 +66,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       parent: _appBarAnimationController,
       curve: Curves.easeInOut,
     ));
-    
+
     _titleSlideAnimation = Tween<Offset>(
       begin: Offset.zero,
       end: const Offset(-0.3, 0),
@@ -74,9 +74,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       parent: _titleAnimationController,
       curve: Curves.easeInOut,
     ));
-    
-    _loadFromCache();
-    _loadDashboardData();
+
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          context.go('/home');
+        }
+        return;
+      }
+
+      _loadFromCache();
+      _loadDashboardData();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -577,14 +610,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         _error = null;
       });
 
-      // Load real stats from database
-      final statsResult = await SupabaseService.client.rpc('get_dashboard_stats');
-      
+      // Load real stats from database using individual queries (safer than RPC)
+      final usersData = await SupabaseService.from('profiles').select('id');
+      final ebooksData = await SupabaseService.from('ebooks').select('id');
+      final videoKitabData = await SupabaseService.from('video_kitab').select('id');
+      final categoriesData = await SupabaseService.from('categories').select('id');
+
+      // Count premium users (active subscriptions)
+      final premiumData = await SupabaseService.from('user_subscriptions')
+          .select('user_id')
+          .eq('status', 'active')
+          .gt('end_date', DateTime.now().toUtc().toIso8601String());
+
       final stats = {
-        'totalUsers': statsResult['total_users'] ?? 0,
-        'totalKitabs': (statsResult['total_ebooks'] ?? 0) + (statsResult['total_video_kitab'] ?? 0),
-        'totalCategories': statsResult['total_categories'] ?? 0,
-        'premiumUsers': statsResult['premium_users'] ?? 0,
+        'totalUsers': (usersData as List).length,
+        'totalKitabs': (ebooksData as List).length + (videoKitabData as List).length,
+        'totalCategories': (categoriesData as List).length,
+        'premiumUsers': (premiumData as List).length,
       };
 
       // Load recent activities from database

@@ -958,7 +958,19 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
         episodes,
       ) {
         if (episodes.isNotEmpty) {
-          final firstEpisode = episodes.first;
+          // Sort episodes to ensure Part 1 comes first
+          final sortedEpisodes = List<VideoEpisode>.from(episodes);
+          sortedEpisodes.sort((a, b) {
+            // Preview videos go to top
+            if (a.isPreview && !b.isPreview) return -1;
+            if (!a.isPreview && b.isPreview) return 1;
+
+            // If both are preview or both are regular, sort by part_number (ascending)
+            return a.partNumber.compareTo(b.partNumber);
+          });
+
+          // Get the first episode (Part 1)
+          final firstEpisode = sortedEpisodes.first;
           context.push('/player/${widget.kitabId}?episode=${firstEpisode.id}');
         } else {
           context.push('/player/${widget.kitabId}');

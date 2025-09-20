@@ -19,11 +19,46 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
   String? _error;
   List<Map<String, dynamic>> _payments = [];
   Map<String, dynamic> _stats = {};
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
 
   @override
   void initState() {
     super.initState();
-    _loadPayments();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          context.go('/home');
+        }
+        return;
+      }
+
+      _loadPayments();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadPayments() async {
@@ -33,26 +68,24 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
         _error = null;
       });
 
-      // Get payments with user information
-      final paymentsData = await SupabaseService.from('payments')
+      // Get transactions with user information (correct table name)
+      final paymentsData = await SupabaseService.from('transactions')
           .select('''
             *,
-            user_id,
-            subscription_id,
-            profiles!inner(full_name),
-            subscriptions(subscription_plans(name))
+            profiles!inner(full_name)
           ''')
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(100); // Add pagination limit
 
       // Calculate statistics
       final totalPayments = paymentsData.length;
-      final successfulPayments = paymentsData.where((p) => p['status'] == 'succeeded').length;
+      final successfulPayments = paymentsData.where((p) => p['status'] == 'completed').length;
       final pendingPayments = paymentsData.where((p) => p['status'] == 'pending').length;
       final failedPayments = paymentsData.where((p) => p['status'] == 'failed').length;
-      
+
       final totalRevenue = paymentsData
-          .where((p) => p['status'] == 'succeeded')
-          .fold(0.0, (sum, p) => sum + ((p['amount_cents'] as int? ?? 0) / 100));
+          .where((p) => p['status'] == 'completed')
+          .fold(0.0, (sum, p) => sum + (double.tryParse(p['amount'].toString()) ?? 0.0));
 
       setState(() {
         _payments = List<Map<String, dynamic>>.from(paymentsData);
@@ -66,10 +99,17 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (_retryCount < _maxRetries) {
+        _retryCount++;
+        await Future.delayed(Duration(seconds: 2));
+        return _loadPayments();
+      }
+
       setState(() {
-        _error = 'Ralat memuatkan data pembayaran: ${e.toString()}';
+        _error = 'Tidak dapat memuat data pembayaran selepas $_maxRetries cubaan. Sila periksa sambungan internet anda.';
         _isLoading = false;
       });
+      print('Payment loading error: $e'); // Log for debugging
     }
   }
 
@@ -149,7 +189,10 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
             Text(_error!),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadPayments,
+              onPressed: () {
+                _retryCount = 0;
+                _loadPayments();
+              },
               child: const Text('Cuba Lagi'),
             ),
           ],
@@ -199,7 +242,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
               Colors.blue,
             ),
             _buildStatCard(
-              'Berjaya',
+              'Selesai',
               _stats['successfulPayments'].toString(),
               HugeIcons.strokeRoundedCheckmarkCircle02,
               Colors.green,
@@ -320,10 +363,9 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Jumlah: RM ${((payment['amount_cents'] as int? ?? 0) / 100).toStringAsFixed(2)}'),
+                      Text('Jumlah: RM ${(double.tryParse(payment['amount'].toString()) ?? 0.0).toStringAsFixed(2)}'),
                       Text('Status: ${_getStatusText(payment['status'])}'),
-                      if (payment['description'] != null)
-                        Text('Keterangan: ${payment['description']}'),
+                      Text('Kaedah: ${payment['payment_method'] ?? 'N/A'}'),
                       Text(
                         'Tarikh: ${_formatDate(payment['created_at'])}',
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
@@ -335,16 +377,18 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        payment['provider']?.toString().toUpperCase() ?? 'UNKNOWN',
+                        payment['payment_method']?.toString().toUpperCase() ?? 'MANUAL',
                         style: TextStyle(
                           color: Colors.grey[600],
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (payment['reference_number'] != null)
+                      if (payment['transaction_id'] != null)
                         Text(
-                          payment['reference_number'],
+                          payment['transaction_id'].toString().length > 10
+                              ? '${payment['transaction_id'].toString().substring(0, 10)}...'
+                              : payment['transaction_id'],
                           style: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 10,
@@ -363,14 +407,11 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
 
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
-      case 'succeeded':
       case 'completed':
         return Colors.green;
       case 'pending':
-      case 'processing':
         return Colors.orange;
       case 'failed':
-      case 'canceled':
         return Colors.red;
       default:
         return Colors.grey;
@@ -379,14 +420,11 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
 
   IconData _getStatusIcon(String? status) {
     switch (status?.toLowerCase()) {
-      case 'succeeded':
       case 'completed':
         return HugeIcons.strokeRoundedCheckmarkCircle02;
       case 'pending':
-      case 'processing':
         return HugeIcons.strokeRoundedClock01;
       case 'failed':
-      case 'canceled':
         return HugeIcons.strokeRoundedCancel01;
       default:
         return HugeIcons.strokeRoundedHelpCircle;
@@ -395,18 +433,12 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
 
   String _getStatusText(String? status) {
     switch (status?.toLowerCase()) {
-      case 'succeeded':
-        return 'Berjaya';
       case 'completed':
         return 'Selesai';
       case 'pending':
         return 'Menunggu';
-      case 'processing':
-        return 'Diproses';
       case 'failed':
         return 'Gagal';
-      case 'canceled':
-        return 'Dibatalkan';
       default:
         return status?.toUpperCase() ?? 'TIDAK DIKENALI';
     }
@@ -434,19 +466,15 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
             children: [
               _buildDetailRow('ID Transaksi', payment['id']),
               _buildDetailRow('Pengguna', payment['profiles']?['full_name'] ?? 'Tidak diketahui'),
-              _buildDetailRow('Jumlah', 'RM ${((payment['amount_cents'] as int? ?? 0) / 100).toStringAsFixed(2)}'),
+              _buildDetailRow('Jumlah', 'RM ${(double.tryParse(payment['amount'].toString()) ?? 0.0).toStringAsFixed(2)}'),
               _buildDetailRow('Mata Wang', payment['currency'] ?? 'MYR'),
               _buildDetailRow('Status', _getStatusText(payment['status'])),
-              _buildDetailRow('Pembekal', payment['provider']?.toString().toUpperCase() ?? 'TIDAK DIKETAHUI'),
-              if (payment['provider_payment_id'] != null)
-                _buildDetailRow('ID Pembayaran Pembekal', payment['provider_payment_id']),
-              if (payment['reference_number'] != null)
-                _buildDetailRow('Nombor Rujukan', payment['reference_number']),
-              if (payment['description'] != null)
-                _buildDetailRow('Keterangan', payment['description']),
+              _buildDetailRow('Kaedah Bayar', payment['payment_method']?.toString().toUpperCase() ?? 'MANUAL'),
+              if (payment['transaction_id'] != null)
+                _buildDetailRow('ID Transaksi', payment['transaction_id']),
+              if (payment['subscription_id'] != null)
+                _buildDetailRow('ID Langganan', payment['subscription_id']),
               _buildDetailRow('Tarikh Dicipta', _formatDate(payment['created_at'])),
-              if (payment['paid_at'] != null)
-                _buildDetailRow('Tarikh Pembayaran', _formatDate(payment['paid_at'])),
             ],
           ),
         ),

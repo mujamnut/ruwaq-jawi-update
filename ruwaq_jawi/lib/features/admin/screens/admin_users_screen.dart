@@ -27,8 +27,41 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFromCache();
-    _loadUsers();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          context.go('/home');
+        }
+        return;
+      }
+
+      _loadFromCache();
+      _loadUsers();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadFromCache() async {
@@ -122,10 +155,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
           .toList();
 
       // Load active subscriptions for each user
-      final subscriptionsResponse = await SupabaseService.from('subscriptions')
-          .select()
+      final subscriptionsResponse = await SupabaseService.from('user_subscriptions')
+          .select('*, subscription_plans!inner(name, price, duration_days)')
           .eq('status', 'active')
-          .gt('current_period_end', DateTime.now().toIso8601String());
+          .gt('end_date', DateTime.now().toUtc().toIso8601String());
 
       final subscriptions = (subscriptionsResponse as List)
           .map((json) => Subscription.fromJson(json))

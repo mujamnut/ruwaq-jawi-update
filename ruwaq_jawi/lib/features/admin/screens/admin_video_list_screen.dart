@@ -8,7 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/video_kitab_service.dart';
 import '../../../core/models/video_kitab.dart';
-import '../../../core/models/category.dart';
+import '../../../core/models/category.dart' as CategoryModel;
 import '../widgets/admin_bottom_nav.dart';
 import 'admin_kitab_form_screen.dart';
 import 'admin_youtube_auto_form_screen.dart';
@@ -23,7 +23,7 @@ class AdminVideoListScreen extends StatefulWidget {
 class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     with TickerProviderStateMixin {
   List<VideoKitab> _kitabList = [];
-  List<Category> _categories = [];
+  List<CategoryModel.Category> _categories = [];
   bool _isLoading = true;
   String? _error;
   String _selectedFilter = 'all';
@@ -124,8 +124,8 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
         final List<VideoKitab> cachedKitabList = kitabJsonList
             .map((json) => VideoKitab.fromJson(json))
             .toList();
-        final List<Category> cachedCategories = categoriesJsonList
-            .map((json) => Category.fromJson(json))
+        final List<CategoryModel.Category> cachedCategories = categoriesJsonList
+            .map((json) => CategoryModel.Category.fromJson(json))
             .toList();
 
         setState(() {
@@ -168,7 +168,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
 
   Future<void> _cacheData(
     List<VideoKitab> kitabList,
-    List<Category> categories,
+    List<CategoryModel.Category> categories,
   ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -696,7 +696,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   Widget _buildModernKitabCard(VideoKitab kitab) {
     final category = _categories.firstWhere(
       (c) => c.id == kitab.categoryId,
-      orElse: () => Category(
+      orElse: () => CategoryModel.Category(
         id: '',
         name: 'Tiada Kategori',
         sortOrder: 0,

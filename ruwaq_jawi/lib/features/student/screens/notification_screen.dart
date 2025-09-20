@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../../../core/services/unified_notification_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/providers/notifications_provider.dart';
+import '../../../core/models/user_notification.dart';
 import '../../../core/theme/app_theme.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -11,42 +15,27 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  List<UnifiedNotification> unifiedNotifications = [];
-  bool isLoadingUnified = true;
-  int unreadCount = 0;
-
   @override
   void initState() {
     super.initState();
-    // Load unified notifications only
-    _loadUnifiedNotifications();
-    _loadUnreadCount();
-  }
+    // Load notifications using the unified provider
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final provider = context.read<NotificationsProvider>();
+      await provider.loadInbox();
 
-  Future<void> _loadUnifiedNotifications() async {
-    setState(() => isLoadingUnified = true);
-    try {
-      final notifications = await UnifiedNotificationService.getNotifications(limit: 50);
-      setState(() {
-        unifiedNotifications = notifications;
-        isLoadingUnified = false;
-      });
-    } catch (e) {
-      setState(() => isLoadingUnified = false);
-      debugPrint('Error loading unified notifications: $e');
-    }
-  }
-
-  Future<void> _loadUnreadCount() async {
-    final count = await UnifiedNotificationService.getUnreadCount();
-    setState(() => unreadCount = count);
+      // Auto mark all unread notifications as read when user opens notification tab
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final unreadNotifications = provider.inbox.where((n) => !n.isReadByUser(user.id)).toList();
+        for (final notification in unreadNotifications) {
+          await provider.markAsRead(notification.id);
+        }
+      }
+    });
   }
 
   Future<void> _refresh() async {
-    await Future.wait([
-      _loadUnifiedNotifications(),
-      _loadUnreadCount(),
-    ]);
+    await context.read<NotificationsProvider>().loadInbox();
   }
 
   @override
@@ -69,36 +58,63 @@ class _NotificationScreenState extends State<NotificationScreen> {
         foregroundColor: AppTheme.textLightColor,
         elevation: 0,
         actions: [
-          if (unifiedNotifications.isNotEmpty)
-            TextButton(
-              onPressed: () async {
-                final confirm = await _showClearAllDialog(context);
-                if (confirm == true) {
-                  // Clear all unified notifications
-                  await UnifiedNotificationService.markAllAsRead();
-                  await _loadUnifiedNotifications();
-                }
-              },
-              child: Text(
-                'Tandai Semua Dibaca',
-                style: TextStyle(
-                  color: AppTheme.textLightColor.withValues(alpha: 0.9),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+          Consumer<NotificationsProvider>(
+            builder: (context, notificationProvider, child) {
+              if (notificationProvider.inbox.isNotEmpty && notificationProvider.unreadCount > 0) {
+                return TextButton(
+                  onPressed: () async {
+                    final confirm = await _showClearAllDialog(context);
+                    if (confirm == true) {
+                      await _markAllAsRead(notificationProvider);
+                    }
+                  },
+                  child: Text(
+                    'Tandai Semua Dibaca',
+                    style: TextStyle(
+                      color: AppTheme.textLightColor.withValues(alpha: 0.9),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
         ],
       ),
-      body: _buildUnifiedNotificationsBody(),
+      body: Consumer<NotificationsProvider>(
+        builder: (context, notificationProvider, child) {
+          return _buildNotificationsBody(notificationProvider);
+        },
+      ),
     );
   }
 
-  Widget _buildUnifiedNotificationsBody() {
-    if (isLoadingUnified && unifiedNotifications.isEmpty) {
+  Future<void> _markAllAsRead(NotificationsProvider provider) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      final unreadNotifications = provider.inbox.where((n) => !n.isReadByUser(user.id)).toList();
+
+      for (final notification in unreadNotifications) {
+        await provider.markAsRead(notification.id);
+      }
+    } catch (e) {
+      debugPrint('Error marking all as read: $e');
+    }
+  }
+
+  Widget _buildNotificationsBody(NotificationsProvider provider) {
+    if (provider.isLoading && provider.inbox.isEmpty) {
       return _buildLoadingState();
     }
 
-    if (unifiedNotifications.isEmpty) {
+    if (provider.error != null) {
+      return _buildErrorState(provider);
+    }
+
+    if (provider.inbox.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -107,16 +123,68 @@ class _NotificationScreenState extends State<NotificationScreen> {
       color: AppTheme.primaryColor,
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: unifiedNotifications.length,
+        itemCount: provider.inbox.length,
         separatorBuilder: (context, index) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
-          final item = unifiedNotifications[index];
+          final notification = provider.inbox[index];
           return AnimatedContainer(
             duration: Duration(milliseconds: 200 + (index * 50)),
             curve: Curves.easeOutBack,
-            child: _buildUnifiedNotificationCard(item, context),
+            child: _buildNotificationCard(notification, provider),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildErrorState(NotificationsProvider provider) {
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      color: AppTheme.primaryColor,
+      child: ListView(
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              PhosphorIcon(
+                PhosphorIcons.warningCircle(),
+                size: 64,
+                color: AppTheme.errorColor,
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Ralat Memuat Notifikasi',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimaryColor,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                provider.error ?? 'Terdapat masalah semasa memuat notifikasi',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () {
+                  provider.clearError();
+                  _refresh();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                ),
+                child: const Text('Cuba Lagi'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -189,21 +257,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Widget _buildUnifiedNotificationCard(
-    UnifiedNotification item,
-    BuildContext context,
+  Widget _buildNotificationCard(
+    UserNotificationItem notification,
+    NotificationsProvider provider,
   ) {
-    // Check if notification is read - simplified logic
-    final currentUserId = UnifiedNotificationService.currentUserId;
-    final isRead = currentUserId != null ? !item.isUnreadForUser(currentUserId) : true;
+    final user = Supabase.instance.client.auth.currentUser;
+    final isRead = user != null ? notification.isReadByUser(user.id) : true;
 
-    final title = item.title;
-    final body = item.body;
-    final createdAt = item.deliveredAt;
-    final notificationType = item.type;
+    final title = notification.title;
+    final body = notification.body;
+    final createdAt = notification.deliveredAt;
+    final notificationType = notification.type;
 
     return Dismissible(
-      key: ValueKey(item.id),
+      key: ValueKey(notification.id),
       direction: DismissDirection.endToStart,
       background: Container(
         decoration: BoxDecoration(
@@ -232,12 +299,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
         // Capture context before async operations
         final scaffoldMessenger = ScaffoldMessenger.of(context);
 
-        // Delete notification using service
-        final success = await UnifiedNotificationService.deleteNotification(item.id);
-
-        if (success) {
-          // Refresh notifications list to reflect changes
-          await _loadUnifiedNotifications();
+        try {
+          // Delete notification using provider
+          await provider.deleteNotification(notification.id);
 
           if (mounted) {
             scaffoldMessenger.showSnackBar(
@@ -261,7 +325,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ),
             );
           }
-        } else {
+        } catch (e) {
           // Show error if delete failed
           if (mounted) {
             scaffoldMessenger.showSnackBar(
@@ -315,14 +379,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
               final currentContext = context;
 
               if (!isRead) {
-                await UnifiedNotificationService.markAsRead(item.id);
-                // Refresh to update UI
-                await _loadUnifiedNotifications();
+                await provider.markAsRead(notification.id);
               }
 
               // Handle notification tap action
               if (mounted && currentContext.mounted) {
-                _handleNotificationTap(item, currentContext);
+                _handleNotificationTap(notification, currentContext);
               }
             },
             borderRadius: BorderRadius.circular(16),
@@ -398,34 +460,114 @@ class _NotificationScreenState extends State<NotificationScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text(
-                              _formatTimeAgo(createdAt),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                    fontWeight: FontWeight.w500,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Text(
+                                    _formatTimeAgo(createdAt),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: AppTheme.textSecondaryColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                   ),
-                            ),
-                            if (!isRead)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Baru',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
+                                  const SizedBox(width: 8),
+                                  if (!isRead)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
                                       ),
-                                ),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryColor,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'Baru',
+                                        style: Theme.of(context).textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 10,
+                                            ),
+                                      ),
+                                    ),
+                                ],
                               ),
+                            ),
+                            // Dismiss button
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (!isRead)
+                                  InkWell(
+                                    onTap: () async {
+                                      await provider.markAsRead(notification.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                PhosphorIcon(PhosphorIcons.checkCircle(), color: Colors.white, size: 20),
+                                                const SizedBox(width: 12),
+                                                const Text('Ditandakan sebagai dibaca'),
+                                              ],
+                                            ),
+                                            backgroundColor: AppTheme.successColor,
+                                            behavior: SnackBarBehavior.floating,
+                                            duration: const Duration(seconds: 2),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      child: PhosphorIcon(
+                                        PhosphorIcons.check(),
+                                        size: 16,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(width: 4),
+                                InkWell(
+                                  onTap: () async {
+                                    final shouldDelete = await _showDeleteDialog(context);
+                                    if (shouldDelete == true) {
+                                      await provider.deleteNotification(notification.id);
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                PhosphorIcon(PhosphorIcons.checkCircle(), color: Colors.white, size: 20),
+                                                const SizedBox(width: 12),
+                                                const Text('Notifikasi dipadam'),
+                                              ],
+                                            ),
+                                            backgroundColor: AppTheme.successColor,
+                                            behavior: SnackBarBehavior.floating,
+                                            duration: const Duration(seconds: 2),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(8),
+                                    child: PhosphorIcon(
+                                      PhosphorIcons.x(),
+                                      size: 16,
+                                      color: AppTheme.errorColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ],
@@ -499,13 +641,105 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
   }
 
-  void _handleNotificationTap(UnifiedNotification item, BuildContext context) {
-    // Handle notification tap based on action URL
-    final actionUrl = item.actionUrl;
-    if (actionUrl.isNotEmpty && actionUrl != '/home') {
-      // Navigate to specific URL or screen
-      // context.push(actionUrl);
-      debugPrint('Navigate to: $actionUrl');
+  Future<void> _handleNotificationTap(UserNotificationItem notification, BuildContext context) async {
+    final provider = context.read<NotificationsProvider>();
+
+    try {
+      // 1. Mark as read first (auto-dismiss)
+      await provider.markAsRead(notification.id);
+
+      // 2. Then navigate based on notification type and action URL
+      if (mounted && context.mounted) {
+        final actionUrl = notification.actionUrl;
+        final notificationType = notification.type.toLowerCase();
+
+        // Handle payment/subscription notifications
+        if (notificationType.contains('payment') ||
+            notificationType.contains('subscription') ||
+            notificationType.contains('purchase') ||
+            notification.isPaymentNotification ||
+            notification.isSubscriptionNotification) {
+
+          // Navigate to subscription screen for payment-related notifications
+          context.go('/subscription');
+        }
+        // Handle content notifications with actionUrl
+        else if (actionUrl != null && actionUrl.isNotEmpty && actionUrl != '/home') {
+          if (actionUrl.contains('/player/')) {
+            // Content player for full episodes
+            final kitabId = actionUrl.split('/player/').last.split('?').first;
+            final episodeParam = actionUrl.contains('episode=')
+                ? actionUrl.split('episode=').last.split('&').first
+                : null;
+
+            if (episodeParam != null) {
+              context.go('/player/$kitabId?episode=$episodeParam');
+            } else {
+              context.go('/player/$kitabId');
+            }
+          } else if (actionUrl.contains('/video/')) {
+            // Video-only player
+            final kitabId = actionUrl.split('/video/').last.split('?').first;
+            final episodeParam = actionUrl.contains('episode=')
+                ? actionUrl.split('episode=').last.split('&').first
+                : null;
+
+            if (episodeParam != null) {
+              context.go('/video/$kitabId?episode=$episodeParam');
+            } else {
+              context.go('/video/$kitabId');
+            }
+          } else if (actionUrl.contains('/ebook/')) {
+            // E-book navigation
+            final ebookId = actionUrl.split('/ebook/').last;
+            context.go('/ebook/$ebookId');
+          } else if (actionUrl.contains('/kitab/')) {
+            // Kitab detail navigation
+            final kitabId = actionUrl.split('/kitab/').last;
+            context.go('/kitab/$kitabId');
+          } else if (actionUrl.contains('/payment') || actionUrl.contains('/subscription')) {
+            // Payment/subscription related notifications
+            if (actionUrl.contains('/subscription/detail') || actionUrl.contains('/subscription-detail')) {
+              context.go('/subscription-detail');
+            } else {
+              context.go('/subscription');
+            }
+          } else {
+            // Generic navigation using go_router
+            try {
+              context.go(actionUrl);
+            } catch (e) {
+              debugPrint('Navigation error for URL: $actionUrl, Error: $e');
+            }
+          }
+        }
+        // For admin announcements or general notifications without specific action
+        else if (notification.isAdminAnnouncement) {
+          // Stay on notification screen for admin announcements
+          debugPrint('Admin announcement notification - staying on notification screen');
+        }
+      }
+
+      // Show feedback that notification was dismissed
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                PhosphorIcon(PhosphorIcons.checkCircle(), color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                const Text('Notifikasi dibaca'),
+              ],
+            ),
+            backgroundColor: AppTheme.successColor,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error handling notification tap: $e');
     }
   }
 

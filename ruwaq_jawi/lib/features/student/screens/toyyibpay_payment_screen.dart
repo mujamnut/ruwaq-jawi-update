@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../../../screens/payment_callback_page.dart';
+import '../../payment/screens/payment_callback_page.dart';
 
 class ToyyibpayPaymentScreen extends StatefulWidget {
   final String billCode;
@@ -42,38 +42,67 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
             if (mounted) {
               setState(() => _isLoading = true);
             }
+
+            // EARLY DETECTION: Check URL immediately when page starts loading
+            print('WebView starting to load URL: $url');
+            _checkForPaymentCompletion(url);
           },
           onPageFinished: (String url) {
-            if (mounted) {
+            print('WebView finished loading URL: $url');
+
+            // Double-check for payment completion
+            _checkForPaymentCompletion(url);
+
+            // Only hide loading if we haven't started navigation
+            if (mounted && !_hasNavigated) {
               setState(() => _isLoading = false);
-            }
-            print('WebView loaded URL: $url');
-
-            // Check for payment redirect URLs
-            if (url.contains('payment-redirect')) {
-              if (url.contains('status=success')) {
-                // Payment successful - navigate back with success
-                _handlePaymentComplete(true);
-              } else if (url.contains('status=failed')) {
-                // Payment failed - navigate back with failure
-                _handlePaymentComplete(false);
-              }
-            }
-
-            // Also check for ToyyibPay direct status
-            if (url.contains('status=1')) {
-              _handlePaymentComplete(true);
-            } else if (url.contains('status=2') || url.contains('status=3')) {
-              _handlePaymentComplete(false);
             }
           },
           onNavigationRequest: (NavigationRequest request) {
-            // You can add additional URL filtering here if needed
+            print('WebView navigation request: ${request.url}');
+
+            // Check for payment completion before allowing navigation
+            _checkForPaymentCompletion(request.url);
+
             return NavigationDecision.navigate;
           },
         ),
       )
       ..loadRequest(Uri.parse(widget.billUrl));
+  }
+
+  void _checkForPaymentCompletion(String url) {
+    // Skip if already handled
+    if (_hasNavigated) return;
+
+    bool shouldHandle = false;
+    bool isSuccess = false;
+
+    // Check for various ToyyibPay completion patterns
+    if (url.contains('payment-redirect') ||
+        url.contains('status=') ||
+        url.contains('Payment Successful') ||
+        url.contains('Payment Failed') ||
+        url.contains('Transaction ID')) {
+
+      shouldHandle = true;
+
+      // Determine success/failure
+      isSuccess = url.contains('status=success') ||
+                 url.contains('status=1') ||
+                 url.contains('Payment Successful');
+
+      print('🔍 Payment completion detected: URL=$url, Success=$isSuccess');
+    }
+
+    if (shouldHandle) {
+      // Hide WebView immediately to prevent code display
+      if (mounted) {
+        setState(() => _isLoading = true);
+      }
+
+      _handlePaymentComplete(isSuccess);
+    }
   }
 
   void _handlePaymentComplete(bool isSuccess) {
@@ -89,26 +118,35 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
 
       try {
         if (isSuccess && widget.planId != null && widget.amount != null) {
-          // 🚀 NEW: Navigate to payment verification screen
-          print('✅ Navigating to payment verification...');
+          // SUCCESS: Navigate to payment verification screen
+          print('✅ Payment successful - navigating to verification...');
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => PaymentCallbackPage(
-                billId: widget.billCode,
-                planId: widget.planId!,
-                amount: widget.amount!,
-              ),
-            ),
+          // Use go_router instead of Navigator.pushReplacement
+          context.pushReplacement(
+            '/payment-callback?billId=${widget.billCode}&planId=${widget.planId}&amount=${widget.amount}',
           );
         } else {
-          // Old flow - return status or navigate to subscription
+          // FAILED/CANCELLED: Navigate back to subscription with error message
+          print('❌ Payment failed/cancelled - navigating back to subscription...');
+
           if (Navigator.canPop(context)) {
-            Navigator.pop(context, isSuccess);
+            Navigator.pop(context, false);
           } else {
             context.go('/subscription');
           }
+
+          // Show error message after navigation
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('❌ Pembayaran dibatalkan atau gagal'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
+          });
         }
       } catch (e) {
         print('❌ Navigation error in payment screen: $e');
@@ -138,8 +176,10 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
         // Show confirmation dialog when user tries to go back
         final shouldPop = await showDialog<bool>(
           context: context,
@@ -161,21 +201,25 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
           ),
         );
 
-        if (shouldPop == true) {
-          if (!mounted) return false;
+        if (shouldPop == true && context.mounted) {
           Navigator.pop(context, false); // Return payment cancelled
-          return false;
         }
-
-        return false;
       },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Payment'),
+          title: const Text(
+            'Payment',
+            style: TextStyle(
+              color: Colors.black87,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          backgroundColor: Colors.white,
+          elevation: 0,
           leading: IconButton(
             icon: PhosphorIcon(
               PhosphorIcons.arrowLeft(),
-              color: Colors.white,
+              color: Colors.black87,
               size: 20,
             ),
             onPressed: () async {
@@ -208,7 +252,26 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
         body: Stack(
           children: [
             WebViewWidget(controller: _controller),
-            if (_isLoading) const Center(child: CircularProgressIndicator()),
+            if (_isLoading)
+              Container(
+                color: Colors.white,
+                child: const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(height: 16),
+                      Text(
+                        'Memproses pembayaran...',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),

@@ -1,10 +1,9 @@
-name: Notification Testing (Every Minute)
+name: Daily Notifications Production (Every 6 Hours)
 
 on:
   schedule:
-    # TESTING: Run every minute for testing purposes
-    # TODO: Change back to daily after testing: '0 9 * * *'
-    - cron: '* * * * *'
+    # Run every 6 hours: 12:00 AM, 6:00 AM, 12:00 PM, 6:00 PM UTC
+    - cron: '0 */6 * * *'
 
   # Allow manual trigger from GitHub Actions tab
   workflow_dispatch:
@@ -12,7 +11,7 @@ on:
 jobs:
   notification-batch:
     runs-on: ubuntu-latest
-    name: Test notification system (runs every minute)
+    name: Daily notification system (runs every 6 hours)
 
     steps:
       - name: 🔔 Daily Notification System
@@ -62,25 +61,23 @@ jobs:
             echo "Error details: $content_response_body"
           fi
 
-          echo "🏁 Notification test completed at $(date)"
+          echo "🏁 Notification system completed at $(date)"
 
-      - name: 📊 Test Summary
+      - name: 📊 Notification Summary
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ Notification system test completed successfully"
-            echo "📱 Check Supabase database for new test notifications"
-            echo "🔄 Next test will run in 1 minute"
-            echo "⚠️ REMEMBER: Change cron back to daily after testing!"
+            echo "✅ Notification system completed successfully"
+            echo "📱 Check Supabase database for new notifications"
+            echo "🔄 Next run will be in 6 hours"
           else
-            echo "❌ Notification test failed - check logs above"
+            echo "❌ Notification system failed - check logs above"
             echo "⚠️ Admin should review the error and fix any issues"
           fi
 
-      - name: 🧹 Test Status
+      - name: 🧹 Production Status
         if: success()
         run: |
-          echo "🧪 This is TESTING MODE - running every minute"
+          echo "🚀 Production notification system running every 6 hours"
           echo "📧 Check Supabase Edge Function logs for detailed insights"
           echo "📋 Monitor user_notifications table for new entries"
-          echo "⚠️ TODO: Change cron schedule back to daily after testing"

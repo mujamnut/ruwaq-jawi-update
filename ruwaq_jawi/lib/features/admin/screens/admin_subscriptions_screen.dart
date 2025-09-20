@@ -20,11 +20,46 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
   List<Map<String, dynamic>> _subscriptions = [];
   List<Map<String, dynamic>> _subscriptionPlans = [];
   Map<String, dynamic> _stats = {};
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          context.go('/home');
+        }
+        return;
+      }
+
+      _loadData();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadData() async {
@@ -34,14 +69,15 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         _error = null;
       });
 
-      // Load subscriptions with user and plan details
-      final subscriptionsData = await SupabaseService.from('subscriptions')
+      // Load user subscriptions with user and plan details (correct table name)
+      final subscriptionsData = await SupabaseService.from('user_subscriptions')
           .select('''
             *,
-            profiles!inner(full_name, role, subscription_status),
+            profiles!inner(full_name),
             subscription_plans!inner(name, price, duration_days)
           ''')
-          .order('created_at', ascending: false);
+          .order('created_at', ascending: false)
+          .limit(100); // Add pagination limit
 
       // Load subscription plans
       final plansData = await SupabaseService.from('subscription_plans')
@@ -50,14 +86,25 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
           .order('price', ascending: true);
 
       // Calculate statistics
+      final now = DateTime.now().toUtc();
       final totalSubscriptions = subscriptionsData.length;
-      final activeSubscriptions = subscriptionsData.where((s) => s['status'] == 'active').length;
-      final expiredSubscriptions = subscriptionsData.where((s) => s['status'] == 'expired').length;
+      final activeSubscriptions = subscriptionsData.where((s) =>
+          s['status'] == 'active' &&
+          DateTime.parse(s['end_date']).isAfter(now)
+      ).length;
+      final expiredSubscriptions = subscriptionsData.where((s) =>
+          s['status'] == 'active' &&
+          DateTime.parse(s['end_date']).isBefore(now)
+      ).length;
       final canceledSubscriptions = subscriptionsData.where((s) => s['status'] == 'cancelled').length;
-      
-      final totalRevenue = subscriptionsData
-          .where((s) => s['status'] == 'active')
-          .fold(0.0, (sum, s) => sum + double.parse(s['amount'].toString()));
+
+      // Calculate revenue from transactions table
+      final revenueData = await SupabaseService.from('transactions')
+          .select('amount')
+          .eq('status', 'completed');
+
+      final totalRevenue = revenueData.fold(0.0, (sum, t) =>
+          sum + (double.tryParse(t['amount'].toString()) ?? 0.0));
 
       setState(() {
         _subscriptions = List<Map<String, dynamic>>.from(subscriptionsData);
@@ -72,10 +119,17 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         _isLoading = false;
       });
     } catch (e) {
+      if (_retryCount < _maxRetries) {
+        _retryCount++;
+        await Future.delayed(Duration(seconds: 2));
+        return _loadData();
+      }
+
       setState(() {
-        _error = 'Ralat memuatkan data langganan: ${e.toString()}';
+        _error = 'Tidak dapat memuat data langganan selepas $_maxRetries cubaan. Sila periksa sambungan internet anda.';
         _isLoading = false;
       });
+      print('Subscription loading error: $e'); // Log for debugging
     }
   }
 
@@ -155,7 +209,10 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
             Text(_error!),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadData,
+              onPressed: () {
+                _retryCount = 0;
+                _loadData();
+              },
               child: const Text('Cuba Lagi'),
             ),
           ],
@@ -376,16 +433,17 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
             itemBuilder: (context, index) {
               final subscription = _subscriptions[index];
               final isActive = subscription['status'] == 'active';
-              final endDate = DateTime.parse(subscription['current_period_end']);
-              final isExpiringSoon = endDate.isBefore(DateTime.now().add(const Duration(days: 7)));
+              final endDate = DateTime.parse(subscription['end_date']);
+              final isExpired = endDate.isBefore(DateTime.now().toUtc());
+              final isExpiringSoon = endDate.isBefore(DateTime.now().toUtc().add(const Duration(days: 7))) && !isExpired;
               
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ListTile(
                   leading: CircleAvatar(
-                    backgroundColor: _getStatusColor(subscription['status']),
+                    backgroundColor: isExpired ? Colors.red : _getStatusColor(subscription['status']),
                     child: Icon(
-                      _getStatusIcon(subscription['status']),
+                      isExpired ? HugeIcons.strokeRoundedClock01 : _getStatusIcon(subscription['status']),
                       color: Colors.white,
                       size: 20.0,
                     ),
@@ -401,13 +459,15 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                         'Pelan: ${subscription['subscription_plans']['name']}',
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
-                      Text('Jumlah: RM ${double.parse(subscription['amount'].toString()).toStringAsFixed(2)}'),
-                      Text('Status: ${_getStatusText(subscription['status'])}'),
+                      Text('Harga: RM ${double.parse(subscription['subscription_plans']['price'].toString()).toStringAsFixed(2)}'),
+                      Text('Status: ${isExpired ? 'Tamat Tempoh' : _getStatusText(subscription['status'])}'),
                       Text(
-                        'Tamat: ${_formatDate(subscription['current_period_end'])}',
+                        'Tamat: ${_formatDate(subscription['end_date'])}',
                         style: TextStyle(
-                          color: isExpiringSoon && isActive ? Colors.orange : Colors.grey[600],
+                          color: isExpired ? Colors.red :
+                                 isExpiringSoon ? Colors.orange : Colors.grey[600],
                           fontSize: 12,
+                          fontWeight: isExpired || isExpiringSoon ? FontWeight.bold : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -416,16 +476,18 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (subscription['auto_renew'] == true)
-                        Icon(
-                          HugeIcons.strokeRoundedRefresh,
-                          color: Colors.green,
-                          size: 16.0,
-                        ),
                       Text(
-                        subscription['provider']?.toString().toUpperCase() ?? 'MANUAL',
+                        '${subscription['subscription_plans']['duration_days']} hari',
                         style: TextStyle(
                           color: Colors.grey[600],
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        _formatDate(subscription['start_date']),
+                        style: TextStyle(
+                          color: Colors.grey[500],
                           fontSize: 10,
                         ),
                       ),
@@ -521,19 +583,12 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
               _buildDetailRow('Pengguna', subscription['profiles']['full_name'] ?? 'Tidak diketahui'),
               _buildDetailRow('Pelan', subscription['subscription_plans']['name']),
               _buildDetailRow('Harga Pelan', 'RM ${double.parse(subscription['subscription_plans']['price'].toString()).toStringAsFixed(2)}'),
-              _buildDetailRow('Jumlah Bayar', 'RM ${double.parse(subscription['amount'].toString()).toStringAsFixed(2)}'),
-              _buildDetailRow('Mata Wang', subscription['currency'] ?? 'MYR'),
+              _buildDetailRow('Tempoh', '${subscription['subscription_plans']['duration_days']} hari'),
               _buildDetailRow('Status', _getStatusText(subscription['status'])),
-              _buildDetailRow('Mula', _formatDate(subscription['started_at'])),
-              _buildDetailRow('Tempoh Semasa (Mula)', _formatDate(subscription['current_period_start'])),
-              _buildDetailRow('Tempoh Semasa (Tamat)', _formatDate(subscription['current_period_end'])),
-              _buildDetailRow('Pembaharuan Auto', subscription['auto_renew'] == true ? 'Ya' : 'Tidak'),
-              _buildDetailRow('Pembekal', subscription['provider']?.toString().toUpperCase() ?? 'MANUAL'),
-              if (subscription['provider_subscription_id'] != null)
-                _buildDetailRow('ID Langganan Pembekal', subscription['provider_subscription_id']),
-              if (subscription['canceled_at'] != null)
-                _buildDetailRow('Tarikh Pembatalan', _formatDate(subscription['canceled_at'])),
+              _buildDetailRow('Tarikh Mula', _formatDate(subscription['start_date'])),
+              _buildDetailRow('Tarikh Tamat', _formatDate(subscription['end_date'])),
               _buildDetailRow('Tarikh Dicipta', _formatDate(subscription['created_at'])),
+              _buildDetailRow('Tarikh Dikemaskini', _formatDate(subscription['updated_at'])),
             ],
           ),
         ),
@@ -584,12 +639,33 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
   }
 
   Future<void> _cancelSubscription(String subscriptionId) async {
+    // Security check: Ensure admin access
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+
     try {
-      await SupabaseService.from('subscriptions')
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Akses ditolak. Anda tidak mempunyai kebenaran admin.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      // Proceed with cancellation
+      await SupabaseService.from('user_subscriptions')
           .update({
             'status': 'cancelled',
-            'canceled_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', subscriptionId);
 
@@ -605,12 +681,13 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ralat membatalkan langganan: ${e.toString()}'),
+          const SnackBar(
+            content: Text('Gagal membatalkan langganan. Sila cuba lagi.'),
             backgroundColor: Colors.red,
           ),
         );
       }
+      print('Cancel subscription error: $e'); // Log for debugging
     }
   }
 

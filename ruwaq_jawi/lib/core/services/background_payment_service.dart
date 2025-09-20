@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/subscription_provider.dart';
+import 'unified_notification_service.dart';
 
 /// Service untuk background verification of pending payments
 /// Runs automatically dan check pending payments secara berkala
@@ -67,13 +68,15 @@ class BackgroundPaymentService {
           for (final payment in pendingPayments) {
             final billId = payment['bill_id'];
             final planId = payment['plan_id'];
-            
+            final amount = payment['amount']?.toDouble() ?? 0.0;
+
             print('⏳ Background verifying: $billId');
-            
+
             try {
               final success = await subscriptionProvider.verifyPaymentStatus(
                 billId: billId,
                 planId: planId,
+                amount: amount,
               );
               
               if (success) {
@@ -81,7 +84,7 @@ class BackgroundPaymentService {
                 print('✅ Background verification successful for: $billId');
                 
                 // Show success notification
-                _showPaymentSuccessNotification(context, payment);
+                await _showPaymentSuccessNotification(context, payment);
                 
                 // Don't check other payments immediately to avoid spam
                 break;
@@ -123,13 +126,46 @@ class BackgroundPaymentService {
   static bool get isRunning => _isRunning;
 
   /// Show success notification when payment is verified
-  static void _showPaymentSuccessNotification(
-    BuildContext context, 
+  static Future<void> _showPaymentSuccessNotification(
+    BuildContext context,
     Map<String, dynamic> payment
-  ) {
+  ) async {
     if (!context.mounted) return;
 
     try {
+      // 1. Insert payment success notification to database
+      final billId = payment['bill_id']?.toString() ?? 'Unknown';
+      final planId = payment['plan_id']?.toString() ?? 'Unknown';
+      final amount = payment['amount']?.toString() ?? '0';
+
+      // Get current user ID
+      final currentUser = UnifiedNotificationService.currentUserId;
+      if (currentUser == null) {
+        print('❌ No current user found, cannot insert payment notification');
+        return;
+      }
+
+      final success = await UnifiedNotificationService.createIndividualNotification(
+        userId: currentUser,
+        title: 'Pembayaran Berjaya! 🎉',
+        body: 'Terima kasih! Pembayaran RM$amount untuk langganan $planId telah berjaya. Langganan anda kini aktif.',
+        type: 'payment_success',
+        metadata: {
+          'bill_id': billId,
+          'plan_id': planId,
+          'amount': amount,
+          'payment_date': DateTime.now().toIso8601String(),
+          'action_url': '/subscription',
+        },
+      );
+
+      if (success) {
+        print('✅ Payment notification inserted to database');
+      } else {
+        print('❌ Failed to insert payment notification to database');
+      }
+
+      // 2. Show snackbar notification
       final messenger = ScaffoldMessenger.of(context);
       messenger.showSnackBar(
         SnackBar(
@@ -162,7 +198,7 @@ class BackgroundPaymentService {
         ),
       );
 
-      // Also show a dialog for more visibility
+      // 3. Also show a dialog for more visibility
       _showPaymentSuccessDialog(context, payment);
     } catch (e) {
       print('❌ Error showing payment success notification: $e');

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -57,7 +58,37 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     _categoryService = AdminCategoryService(SupabaseService.client);
     // Using VideoKitabService and VideoEpisodeService instead
 
-    _loadInitialData();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      _loadInitialData();
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   Future<void> _loadInitialData() async {

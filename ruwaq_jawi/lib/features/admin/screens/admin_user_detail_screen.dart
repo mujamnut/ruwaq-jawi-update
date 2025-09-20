@@ -32,7 +32,40 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    _loadUserData();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      _loadUserData();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -73,11 +106,11 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
       // Load active subscription
       Subscription? subscription;
       try {
-        final subscriptionResponse = await SupabaseService.from('subscriptions')
-            .select()
+        final subscriptionResponse = await SupabaseService.from('user_subscriptions')
+            .select('*, subscription_plans!inner(name, price, duration_days)')
             .eq('user_id', widget.userId)
             .eq('status', 'active')
-            .gt('current_period_end', DateTime.now().toIso8601String())
+            .gt('end_date', DateTime.now().toUtc().toIso8601String())
             .maybeSingle();
 
         if (subscriptionResponse != null) {

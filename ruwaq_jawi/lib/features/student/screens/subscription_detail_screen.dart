@@ -37,7 +37,22 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen> {
 
   Future<void> _refreshData() async {
     setState(() => _isLoading = true);
-    await _loadData();
+
+    // Comprehensive refresh for subscription data
+    try {
+      final subscriptionProvider = context.read<SubscriptionProvider>();
+      await Future.wait([
+        subscriptionProvider.loadUserSubscriptions(),
+        subscriptionProvider.loadSubscriptionPlans(),
+      ]);
+      print('🔄 Subscription data refreshed');
+    } catch (e) {
+      print('⚠️ Error refreshing subscription data: $e');
+    }
+
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   @override

@@ -85,7 +85,7 @@ class PaymentProvider with ChangeNotifier {
           // Activate subscription
           await _subscriptionService.activateSubscription(
             userId: userId,
-            planType: _getPlanType(planId),
+            planId: planId,
             amount:
                 double.parse(status['billAmount']) / 100, // Convert from cents
             paymentMethod: 'toyyibpay',

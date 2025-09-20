@@ -27,7 +27,16 @@
       "Bash(git commit:*)",
       "Bash(git push:*)",
       "Bash(del \"C:\\Users\\kumar\\OneDrive\\Desktop\\RUWAQ JAWI\\RUWAQ-JAWI-main\\ruwaq_jawi\\test_unified_notifications.dart\")",
-      "Bash(del \"C:\\Users\\kumar\\OneDrive\\Desktop\\RUWAQ JAWI\\RUWAQ-JAWI-main\\ruwaq_jawi\\lib\\core\\services\\global_notification_service.dart\")"
+      "Bash(del \"C:\\Users\\kumar\\OneDrive\\Desktop\\RUWAQ JAWI\\RUWAQ-JAWI-main\\ruwaq_jawi\\lib\\core\\services\\global_notification_service.dart\")",
+      "Bash(tree:*)",
+      "Bash(dir:*)",
+      "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\COMPLETE_notification_system.sql\")",
+      "Bash(rm:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv:*)",
+      "mcp__supabase__list_branches",
+      "Bash(claude doctor)",
+      "Bash(supabase status:*)"
     ],
     "deny": [],
     "ask": []

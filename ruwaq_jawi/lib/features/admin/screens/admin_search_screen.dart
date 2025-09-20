@@ -3,7 +3,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/kitab.dart';
-import '../../../core/models/category.dart';
+import '../../../core/models/category.dart' as CategoryModel;
 import '../../../core/theme/app_theme.dart';
 
 class AdminSearchScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class AdminSearchScreen extends StatefulWidget {
 class _AdminSearchScreenState extends State<AdminSearchScreen> {
   List<Kitab> _allKitabList = [];
   List<Kitab> _searchResults = [];
-  List<Category> _categories = [];
+  List<CategoryModel.Category> _categories = [];
   bool _isLoading = true;
   String? _error;
   String _searchQuery = '';
@@ -278,7 +278,7 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
   Widget _buildKitabCard(Kitab kitab) {
     final category = _categories.firstWhere(
       (c) => c.id == kitab.categoryId,
-      orElse: () => Category(
+      orElse: () => CategoryModel.Category(
         id: '',
         name: 'Tiada Kategori',
         sortOrder: 0,

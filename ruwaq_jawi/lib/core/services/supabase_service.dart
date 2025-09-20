@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../config/env_config.dart';
 import '../models/user_profile.dart';
-import '../models/category.dart';
+import '../models/category.dart' as CategoryModel;
 import '../models/kitab.dart';
 import '../models/transaction.dart';
 import '../models/saved_item.dart';
@@ -100,12 +100,12 @@ class SupabaseService {
   }
 
   // Category operations
-  static Future<List<Category>> getActiveCategories() async {
+  static Future<List<CategoryModel.Category>> getActiveCategories() async {
     final response = await from(
       'categories',
     ).select().eq('is_active', true).order('sort_order');
 
-    return (response as List).map((json) => Category.fromJson(json)).toList();
+    return (response as List).map((json) => CategoryModel.Category.fromJson(json)).toList();
   }
 
   // Kitab operations

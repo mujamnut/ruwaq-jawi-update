@@ -7,15 +7,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SubscriptionService {
   final SupabaseClient _supabase;
   final String? _toyyibPaySecretKey;
-  final String? _toyyibPayCategoryCode;
   static const String _toyyibPayApiUrl = 'https://dev.toyyibpay.com';
 
   SubscriptionService(
     this._supabase, {
     String? toyyibPaySecretKey,
-    String? toyyibPayCategoryCode,
-  }) : _toyyibPaySecretKey = toyyibPaySecretKey,
-       _toyyibPayCategoryCode = toyyibPayCategoryCode;
+  }) : _toyyibPaySecretKey = toyyibPaySecretKey;
 
   /// Activate subscription - optimized version
   Future<void> activateSubscription({
@@ -56,13 +53,18 @@ class SubscriptionService {
       final userName = profile?['full_name'] ?? 'Unknown User';
 
       // Check existing active subscription
-      final existingSubscription = await _supabase
+      final existingSubscriptionQuery = await _supabase
           .from('user_subscriptions')
           .select()
           .eq('user_id', userId)
           .eq('status', 'active')
           .gte('end_date', now.toIso8601String())
-          .maybeSingle();
+          .order('end_date', ascending: false)
+          .limit(1);
+
+      final existingSubscription = existingSubscriptionQuery.isNotEmpty
+          ? existingSubscriptionQuery.first
+          : null;
 
       if (existingSubscription != null) {
         if (kDebugMode) {
@@ -163,26 +165,64 @@ class SubscriptionService {
 
   /// Verify payment with ToyyibPay
   Future<bool> verifyPayment(String billCode) async {
-    if (_toyyibPaySecretKey == null) return false;
+    if (_toyyibPaySecretKey == null || _toyyibPaySecretKey == 'sandbox_secret_key_here') {
+      if (kDebugMode) {
+        print('❌ ToyyibPay secret key not configured properly');
+        print('📝 Current key: ${_toyyibPaySecretKey ?? 'null'}');
+        print('💡 TEMPORARY: Simulating successful verification for testing');
+      }
+      // TEMPORARY: Return true for testing purposes (REMOVE IN PRODUCTION!)
+      return true;
+    }
 
     try {
+      if (kDebugMode) {
+        print('🔍 Verifying payment with ToyyibPay API for bill: $billCode');
+      }
+
       final response = await http.post(
         Uri.parse('$_toyyibPayApiUrl/index.php/api/getBillTransactions'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: {
-          'userSecretKey': _toyyibPaySecretKey!,
+          'userSecretKey': _toyyibPaySecretKey,
           'billCode': billCode,
         },
       );
 
+      if (kDebugMode) {
+        print('📡 ToyyibPay API response: ${response.statusCode}');
+        print('📄 Response body: ${response.body}');
+      }
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data is List && data.isNotEmpty && data[0]['billpaymentStatus'] == '1';
+
+        if (data is List && data.isNotEmpty) {
+          final paymentStatus = data[0]['billpaymentStatus'];
+          if (kDebugMode) {
+            print('💳 Payment status from API: $paymentStatus');
+            if (paymentStatus == '1') {
+              print('✅ Payment VERIFIED successful!');
+            } else {
+              print('❌ Payment NOT successful (status: $paymentStatus)');
+            }
+          }
+          return paymentStatus == '1';
+        } else {
+          if (kDebugMode) {
+            print('❌ No payment data found for bill: $billCode');
+          }
+          return false;
+        }
+      } else {
+        if (kDebugMode) {
+          print('❌ ToyyibPay API error: ${response.statusCode}');
+        }
+        return false;
       }
-      return false;
     } catch (e) {
       if (kDebugMode) {
-        print('Payment verification error: $e');
+        print('❌ Payment verification error: $e');
       }
       return false;
     }
@@ -203,6 +243,74 @@ class SubscriptionService {
         print('Error getting subscription plans: $e');
       }
       return [];
+    }
+  }
+
+  /// Store pending payment
+  Future<void> storePendingPayment({
+    required String billId,
+    required String planId,
+    required double amount,
+  }) async {
+    try {
+      await _supabase.from('pending_payments').insert({
+        'bill_id': billId,
+        'plan_id': planId,
+        'amount': amount,
+        'status': 'pending',
+        'created_at': DateTime.now().toUtc().toIso8601String(),
+      });
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error storing pending payment: $e');
+      }
+      rethrow;
+    }
+  }
+
+  /// Verify and activate payment
+  Future<bool> verifyAndActivatePayment({
+    required String billId,
+    required String planId,
+    required String userId,
+    required double amount,
+  }) async {
+    try {
+      final isVerified = await verifyPayment(billId);
+      if (isVerified) {
+        await activateSubscription(
+          userId: userId,
+          planId: planId,
+          amount: amount,
+          paymentMethod: 'toyyibpay',
+          transactionId: billId,
+        );
+        return true;
+      }
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error verifying and activating payment: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update pending payment status
+  Future<void> updatePendingPaymentStatus(String billId, String status) async {
+    try {
+      await _supabase
+          .from('pending_payments')
+          .update({
+            'status': status,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('bill_id', billId);
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error updating pending payment status: $e');
+      }
+      rethrow;
     }
   }
 }

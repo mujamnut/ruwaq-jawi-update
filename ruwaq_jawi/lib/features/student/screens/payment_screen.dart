@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/payment_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/subscription_provider.dart';
+import '../../../core/providers/kitab_provider.dart';
 import '../../../core/models/payment_models.dart';
 import 'toyyibpay_payment_screen.dart';
 
@@ -148,9 +150,39 @@ class PaymentScreen extends StatelessWidget {
       if (paymentResult == true) {
         // Payment successful - refresh auth provider and navigate properly
         if (context.mounted) {
-          // Refresh subscription status
-          final authProvider = context.read<AuthProvider>();
-          await authProvider.refreshSubscriptionStatus();
+          print('🔄 Starting comprehensive app refresh after payment verification...');
+
+          // Refresh all relevant providers for immediate premium access
+          try {
+            // 1. Refresh AuthProvider (subscription status)
+            if (context.mounted) {
+              final authProvider = context.read<AuthProvider>();
+              await authProvider.refreshSubscriptionStatus();
+              print('✅ AuthProvider refreshed');
+            }
+
+            // 2. Refresh SubscriptionProvider (subscription data)
+            if (context.mounted) {
+              final subscriptionProvider = context.read<SubscriptionProvider>();
+              await subscriptionProvider.loadUserSubscriptions();
+              print('✅ SubscriptionProvider refreshed');
+            }
+
+            // 3. Refresh KitabProvider (content with premium access)
+            if (context.mounted) {
+              try {
+                final kitabProvider = context.read<KitabProvider>();
+                await kitabProvider.refresh();
+                print('✅ KitabProvider refreshed - premium content now accessible');
+              } catch (e) {
+                print('⚠️ Error refreshing KitabProvider: $e');
+              }
+            }
+
+            print('🎉 App refresh completed - premium access now available!');
+          } catch (e) {
+            print('⚠️ Error during app refresh: $e');
+          }
 
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(

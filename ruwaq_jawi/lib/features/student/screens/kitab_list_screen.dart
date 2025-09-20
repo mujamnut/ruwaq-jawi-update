@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/models/video_kitab.dart';
 import '../../../core/utils/youtube_utils.dart';
+import '../../../core/utils/thumbnail_utils.dart';
 import '../widgets/student_bottom_nav.dart';
 
 class KitabListScreen extends StatefulWidget {
@@ -305,15 +306,12 @@ class _KitabListScreenState extends State<KitabListScreen> {
   }
 
   Widget _buildVideoThumbnail(VideoKitab kitab) {
-    // Use the existing thumbnailUrl from VideoKitab if available
-    String? thumbnailUrl = kitab.thumbnailUrl;
-
-    // If no thumbnailUrl, try to generate from YouTube utils (for future episodes)
-    if (thumbnailUrl == null || thumbnailUrl.isEmpty) {
-      // In a real implementation, you might want to fetch the first episode
-      // and get its YouTube URL, but for now we'll use the default thumbnail
-      thumbnailUrl = YouTubeUtils.getThumbnailUrl(null, quality: YouTubeThumbnailQuality.hqdefault);
-    }
+    // Use ThumbnailUtils for auto-fallback to YouTube thumbnail
+    String? thumbnailUrl = ThumbnailUtils.getThumbnailUrlWithFallback(
+      thumbnailUrl: kitab.thumbnailUrl,
+      youtubeVideoId: kitab.youtubeVideoId,
+      quality: YouTubeThumbnailQuality.hqdefault,
+    );
 
     if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
       return ClipRRect(

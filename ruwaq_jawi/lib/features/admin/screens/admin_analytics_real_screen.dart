@@ -30,8 +30,41 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFromCache();
-    _loadAnalytics();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        context.go('/login');
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          context.go('/home');
+        }
+        return;
+      }
+
+      _loadFromCache();
+      _loadAnalytics();
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadFromCache() async {
@@ -229,32 +262,35 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
 
   Future<Map<String, dynamic>> _getSubscriptionAnalytics() async {
     try {
-      final totalSubscriptions = await SupabaseService.from('subscriptions')
-          .select('id')
-          .count(CountOption.exact);
+      final totalSubscriptionsData = await SupabaseService.from('user_subscriptions')
+          .select('id');
+      final totalSubscriptions = (totalSubscriptionsData as List).length;
 
-      final activeSubscriptions = await SupabaseService.from('subscriptions')
+      final activeSubscriptionsData = await SupabaseService.from('user_subscriptions')
           .select('id')
           .eq('status', 'active')
-          .count(CountOption.exact);
+          .gt('end_date', DateTime.now().toUtc().toIso8601String());
+      final activeSubscriptions = (activeSubscriptionsData as List).length;
 
-      final expiredSubscriptions = await SupabaseService.from('subscriptions')
+      final expiredSubscriptionsData = await SupabaseService.from('user_subscriptions')
           .select('id')
-          .eq('status', 'expired')
-          .count(CountOption.exact);
+          .eq('status', 'active')
+          .lt('end_date', DateTime.now().toUtc().toIso8601String());
+      final expiredSubscriptions = (expiredSubscriptionsData as List).length;
 
-      final cancelledSubscriptions = await SupabaseService.from('subscriptions')
+      final cancelledSubscriptionsData = await SupabaseService.from('user_subscriptions')
           .select('id')
-          .eq('status', 'cancelled')
-          .count(CountOption.exact);
+          .eq('status', 'cancelled');
+      final cancelledSubscriptions = (cancelledSubscriptionsData as List).length;
 
       // Get subscriptions by plan
-      final subscriptionsByPlan = await SupabaseService.from('subscriptions')
+      final subscriptionsByPlan = await SupabaseService.from('user_subscriptions')
           .select('''
-            plan_id,
+            subscription_plan_id,
             subscription_plans!inner(name)
           ''')
-          .eq('status', 'active');
+          .eq('status', 'active')
+          .gt('end_date', DateTime.now().toUtc().toIso8601String());
 
       final planDistribution = <String, int>{};
       for (final sub in subscriptionsByPlan) {
@@ -263,10 +299,10 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
       }
 
       return {
-        'total': totalSubscriptions.count,
-        'active': activeSubscriptions.count,
-        'expired': expiredSubscriptions.count,
-        'cancelled': cancelledSubscriptions.count,
+        'total': totalSubscriptions,
+        'active': activeSubscriptions,
+        'expired': expiredSubscriptions,
+        'cancelled': cancelledSubscriptions,
         'planDistribution': planDistribution,
       };
     } catch (e) {
@@ -282,24 +318,25 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
 
   Future<Map<String, dynamic>> _getRevenueAnalytics() async {
     try {
-      // Get all successful payments
-      final payments = await SupabaseService.from('payments')
-          .select('amount_cents, created_at')
-          .eq('status', 'succeeded');
+      // Get all successful transactions
+      final transactions = await SupabaseService.from('transactions')
+          .select('amount, created_at')
+          .eq('status', 'completed');
 
       double totalRevenue = 0;
-      for (final payment in payments) {
-        totalRevenue += (payment['amount_cents'] as int? ?? 0) / 100;
+      for (final transaction in transactions) {
+        totalRevenue += double.tryParse(transaction['amount'].toString()) ?? 0.0;
       }
 
-      // Get active subscription revenue
-      final activeSubscriptions = await SupabaseService.from('subscriptions')
-          .select('amount')
-          .eq('status', 'active');
+      // Get revenue from subscription plans (not individual subscription amounts)
+      final activeSubscriptions = await SupabaseService.from('user_subscriptions')
+          .select('subscription_plans!inner(price)')
+          .eq('status', 'active')
+          .gt('end_date', DateTime.now().toUtc().toIso8601String());
 
       double monthlyRecurringRevenue = 0;
       for (final sub in activeSubscriptions) {
-        monthlyRecurringRevenue += double.parse(sub['amount'].toString());
+        monthlyRecurringRevenue += double.parse(sub['subscription_plans']['price'].toString());
       }
 
       // Calculate revenue by month (last 6 months)
@@ -359,16 +396,16 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
           .count(CountOption.exact);
 
       // Subscription growth
-      final currentMonthSubs = await SupabaseService.from('subscriptions')
+      final currentMonthSubsData = await SupabaseService.from('user_subscriptions')
           .select('id')
-          .gte('created_at', currentMonthStart.toIso8601String())
-          .count(CountOption.exact);
+          .gte('created_at', currentMonthStart.toIso8601String());
+      final currentMonthSubs = (currentMonthSubsData as List).length;
 
-      final lastMonthSubs = await SupabaseService.from('subscriptions')
+      final lastMonthSubsData = await SupabaseService.from('user_subscriptions')
           .select('id')
           .gte('created_at', lastMonthStart.toIso8601String())
-          .lt('created_at', currentMonthStart.toIso8601String())
-          .count(CountOption.exact);
+          .lt('created_at', currentMonthStart.toIso8601String());
+      final lastMonthSubs = (lastMonthSubsData as List).length;
 
       // Calculate growth percentages
       double userGrowth = 0;
@@ -379,9 +416,9 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
       }
 
       double subscriptionGrowth = 0;
-      if (lastMonthSubs.count > 0) {
-        subscriptionGrowth = ((currentMonthSubs.count - lastMonthSubs.count) / lastMonthSubs.count * 100);
-      } else if (currentMonthSubs.count > 0) {
+      if (lastMonthSubs > 0) {
+        subscriptionGrowth = ((currentMonthSubs - lastMonthSubs) / lastMonthSubs * 100);
+      } else if (currentMonthSubs > 0) {
         subscriptionGrowth = 100;
       }
 
@@ -390,8 +427,8 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         'subscriptionGrowth': subscriptionGrowth,
         'currentMonthUsers': currentMonthUsers.count,
         'lastMonthUsers': lastMonthUsers.count,
-        'currentMonthSubs': currentMonthSubs.count,
-        'lastMonthSubs': lastMonthSubs.count,
+        'currentMonthSubs': currentMonthSubs,
+        'lastMonthSubs': lastMonthSubs,
       };
     } catch (e) {
       return {

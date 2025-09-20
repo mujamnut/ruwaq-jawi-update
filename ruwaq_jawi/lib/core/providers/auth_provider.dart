@@ -12,7 +12,6 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? _userProfile;
   String? _errorMessage;
   User? _user;
-  bool _hasActiveSubscription = false;
 
   AuthStatus get status => _status;
   UserProfile? get userProfile => _userProfile;
@@ -449,7 +448,6 @@ class AuthProvider extends ChangeNotifier {
       await SupabaseService.signOut();
       _user = null;
       _userProfile = null;
-      _hasActiveSubscription = false;
       _scheduleStatus(AuthStatus.unauthenticated);
 
       // Clear any cached data to free memory
@@ -464,7 +462,6 @@ class AuthProvider extends ChangeNotifier {
     // Reset all user-related data
     _user = null;
     _userProfile = null;
-    _hasActiveSubscription = false;
 
     // Note: Provider caches should be cleared by listening to auth state changes
     if (kDebugMode) {

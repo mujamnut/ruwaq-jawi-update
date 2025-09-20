@@ -47,13 +47,10 @@ class UnifiedNotificationService {
       final globalQuery = _supabase
           .from('user_notifications')
           .select('*')
-          .is_('user_id', null);
+          .isFilter('user_id', null);
 
-      // Apply filters and execute queries in parallel
-      if (unreadOnly) {
-        individualQuery.eq('status', 'unread');
-        // Global notifications don't have status, check via metadata
-      }
+      // For unreadOnly filter, we'll need to get all and filter after
+      // since status is now stored in metadata
 
       // Execute both queries in parallel for better performance
       final results = await Future.wait([
@@ -126,9 +123,22 @@ class UnifiedNotificationService {
               if (kDebugMode && isDeleted) {
                 print('🗑️ Filtered out deleted global notification: ${notification.title}');
               }
-              return !isDeleted;
+              if (isDeleted) return false;
+
+              // Apply unreadOnly filter for global notifications
+              if (unreadOnly) {
+                final readBy = List<String>.from(notification.metadata['read_by'] ?? []);
+                return !readBy.contains(user.id);
+              }
+              return true;
+            } else {
+              // Apply unreadOnly filter for individual notifications
+              if (unreadOnly) {
+                final status = notification.metadata['status'] ?? 'unread';
+                return status == 'unread';
+              }
+              return true; // Individual notifications are already filtered by user_id
             }
-            return true; // Individual notifications are already filtered by user_id
           })
           .toList();
 
@@ -155,21 +165,29 @@ class UnifiedNotificationService {
 
       // Optimized: Get unread count using separate queries
       final results = await Future.wait([
-        // Individual unread notifications
+        // Individual notifications (check status in metadata)
         _supabase
             .from('user_notifications')
-            .select('id', const FetchOptions(count: CountOption.exact))
-            .eq('user_id', user.id)
-            .eq('status', 'unread'),
+            .select('id, metadata')
+            .eq('user_id', user.id),
         // Global notifications (check if user hasn't read them)
         _supabase
             .from('user_notifications')
-            .select('id, metadata', const FetchOptions(count: CountOption.exact))
-            .is_('user_id', null),
+            .select('id, metadata')
+            .isFilter('user_id', null),
       ]);
 
-      final individualCount = (results[0] as List).length;
+      final individualNotifications = results[0] as List;
       final globalNotifications = results[1] as List;
+
+      // Count individual notifications that are unread (check metadata.status)
+      int individualUnreadCount = 0;
+      for (final notification in individualNotifications) {
+        final status = notification['metadata']?['status'] ?? 'unread';
+        if (status == 'unread') {
+          individualUnreadCount++;
+        }
+      }
 
       // Count global notifications that user hasn't read
       int globalUnreadCount = 0;
@@ -180,7 +198,7 @@ class UnifiedNotificationService {
         }
       }
 
-      return individualCount + globalUnreadCount;
+      return individualUnreadCount + globalUnreadCount;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error getting unread count: $e');
@@ -223,10 +241,14 @@ class UnifiedNotificationService {
               .eq('id', notificationId);
         }
       } else {
-        // Individual notification - mark as read normally
+        // Individual notification - update status in metadata
+        final currentMetadata = Map<String, dynamic>.from(notification['metadata'] ?? {});
+        currentMetadata['status'] = 'read';
+        currentMetadata['read_at'] = DateTime.now().toIso8601String();
+
         await _supabase
             .from('user_notifications')
-            .update({'status': 'read'})
+            .update({'metadata': currentMetadata})
             .eq('id', notificationId)
             .eq('user_id', user.id);
       }
@@ -364,9 +386,9 @@ class UnifiedNotificationService {
           'type': type,
           'source': 'individual_notification',
           'created_at': DateTime.now().toIso8601String(),
+          'status': 'unread', // Move status to metadata instead of table column
           ...(metadata ?? {})
         },
-        'status': 'unread',
         'delivered_at': DateTime.now().toIso8601String(),
         'target_criteria': {
           'individual_notification': true,
@@ -476,8 +498,9 @@ class UnifiedNotificationService {
           readPercentage: studentCount > 0 ? (readCount / studentCount * 100) : 0,
         );
       } else {
-        // Individual notification - always 1 user
-        final status = notification['status'] ?? 'unread';
+        // Individual notification - always 1 user, check metadata for status
+        final metadata = Map<String, dynamic>.from(notification['metadata'] ?? {});
+        final status = metadata['status'] ?? 'unread';
         return NotificationStats(
           totalStudents: 1,
           readCount: status == 'read' ? 1 : 0,
@@ -515,12 +538,13 @@ class UnifiedNotification {
   });
 
   factory UnifiedNotification.fromJson(Map<String, dynamic> json) {
+    final metadata = Map<String, dynamic>.from(json['metadata'] ?? {});
     return UnifiedNotification(
       id: json['id'],
       userId: json['user_id'], // This can be null for global notifications
       message: json['message'] ?? '',
-      metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
-      status: json['status'] ?? 'unread',
+      metadata: metadata,
+      status: metadata['status'] ?? 'unread', // Get status from metadata
       deliveredAt: DateTime.parse(json['delivered_at']),
       targetCriteria: Map<String, dynamic>.from(json['target_criteria'] ?? {}),
     );

@@ -37,7 +37,7 @@ import '../models/payment_models.dart';
 import '../../features/admin/screens/admin_settings_screen.dart';
 import '../../features/admin/screens/admin_ebook_list_screen.dart';
 import '../../features/admin/screens/kitab_detail_screen.dart' as admin_kitab;
-import '../../screens/payment_callback_page.dart';
+import '../../features/payment/screens/payment_callback_page.dart';
 
 class AppRouter {
   static GoRouter createRouter() {

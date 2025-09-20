@@ -321,99 +321,102 @@ class _EbookScreenState extends State<EbookScreen> {
             // Thumbnail with gradient and icons
             Expanded(
               flex: 3,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primaryColor.withOpacity(0.15),
-                      AppTheme.primaryColor.withOpacity(0.05),
-                    ],
+              child: Hero(
+                tag: 'ebook-cover-${ebook.id}',
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppTheme.primaryColor.withOpacity(0.15),
+                        AppTheme.primaryColor.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    // Background pattern
-                    Positioned(
-                      top: -10,
-                      right: -10,
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(30),
+                  child: Stack(
+                    children: [
+                      // Background pattern
+                      Positioned(
+                        top: -10,
+                        right: -10,
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
                       ),
-                    ),
 
-                    // Main PDF icon
-                    Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          PhosphorIcon(
-                            PhosphorIcons.filePdf(),
-                            color: AppTheme.primaryColor,
-                            size: 48,
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
+                      // Main PDF icon
+                      Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIcons.filePdf(),
+                              color: AppTheme.primaryColor,
+                              size: 48,
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'E-BOOK',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 10,
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Premium Badge
+                      if (ebook.isPremium == true)
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.9),
+                              color: AppTheme.secondaryColor,
                               borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            child: Text(
-                              'E-BOOK',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
+                            child: PhosphorIcon(
+                              PhosphorIcons.crown(),
+                              color: Colors.white,
+                              size: 14,
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Premium Badge
-                    if (ebook.isPremium == true)
-                      Positioned(
-                        top: 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppTheme.secondaryColor,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: PhosphorIcon(
-                            PhosphorIcons.crown(),
-                            color: Colors.white,
-                            size: 14,
                           ),
                         ),
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -422,61 +425,80 @@ class _EbookScreenState extends State<EbookScreen> {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      ebook.title,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimaryColor,
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ebook.title,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimaryColor,
+                              fontSize: 14,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            ebook.author ?? 'Unknown Author',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.textSecondaryColor,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      ebook.author ?? 'Unknown Author',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(),
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         if (totalPages > 0)
-                          Row(
-                            children: [
-                              PhosphorIcon(
-                                PhosphorIcons.filePdf(),
-                                size: 14,
-                                color: AppTheme.primaryColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '$totalPages hal',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.primaryColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                        if (fileSize != null)
-                          Text(
-                            fileSize,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: AppTheme.textSecondaryColor,
-                                  fontWeight: FontWeight.w500,
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PhosphorIcon(
+                                  PhosphorIcons.filePdf(),
+                                  size: 12,
+                                  color: AppTheme.primaryColor,
                                 ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '$totalPages hal',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppTheme.primaryColor,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 11,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (fileSize != null && totalPages > 0)
+                          const SizedBox(width: 8),
+                        if (fileSize != null)
+                          Flexible(
+                            child: Text(
+                              fileSize,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 11,
+                                  ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                       ],
                     ),

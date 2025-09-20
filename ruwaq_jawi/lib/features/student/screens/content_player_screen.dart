@@ -37,8 +37,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   PdfViewerController? _pdfController;
 
   bool _isVideoLoading = true;
-  // ignore: unused_field
-  bool _isPdfLoading = true;
 
   // Real data from Supabase
   VideoKitab? _kitab;
@@ -64,6 +62,16 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   bool _isPdfDownloading = false;
   double _downloadProgress = 0.0;
   String? _cachedPdfPath;
+
+  // Skip animation state
+  bool _showSkipAnimation = false;
+  bool _isSkipForward = false;
+  bool _isSkipOnLeftSide = false;
+  Timer? _skipAnimationTimer;
+
+  // Control visibility state
+  bool _showControls = true;
+  Timer? _controlsTimer;
 
   @override
   void initState() {
@@ -205,6 +213,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       if (_kitab?.hasVideos == true) {
         _episodes = await kitabProvider.loadKitabVideos(widget.kitabId);
 
+        // Fix: Sort episodes by part number in ascending order (1, 2, 3, 4...)
+        _episodes.sort((a, b) => a.partNumber.compareTo(b.partNumber));
+
+        // Debug: Print episode order after sorting
+        print('📝 Loaded and sorted episodes:');
+        for (int i = 0; i < _episodes.length; i++) {
+          print('📝 Index $i: Part ${_episodes[i].partNumber} - ${_episodes[i].title}');
+        }
+
         // Find current episode
         if (widget.episodeId != null) {
           final episodeIndex = _episodes.indexWhere(
@@ -254,9 +271,14 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   }
 
   void _switchToEpisode(int index) {
+    print('🔄 _switchToEpisode called with index: $index');
+    print('🔄 Current index: $_currentEpisodeIndex');
+    print('🔄 Episodes length: ${_episodes.length}');
+
     if (index < 0 ||
         index >= _episodes.length ||
         index == _currentEpisodeIndex) {
+      print('🔄 Invalid index, returning early');
       return;
     }
 
@@ -272,6 +294,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       _currentEpisodeIndex = index;
       _currentEpisode = _episodes[index];
     });
+
+    print('🔄 Switched to episode index: $index');
+    print('🔄 New episode part number: ${_currentEpisode?.partNumber}');
+    print('🔄 New episode title: ${_currentEpisode?.title}');
 
     // Check save status for new episode
     _checkSaveStatus();
@@ -291,9 +317,28 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             : (_episodePositions[_currentEpisode!.id] ?? 0);
 
         if (resumePos > 0) {
-          _videoController!.seekTo(Duration(seconds: resumePos));
+          // Wait for controller to be ready before seeking
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            if (mounted && _videoController != null) {
+              try {
+                _videoController!.seekTo(Duration(seconds: resumePos));
+              } catch (e) {
+                print('Error seeking to position: $e');
+              }
+            }
+          });
         }
-      } catch (_) {}
+      } catch (e) {
+        print('Error loading video: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Ralat memuat video: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -320,11 +365,22 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
       _videoController!.addListener(() {
         // Track video position for progress tracking
-        if (_videoController!.value.isReady) {
-          _lastVideoPosition = _videoController!.value.position.inSeconds;
-          if (_currentEpisode != null) {
-            _episodePositions[_currentEpisode!.id] = _lastVideoPosition;
+        try {
+          if (_videoController != null && _videoController!.value.isReady && mounted) {
+            _lastVideoPosition = _videoController!.value.position.inSeconds;
+            if (_currentEpisode != null) {
+              _episodePositions[_currentEpisode!.id] = _lastVideoPosition;
+            }
+
+            // Handle control visibility changes (listen to YouTube player state)
+            if (_videoController!.value.isPlaying && _showControls) {
+              _startControlsTimer();
+            } else if (!_videoController!.value.isPlaying) {
+              _showControlsForever();
+            }
           }
+        } catch (e) {
+          print('Error in video controller listener: $e');
         }
       });
 
@@ -352,7 +408,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     _pdfController = PdfViewerController();
 
     setState(() {
-      _isPdfLoading = false;
+      // PDF loaded
     });
   }
 
@@ -471,6 +527,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _skipAnimationTimer?.cancel();
+    _controlsTimer?.cancel();
     _videoController?.dispose();
     _tabController.dispose();
     super.dispose();
@@ -604,8 +662,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: _buildAppBar(),
-        body: WillPopScope(
-          onWillPop: _onWillPop,
+        body: PopScope(
+          onPopInvokedWithResult: (didPop, result) async {
+            if (didPop) await _onWillPop();
+          },
           child: _buildNormalView(null),
         ),
       );
@@ -616,8 +676,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: _buildAppBar(),
-          body: WillPopScope(
-            onWillPop: _onWillPop,
+          body: PopScope(
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) await _onWillPop();
+            },
             child: _buildNormalView(player),
           ),
         );
@@ -626,12 +688,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         controller: _videoController!,
         showVideoProgressIndicator: true,
         progressIndicatorColor: AppTheme.primaryColor,
-        bottomActions: const [
+        bottomActions: [
           CurrentPosition(),
           ProgressBar(isExpanded: true),
           RemainingDuration(),
           FullScreenButton(),
         ],
+        topActions: [],
         onReady: () {
           if (mounted) {
             setState(() {
@@ -641,8 +704,22 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         },
         onEnded: (metaData) {
           // Auto play next episode if available
-          if (_currentEpisodeIndex < _episodes.length - 1) {
-            _switchToEpisode(_currentEpisodeIndex + 1);
+          print('🎬 Video ended. Current episode index: $_currentEpisodeIndex');
+          print('🎬 Current episode part: ${_currentEpisode?.partNumber}');
+          print('🎬 Total episodes: ${_episodes.length}');
+          print('🎬 Next episode index would be: ${_currentEpisodeIndex + 1}');
+          if (_currentEpisodeIndex + 1 < _episodes.length) {
+            print('🎬 Next episode part: ${_episodes[_currentEpisodeIndex + 1].partNumber}');
+          }
+
+          if (mounted && _currentEpisodeIndex < _episodes.length - 1) {
+            // Add delay to ensure proper state transition
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                print('🎬 Switching to next episode...');
+                _switchToEpisode(_currentEpisodeIndex + 1);
+              }
+            });
           }
         },
       ),
@@ -826,7 +903,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                         ),
                     ],
                   )
-                : player ??
+                : _buildPlayerWithDoubleTap(player) ??
                       Container(
                         color: Colors.black,
                         child: Center(
@@ -871,6 +948,145 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         ],
       ],
     );
+  }
+
+  Widget? _buildPlayerWithDoubleTap(Widget? player) {
+    if (player == null) return null;
+
+    return Stack(
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.deferToChild,
+          onTap: () {
+            // Single tap to toggle controls
+            _toggleControls();
+          },
+          onDoubleTap: () {
+            // This will be handled by onDoubleTapDown, but we need this to enable double tap detection
+          },
+          onDoubleTapDown: (details) {
+            if (_videoController == null) return;
+
+            // Get tap position relative to the player
+            final size = MediaQuery.of(context).size;
+            final position = details.localPosition;
+
+            // Calculate if tap is on left or right side
+            final isLeftSide = position.dx < size.width / 2;
+            final skipSeconds = isLeftSide ? -10 : 10; // Skip backward or forward
+
+            try {
+              // Get current position and calculate new position
+              final currentPosition = _videoController!.value.position.inSeconds;
+              final videoDuration = _videoController!.metadata.duration.inSeconds;
+              final newPosition = (currentPosition + skipSeconds).clamp(0, videoDuration);
+
+              // Seek to new position
+              _videoController!.seekTo(Duration(seconds: newPosition.toInt()));
+
+              // Show feedback with visual indicator
+              _showSkipFeedback(isLeftSide, skipSeconds.abs(), isLeftSide);
+            } catch (e) {
+              print('Error in double tap skip: $e');
+            }
+          },
+          child: player,
+        ),
+        // YouTube-style skip animation overlay
+        if (_showSkipAnimation)
+          Positioned(
+            left: _isSkipOnLeftSide ? 40 : null,
+            right: !_isSkipOnLeftSide ? 40 : null,
+            top: 0,
+            bottom: 0,
+            child: AnimatedOpacity(
+              opacity: _showSkipAnimation ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 300),
+              child: Center(
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isSkipForward ? Icons.fast_forward : Icons.fast_rewind,
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '10s',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showSkipFeedback(bool isBackward, int seconds, bool isLeftSide) {
+    if (!mounted) return;
+
+    setState(() {
+      _showSkipAnimation = true;
+      _isSkipForward = !isBackward;
+      _isSkipOnLeftSide = isLeftSide;
+    });
+
+    // Hide animation after 800ms
+    _skipAnimationTimer?.cancel();
+    _skipAnimationTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        setState(() {
+          _showSkipAnimation = false;
+        });
+      }
+    });
+  }
+
+  void _startControlsTimer() {
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _videoController?.value.isPlaying == true) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  void _showControlsForever() {
+    _controlsTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _showControls = true;
+      });
+    }
+  }
+
+  void _toggleControls() {
+    if (!mounted) return;
+
+    setState(() {
+      _showControls = !_showControls;
+    });
+
+    if (_showControls && _videoController?.value.isPlaying == true) {
+      _startControlsTimer();
+    }
   }
 
   Widget _buildVideoTabContent() {
@@ -1207,7 +1423,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           onDocumentLoaded: (PdfDocumentLoadedDetails details) {
             setState(() {
               _totalPdfPages = details.document.pages.count;
-              _isPdfLoading = false;
             });
           },
         );
@@ -1228,7 +1443,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           onDocumentLoaded: (PdfDocumentLoadedDetails details) {
             setState(() {
               _totalPdfPages = details.document.pages.count;
-              _isPdfLoading = false;
             });
           },
         );
@@ -1257,7 +1471,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       onDocumentLoaded: (PdfDocumentLoadedDetails details) {
         setState(() {
           _totalPdfPages = details.document.pages.count;
-          _isPdfLoading = false;
         });
         // Auto-download PDF for caching
         _downloadPdfIfNeeded();
@@ -1623,9 +1836,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               ],
             ),
             const SizedBox(height: 16),
-            ...(_episodes.asMap().entries.toList()..sort(
-                  (a, b) => a.value.partNumber.compareTo(b.value.partNumber),
-                ))
+            // Episodes are already sorted by part number, so just map them directly
+            ..._episodes.asMap().entries
                 .map((entry) => _buildEpisodeCard(entry.value, entry.key)),
           ],
         ),
@@ -1640,6 +1852,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isCurrentEpisode ? Colors.grey[100] : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: isCurrentEpisode
+          ? Border.all(color: AppTheme.primaryColor.withOpacity(0.3), width: 1)
+          : null,
+      ),
       child: InkWell(
         onTap: () => _switchToEpisode(index),
         borderRadius: BorderRadius.circular(12),
@@ -1703,6 +1922,37 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                               color: Colors.white,
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // "Now Playing" play icon overlay (center)
+                    if (isCurrentEpisode)
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.black.withOpacity(0.3),
+                          ),
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.play_arrow,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                           ),
                         ),

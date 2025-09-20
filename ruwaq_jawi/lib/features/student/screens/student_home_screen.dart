@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/thumbnail_utils.dart';
 import '../widgets/student_bottom_nav.dart';
 
 class StudentHomeScreen extends StatefulWidget {
@@ -20,7 +22,7 @@ class StudentHomeScreen extends StatefulWidget {
 
 class _StudentHomeScreenState extends State<StudentHomeScreen>
     with TickerProviderStateMixin {
-  late ScrollController _featuredScrollController;
+  late PageController _featuredScrollController;
   Timer? _autoScrollTimer;
   late AnimationController _progressAnimationController;
   int _currentCardIndex = 0;
@@ -30,36 +32,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   void initState() {
     super.initState();
-    _featuredScrollController = ScrollController();
+    _featuredScrollController = PageController(viewportFraction: 0.9);
     _progressAnimationController = AnimationController(
       duration: const Duration(seconds: 5),
       vsync: this,
     );
 
-    // Listen for user scroll interactions
-    _featuredScrollController.addListener(() {
-      if (_featuredScrollController.position.isScrollingNotifier.value) {
-        _userIsScrolling = true;
-        _resetAutoScrollTimer();
-      }
-
-      // Update dots based on scroll position when user scrolls manually
-      if (_totalCards > 0 && _featuredScrollController.hasClients) {
-        final screenWidth = MediaQuery.of(context).size.width;
-        final cardWidth = screenWidth - 40 + 16; // Full width card plus margin
-        final currentOffset = _featuredScrollController.offset;
-        final rawCardIndex = (currentOffset / cardWidth).round();
-
-        // Handle infinite scroll - always mod by total cards to get correct dot position
-        final newCardIndex = rawCardIndex % _totalCards;
-
-        if (newCardIndex != _currentCardIndex) {
-          setState(() {
-            _currentCardIndex = newCardIndex;
-          });
-        }
-      }
-    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kitabProvider = context.read<KitabProvider>();
@@ -112,27 +90,19 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   void _scrollToNextCard() {
     if (_totalCards == 0) return;
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final cardWidth = screenWidth - 40 + 16; // Full width card plus margin
-
-    // Current scroll position
-    final currentOffset = _featuredScrollController.offset;
-    final currentCardPosition = currentOffset / cardWidth;
-    final nextCardPosition = currentCardPosition + 1;
-
     // Move to next card
     _currentCardIndex = (_currentCardIndex + 1) % _totalCards;
 
     // Trigger rebuild for dots indicator
     setState(() {});
 
-    final targetOffset = nextCardPosition * cardWidth;
+    // Use PageController to animate to next page
+    final pageController = _featuredScrollController;
+    final currentPage = pageController.page?.round() ?? 0;
+    final nextPage = currentPage + 1;
 
-    _featuredScrollController.animateTo(
-      targetOffset.clamp(
-        0.0,
-        _featuredScrollController.position.maxScrollExtent,
-      ),
+    pageController.animateToPage(
+      nextPage,
       duration: const Duration(milliseconds: 800),
       curve: Curves.easeInOut,
     );
@@ -247,9 +217,18 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                           ),
                           onPressed: () async {
                             // Refresh inbox and show simple list
-                            await context
-                                .read<NotificationsProvider>()
-                                .loadInbox();
+                            final provider = context.read<NotificationsProvider>();
+                            await provider.loadInbox();
+
+                            // Auto mark all unread notifications as read when user opens notification
+                            final user = Supabase.instance.client.auth.currentUser;
+                            if (user != null) {
+                              final unreadNotifications = provider.inbox.where((n) => !n.isReadByUser(user.id)).toList();
+                              for (final notification in unreadNotifications) {
+                                await provider.markAsRead(notification.id);
+                              }
+                            }
+
                             if (!mounted) return;
                             // Show bottom sheet with notifications (same behavior)
                             // ignore: use_build_context_synchronously
@@ -342,18 +321,49 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                           },
                         );
                         if (unread > 0) {
-                          return Badge(
-                            alignment: Alignment.topRight,
-                            backgroundColor: AppTheme.primaryColor,
-                            label: Text(
-                              unread > 99 ? '99+' : '$unread',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              icon,
+                              Positioned(
+                                right: 8,
+                                top: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF3B30), // Pure red, no border
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.2),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      unread > 99 ? '99+' : '$unread',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.0,
+                                        letterSpacing: -0.1,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                            child: icon,
+                            ],
                           );
                         }
                         return icon;
@@ -447,24 +457,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   minHeight: 180,
                   maxHeight: 220,
                 ),
-                child: ListView.builder(
+                child: PageView.builder(
                   controller: _featuredScrollController,
-                  scrollDirection: Axis.horizontal,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentCardIndex = index % featuredContent.length;
+                    });
+                    _userIsScrolling = true;
+                    _resetAutoScrollTimer();
+                  },
                   itemBuilder: (context, index) {
                     // Infinite scroll logic - cycle through original content
                     final actualIndex = index % featuredContent.length;
                     final content = featuredContent[actualIndex];
 
-                    final screenWidth = MediaQuery.of(context).size.width;
-                    final cardWidth = screenWidth - 40; // Full width minus 20px margins on each side
                     return Container(
-                      width: cardWidth,
-                      margin: const EdgeInsets.only(right: 16),
+                      margin: const EdgeInsets.symmetric(horizontal: 8),
                       child: _buildFeaturedCard(content),
                     );
                   },
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
                 ),
               ),
             ),
@@ -540,12 +551,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
+          color: const Color(0xFFF8F9FA), // Light gray instead of pure white
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -1154,6 +1165,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     final userProfile = authProvider.userProfile;
     final userName = userProfile?.fullName ?? 'User';
     final profileImageUrl = userProfile?.avatarUrl;
+    final isPremium = authProvider.hasActiveSubscription; // Check if user has active subscription
 
     // Get initials from name
     String getInitials(String name) {
@@ -1163,78 +1175,182 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       return '${words.first[0]}${words.last[0]}'.toUpperCase();
     }
 
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppTheme.primaryColor, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: isPremium ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                const Color(0xFFFFD700), // Bright gold
+                const Color(0xFFFFA500), // Orange gold
+                const Color(0xFFFFD700), // Bright gold
+                const Color(0xFFDAA520), // Darker gold
+              ],
+              stops: const [0.0, 0.3, 0.7, 1.0],
+            ) : null,
+            border: isPremium ? null : Border.all(
+              color: Colors.white,
+              width: 2,
+            ),
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: profileImageUrl != null && profileImageUrl.isNotEmpty
-            ? Image.network(
-                profileImageUrl,
-                width: 36,
-                height: 36,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  // Fallback to initials if image fails to load
-                  return _buildInitialsAvatar(getInitials(userName));
-                },
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    width: 36,
-                    height: 36,
-                    color: AppTheme.primaryColor.withOpacity(0.1),
-                    child: Center(
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            AppTheme.primaryColor,
-                          ),
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    ),
-                  );
-                },
+          padding: EdgeInsets.all(isPremium ? 2 : 1),
+          child: isPremium
+            ? Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white, // White layer untuk spacing
+                ),
+                padding: const EdgeInsets.all(2), // Spacing antara gold dan avatar
+                child: Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                  ),
+                  child: ClipOval(
+                    child: _buildAvatarContent(profileImageUrl, userName, isPremium, getInitials),
+                  ),
+                ),
               )
-            : _buildInitialsAvatar(getInitials(userName)),
-      ),
+            : Container(
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white, // Same as appbar background
+                ),
+                child: ClipOval(
+                  child: _buildAvatarContent(profileImageUrl, userName, isPremium, getInitials),
+                ),
+              ),
+        ),
+        // Premium crown icon
+        if (isPremium)
+          Positioned(
+            right: -1,
+            top: -3,
+            child: Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFFFFD700), // Bright gold
+                    Color(0xFFB8860B), // Darker gold
+                  ],
+                ),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: Colors.white,
+                  width: 1.8,
+                ),
+              ),
+              child: const Icon(
+                Icons.diamond,
+                size: 9,
+                color: Colors.white,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _buildInitialsAvatar(String initials) {
+  Widget _buildAvatarContent(String? profileImageUrl, String userName, bool isPremium, String Function(String) getInitials) {
+    if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
+      return Image.network(
+        profileImageUrl,
+        width: isPremium ? 32 : 38,
+        height: isPremium ? 32 : 38,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return _buildInitialsAvatar(getInitials(userName), isPremium);
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return Container(
+            width: isPremium ? 32 : 38,
+            height: isPremium ? 32 : 38,
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            child: Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.primaryColor,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      return _buildInitialsAvatar(getInitials(userName), isPremium);
+    }
+  }
+
+  Widget _buildInitialsAvatar(String initials, [bool isPremium = false]) {
+    // Generate gradient colors based on first letter for premium users
+    List<Color> getGradientFromLetter(String letter) {
+      final colors = [
+        [const Color(0xFFE91E63), const Color(0xFFAD1457)], // Pink
+        [const Color(0xFF9C27B0), const Color(0xFF6A1B9A)], // Purple
+        [const Color(0xFF673AB7), const Color(0xFF4527A0)], // Deep Purple
+        [const Color(0xFF3F51B5), const Color(0xFF283593)], // Indigo
+        [const Color(0xFF2196F3), const Color(0xFF1565C0)], // Blue
+        [const Color(0xFF03A9F4), const Color(0xFF0277BD)], // Light Blue
+        [const Color(0xFF00BCD4), const Color(0xFF00838F)], // Cyan
+        [const Color(0xFF009688), const Color(0xFF00695C)], // Teal
+        [const Color(0xFF4CAF50), const Color(0xFF2E7D32)], // Green
+        [const Color(0xFF8BC34A), const Color(0xFF558B2F)], // Light Green
+        [const Color(0xFFCDDC39), const Color(0xFF9E9D24)], // Lime
+        [const Color(0xFFFFEB3B), const Color(0xFFF9A825)], // Yellow
+        [const Color(0xFFFFC107), const Color(0xFFFF8F00)], // Amber
+        [const Color(0xFFFF9800), const Color(0xFFEF6C00)], // Orange
+        [const Color(0xFFFF5722), const Color(0xFFD84315)], // Deep Orange
+        [const Color(0xFF795548), const Color(0xFF5D4037)], // Brown
+      ];
+
+      final index = letter.codeUnitAt(0) % colors.length;
+      return colors[index];
+    }
+
     return Container(
-      width: 36,
-      height: 36,
+      width: isPremium ? 32 : 38,
+      height: isPremium ? 32 : 38,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.8),
-          ],
-        ),
+        color: isPremium ? null : null,
+        gradient: isPremium
+          ? LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: getGradientFromLetter(initials.isNotEmpty ? initials[0] : 'A'),
+            )
+          : LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withOpacity(0.8),
+              ],
+            ),
       ),
       child: Center(
         child: Text(
           initials,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
+          style: TextStyle(
+            color: Colors.white, // Both premium and non-premium use white text
+            fontSize: isPremium ? 13 : 14,
             fontWeight: FontWeight.bold,
           ),
         ),

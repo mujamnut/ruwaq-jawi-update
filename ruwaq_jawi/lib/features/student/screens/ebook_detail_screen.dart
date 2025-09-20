@@ -6,10 +6,10 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/saved_items_provider.dart';
+import '../../../core/providers/subscription_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/ebook.dart';
 import '../../../core/services/supabase_service.dart';
-import '../widgets/student_bottom_nav.dart';
 
 class EbookDetailScreen extends StatefulWidget {
   final String ebookId;
@@ -34,6 +34,27 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
     super.initState();
     _loadEbookData();
     _checkSavedStatus();
+    _loadSubscriptionData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh subscription data when returning to this screen
+    // This helps catch subscription updates after payment
+    _loadSubscriptionData();
+  }
+
+  Future<void> _loadSubscriptionData() async {
+    try {
+      final subscriptionProvider = context.read<SubscriptionProvider>();
+      await subscriptionProvider.loadUserSubscriptions();
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error loading subscription data: $e');
+    }
   }
 
   Future<void> _checkSavedStatus() async {
@@ -95,7 +116,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   String _getEstimatedReadingTime(int pages) {
-    // Anggap 2 minit per halaman secara purata
     final totalMinutes = pages * 2;
     final hours = totalMinutes ~/ 60;
     final minutes = totalMinutes % 60;
@@ -108,7 +128,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   String _getReadingLevel() {
-    // Boleh jadi dinamik berdasarkan data ebook pada masa hadapan
     return 'Pemula';
   }
 
@@ -170,7 +189,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              // Navigate to subscription screen
               _navigateToSubscription();
             },
             style: ElevatedButton.styleFrom(
@@ -188,7 +206,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   void _navigateToSubscription() {
-    // Navigate to subscription screen
     context.push('/subscription');
   }
 
@@ -242,7 +259,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   void _showReadingOptions(BuildContext context) {
-    // Check if ebook is premium and user doesn't have subscription
     if (_ebook!.isPremium && !_hasActiveSubscription()) {
       _showPremiumDialog();
       return;
@@ -252,9 +268,13 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   bool _hasActiveSubscription() {
-    // Returns false to show premium dialog for non-subscribed users
-    // Subscription checking is handled by SubscriptionProvider
-    return false;
+    try {
+      final subscriptionProvider = context.read<SubscriptionProvider>();
+      return subscriptionProvider.hasActiveSubscription;
+    } catch (e) {
+      print('Error checking subscription status: $e');
+      return false;
+    }
   }
 
   void _showReadingOptionsModal(BuildContext context) {
@@ -315,7 +335,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   void _openPDFViewer() {
-    // Check premium access
     if (_ebook!.isPremium && !_hasActiveSubscription()) {
       _showPremiumDialog();
       return;
@@ -326,7 +345,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
       return;
     }
 
-    // Navigate to fullscreen PDF viewer
     showDialog(
       context: context,
       useSafeArea: false,
@@ -336,7 +354,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   void _downloadEbook() {
-    // Tunjuk progress download
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -352,7 +369,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
       ),
     );
 
-    // Simulasi proses download
     Future.delayed(const Duration(seconds: 3), () {
       Navigator.pop(context);
       if (mounted) {
@@ -546,11 +562,8 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // E-book Cover dengan Progress dan Premium Badge
             _buildEbookCover(),
             const SizedBox(height: 24),
-
-            // Tajuk E-book
             Text(
               _ebook!.title,
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -560,172 +573,328 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-
-            // Info Pengarang dengan Avatar
             _buildAuthorInfo(),
             const SizedBox(height: 24),
-
-            // Baris Statistik
             _buildStatisticsRow(),
             const SizedBox(height: 24),
-
-            // Bahagian Deskripsi
             if (_ebook!.description != null &&
                 _ebook!.description!.trim().isNotEmpty)
               _buildDescription(),
-
             const SizedBox(height: 32),
-
-            // Butang Aksi
             _buildActionButtons(),
             const SizedBox(height: 16),
           ],
         ),
       ),
-      bottomNavigationBar: const StudentBottomNav(currentIndex: 2),
     );
   }
 
   Widget _buildEbookCover() {
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        Container(
-          width: 200,
-          height: 280,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: _ebook!.thumbnailUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: _ebook!.thumbnailUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: AppTheme.primaryColor.withOpacity(0.1),
-                      child: PhosphorIcon(
-                        PhosphorIcons.filePdf(),
-                        size: 60,
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
-                        ),
-                      ),
-                      child: Center(
-                        child: PhosphorIcon(
-                          PhosphorIcons.filePdf(),
-                          size: 60,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  )
-                : Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
-                      ),
-                    ),
-                    child: Center(
-                      child: PhosphorIcon(
-                        PhosphorIcons.filePdf(),
-                        size: 60,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-          ),
-        ),
-        // Premium Badge
-        if (_ebook!.isPremium)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    return Hero(
+      tag: 'ebook-cover-${_ebook!.id}',
+      child: Container(
+        width: 220,
+        height: 320,
+        child: Stack(
+          children: [
+            Container(
+              width: 220,
+              height: 320,
               decoration: BoxDecoration(
-                color: Colors.amber,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Text(
-                'Premium',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        // Progress Bar
-        Positioned(
-          bottom: 16,
-          left: 16,
-          right: 16,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Progress',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: _readingProgress,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                    ),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    blurRadius: 25,
+                    offset: const Offset(0, 15),
+                    spreadRadius: -5,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${(_readingProgress * 100).toInt()}%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
-            ],
-          ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: _ebook!.thumbnailUrl != null
+                    ? Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          CachedNetworkImage(
+                            imageUrl: _ebook!.thumbnailUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => _buildPlaceholderCover(),
+                            errorWidget: (context, url, error) => _buildDefaultCover(),
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.7),
+                                ],
+                                stops: const [0.0, 0.6, 1.0],
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : _buildDefaultCover(),
+              ),
+            ),
+            if (_ebook!.isPremium)
+              Positioned(
+                top: 16,
+                right: 16,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFFA726)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.amber.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'Premium',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            if (_readingProgress > 0)
+              Positioned(
+                bottom: 20,
+                left: 20,
+                right: 20,
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Progress Bacaan',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Text(
+                            '${(_readingProgress * 100).toInt()}%',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                        child: FractionallySizedBox(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: _readingProgress,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.primaryColor,
+                                  AppTheme.primaryColor.withOpacity(0.8),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(3),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withOpacity(0.4),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            Positioned(
+              top: 16,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: PhosphorIcon(
+                  PhosphorIcons.filePdf(PhosphorIconsStyle.fill),
+                  color: AppTheme.primaryColor,
+                  size: 16,
+                ),
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultCover() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primaryColor.withOpacity(0.8),
+            AppTheme.primaryColor,
+            AppTheme.primaryColor.withOpacity(0.9),
+          ],
+        ),
+      ),
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: PatternPainter(),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: PhosphorIcon(
+                    PhosphorIcons.filePdf(PhosphorIconsStyle.fill),
+                    size: 48,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'E-BOOK',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaceholderCover() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primaryColor.withOpacity(0.3),
+            AppTheme.primaryColor.withOpacity(0.1),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: CircularProgressIndicator(
+                color: AppTheme.primaryColor,
+                strokeWidth: 3,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Loading...',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -758,9 +927,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
               children: [
                 Text(
                   _ebook!.author ?? 'Unknown Author',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -780,9 +949,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                     const SizedBox(width: 8),
                     Text(
                       '$_reviewsCount reviews',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(color: Colors.grey[600]),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -845,16 +1014,16 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
           const SizedBox(height: 8),
           Text(
             label,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Colors.grey[600],
+            ),
           ),
           const SizedBox(height: 4),
           Text(
             value,
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -869,9 +1038,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
           alignment: Alignment.centerLeft,
           child: Text(
             'Deskripsi E-Book',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -919,7 +1088,29 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 }
 
-// PDF Viewer Dialog Component
+class PatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.1)
+      ..strokeWidth = 1
+      ..style = PaintingStyle.stroke;
+
+    const spacing = 30.0;
+
+    for (double i = -size.height; i < size.width + size.height; i += spacing) {
+      canvas.drawLine(
+        Offset(i, 0),
+        Offset(i + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class PDFViewerDialog extends StatefulWidget {
   final Ebook ebook;
 

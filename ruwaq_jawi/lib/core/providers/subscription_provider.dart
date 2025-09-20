@@ -19,6 +19,9 @@ class SubscriptionProvider with ChangeNotifier {
   SubscriptionProvider() {
     _initializeSubscriptionService();
   }
+
+  // Add getter to check if service is ready
+  bool get isServiceReady => _subscriptionService != null;
   
   Future<void> _initializeSubscriptionService() async {
     // Try to get ToyyibPay credentials from app settings
@@ -42,7 +45,6 @@ class SubscriptionProvider with ChangeNotifier {
     _subscriptionService = SubscriptionService(
       SupabaseService.client,
       toyyibPaySecretKey: secretKey,
-      toyyibPayCategoryCode: categoryCode,
     );
   }
 
@@ -270,22 +272,6 @@ class SubscriptionProvider with ChangeNotifier {
     _error = null;
   }
 
-  // Map plan ID to plan type for compatibility
-  String _mapPlanIdToType(String planId) {
-    switch (planId.toLowerCase()) {
-      case 'monthly_basic':
-      case 'monthly_premium':
-        return '1month';
-      case 'quarterly_premium':
-        return '3month';
-      case 'semiannual_premium':
-        return '6month';
-      case 'yearly_premium':
-        return '12month';
-      default:
-        return '1month';
-    }
-  }
 
   /// Store pending payment untuk di-track
   Future<void> storePendingPayment({
@@ -302,13 +288,13 @@ class SubscriptionProvider with ChangeNotifier {
       if (_subscriptionService != null) {
         await _subscriptionService!.storePendingPayment(
           billId: billId,
-          userId: user.id,
           planId: planId,
           amount: amount,
         );
       } else {
-        print('⚠️ SubscriptionService not initialized yet');
-        throw Exception('SubscriptionService not initialized');
+        print('⚠️ SubscriptionService not initialized yet - skipping pending payment storage');
+        // Don't throw error, just skip storage (non-critical)
+        return;
       }
       
       print('✅ Pending payment stored: $billId');
@@ -322,6 +308,7 @@ class SubscriptionProvider with ChangeNotifier {
   Future<bool> verifyPaymentStatus({
     required String billId,
     required String planId,
+    required double amount,
   }) async {
     try {
       _setLoading(true);
@@ -379,6 +366,7 @@ class SubscriptionProvider with ChangeNotifier {
         billId: billId,
         userId: user.id,
         planId: planId,
+        amount: amount,
       );
 
       if (success) {
@@ -393,12 +381,10 @@ class SubscriptionProvider with ChangeNotifier {
       } else {
         print('⏳ Direct verification also says payment not ready');
         
-        // DISABLED: Direct activation fallback
-        // Reason: This causes false positive activations for cancelled/failed payments
-        // Only use direct activation when explicitly needed via separate method
-        print('⚠️ Payment verification failed via API. Direct activation DISABLED to prevent false positives.');
-        print('💡 If payment was actually successful, use manual verification or contact support.');
-        
+        // Payment verification failed - do not activate subscription
+        print('❌ Payment verification failed via ToyyibPay API');
+        print('💡 Payment was not successful or was cancelled/failed');
+
         return false;
       }
       
@@ -442,11 +428,13 @@ class SubscriptionProvider with ChangeNotifier {
       for (final payment in pendingPayments) {
         final billId = payment['bill_id'];
         final planId = payment['plan_id'];
-        
+        final amount = payment['amount']?.toDouble() ?? 0.0;
+
         print('⏳ Verifying payment: $billId');
         await verifyPaymentStatus(
           billId: billId,
           planId: planId,
+          amount: amount,
         );
         
         // Small delay antara requests

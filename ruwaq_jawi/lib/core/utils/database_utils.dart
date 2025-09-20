@@ -18,7 +18,7 @@ class DatabaseUtils {
     String? orderBy,
     bool ascending = true,
     int? limit,
-    String? select = '*',
+    String select = '*',
   }) async {
     var query = SupabaseService.from(tableName).select(select);
 
@@ -31,12 +31,12 @@ class DatabaseUtils {
 
     // Apply ordering
     if (orderBy != null) {
-      query = query.order(orderBy, ascending: ascending);
+      query = query.order(orderBy, ascending: ascending) as PostgrestFilterBuilder<List<Map<String, dynamic>>>;
     }
 
     // Apply limit
     if (limit != null) {
-      query = query.limit(limit);
+      query = query.limit(limit) as PostgrestFilterBuilder<List<Map<String, dynamic>>>;
     }
 
     final response = await query;
@@ -49,7 +49,7 @@ class DatabaseUtils {
     String? orderBy,
     bool ascending = true,
     int? limit,
-    String? select = '*',
+    String select = '*',
   }) async {
     return await getAll(
       tableName,
@@ -69,12 +69,14 @@ class DatabaseUtils {
     String? orderBy,
     bool ascending = false,
     int? limit,
-    String? select = '*',
+    String select = '*',
   }) async {
     return await withAuth<List<Map<String, dynamic>>>((user) async {
       final filters = {userIdColumn: user.id};
       if (additionalFilters != null) {
-        filters.addAll(additionalFilters);
+        for (final entry in additionalFilters.entries) {
+          filters[entry.key] = entry.value;
+        }
       }
 
       return await getAll(
@@ -93,7 +95,7 @@ class DatabaseUtils {
     String tableName,
     String id, {
     String idColumn = 'id',
-    String? select = '*',
+    String select = '*',
   }) async {
     try {
       final response = await SupabaseService.from(tableName)
@@ -179,7 +181,7 @@ class DatabaseUtils {
     Map<String, dynamic>? filters,
   }) async {
     var query = SupabaseService.from(tableName)
-        .select('id', const FetchOptions(count: CountOption.exact));
+        .select('*');
 
     // Apply filters
     if (filters != null) {
@@ -189,7 +191,7 @@ class DatabaseUtils {
     }
 
     final response = await query;
-    return response.count ?? 0;
+    return (response as List).length;
   }
 
   /// Search records using text search
@@ -201,7 +203,7 @@ class DatabaseUtils {
     String? orderBy,
     bool ascending = true,
     int? limit,
-    String? select = '*',
+    String select = '*',
   }) async {
     var searchQuery = SupabaseService.from(tableName).select(select);
 
@@ -221,12 +223,12 @@ class DatabaseUtils {
 
     // Apply ordering
     if (orderBy != null) {
-      searchQuery = searchQuery.order(orderBy, ascending: ascending);
+      searchQuery = searchQuery.order(orderBy, ascending: ascending) as PostgrestFilterBuilder<List<Map<String, dynamic>>>;
     }
 
     // Apply limit
     if (limit != null) {
-      searchQuery = searchQuery.limit(limit);
+      searchQuery = searchQuery.limit(limit) as PostgrestFilterBuilder<List<Map<String, dynamic>>>;
     }
 
     final response = await searchQuery;
@@ -242,7 +244,7 @@ class DatabaseUtils {
     Map<String, dynamic>? additionalFilters,
     String? orderBy,
     bool ascending = false,
-    String? select = '*',
+    String select = '*',
   }) async {
     var query = SupabaseService.from(tableName)
         .select(select)
@@ -258,7 +260,7 @@ class DatabaseUtils {
 
     // Apply ordering
     if (orderBy != null) {
-      query = query.order(orderBy, ascending: ascending);
+      query = query.order(orderBy, ascending: ascending) as PostgrestFilterBuilder<List<Map<String, dynamic>>>;
     }
 
     final response = await query;

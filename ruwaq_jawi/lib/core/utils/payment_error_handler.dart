@@ -294,7 +294,6 @@ class PaymentErrorHandler {
       case ErrorSeverity.critical:
         return Icons.error;
       case ErrorSeverity.error:
-      default:
         return Icons.error_outline;
     }
   }
@@ -307,7 +306,6 @@ class PaymentErrorHandler {
       case ErrorSeverity.critical:
         return Colors.red;
       case ErrorSeverity.error:
-      default:
         return Colors.red.shade700;
     }
   }
@@ -320,7 +318,6 @@ class PaymentErrorHandler {
       case ErrorSeverity.critical:
         return 'Ralat Kritikal';
       case ErrorSeverity.error:
-      default:
         return 'Ralat';
     }
   }
