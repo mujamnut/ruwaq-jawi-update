@@ -40,9 +40,39 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
   void initState() {
     super.initState();
     _categoryService = AdminCategoryService(SupabaseService.client);
-    
-    if (_isEditing && widget.categoryData != null) {
-      _initializeFormData();
+
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      if (_isEditing && widget.categoryData != null) {
+        _initializeFormData();
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
     }
   }
 

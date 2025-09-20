@@ -73,7 +73,37 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     // Initialize current video kitab ID
     _currentVideoKitabId = widget.videoKitabId;
 
-    _loadInitialData();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      _loadInitialData();
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   Future<void> _loadInitialData() async {

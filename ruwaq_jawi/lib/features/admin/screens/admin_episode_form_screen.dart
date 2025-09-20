@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../../config/youtube_api.dart';
 import '../../../core/models/video_episode.dart';
 import '../../../core/services/video_episode_service.dart';
+import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminEpisodeFormScreen extends StatefulWidget {
@@ -43,7 +44,37 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeForm();
+    _checkAdminAccess();
+  }
+
+  Future<void> _checkAdminAccess() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
+    try {
+      final profile = await SupabaseService.from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (profile == null || profile['role'] != 'admin') {
+        if (mounted) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      _initializeForm();
+    } catch (e) {
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
   }
 
   void _initializeForm() async {
