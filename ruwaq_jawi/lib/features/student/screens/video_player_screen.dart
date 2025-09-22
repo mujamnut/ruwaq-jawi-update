@@ -17,6 +17,8 @@ import '../../../core/models/kitab_video.dart';
 import '../../../core/models/video_episode.dart';
 import '../widgets/save_video_button.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter/services.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String kitabId;
@@ -30,6 +32,11 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     with TickerProviderStateMixin {
+  // Animation controllers for smooth animations
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
   String? _currentVideoId;
   YoutubePlayerController? _controller;
   Box<dynamic>? _progressBox;
@@ -49,6 +56,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Initialize animation controllers
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+      value: 0.0,
+    );
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+      value: 0.0,
+    );
+
+    // Create animations
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
 
     // Load real data and initialize player
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -122,9 +158,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         setState(() {
           _isLoading = false;
         });
+        // Start animations
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _fadeAnimationController.forward();
+            _slideAnimationController.forward();
+          }
+        });
       }
     } catch (e) {
-      print('Error loading data: $e');
+      debugPrint('Error loading data: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -196,6 +239,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     _saveProgress();
     _controller?.dispose();
     _tabController.dispose();
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
     super.dispose();
   }
 
@@ -205,15 +250,72 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
-          backgroundColor: AppTheme.backgroundColor,
-          foregroundColor: AppTheme.textPrimaryColor,
+          backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text(
-            'Loading...',
-            style: TextStyle(color: Colors.black),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+          ),
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: IconButton(
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowLeft01,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 800),
+                tween: Tween(begin: 0.0, end: 1.0),
+                curve: Curves.easeOutBack,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: 0.8 + (0.2 * value),
+                    child: Opacity(
+                      opacity: value.clamp(0.0, 1.0),
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                        strokeWidth: 3,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 24),
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1000),
+                tween: Tween(begin: 0.0, end: 1.0),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value.clamp(0.0, 1.0),
+                    child: Text(
+                      'Memuat pemain video...',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
       );
     }
 
@@ -221,23 +323,129 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
-          backgroundColor: AppTheme.backgroundColor,
-          foregroundColor: AppTheme.textPrimaryColor,
+          backgroundColor: Colors.transparent,
           elevation: 0,
-          title: const Text('Error', style: TextStyle(color: Colors.black)),
-        ),
-        body: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 64, color: Colors.grey),
-              SizedBox(height: 16),
-              Text(
-                'Failed to load video',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
           ),
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: IconButton(
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowLeft01,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
+          ),
+        ),
+        body: TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          tween: Tween(begin: 0.0, end: 1.0),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: 0.8 + (0.2 * value),
+              child: Opacity(
+                opacity: value.clamp(0.0, 1.0),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: AppTheme.textSecondaryColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.textSecondaryColor.withValues(alpha: 0.2),
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: HugeIcon(
+                              icon: HugeIcons.strokeRoundedAlert02,
+                              color: AppTheme.textSecondaryColor,
+                              size: 48,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Gagal Memuat Video',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Video tidak dapat dimuat. Sila cuba semula.',
+                          style: TextStyle(
+                            color: AppTheme.textSecondaryColor,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon: HugeIcon(
+                              icon: HugeIcons.strokeRoundedArrowLeft01,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            label: const Text(
+                              'Kembali',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       );
     }
@@ -268,80 +476,161 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     aspectRatio: 16 / 9,
                     child: Container(color: Colors.black, child: player),
                   ),
-                  // Content below video
+                  // Content below video with animations
                   Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildVideoHeader(),
-                          _buildActionButtons(),
-                          _buildVideoDescription(),
-                          if (_kitab!.hasMultipleVideos && _episodes.isNotEmpty)
-                            _buildEpisodesSection(),
-                        ],
-                      ),
+                    child: AnimatedBuilder(
+                      animation: _fadeAnimation,
+                      builder: (context, child) {
+                        return Opacity(
+                          opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                          child: SlideTransition(
+                            position: _slideAnimation,
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                children: [
+                                  _buildVideoHeader(),
+                                  _buildActionButtons(),
+                                  _buildVideoDescription(),
+                                  if (_kitab!.hasMultipleVideos && _episodes.isNotEmpty)
+                                    _buildEpisodesSection(),
+                                  const SizedBox(height: 24),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
               ),
-              // Floating back button
+              // Floating back button with enhanced design
               Positioned(
-                top: 50,
+                top: MediaQuery.of(context).padding.top + 8,
                 left: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: PhosphorIcon(
-                      PhosphorIcons.arrowLeft(),
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    onPressed: () => context.pop(),
-                  ),
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 600),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 0.8 + (0.2 * value),
+                      child: Opacity(
+                        opacity: value.clamp(0.0, 1.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.black.withValues(alpha: 0.6),
+                                Colors.black.withValues(alpha: 0.4),
+                              ],
+                            ),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () => context.pop(),
+                              borderRadius: BorderRadius.circular(50),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                child: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedArrowLeft01,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
-              // Floating heart button
+              // Floating heart button with enhanced design
               Positioned(
-                top: 50,
+                top: MediaQuery.of(context).padding.top + 8,
                 right: 16,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Consumer<BookmarkProvider>(
-                    builder: (context, bookmarkProvider, child) {
-                      final isBookmarked = bookmarkProvider.isBookmarked(
-                        widget.kitabId,
-                      );
-                      return IconButton(
-                        icon: _isBookmarkLoading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    Colors.white,
+                child: TweenAnimationBuilder<double>(
+                  duration: const Duration(milliseconds: 800),
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: 0.8 + (0.2 * value),
+                      child: Opacity(
+                        opacity: value.clamp(0.0, 1.0),
+                        child: Consumer<BookmarkProvider>(
+                          builder: (context, bookmarkProvider, child) {
+                            final isBookmarked = bookmarkProvider.isBookmarked(
+                              widget.kitabId,
+                            );
+                            return Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.black.withValues(alpha: 0.6),
+                                    Colors.black.withValues(alpha: 0.4),
+                                  ],
+                                ),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _isBookmarkLoading ? null : _toggleBookmark,
+                                  borderRadius: BorderRadius.circular(50),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(12),
+                                    child: _isBookmarkLoading
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
+                                            ),
+                                          )
+                                        : AnimatedSwitcher(
+                                            duration: const Duration(milliseconds: 200),
+                                            child: HugeIcon(
+                                              key: ValueKey(isBookmarked),
+                                              icon: isBookmarked
+                                                  ? HugeIcons.strokeRoundedFavourite
+                                                  : HugeIcons.strokeRoundedHeartAdd,
+                                              color: isBookmarked
+                                                  ? const Color(0xFFE91E63)
+                                                  : Colors.white,
+                                              size: 20,
+                                            ),
+                                          ),
                                   ),
                                 ),
-                              )
-                            : PhosphorIcon(
-                                isBookmarked
-                                    ? PhosphorIcons.heart(
-                                        PhosphorIconsStyle.fill,
-                                      )
-                                    : PhosphorIcons.heart(),
-                                color: isBookmarked ? Colors.red : Colors.white,
-                                size: 20,
                               ),
-                        onPressed: _isBookmarkLoading ? null : _toggleBookmark,
-                      );
-                    },
-                  ),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -359,25 +648,71 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
 
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(color: Colors.white),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(24),
+          topRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Category badge
+          // Category badge with enhanced design
           if (category != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                category.name,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
+            TweenAnimationBuilder<double>(
+              duration: const Duration(milliseconds: 600),
+              tween: Tween(begin: 0.0, end: 1.0),
+              curve: Curves.easeOutBack,
+              builder: (context, value, child) {
+                return Transform.scale(
+                  scale: 0.8 + (0.2 * value),
+                  child: Opacity(
+                    opacity: value.clamp(0.0, 1.0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppTheme.primaryColor.withValues(alpha: 0.2),
+                            AppTheme.primaryColor.withValues(alpha: 0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedBookmark01,
+                            color: AppTheme.primaryColor,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            category.name,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           const SizedBox(height: 16),
 
@@ -408,103 +743,151 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   Widget _buildActionButtons() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-      child: Row(
-        children: [
-          // Stats card
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 800),
+        tween: Tween(begin: 0.0, end: 1.0),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Transform.translate(
+            offset: Offset(0, 30 * (1 - value)),
+            child: Opacity(
+              opacity: value.clamp(0.0, 1.0),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryColor.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: PhosphorIcon(
-                      PhosphorIcons.playCircle(),
-                      color: AppTheme.primaryColor,
-                      size: 24,
+                  // Stats card with enhanced design
+                  Expanded(
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(20), // xl rounded corners
+                        border: Border.all(
+                          color: AppTheme.borderColor.withValues(alpha: 0.5),
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.primaryColor.withValues(alpha: 0.2),
+                                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                                ],
+                              ),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: HugeIcon(
+                              icon: HugeIcons.strokeRoundedPlayCircle,
+                              color: AppTheme.primaryColor,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 18),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Total Episode',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  '${_episodes.length} Bahagian',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.textPrimaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Total Episod',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppTheme.textSecondaryColor),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '${_episodes.length} Bahagian',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black,
-                              ),
+
+                  // Watch now button with enhanced design
+                  Container(
+                    constraints: const BoxConstraints(maxWidth: 160),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor,
+                          AppTheme.primaryColor.withValues(alpha: 0.8),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        // Already watching, could implement next episode functionality
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedPlay,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            'Tonton',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-
-          // Watch now button
-          Container(
-            constraints: const BoxConstraints(maxWidth: 160),
-            child: ElevatedButton(
-              onPressed: () {
-                // Already watching, could implement next episode functionality
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                elevation: 4,
-                shadowColor: AppTheme.primaryColor.withOpacity(0.4),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  PhosphorIcon(
-                    PhosphorIcons.play(),
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Tonton Sekarang',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -600,343 +983,223 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final canAccess = !_kitab!.isPremium || authProvider.hasActiveSubscription;
     final isLocked = !canAccess && !episode.isPreview;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: isLocked ? null : () => _switchToEpisode(episode),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: isCurrentEpisode
-                ? AppTheme.primaryColor.withOpacity(0.1)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isCurrentEpisode
-                  ? AppTheme.primaryColor
-                  : AppTheme.borderColor.withOpacity(0.3),
-              width: isCurrentEpisode ? 2 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              // Episode number circle
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: isLocked
-                      ? AppTheme.textSecondaryColor.withOpacity(0.1)
-                      : isCurrentEpisode
-                      ? AppTheme.primaryColor
-                      : AppTheme.primaryColor.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: isLocked
-                      ? PhosphorIcon(
-                          PhosphorIcons.lock(),
-                          color: AppTheme.textSecondaryColor,
-                          size: 20,
-                        )
-                      : Text(
-                          '${episode.partNumber}',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: isCurrentEpisode
-                                    ? Colors.white
-                                    : AppTheme.primaryColor,
-                              ),
-                        ),
-                ),
-              ),
-              const SizedBox(width: 16),
-
-              // Episode content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      episode.title,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: isLocked
-                            ? AppTheme.textSecondaryColor
-                            : Colors.black,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      episode.formattedDuration,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Play/Current indicator
-              Container(
-                padding: const EdgeInsets.all(8),
-                child: PhosphorIcon(
-                  isCurrentEpisode
-                      ? PhosphorIcons.pause()
-                      : isLocked
-                      ? PhosphorIcons.lock()
-                      : PhosphorIcons.play(),
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: isCurrentEpisode
+                    ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                    : AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(20), // xl rounded corners
+                border: Border.all(
                   color: isCurrentEpisode
                       ? AppTheme.primaryColor
-                      : isLocked
-                      ? AppTheme.textSecondaryColor
-                      : AppTheme.textSecondaryColor,
-                  size: 20,
+                      : AppTheme.borderColor.withValues(alpha: 0.5),
+                  width: isCurrentEpisode ? 2 : 1,
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVideoTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Current Episode/Video Info
-          Text(
-            _currentEpisode?.title ?? _kitab!.title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textPrimaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _kitab!.author ?? 'Unknown Author',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppTheme.primaryColor,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Description
-          Text(
-            _currentEpisode?.description ??
-                _kitab!.description ??
-                'Tiada penerangan tersedia.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSecondaryColor,
-              height: 1.5,
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Episodes Section (for multi-episode kitab)
-          if (_kitab!.hasMultipleVideos && _episodes.isNotEmpty) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Episod (${_episodes.length})',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
+                boxShadow: [
+                  BoxShadow(
+                    color: isCurrentEpisode
+                        ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                        : Colors.black.withValues(alpha: 0.05),
+                    blurRadius: isCurrentEpisode ? 12 : 8,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                Text(
-                  _kitab!.formattedDuration,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ..._episodes.map((episode) => _buildEpisodeCard(episode)),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEpisodeCard(VideoEpisode episode) {
-    final isCurrentEpisode = _currentEpisode?.id == episode.id;
-    final authProvider = context.read<AuthProvider>();
-    final canAccess = !_kitab!.isPremium || authProvider.hasActiveSubscription;
-    final isLocked = !canAccess && !episode.isPreview;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isCurrentEpisode
-            ? AppTheme.primaryColor.withOpacity(0.1)
-            : AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isCurrentEpisode
-              ? AppTheme.primaryColor
-              : AppTheme.borderColor,
-          width: isCurrentEpisode ? 2 : 1,
-        ),
-      ),
-      child: InkWell(
-        onTap: isLocked ? null : () => _switchToEpisode(episode),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // Episode number/thumbnail
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: isLocked
-                      ? AppTheme.textSecondaryColor.withOpacity(0.1)
-                      : isCurrentEpisode
-                      ? AppTheme.primaryColor
-                      : AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: isLocked
-                      ? Icon(
-                          Icons.lock,
-                          color: AppTheme.textSecondaryColor,
-                          size: 20,
-                        )
-                      : isCurrentEpisode
-                      ? Icon(Icons.play_arrow, color: Colors.white, size: 24)
-                      : Text(
-                          '${episode.partNumber}',
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                color: AppTheme.primaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                ),
+                ],
               ),
-              const SizedBox(width: 16),
-
-              // Episode info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: isLocked ? null : () => _switchToEpisode(episode),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
                       children: [
+                        // Episode number circle with enhanced design
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            gradient: isLocked
+                                ? LinearGradient(
+                                    colors: [
+                                      AppTheme.textSecondaryColor.withValues(alpha: 0.15),
+                                      AppTheme.textSecondaryColor.withValues(alpha: 0.05),
+                                    ],
+                                  )
+                                : isCurrentEpisode
+                                    ? LinearGradient(
+                                        colors: [
+                                          AppTheme.primaryColor,
+                                          AppTheme.primaryColor.withValues(alpha: 0.8),
+                                        ],
+                                      )
+                                    : LinearGradient(
+                                        colors: [
+                                          AppTheme.primaryColor.withValues(alpha: 0.15),
+                                          AppTheme.primaryColor.withValues(alpha: 0.08),
+                                        ],
+                                      ),
+                            shape: BoxShape.circle,
+                            boxShadow: isCurrentEpisode || !isLocked
+                                ? [
+                                    BoxShadow(
+                                      color: (isCurrentEpisode
+                                              ? AppTheme.primaryColor
+                                              : AppTheme.primaryColor)
+                                          .withValues(alpha: 0.3),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: isLocked
+                                ? HugeIcon(
+                                    icon: HugeIcons.strokeRoundedLockKey,
+                                    color: AppTheme.textSecondaryColor,
+                                    size: 22,
+                                  )
+                                : isCurrentEpisode
+                                    ? HugeIcon(
+                                        icon: HugeIcons.strokeRoundedPause,
+                                        color: Colors.white,
+                                        size: 22,
+                                      )
+                                    : Text(
+                                        '${episode.partNumber}',
+                                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.primaryColor,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                          ),
+                        ),
+                        const SizedBox(width: 20),
+
+                        // Episode content with enhanced typography
                         Expanded(
-                          child: Text(
-                            episode.title,
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  fontWeight: isCurrentEpisode
-                                      ? FontWeight.bold
-                                      : FontWeight.w600,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Episode badge
+                              if (episode.isPreview)
+                                Container(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppTheme.secondaryColor,
+                                        AppTheme.secondaryColor.withValues(alpha: 0.8),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'PREVIEW',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              Text(
+                                episode.title,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
                                   color: isLocked
                                       ? AppTheme.textSecondaryColor
                                       : AppTheme.textPrimaryColor,
+                                  height: 1.3,
                                 ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedClock03,
+                                    size: 14,
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    episode.formattedDuration,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppTheme.textSecondaryColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        if (episode.isPreview)
-                          Container(
-                            margin: const EdgeInsets.only(left: 8),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.secondaryColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'PREVIEW',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textPrimaryColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 10,
-                                  ),
+
+                        // Action button with enhanced design
+                        Container(
+                          decoration: BoxDecoration(
+                            color: isCurrentEpisode
+                                ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                                : AppTheme.backgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isCurrentEpisode
+                                  ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                                  : AppTheme.borderColor.withValues(alpha: 0.5),
                             ),
                           ),
+                          child: IconButton(
+                            onPressed: isLocked ? null : () => _switchToEpisode(episode),
+                            icon: HugeIcon(
+                              icon: isCurrentEpisode
+                                  ? HugeIcons.strokeRoundedPause
+                                  : isLocked
+                                      ? HugeIcons.strokeRoundedLockKey
+                                      : HugeIcons.strokeRoundedPlay,
+                              color: isCurrentEpisode
+                                  ? AppTheme.primaryColor
+                                  : isLocked
+                                      ? AppTheme.textSecondaryColor
+                                      : AppTheme.primaryColor,
+                              size: 20,
+                            ),
+                            iconSize: 20,
+                            constraints: const BoxConstraints(
+                              minWidth: 40,
+                              minHeight: 40,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      episode.formattedDuration,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-
-              // Status indicator
-              if (isCurrentEpisode)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    'SEMASA',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 10,
-                    ),
-                  ),
-                )
-              else if (isLocked)
-                Icon(Icons.lock, color: AppTheme.textSecondaryColor, size: 20)
-              else
-                Icon(
-                  Icons.play_circle_outline,
-                  color: AppTheme.primaryColor,
-                  size: 24,
-                ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildEBookTab() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.book_outlined, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'E-Book tidak tersedia untuk video ini',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
+
+
 
   void _toggleBookmark() async {
     if (_isBookmarkLoading) return;

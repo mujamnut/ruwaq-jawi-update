@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/auth_provider.dart';
-import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/services/local_favorites_service.dart';
 import '../../../core/models/video_kitab.dart';
 import '../../../core/models/video_episode.dart';
 import '../../../core/utils/youtube_utils.dart';
-import '../widgets/preview_video_selection_dialog.dart';
 import '../../../core/widgets/offline_banner.dart';
 
 class KitabDetailScreen extends StatefulWidget {
@@ -22,7 +22,7 @@ class KitabDetailScreen extends StatefulWidget {
   State<KitabDetailScreen> createState() => _KitabDetailScreenState();
 }
 
-class _KitabDetailScreenState extends State<KitabDetailScreen> {
+class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProviderStateMixin {
   bool _isSaved = false;
   VideoKitab? _kitab;
   bool _isLoading = true;
@@ -30,9 +30,45 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
   List<VideoEpisode>? _cachedEpisodes;
   bool _episodesLoading = false;
 
+  // Animation controllers for smooth animations
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controllers
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+      value: 0.0,
+    );
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+      value: 0.0,
+    );
+
+    // Create animations
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
     _loadKitabData();
     _checkIfSaved();
   }
@@ -49,6 +85,14 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       });
       _checkIfSaved();
       _loadEpisodes(); // Load episodes immediately after kitab data
+
+      // Start animations
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          _fadeAnimationController.forward();
+          _slideAnimationController.forward();
+        }
+      });
     } catch (e) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         kitabProvider.initialize().then((_) {
@@ -62,6 +106,14 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
               });
               _checkIfSaved();
               _loadEpisodes(); // Load episodes here too
+
+              // Start animations
+              Future.delayed(const Duration(milliseconds: 100), () {
+                if (mounted) {
+                  _fadeAnimationController.forward();
+                  _slideAnimationController.forward();
+                }
+              });
             } catch (e) {
               setState(() {
                 _kitab = null;
@@ -99,6 +151,13 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
         });
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
+    super.dispose();
   }
 
   void _checkIfSaved() {
@@ -183,59 +242,45 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: PhosphorIcon(
-              PhosphorIcons.caretLeft(),
-              color: AppTheme.textPrimaryColor,
-            ),
-            onPressed: () => context.pop(),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
           ),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryColor),
-        ),
-      );
-    }
-
-    if (_kitab == null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: Colors.white,
-          elevation: 0,
-          leading: IconButton(
-            icon: PhosphorIcon(
-              PhosphorIcons.caretLeft(),
-              color: AppTheme.textPrimaryColor,
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
             ),
-            onPressed: () => context.pop(),
+            child: IconButton(
+              icon: PhosphorIcon(
+                PhosphorIcons.arrowLeft(),
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
           ),
         ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              PhosphorIcon(
-                PhosphorIcons.bookOpen(),
-                size: 64,
-                color: AppTheme.textSecondaryColor,
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
               ),
               const SizedBox(height: 16),
               Text(
-                'Kitab tidak ditemui',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w600,
+                'Memuat kitab...',
+                style: TextStyle(
+                  color: AppTheme.textSecondaryColor,
+                  fontSize: 14,
                 ),
-              ),
-              const SizedBox(height: 32),
-              TextButton(
-                onPressed: () => context.pop(),
-                child: const Text('Kembali'),
               ),
             ],
           ),
@@ -243,8 +288,139 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       );
     }
 
+    if (_kitab == null) {
+      return Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+          ),
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: IconButton(
+              icon: PhosphorIcon(
+                PhosphorIcons.arrowLeft(),
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
+          ),
+        ),
+        body: TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          tween: Tween(begin: 0.0, end: 1.0),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: 0.8 + (0.2 * value),
+              child: Opacity(
+                opacity: value.clamp(0.0, 1.0),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: AppTheme.textSecondaryColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.textSecondaryColor.withValues(alpha: 0.2),
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: HugeIcon(
+                              icon: HugeIcons.strokeRoundedBookOpen01,
+                              color: AppTheme.textSecondaryColor,
+                              size: 48,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'Kitab Tidak Ditemui',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Kitab yang dicari tidak wujud atau telah dipadam',
+                          style: TextStyle(
+                            color: AppTheme.textSecondaryColor,
+                            fontSize: 14,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon: PhosphorIcon(
+                              PhosphorIcons.arrowLeft(PhosphorIconsStyle.fill),
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            label: const Text(
+                              'Kembali',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
           if (scrollInfo is ScrollUpdateNotification) {
@@ -272,20 +448,31 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
         },
         child: Stack(
           children: [
-            CustomScrollView(
-              physics: const ClampingScrollPhysics(),
-              slivers: [
-                _buildFloatingAppBar(),
-                SliverToBoxAdapter(
-                  child: Column(
-                    children: [
-                      _buildDescription(),
-                      if (_kitab!.totalVideos > 1) _buildEpisodesSection(),
-                      const SizedBox(height: 100),
-                    ],
+            AnimatedBuilder(
+              animation: _fadeAnimation,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: CustomScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      slivers: [
+                        _buildFloatingAppBar(),
+                        SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              _buildDescription(),
+                              if (_kitab!.totalVideos > 1) _buildEpisodesSection(),
+                              const SizedBox(height: 100),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                );
+              },
             ),
             // Adaptive floating love button
             Positioned(
@@ -304,7 +491,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
                         ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
                         : PhosphorIcons.heart(),
                     color: _isSaved
-                        ? Colors.red
+                        ? const Color(0xFFE91E63)
                         : (_collapseRatio > 0.5
                               ? AppTheme.textSecondaryColor
                               : Colors.white),
@@ -328,15 +515,15 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
       pinned: true,
       snap: false,
       forceElevated: false,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       foregroundColor: AppTheme.textPrimaryColor,
       elevation: 2,
       shadowColor: Colors.black.withValues(alpha: 0.1),
-      surfaceTintColor: Colors.white,
+      surfaceTintColor: AppTheme.backgroundColor,
       title: null,
       leading: IconButton(
         icon: PhosphorIcon(
-          PhosphorIcons.caretLeft(),
+          PhosphorIcons.arrowLeft(),
           color: _collapseRatio > 0.5
               ? AppTheme.textPrimaryColor
               : Colors.white,
@@ -393,7 +580,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
                   const SizedBox(width: 8),
                   PhosphorIcon(
                     PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                    color: Colors.amber,
+                    color: const Color(0xFFFFD700),
                     size: 18,
                   ),
                 ],
@@ -449,13 +636,14 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.white.withOpacity(0.5), Colors.white],
+                colors: [AppTheme.backgroundColor.withValues(alpha: 0.5), AppTheme.backgroundColor],
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                  spreadRadius: 0,
                 ),
               ],
             ),
@@ -624,11 +812,11 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
 
     if (thumbnailUrl != null && thumbnailUrl.isNotEmpty) {
       return ClipRRect(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         child: Image.network(
           thumbnailUrl,
-          width: 120,
-          height: 68,
+          width: 100,
+          height: 72,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) {
             return _buildDefaultThumbnail();
@@ -636,11 +824,11 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
             return Container(
-              width: 120,
-              height: 68,
+              width: 100,
+              height: 72,
               decoration: BoxDecoration(
                 color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: const Center(
                 child: CircularProgressIndicator(strokeWidth: 2),
@@ -656,11 +844,11 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
 
   Widget _buildDefaultThumbnail() {
     return Container(
-      width: 120,
-      height: 68,
+      width: 100,
+      height: 72,
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Center(
         child: PhosphorIcon(
@@ -687,165 +875,263 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
         !authProvider.hasActiveSubscription &&
         !episode.isPreview;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        onTap: !episode.isActive
-            ? () => _showInactiveEpisodeDialog()
-            : isPremiumLocked
-            ? _showPremiumDialog
-            : (isLocked
-                  ? _showSubscriptionDialog
-                  : () => _playEpisode(episode)),
-        borderRadius: BorderRadius.circular(8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail
-            Stack(
-              children: [
-                _buildVideoThumbnail(episode),
-                // Duration badge (bottom right)
-                if (episode.durationMinutes > 0)
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.8),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        episode.displayDuration,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ),
-                // Preview badge (top left)
-                if (episode.isPreview)
-                  Positioned(
-                    top: 4,
-                    left: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor,
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'PREVIEW',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 8,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                // Locked overlay
-                if (isLocked)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: PhosphorIcon(
-                          PhosphorIcons.lock(),
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-
-            const SizedBox(width: 12),
-
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    episode.title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isLocked
-                          ? AppTheme.textSecondaryColor
-                          : Colors.black,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 4),
-
-                  // Episode number/info
-                  Text(
-                    'Episode ${episode.partNumber}',
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 2),
-
-                  // Duration
-                  Text(
-                    episode.formattedDuration,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 300 + (number * 50)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(20), // xl rounded corners
+                border: Border.all(
+                  color: AppTheme.borderColor,
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
-            ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: !episode.isActive
+                      ? () => _showInactiveEpisodeDialog()
+                      : isPremiumLocked
+                      ? _showPremiumDialog
+                      : (isLocked
+                            ? _showSubscriptionDialog
+                            : () => _playEpisode(episode)),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Thumbnail with enhanced design
+                        Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: _buildVideoThumbnail(episode),
+                              ),
+                            ),
+                            // Duration badge with enhanced design
+                            if (episode.durationMinutes > 0)
+                              Positioned(
+                                bottom: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    episode.displayDuration,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            // Preview badge with enhanced design
+                            if (episode.isPreview)
+                              Positioned(
+                                top: 6,
+                                left: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: [
+                                        AppTheme.secondaryColor,
+                                        AppTheme.secondaryColor.withValues(alpha: 0.8),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: const Text(
+                                    'PREVIEW',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            // Locked overlay with enhanced design
+                            if (isLocked)
+                              Positioned.fill(
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      padding: const EdgeInsets.all(8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: HugeIcon(
+                                        icon: HugeIcons.strokeRoundedLockKey,
+                                        color: AppTheme.textSecondaryColor,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
 
-            // Menu button
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: PhosphorIcon(
-                PhosphorIcons.dotsThreeVertical(),
-                color: Colors.grey,
-                size: 16,
+                        const SizedBox(width: 16),
+
+                        // Content with enhanced typography
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Episode number badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  'Episode ${episode.partNumber}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 8),
+
+                              // Title with enhanced styling
+                              Text(
+                                episode.title,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: isLocked
+                                      ? AppTheme.textSecondaryColor
+                                      : AppTheme.textPrimaryColor,
+                                  height: 1.3,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              // Duration with icon
+                              Row(
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedClock03,
+                                    size: 14,
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    episode.formattedDuration,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textSecondaryColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Action button with enhanced design
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppTheme.backgroundColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.borderColor.withValues(alpha: 0.5),
+                            ),
+                          ),
+                          child: IconButton(
+                            onPressed: !episode.isActive
+                                ? () => _showInactiveEpisodeDialog()
+                                : isPremiumLocked
+                                ? _showPremiumDialog
+                                : (isLocked
+                                      ? _showSubscriptionDialog
+                                      : () => _playEpisode(episode)),
+                            icon: HugeIcon(
+                              icon: isLocked
+                                  ? HugeIcons.strokeRoundedLockKey
+                                  : HugeIcons.strokeRoundedPlay,
+                              color: isLocked
+                                  ? AppTheme.textSecondaryColor
+                                  : AppTheme.primaryColor,
+                              size: 18,
+                            ),
+                            iconSize: 18,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEpisodeSaveButton(VideoEpisode episode) {
-    return Consumer<SavedItemsProvider>(
-      builder: (context, savedItemsProvider, child) {
-        final isEpisodeSaved = savedItemsProvider.isEpisodeSaved(episode.id);
-
-        return InkWell(
-          onTap: () => _toggleEpisodeSaved(episode),
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            child: PhosphorIcon(
-              isEpisodeSaved
-                  ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
-                  : PhosphorIcons.heart(),
-              color: isEpisodeSaved ? Colors.red : AppTheme.textSecondaryColor,
-              size: 18,
             ),
           ),
         );
@@ -853,46 +1139,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
     );
   }
 
-  void _toggleEpisodeSaved(VideoEpisode episode) async {
-    final savedItemsProvider = context.read<SavedItemsProvider>();
 
-    try {
-      bool success;
-      final isCurrentlySaved = savedItemsProvider.isEpisodeSaved(episode.id);
-
-      if (isCurrentlySaved) {
-        success = await savedItemsProvider.removeEpisodeFromLocal(episode.id);
-      } else {
-        success = await savedItemsProvider.addEpisodeToLocal(episode);
-      }
-
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isCurrentlySaved
-                  ? 'Episode removed from favorites'
-                  : 'Episode added to favorites',
-            ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: isCurrentlySaved ? Colors.orange : Colors.green,
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error occurred. Please try again.'),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    }
-  }
 
   void _toggleSaved() async {
     if (_kitab == null) return;
@@ -953,31 +1200,35 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
 
     if (!hasInternet) return;
 
+    if (!mounted) return;
+    final goRouter = GoRouter.of(context);
+
     if (_kitab!.hasVideos) {
-      context.read<KitabProvider>().loadKitabVideos(_kitab!.id).then((
-        episodes,
-      ) {
-        if (episodes.isNotEmpty) {
-          // Sort episodes to ensure Part 1 comes first
-          final sortedEpisodes = List<VideoEpisode>.from(episodes);
-          sortedEpisodes.sort((a, b) {
-            // Preview videos go to top
-            if (a.isPreview && !b.isPreview) return -1;
-            if (!a.isPreview && b.isPreview) return 1;
+      final kitabProvider = context.read<KitabProvider>();
+      final episodes = await kitabProvider.loadKitabVideos(_kitab!.id);
 
-            // If both are preview or both are regular, sort by part_number (ascending)
-            return a.partNumber.compareTo(b.partNumber);
-          });
+      if (!mounted) return;
 
-          // Get the first episode (Part 1)
-          final firstEpisode = sortedEpisodes.first;
-          context.push('/player/${widget.kitabId}?episode=${firstEpisode.id}');
-        } else {
-          context.push('/player/${widget.kitabId}');
-        }
-      });
+      if (episodes.isNotEmpty) {
+        // Sort episodes to ensure Part 1 comes first
+        final sortedEpisodes = List<VideoEpisode>.from(episodes);
+        sortedEpisodes.sort((a, b) {
+          // Preview videos go to top
+          if (a.isPreview && !b.isPreview) return -1;
+          if (!a.isPreview && b.isPreview) return 1;
+
+          // If both are preview or both are regular, sort by part_number (ascending)
+          return a.partNumber.compareTo(b.partNumber);
+        });
+
+        // Get the first episode (Part 1)
+        final firstEpisode = sortedEpisodes.first;
+        goRouter.push('/player/${widget.kitabId}?episode=${firstEpisode.id}');
+      } else {
+        goRouter.push('/player/${widget.kitabId}');
+      }
     } else {
-      context.push('/player/${widget.kitabId}');
+      goRouter.push('/player/${widget.kitabId}');
     }
   }
 
@@ -989,46 +1240,11 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
 
     if (!hasInternet) return;
 
-    context.push('/player/${widget.kitabId}?episode=${episode.id}');
+    if (!mounted) return;
+    final goRouter = GoRouter.of(context);
+    goRouter.push('/player/${widget.kitabId}?episode=${episode.id}');
   }
 
-  void _previewContent() async {
-    if (_kitab == null) return;
-
-    final hasInternet = await requiresInternet(
-      context,
-      message: 'error loading preview. Please check your internet connection.',
-    );
-
-    if (!hasInternet) return;
-
-    try {
-      final kitabProvider = context.read<KitabProvider>();
-      final hasPreview = await kitabProvider.hasPreviewVideos(_kitab!.id);
-
-      if (!hasPreview && mounted) {
-        _showNoPreviewDialog();
-        return;
-      }
-
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) =>
-              PreviewVideoSelectionDialog(kitabId: _kitab!.id, kitab: _kitab!),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error load the preview ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   void _showPremiumDialog() {
     showDialog(
@@ -1087,9 +1303,11 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.pop(context);
+              final navigator = Navigator.of(context);
+              final goRouter = GoRouter.of(context);
+              navigator.pop();
               // Navigate to subscription screen
-              context.push('/subscription');
+              goRouter.push('/subscription');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -1121,8 +1339,10 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
           ),
           ElevatedButton(
             onPressed: () {
-              Navigator.of(context).pop();
-              context.push('/subscription');
+              final navigator = Navigator.of(context);
+              final goRouter = GoRouter.of(context);
+              navigator.pop();
+              goRouter.push('/subscription');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
@@ -1134,34 +1354,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> {
     );
   }
 
-  void _showNoPreviewDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            PhosphorIcon(
-              PhosphorIcons.videoCamera(),
-              color: AppTheme.textSecondaryColor,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            const Text('No Preview Available'),
-          ],
-        ),
-        content: const Text(
-          'This kitab does not have any preview videos available at the moment.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _showInactiveEpisodeDialog() {
     showDialog(

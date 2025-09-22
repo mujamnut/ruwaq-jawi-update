@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -14,16 +15,29 @@ class EbookScreen extends StatefulWidget {
   State<EbookScreen> createState() => _EbookScreenState();
 }
 
-class _EbookScreenState extends State<EbookScreen> {
+class _EbookScreenState extends State<EbookScreen>
+    with TickerProviderStateMixin {
   String? _selectedCategoryId;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final ScrollController _scrollController = ScrollController();
   bool _isScrolled = false;
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controllers
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
 
     _scrollController.addListener(() {
       bool scrolled = _scrollController.offset > 10;
@@ -37,7 +51,15 @@ class _EbookScreenState extends State<EbookScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kitabProvider = context.read<KitabProvider>();
       if (kitabProvider.ebookList.isEmpty) {
-        kitabProvider.initialize();
+        kitabProvider.initialize().then((_) {
+          if (mounted) {
+            _fadeAnimationController.forward();
+            _slideAnimationController.forward();
+          }
+        });
+      } else {
+        _fadeAnimationController.forward();
+        _slideAnimationController.forward();
       }
     });
   }
@@ -46,6 +68,8 @@ class _EbookScreenState extends State<EbookScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
     super.dispose();
   }
 
@@ -55,28 +79,176 @@ class _EbookScreenState extends State<EbookScreen> {
       builder: (context, kitabProvider, child) {
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor,
-          appBar: AppBar(
-            title: Text(
-              'E-Book',
-              style: TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            backgroundColor: _isScrolled ? Colors.white : AppTheme.backgroundColor,
-            iconTheme: IconThemeData(color: Colors.black),
-            elevation: _isScrolled ? 2 : 0,
-            centerTitle: false,
-            titleSpacing: 20,
-          ),
+          appBar: _buildAppBar(),
           body: kitabProvider.isLoading
-              ? const Center(child: CircularProgressIndicator())
+              ? _buildLoadingState()
               : kitabProvider.errorMessage != null
               ? _buildErrorState(kitabProvider.errorMessage!)
               : _buildScrollableContent(kitabProvider),
           bottomNavigationBar: const StudentBottomNav(currentIndex: 2),
         );
       },
+    );
+  }
+
+  // Build app bar without back button and always show title
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: _isScrolled
+          ? AppTheme.surfaceColor.withValues(alpha: 0.9)
+          : Colors.transparent,
+      elevation: _isScrolled ? 4 : 0,
+      centerTitle: false,
+      title: Text(
+        'E-Book',
+        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+          color: AppTheme.textPrimaryColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      automaticallyImplyLeading: false,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+    );
+  }
+
+  // Enhanced loading state with smooth animations
+  Widget _buildLoadingState() {
+    return Container(
+      color: AppTheme.backgroundColor,
+      child: Column(
+        children: [
+          // Header section placeholder
+          Container(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 20),
+                Text(
+                  'E-Book',
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    color: AppTheme.textPrimaryColor,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Koleksi buku digital untuk pembelajaran',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppTheme.textSecondaryColor,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Loading shimmer effect
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: GridView.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.85,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                itemCount: 6,
+                itemBuilder: (context, index) {
+                  return _buildShimmerCard(index);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerCard(int index) {
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (index * 100)),
+      curve: Curves.easeOutBack,
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Shimmer thumbnail
+          Expanded(
+            flex: 3,
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: AppTheme.primaryColor,
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+          ),
+          // Shimmer content
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        height: 16,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        height: 12,
+                        width: 100,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Container(
+                    height: 12,
+                    width: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -102,47 +274,96 @@ class _EbookScreenState extends State<EbookScreen> {
     filteredEbooks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     if (filteredEbooks.isEmpty) {
-      return CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
-          SliverFillRemaining(child: _buildEmptyState()),
-        ],
+      return FadeTransition(
+        opacity: _fadeAnimationController,
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            SliverToBoxAdapter(child: _buildHeader()),
+            SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
+            SliverFillRemaining(child: _buildEmptyState()),
+          ],
+        ),
       );
     }
 
     return RefreshIndicator(
       onRefresh: () async {
+        HapticFeedback.lightImpact();
         await kitabProvider.refresh();
+        if (mounted) {
+          _fadeAnimationController.reset();
+          _slideAnimationController.reset();
+          _fadeAnimationController.forward();
+          _slideAnimationController.forward();
+        }
       },
-      child: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          // Search and Filters
-          SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
+      color: AppTheme.primaryColor,
+      child: FadeTransition(
+        opacity: _fadeAnimationController,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // Header
+            SliverToBoxAdapter(child: _buildHeader()),
 
-          // E-book Grid
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.85,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
+            // Search and Filters
+            SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
+
+            // E-book Grid
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              sliver: SliverGrid(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 0.85,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final ebook = filteredEbooks[index];
+                  return SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0, 0.3),
+                      end: Offset.zero,
+                    ).animate(CurvedAnimation(
+                      parent: _slideAnimationController,
+                      curve: Interval(
+                        (index * 0.1).clamp(0.0, 1.0),
+                        1.0,
+                        curve: Curves.easeOutBack,
+                      ),
+                    )),
+                    child: FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: _fadeAnimationController,
+                        curve: Interval(
+                          (index * 0.1).clamp(0.0, 1.0),
+                          1.0,
+                          curve: Curves.easeOut,
+                        ),
+                      ),
+                      child: _buildEbookCard(ebook, index),
+                    ),
+                  );
+                }, childCount: filteredEbooks.length),
               ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final ebook = filteredEbooks[index];
-                return AnimatedContainer(
-                  duration: Duration(milliseconds: 200 + (index * 50)),
-                  curve: Curves.easeOutBack,
-                  child: _buildEbookCard(ebook),
-                );
-              }, childCount: filteredEbooks.length),
             ),
-          ),
-        ],
+
+            // Bottom padding for navigation
+            const SliverToBoxAdapter(
+              child: SizedBox(height: 100),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  // Header section - removed as requested
+  Widget _buildHeader() {
+    return const SizedBox(height: 20);
   }
 
   Widget _buildSearchAndFilters(KitabProvider kitabProvider) {
@@ -158,23 +379,24 @@ class _EbookScreenState extends State<EbookScreen> {
 
     return Container(
       color: AppTheme.backgroundColor,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
           // Search Bar
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            margin: const EdgeInsets.only(bottom: 16),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 filled: true,
-                fillColor: const Color(0xFFEEEEEE),
+                fillColor: AppTheme.surfaceColor,
                 hintText: 'Cari e-book yang anda inginkan...',
                 hintStyle: TextStyle(
                   color: AppTheme.textSecondaryColor,
                   fontSize: 14,
                 ),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.all(12),
+                prefixIcon: Container(
+                  padding: const EdgeInsets.all(14),
                   child: PhosphorIcon(
                     PhosphorIcons.magnifyingGlass(),
                     color: AppTheme.textSecondaryColor,
@@ -182,38 +404,47 @@ class _EbookScreenState extends State<EbookScreen> {
                   ),
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: PhosphorIcon(
-                          PhosphorIcons.x(),
-                          color: AppTheme.textSecondaryColor,
-                          size: 20,
+                    ? Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() {
+                              _searchController.clear();
+                              _searchQuery = '';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            child: PhosphorIcon(
+                              PhosphorIcons.x(),
+                              color: AppTheme.textSecondaryColor,
+                              size: 20,
+                            ),
+                          ),
                         ),
-                        onPressed: () {
-                          setState(() {
-                            _searchController.clear();
-                            _searchQuery = '';
-                          });
-                        },
                       )
                     : null,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppTheme.borderColor),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(color: AppTheme.borderColor),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(25),
-                  borderSide: BorderSide(
-                    color: Colors.grey.shade400,
-                    width: 1.5,
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primaryColor,
+                    width: 2,
                   ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
-                  vertical: 12,
+                  vertical: 16,
                 ),
               ),
               onChanged: (value) {
@@ -225,96 +456,126 @@ class _EbookScreenState extends State<EbookScreen> {
           ),
 
           // Category Filters
-          Container(
-            height: 40,
-            padding: const EdgeInsets.only(left: 16, bottom: 8),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              itemBuilder: (context, index) {
-                final category = categories[index];
-                final isSelected = selectedCategory == category;
+          if (categories.length > 1)
+            Container(
+              height: 44,
+              margin: const EdgeInsets.only(bottom: 20),
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: categories.length,
+                itemBuilder: (context, index) {
+                  final category = categories[index];
+                  final isSelected = selectedCategory == category;
 
-                return Container(
-                  margin: EdgeInsets.only(right: 12, bottom: 4),
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        if (category == 'Semua') {
-                          _selectedCategoryId = null;
-                        } else {
-                          _selectedCategoryId = kitabProvider.categories
-                              .firstWhere((c) => c.name == category)
-                              .id;
-                        }
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? const Color(0xFFE8E8E8)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: isSelected
-                            ? [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.08),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ]
-                            : null,
-                      ),
-                      child: Text(
-                        category,
-                        style: TextStyle(
-                          color: isSelected
-                              ? AppTheme.textPrimaryColor
-                              : AppTheme.textSecondaryColor,
-                          fontSize: 13,
-                          fontWeight: isSelected
-                              ? FontWeight.w600
-                              : FontWeight.w500,
+                  return Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(22),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(22),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          setState(() {
+                            if (category == 'Semua') {
+                              _selectedCategoryId = null;
+                            } else {
+                              _selectedCategoryId = kitabProvider.categories
+                                  .firstWhere((c) => c.name == category)
+                                  .id;
+                            }
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                                : AppTheme.surfaceColor,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: isSelected
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.borderColor,
+                              width: isSelected ? 2 : 1,
+                            ),
+                            boxShadow: isSelected
+                                ? [
+                                    BoxShadow(
+                                      color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              color: isSelected
+                                  ? AppTheme.primaryColor
+                                  : AppTheme.textSecondaryColor,
+                              fontSize: 14,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
 
-  Widget _buildEbookCard(Ebook ebook) {
+  Widget _buildEbookCard(Ebook ebook, int index) {
     final totalPages = ebook.totalPages ?? 0;
-    final fileSize = ebook.pdfFileSize != null
-        ? '${(ebook.pdfFileSize! / 1024 / 1024).toStringAsFixed(1)} MB'
-        : null;
 
-    return GestureDetector(
-      onTap: () => context.push('/ebook/${ebook.id}'),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          context.push('/ebook/${ebook.id}');
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -329,8 +590,9 @@ class _EbookScreenState extends State<EbookScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppTheme.primaryColor.withOpacity(0.15),
-                        AppTheme.primaryColor.withOpacity(0.05),
+                        AppTheme.primaryColor.withValues(alpha: 0.12),
+                        AppTheme.secondaryColor.withValues(alpha: 0.08),
+                        AppTheme.primaryColor.withValues(alpha: 0.04),
                       ],
                     ),
                     borderRadius: const BorderRadius.vertical(
@@ -339,16 +601,28 @@ class _EbookScreenState extends State<EbookScreen> {
                   ),
                   child: Stack(
                     children: [
-                      // Background pattern
+                      // Background pattern - Multiple circles for depth
                       Positioned(
-                        top: -10,
-                        right: -10,
+                        top: -15,
+                        right: -15,
                         child: Container(
-                          width: 60,
-                          height: 60,
+                          width: 70,
+                          height: 70,
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(30),
+                            color: AppTheme.primaryColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(35),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: -20,
+                        left: -20,
+                        child: Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: AppTheme.secondaryColor.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(25),
                           ),
                         ),
                       ),
@@ -366,12 +640,19 @@ class _EbookScreenState extends State<EbookScreen> {
                             const SizedBox(height: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                                horizontal: 10,
+                                vertical: 5,
                               ),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryColor.withOpacity(0.9),
+                                color: AppTheme.primaryColor,
                                 borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
                               child: Text(
                                 'E-BOOK',
@@ -380,6 +661,7 @@ class _EbookScreenState extends State<EbookScreen> {
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                       fontSize: 10,
+                                      letterSpacing: 0.5,
                                     ),
                               ),
                             ),
@@ -402,8 +684,8 @@ class _EbookScreenState extends State<EbookScreen> {
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 4,
+                                  color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+                                  blurRadius: 8,
                                   offset: const Offset(0, 2),
                                 ),
                               ],
@@ -425,12 +707,11 @@ class _EbookScreenState extends State<EbookScreen> {
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Flexible(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -439,14 +720,15 @@ class _EbookScreenState extends State<EbookScreen> {
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: AppTheme.textPrimaryColor,
-                              fontSize: 14,
+                              fontSize: 15,
+                              height: 1.3,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            ebook.author ?? 'Unknown Author',
+                            ebook.author ?? 'Pengarang Tidak Diketahui',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppTheme.textSecondaryColor,
                               fontWeight: FontWeight.w500,
@@ -458,185 +740,235 @@ class _EbookScreenState extends State<EbookScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (totalPages > 0)
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                PhosphorIcon(
-                                  PhosphorIcons.filePdf(),
-                                  size: 12,
-                                  color: AppTheme.primaryColor,
-                                ),
-                                const SizedBox(width: 3),
-                                Text(
-                                  '$totalPages hal',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: AppTheme.primaryColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
-                                      ),
-                                ),
-                              ],
+                    // Metadata row - page count only
+                    if (totalPages > 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text(
+                            '$totalPages hal',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.textSecondaryColor,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 11,
                             ),
                           ),
-                        if (fileSize != null && totalPages > 0)
-                          const SizedBox(width: 8),
-                        if (fileSize != null)
-                          Flexible(
-                            child: Text(
-                              fileSize,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 11,
-                                  ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                      ],
-                    ),
+                        ],
+                      ),
                   ],
                 ),
               ),
             ),
           ],
         ),
+        ),
       ),
     );
   }
 
   Widget _buildEmptyState() {
-    return ListView(
-      children: [
-        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: PhosphorIcon(
-                PhosphorIcons.filePdf(),
-                size: 64,
-                color: AppTheme.textSecondaryColor,
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Tiada E-Book Ditemui',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: AppTheme.textPrimaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Text(
-                'Cuba ubah kategori atau periksa semula untuk melihat e-book yang tersedia',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                setState(() {
-                  _selectedCategoryId = null;
-                });
-              },
-              icon: PhosphorIcon(
-                PhosphorIcons.arrowClockwise(),
-                color: AppTheme.textLightColor,
-                size: 18,
-              ),
-              label: const Text('Reset Filter'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                foregroundColor: AppTheme.textLightColor,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                elevation: 4,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildErrorState(String errorMessage) {
-    return Center(
+    return Container(
+      padding: const EdgeInsets.all(40),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Enhanced empty state illustration
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(
-              color: AppTheme.errorColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                  AppTheme.secondaryColor.withValues(alpha: 0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(40),
+              border: Border.all(
+                color: AppTheme.borderColor,
+                width: 1,
+              ),
             ),
             child: PhosphorIcon(
-              PhosphorIcons.warning(),
-              size: 64,
-              color: AppTheme.errorColor,
+              PhosphorIcons.filePdf(),
+              size: 80,
+              color: AppTheme.primaryColor,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
+
+          // Title and description
           Text(
-            'Ralat Memuat Data',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            'Tiada E-Book Ditemui',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               color: AppTheme.textPrimaryColor,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 12),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Text(
-              errorMessage,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              _searchQuery.isNotEmpty
+                  ? 'Tiada e-book yang sepadan dengan pencarian "$_searchQuery". Cuba gunakan kata kunci yang berbeza.'
+                  : 'Cuba ubah kategori atau periksa semula untuk melihat e-book yang tersedia.',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: AppTheme.textSecondaryColor,
+                height: 1.5,
               ),
               textAlign: TextAlign.center,
             ),
           ),
+          const SizedBox(height: 40),
+
+          // Action buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (_searchQuery.isNotEmpty)
+                OutlinedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _searchController.clear();
+                      _searchQuery = '';
+                    });
+                  },
+                  icon: PhosphorIcon(
+                    PhosphorIcons.x(),
+                    color: AppTheme.textSecondaryColor,
+                    size: 18,
+                  ),
+                  label: const Text('Hapus Pencarian'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.textSecondaryColor,
+                    side: const BorderSide(color: AppTheme.borderColor),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+
+              if (_searchQuery.isNotEmpty && _selectedCategoryId != null)
+                const SizedBox(width: 12),
+
+              if (_selectedCategoryId != null)
+                ElevatedButton.icon(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _selectedCategoryId = null;
+                    });
+                  },
+                  icon: PhosphorIcon(
+                    PhosphorIcons.arrowClockwise(),
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  label: const Text('Reset Filter'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 4,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(String errorMessage) {
+    return Container(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Enhanced error state illustration
+          Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.errorColor.withValues(alpha: 0.1),
+                  AppTheme.errorColor.withValues(alpha: 0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(40),
+              border: Border.all(
+                color: AppTheme.errorColor.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: PhosphorIcon(
+              PhosphorIcons.warning(),
+              size: 80,
+              color: AppTheme.errorColor,
+            ),
+          ),
           const SizedBox(height: 32),
+
+          // Title and description
+          Text(
+            'Ralat Memuat Data',
+            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+              color: AppTheme.textPrimaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Text(
+              errorMessage,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: AppTheme.textSecondaryColor,
+                height: 1.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 40),
+
+          // Action button
           ElevatedButton.icon(
             onPressed: () {
+              HapticFeedback.lightImpact();
               context.read<KitabProvider>().refresh();
             },
             icon: PhosphorIcon(
               PhosphorIcons.arrowClockwise(),
-              color: AppTheme.textLightColor,
+              color: Colors.white,
               size: 18,
             ),
             label: const Text('Cuba Lagi'),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
-              foregroundColor: AppTheme.textLightColor,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               elevation: 4,
+              shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
             ),
           ),
         ],

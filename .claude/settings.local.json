@@ -36,7 +36,14 @@
       "Bash(mv:*)",
       "mcp__supabase__list_branches",
       "Bash(claude doctor)",
-      "Bash(supabase status:*)"
+      "Bash(supabase status:*)",
+      "mcp__hugeicons__search_icons",
+      "mcp__supabase__search_docs",
+      "Bash(nc localhost 53652)",
+      "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\ruwaq_jawi\\test_popup_import.dart\")",
+      "Bash(timeout 60 flutter analyze)",
+      "Bash(timeout 30 flutter build:*)",
+      "Bash(timeout 30 flutter analyze)"
     ],
     "deny": [],
     "ask": []

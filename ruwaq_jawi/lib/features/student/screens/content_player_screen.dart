@@ -6,6 +6,8 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter/services.dart';
 import '../../../core/models/video_kitab.dart';
 import '../../../core/models/video_episode.dart';
 import '../../../core/providers/kitab_provider.dart';
@@ -32,6 +34,11 @@ class ContentPlayerScreen extends StatefulWidget {
 
 class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     with TickerProviderStateMixin {
+  // Animation controllers for smooth animations
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
   late TabController _tabController;
   YoutubePlayerController? _videoController;
   PdfViewerController? _pdfController;
@@ -77,6 +84,35 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+
+    // Initialize animation controllers
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+      value: 0.0,
+    );
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+      value: 0.0,
+    );
+
+    // Create animations
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
 
     // Load real data
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -202,7 +238,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       try {
         _kitab = videoKitabList.firstWhere((vk) => vk.id == widget.kitabId);
       } catch (e) {
-        print('VideoKitab not found: $e');
+        debugPrint('VideoKitab not found: $e');
         setState(() {
           _isDataLoading = false;
         });
@@ -217,9 +253,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         _episodes.sort((a, b) => a.partNumber.compareTo(b.partNumber));
 
         // Debug: Print episode order after sorting
-        print('📝 Loaded and sorted episodes:');
+        debugPrint('📝 Loaded and sorted episodes:');
         for (int i = 0; i < _episodes.length; i++) {
-          print('📝 Index $i: Part ${_episodes[i].partNumber} - ${_episodes[i].title}');
+          debugPrint('📝 Index $i: Part ${_episodes[i].partNumber} - ${_episodes[i].title}');
         }
 
         // Find current episode
@@ -253,9 +289,16 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         setState(() {
           _isDataLoading = false;
         });
+        // Start animations
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _fadeAnimationController.forward();
+            _slideAnimationController.forward();
+          }
+        });
       }
     } catch (e) {
-      print('Error loading Supabase data: $e');
+      debugPrint('Error loading Supabase data: $e');
       if (mounted) {
         setState(() {
           _isDataLoading = false;
@@ -271,14 +314,14 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   }
 
   void _switchToEpisode(int index) {
-    print('🔄 _switchToEpisode called with index: $index');
-    print('🔄 Current index: $_currentEpisodeIndex');
-    print('🔄 Episodes length: ${_episodes.length}');
+    debugPrint('🔄 _switchToEpisode called with index: $index');
+    debugPrint('🔄 Current index: $_currentEpisodeIndex');
+    debugPrint('🔄 Episodes length: ${_episodes.length}');
 
     if (index < 0 ||
         index >= _episodes.length ||
         index == _currentEpisodeIndex) {
-      print('🔄 Invalid index, returning early');
+      debugPrint('🔄 Invalid index, returning early');
       return;
     }
 
@@ -295,9 +338,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       _currentEpisode = _episodes[index];
     });
 
-    print('🔄 Switched to episode index: $index');
-    print('🔄 New episode part number: ${_currentEpisode?.partNumber}');
-    print('🔄 New episode title: ${_currentEpisode?.title}');
+    debugPrint('🔄 Switched to episode index: $index');
+    debugPrint('🔄 New episode part number: ${_currentEpisode?.partNumber}');
+    debugPrint('🔄 New episode title: ${_currentEpisode?.title}');
 
     // Check save status for new episode
     _checkSaveStatus();
@@ -323,13 +366,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               try {
                 _videoController!.seekTo(Duration(seconds: resumePos));
               } catch (e) {
-                print('Error seeking to position: $e');
+                debugPrint('Error seeking to position: $e');
               }
             }
           });
         }
       } catch (e) {
-        print('Error loading video: $e');
+        debugPrint('Error loading video: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -380,7 +423,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             }
           }
         } catch (e) {
-          print('Error in video controller listener: $e');
+          debugPrint('Error in video controller listener: $e');
         }
       });
 
@@ -426,12 +469,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     return false; // we handled the pop manually
   }
 
-  Future<void> _navigateToKitab(String kitabId) async {
-    _detachPlayer();
-    await Future<void>.delayed(const Duration(milliseconds: 16));
-    if (!mounted) return;
-    context.pushReplacement('/player/$kitabId');
-  }
 
   // Clean resume banner with modern design
   Widget _buildResumeBanner(int seconds) {
@@ -442,16 +479,16 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.1),
+              color: Colors.orange.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: PhosphorIcon(
@@ -485,7 +522,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               ),
             ),
             style: TextButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+              backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -531,6 +568,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     _controlsTimer?.cancel();
     _videoController?.dispose();
     _tabController.dispose();
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
     super.dispose();
   }
 
@@ -566,37 +605,95 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     // Show loading screen while data is loading
     if (_isDataLoading) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
-          backgroundColor: Colors.white,
+          backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: PhosphorIcon(
-              PhosphorIcons.caretLeft(),
-              color: AppTheme.textPrimaryColor,
-            ),
-            onPressed: () => context.pop(),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
           ),
-          title: Text(
-            'Memuat...',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryColor,
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: IconButton(
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowLeft01,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
             ),
           ),
         ),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(color: AppTheme.primaryColor),
-              SizedBox(height: 16),
-              Text(
-                'Memuat kandungan dari Supabase...',
-                style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 800),
+                tween: Tween(begin: 0.0, end: 1.0),
+                curve: Curves.easeOutBack,
+                builder: (context, value, child) {
+                  return Transform.scale(
+                    scale: 0.8 + (0.2 * value),
+                    child: Opacity(
+                      opacity: value.clamp(0.0, 1.0),
+                      child: Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceColor,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                          strokeWidth: 3,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 32),
+              TweenAnimationBuilder<double>(
+                duration: const Duration(milliseconds: 1000),
+                tween: Tween(begin: 0.0, end: 1.0),
+                curve: Curves.easeOut,
+                builder: (context, value, child) {
+                  return Opacity(
+                    opacity: value.clamp(0.0, 1.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Memuat Kandungan',
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Sila tunggu sebentar...',
+                          style: TextStyle(
+                            color: AppTheme.textSecondaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           ),
@@ -607,52 +704,107 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     // Show error if kitab not found
     if (_kitab == null) {
       return Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.backgroundColor,
         appBar: _buildAppBar(),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              PhosphorIcon(
-                PhosphorIcons.warning(),
-                size: 64,
-                color: AppTheme.textSecondaryColor,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Kitab tidak ditemui',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Kitab yang anda cari tidak wujud dalam pangkalan data',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => context.pop(),
-                icon: PhosphorIcon(
-                  PhosphorIcons.caretLeft(),
-                  color: Colors.white,
-                ),
-                label: const Text('Kembali'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
+        body: TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          tween: Tween(begin: 0.0, end: 1.0),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: 0.8 + (0.2 * value),
+              child: Opacity(
+                opacity: value.clamp(0.0, 1.0),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: AppTheme.textSecondaryColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.textSecondaryColor.withValues(alpha: 0.2),
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: HugeIcon(
+                              icon: HugeIcons.strokeRoundedAlert02,
+                              color: AppTheme.textSecondaryColor,
+                              size: 48,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Text(
+                          'Kitab Tidak Ditemui',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Kitab yang anda cari tidak wujud dalam pangkalan data',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                            height: 1.5,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon: HugeIcon(
+                              icon: HugeIcons.strokeRoundedArrowLeft01,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            label: const Text(
+                              'Kembali',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
       );
     }
@@ -704,19 +856,19 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         },
         onEnded: (metaData) {
           // Auto play next episode if available
-          print('🎬 Video ended. Current episode index: $_currentEpisodeIndex');
-          print('🎬 Current episode part: ${_currentEpisode?.partNumber}');
-          print('🎬 Total episodes: ${_episodes.length}');
-          print('🎬 Next episode index would be: ${_currentEpisodeIndex + 1}');
+          debugPrint('🎬 Video ended. Current episode index: $_currentEpisodeIndex');
+          debugPrint('🎬 Current episode part: ${_currentEpisode?.partNumber}');
+          debugPrint('🎬 Total episodes: ${_episodes.length}');
+          debugPrint('🎬 Next episode index would be: ${_currentEpisodeIndex + 1}');
           if (_currentEpisodeIndex + 1 < _episodes.length) {
-            print('🎬 Next episode part: ${_episodes[_currentEpisodeIndex + 1].partNumber}');
+            debugPrint('🎬 Next episode part: ${_episodes[_currentEpisodeIndex + 1].partNumber}');
           }
 
           if (mounted && _currentEpisodeIndex < _episodes.length - 1) {
             // Add delay to ensure proper state transition
             Future.delayed(const Duration(milliseconds: 500), () {
               if (mounted) {
-                print('🎬 Switching to next episode...');
+                debugPrint('🎬 Switching to next episode...');
                 _switchToEpisode(_currentEpisodeIndex + 1);
               }
             });
@@ -728,15 +880,34 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.white,
-      foregroundColor: AppTheme.textPrimaryColor,
+      backgroundColor: Colors.transparent,
       elevation: 0,
-      leading: IconButton(
-        icon: PhosphorIcon(
-          PhosphorIcons.caretLeft(),
-          color: AppTheme.textPrimaryColor,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppTheme.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        onPressed: () => context.pop(),
+        child: IconButton(
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
+            color: AppTheme.textPrimaryColor,
+            size: 20,
+          ),
+          onPressed: () => context.pop(),
+        ),
       ),
       title: Text(
         _kitab?.title ?? 'Memuat...',
@@ -747,26 +918,48 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         overflow: TextOverflow.ellipsis,
       ),
       actions: [
-        IconButton(
-          icon: _isSaveLoading
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      AppTheme.primaryColor,
+        Container(
+          margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: _isSaveLoading
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppTheme.primaryColor,
+                      ),
+                    ),
+                  )
+                : AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: HugeIcon(
+                      key: ValueKey(_isSaved),
+                      icon: _isSaved
+                          ? HugeIcons.strokeRoundedFavourite
+                          : HugeIcons.strokeRoundedHeartAdd,
+                      color: _isSaved
+                          ? const Color(0xFFE91E63)
+                          : AppTheme.textSecondaryColor,
+                      size: 20,
                     ),
                   ),
-                )
-              : PhosphorIcon(
-                  _isSaved
-                      ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
-                      : PhosphorIcons.heart(),
-                  color: _isSaved ? Colors.red : AppTheme.textSecondaryColor,
-                ),
-          onPressed: _isSaveLoading ? null : _toggleSaved,
-          tooltip: _isSaved ? 'Buang Video dari Simpan' : 'Simpan Video',
+            onPressed: _isSaveLoading ? null : _toggleSaved,
+            tooltip: _isSaved ? 'Buang Video dari Simpan' : 'Simpan Video',
+          ),
         ),
       ],
     );
@@ -778,34 +971,52 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         // Video player always on top
         _buildVideoSection(player),
 
-        // Clean tab bar design
+        // Enhanced tab bar design
         Container(
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor,
-            border: Border(bottom: BorderSide(color: AppTheme.borderColor)),
+            border: Border(
+              bottom: BorderSide(
+                color: AppTheme.borderColor.withValues(alpha: 0.5),
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TabBar(
             controller: _tabController,
             labelColor: AppTheme.primaryColor,
             unselectedLabelColor: AppTheme.textSecondaryColor,
             indicatorColor: AppTheme.primaryColor,
-            indicatorWeight: 2,
+            indicatorWeight: 3,
             indicatorSize: TabBarIndicatorSize.label,
             labelStyle: const TextStyle(
               fontWeight: FontWeight.w600,
-              fontSize: 14,
+              fontSize: 15,
             ),
             unselectedLabelStyle: const TextStyle(
               fontWeight: FontWeight.w500,
-              fontSize: 14,
+              fontSize: 15,
             ),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             tabs: [
               Tab(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    PhosphorIcon(PhosphorIcons.videoCamera(), size: 16),
-                    const SizedBox(width: 6),
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedVideo01,
+                      size: 18,
+                      color: _tabController.index == 0
+                          ? AppTheme.primaryColor
+                          : AppTheme.textSecondaryColor,
+                    ),
+                    const SizedBox(width: 8),
                     const Text('Video'),
                   ],
                 ),
@@ -814,8 +1025,14 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    PhosphorIcon(PhosphorIcons.filePdf(), size: 16),
-                    const SizedBox(width: 6),
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedPdf01,
+                      size: 18,
+                      color: _tabController.index == 1
+                          ? AppTheme.primaryColor
+                          : AppTheme.textSecondaryColor,
+                    ),
+                    const SizedBox(width: 8),
                     const Text('E-Book'),
                   ],
                 ),
@@ -824,11 +1041,23 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           ),
         ),
 
-        // Tab Content (only the content below the video)
+        // Tab Content with animations
         Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [_buildVideoTabContent(), _buildPdfTab()],
+          child: AnimatedBuilder(
+            animation: _fadeAnimation,
+            builder: (context, child) {
+              return Opacity(
+                opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: TabBarView(
+                    controller: _tabController,
+                    physics: const BouncingScrollPhysics(),
+                    children: [_buildVideoTabContent(), _buildPdfTab()],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ],
@@ -987,7 +1216,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               // Show feedback with visual indicator
               _showSkipFeedback(isLeftSide, skipSeconds.abs(), isLeftSide);
             } catch (e) {
-              print('Error in double tap skip: $e');
+              debugPrint('Error in double tap skip: $e');
             }
           },
           child: player,
@@ -1007,7 +1236,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                     shape: BoxShape.circle,
                   ),
                   child: Column(
@@ -1206,7 +1435,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.1),
+                    color: Colors.green.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -1237,7 +1466,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.1),
+                    color: Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -1307,7 +1536,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             border: Border(top: BorderSide(color: AppTheme.borderColor)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
@@ -1385,7 +1614,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       tooltip: tooltip,
       style: IconButton.styleFrom(
         backgroundColor: onPressed != null
-            ? AppTheme.primaryColor.withOpacity(0.1)
+            ? AppTheme.primaryColor.withValues(alpha: 0.1)
             : Colors.transparent,
         padding: const EdgeInsets.all(12),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -1518,7 +1747,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: PhosphorIcon(
@@ -1548,7 +1777,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               width: double.infinity,
               height: 4,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(2),
               ),
               child: Row(
@@ -1593,7 +1822,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.1),
+                color: Colors.orange.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: PhosphorIcon(
@@ -1665,26 +1894,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   // Removed unused _buildChapterList() to resolve lint warning
 
-  void _shareContent() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            PhosphorIcon(
-              PhosphorIcons.shareNetwork(),
-              color: Colors.white,
-              size: 16,
-            ),
-            const SizedBox(width: 8),
-            const Text('Pautan dikongsi'),
-          ],
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-    );
-  }
 
   void _toggleSaved() async {
     if (_currentEpisode == null || _isSaveLoading) return;
@@ -1822,7 +2031,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1850,188 +2059,298 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     final thumbnail =
         'https://img.youtube.com/vi/${episode.youtubeVideoId}/mqdefault.jpg';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: isCurrentEpisode ? Colors.grey[100] : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        border: isCurrentEpisode
-          ? Border.all(color: AppTheme.primaryColor.withOpacity(0.3), width: 1)
-          : null,
-      ),
-      child: InkWell(
-        onTap: () => _switchToEpisode(index),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              // YouTube-style thumbnail
-              Container(
-                width: 120,
-                height: 68,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[100],
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 400 + (index * 100)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: isCurrentEpisode
+                    ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                    : AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(20), // xl rounded corners
+                border: Border.all(
+                  color: isCurrentEpisode
+                      ? AppTheme.primaryColor
+                      : AppTheme.borderColor.withValues(alpha: 0.5),
+                  width: isCurrentEpisode ? 2 : 1,
                 ),
-                child: Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        thumbnail,
-                        width: 120,
-                        height: 68,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 120,
-                            height: 68,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Center(
-                              child: PhosphorIcon(
-                                PhosphorIcons.videoCamera(),
-                                color: AppTheme.primaryColor,
-                                size: 28,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    // Duration badge (bottom right)
-                    if (episode.durationMinutes > 0)
-                      Positioned(
-                        bottom: 4,
-                        right: 4,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 2,
-                          ),
+                boxShadow: [
+                  BoxShadow(
+                    color: isCurrentEpisode
+                        ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                        : Colors.black.withValues(alpha: 0.05),
+                    blurRadius: isCurrentEpisode ? 12 : 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _switchToEpisode(index),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        // Enhanced thumbnail with modern design
+                        Container(
+                          width: 110,
+                          height: 72,
                           decoration: BoxDecoration(
-                            color: Colors.black87,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(16),
+                            color: Colors.grey[100],
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                          child: Text(
-                            episode.formattedDuration,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
+                          child: Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.network(
+                                  thumbnail,
+                                  width: 110,
+                                  height: 72,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 110,
+                                      height: 72,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Center(
+                                        child: HugeIcon(
+                                          icon: HugeIcons.strokeRoundedVideo01,
+                                          color: AppTheme.primaryColor,
+                                          size: 28,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                              // Enhanced duration badge
+                              if (episode.durationMinutes > 0)
+                                Positioned(
+                                  bottom: 6,
+                                  right: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.85),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        width: 0.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      episode.formattedDuration,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Enhanced "Now Playing" overlay
+                              if (isCurrentEpisode)
+                                Positioned.fill(
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      color: Colors.black.withValues(alpha: 0.4),
+                                    ),
+                                    child: Center(
+                                      child: TweenAnimationBuilder<double>(
+                                        duration: const Duration(milliseconds: 800),
+                                        tween: Tween(begin: 0.0, end: 1.0),
+                                        curve: Curves.elasticOut,
+                                        builder: (context, value, child) {
+                                          return Transform.scale(
+                                            scale: 0.8 + (0.2 * value),
+                                            child: Container(
+                                              padding: const EdgeInsets.all(12),
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  colors: [
+                                                    AppTheme.primaryColor,
+                                                    AppTheme.primaryColor.withValues(alpha: 0.8),
+                                                  ],
+                                                ),
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                                                    blurRadius: 12,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                ],
+                                              ),
+                                              child: HugeIcon(
+                                                icon: HugeIcons.strokeRoundedPause,
+                                                color: Colors.white,
+                                                size: 16,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
-                      ),
-                    // "Now Playing" play icon overlay (center)
-                    if (isCurrentEpisode)
-                      Positioned.fill(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: Colors.black.withOpacity(0.3),
-                          ),
-                          child: Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor,
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.3),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
+                        const SizedBox(width: 16),
+                        // Enhanced video info
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Episode badge
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      AppTheme.primaryColor.withValues(alpha: 0.15),
+                                      AppTheme.primaryColor.withValues(alpha: 0.08),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                    width: 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    HugeIcon(
+                                      icon: HugeIcons.strokeRoundedVideoReplay,
+                                      size: 12,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Episode ${episode.partNumber}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // Enhanced title
+                              Text(
+                                episode.title,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textPrimaryColor,
+                                  height: 1.3,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              // Status and description
+                              Row(
+                                children: [
+                                  if (isCurrentEpisode) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            AppTheme.primaryColor,
+                                            AppTheme.primaryColor.withValues(alpha: 0.8),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        'PLAYING',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedClock03,
+                                    size: 14,
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    episode.formattedDuration,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.textSecondaryColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
                                 ],
                               ),
-                              child: const Icon(
-                                Icons.play_arrow,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Video info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      episode.title,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    // Episode number and current status
-                    Row(
-                      children: [
-                        Text(
-                          'Episode ${episode.partNumber}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppTheme.textSecondaryColor,
-                                fontSize: 12,
-                              ),
-                        ),
-                        if (isCurrentEpisode) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'PLAYING',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.bold,
+
+                              if (episode.description?.isNotEmpty == true) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  episode.description!,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                    height: 1.3,
+                                    fontSize: 12,
                                   ),
-                            ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
                           ),
-                        ],
+                        ),
                       ],
                     ),
-                    if (episode.description?.isNotEmpty == true) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        episode.description!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondaryColor,
-                          height: 1.3,
-                          fontSize: 12,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

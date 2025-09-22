@@ -5,7 +5,7 @@ import '../../../core/providers/subscription_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/services/supabase_service.dart';
-import '../../../core/services/unified_notification_service.dart';
+import '../../../core/services/enhanced_notification_service.dart';
 
 class PaymentCallbackPage extends StatefulWidget {
   final String billId;
@@ -103,35 +103,39 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
               try {
                 print('🔄 Starting comprehensive app refresh after payment verification...');
 
-              // 0. Insert payment success notification to database
+              // 0. Insert payment success notification to database using enhanced system
               try {
                 // Get current user ID
-                final currentUser = UnifiedNotificationService.currentUserId;
+                final currentUser = EnhancedNotificationService.currentUserId;
                 if (currentUser != null) {
-                  final notificationSuccess = await UnifiedNotificationService.createIndividualNotification(
+                  final notificationSuccess = await EnhancedNotificationService.createPersonalNotification(
                     userId: currentUser,
                     title: 'Pembayaran Berjaya! 🎉',
-                    body: 'Terima kasih! Pembayaran RM${widget.amount} untuk langganan ${widget.planId} telah berjaya. Langganan anda kini aktif.',
-                    type: 'payment_success',
+                    message: 'Terima kasih! Pembayaran RM${widget.amount} untuk langganan ${widget.planId} telah berjaya. Langganan anda kini aktif.',
                     metadata: {
+                      'type': 'payment_success',
+                      'sub_type': 'payment_success',
+                      'icon': '🎉',
+                      'priority': 'high',
                       'bill_id': widget.billId,
                       'plan_id': widget.planId,
                       'amount': widget.amount.toString(),
                       'payment_date': DateTime.now().toIso8601String(),
                       'action_url': '/subscription',
+                      'source': 'payment_callback_page',
                     },
                   );
 
                   if (notificationSuccess) {
-                    print('✅ Payment notification inserted to database successfully');
+                    print('✅ Payment notification created using enhanced notification service');
                   } else {
-                    print('❌ Failed to insert payment notification to database');
+                    print('❌ Failed to create payment notification with enhanced service');
                   }
                 } else {
-                  print('❌ No current user found, cannot insert payment notification');
+                  print('❌ No current user found, cannot create payment notification');
                 }
               } catch (e) {
-                print('❌ Error inserting payment notification: $e');
+                print('❌ Error creating payment notification: $e');
               }
 
               // 1. Refresh AuthProvider (subscription status and profile)

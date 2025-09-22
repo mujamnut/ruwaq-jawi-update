@@ -1084,6 +1084,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               const Color(0xFF00BF6D),
               () => context.go('/admin/reports'),
             ),
+            _buildActionButton(
+              'Notifikasi',
+              HugeIcons.strokeRoundedNotification03,
+              const Color(0xFF00BF6D),
+              () => context.go('/admin/notifications'),
+            ),
+            _buildActionButton(
+              'Urus Kategori',
+              HugeIcons.strokeRoundedFolder02,
+              const Color(0xFF00BF6D),
+              () => context.go('/admin/categories'),
+            ),
           ],
         ),
       ],

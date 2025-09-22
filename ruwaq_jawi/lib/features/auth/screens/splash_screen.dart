@@ -126,7 +126,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'مكتبة الرواق الجاوي',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.textLightColor.withOpacity(0.8),
+                color: AppTheme.textLightColor.withValues(alpha: 0.8),
                 fontSize: 18,
               ),
             ),
@@ -146,7 +146,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               _status,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: AppTheme.textLightColor.withOpacity(0.8),
+                color: AppTheme.textLightColor.withValues(alpha: 0.8),
               ),
               textAlign: TextAlign.center,
             ),

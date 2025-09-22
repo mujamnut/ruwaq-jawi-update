@@ -11,6 +11,7 @@ class CustomButton extends StatelessWidget {
   final double? width;
   final double height;
   final EdgeInsetsGeometry? padding;
+  final Gradient? gradient;
 
   const CustomButton({
     super.key,
@@ -23,6 +24,7 @@ class CustomButton extends StatelessWidget {
     this.width,
     this.height = 50,
     this.padding,
+    this.gradient,
   });
 
   @override
@@ -61,33 +63,68 @@ class CustomButton extends StatelessWidget {
                       ),
                     ),
             )
-          : ElevatedButton(
-              onPressed: isLoading ? null : onPressed,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: backgroundColor ?? AppTheme.primaryColor,
-                foregroundColor: textColor ?? Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
-                elevation: 0,
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          : gradient != null
+              ? Container(
+                  decoration: BoxDecoration(
+                    gradient: gradient,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : onPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      foregroundColor: textColor ?? Colors.white,
+                      shadowColor: Colors.transparent,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    )
-                  : Text(
-                      text,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
+                      elevation: 0,
                     ),
-            ),
+                    child: isLoading
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : Text(
+                            text,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                )
+              : ElevatedButton(
+                  onPressed: isLoading ? null : onPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: backgroundColor ?? AppTheme.primaryColor,
+                    foregroundColor: textColor ?? Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: padding ?? const EdgeInsets.symmetric(horizontal: 16),
+                    elevation: 0,
+                  ),
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          text,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                ),
     );
   }
 }

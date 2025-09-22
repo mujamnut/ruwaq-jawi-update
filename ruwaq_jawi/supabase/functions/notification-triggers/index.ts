@@ -524,7 +524,7 @@ async function getTargetUsers(supabaseClient: any, trigger: NotificationTrigger)
   return users.map(user => user.id);
 }
 
-// Send notification directly to users (using existing user_notifications structure)
+// Send notification using enhanced system with fallback to legacy
 async function sendToUsers(
   supabaseClient: any,
   notificationData: NotificationData,
@@ -533,14 +533,152 @@ async function sendToUsers(
   purchaseId?: string
 ): Promise<void> {
   if (userIds.length === 0) {
-    console.log('No target users specified');
+    // Empty userIds means broadcast to all matching criteria
+    await sendBroadcastNotification(supabaseClient, notificationData, targetCriteria);
     return;
   }
 
-  // Create message with title and body
+  // Determine if this should be a broadcast or personal notifications
+  const isBroadcast = userIds.length > 5; // Threshold for broadcast vs individual
+
+  if (isBroadcast) {
+    // Use enhanced system for broadcast notifications
+    await sendBroadcastNotification(supabaseClient, notificationData, targetCriteria);
+  } else {
+    // Use enhanced system for personal notifications
+    await sendPersonalNotifications(supabaseClient, notificationData, userIds, targetCriteria, purchaseId);
+  }
+}
+
+// Send broadcast notification using new system
+async function sendBroadcastNotification(
+  supabaseClient: any,
+  notificationData: NotificationData,
+  targetCriteria?: Record<string, any>
+): Promise<void> {
+  try {
+    console.log('🔄 Attempting to use enhanced notification system for broadcast...');
+
+    // Try new system first
+    const { data, error } = await supabaseClient.rpc('create_broadcast_notification', {
+      p_title: notificationData.title,
+      p_message: notificationData.body,
+      p_metadata: {
+        icon: notificationData.icon,
+        action_url: notificationData.action_url,
+        type: notificationData.type,
+        data: notificationData.data || {},
+        created_at: new Date().toISOString(),
+        source: 'edge_function_enhanced'
+      },
+      p_target_roles: ['student'] // Default to students
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    console.log('✅ Broadcast notification created using enhanced system');
+    return;
+
+  } catch (error) {
+    console.log('⚠️ Enhanced system failed, falling back to legacy:', error);
+
+    // Fallback to legacy system
+    await sendToUsersLegacy(supabaseClient, notificationData, [], targetCriteria);
+  }
+}
+
+// Send personal notifications using new system
+async function sendPersonalNotifications(
+  supabaseClient: any,
+  notificationData: NotificationData,
+  userIds: string[],
+  targetCriteria?: Record<string, any>,
+  purchaseId?: string
+): Promise<void> {
+  try {
+    console.log('🔄 Attempting to use enhanced notification system for personal notifications...');
+
+    // Send to each user individually using new system
+    for (const userId of userIds) {
+      const { data, error } = await supabaseClient.rpc('create_personal_notification', {
+        p_user_id: userId,
+        p_title: notificationData.title,
+        p_message: notificationData.body,
+        p_metadata: {
+          icon: notificationData.icon,
+          action_url: notificationData.action_url,
+          type: notificationData.type,
+          data: notificationData.data || {},
+          created_at: new Date().toISOString(),
+          source: 'edge_function_enhanced',
+          purchase_id: purchaseId
+        }
+      });
+
+      if (error) {
+        throw error;
+      }
+    }
+
+    console.log('✅ Personal notifications created using enhanced system');
+    return;
+
+  } catch (error) {
+    console.log('⚠️ Enhanced system failed, falling back to legacy:', error);
+
+    // Fallback to legacy system
+    await sendToUsersLegacy(supabaseClient, notificationData, userIds, targetCriteria, purchaseId);
+  }
+}
+
+// Legacy notification sending (unchanged for backward compatibility)
+async function sendToUsersLegacy(
+  supabaseClient: any,
+  notificationData: NotificationData,
+  userIds: string[],
+  targetCriteria?: Record<string, any>,
+  purchaseId?: string
+): Promise<void> {
+  console.log('📬 Using legacy notification system...');
+
+  // For broadcast notifications in legacy system, use null user_id
+  if (userIds.length === 0) {
+    // Broadcast notification
+    const metadata = {
+      title: notificationData.title,
+      body: notificationData.body,
+      type: notificationData.type,
+      icon: notificationData.icon,
+      action_url: notificationData.action_url,
+      data: notificationData.data || {},
+      created_at: new Date().toISOString(),
+      source: 'edge_function_legacy',
+      target_roles: ['student']
+    };
+
+    const { error } = await supabaseClient
+      .from('user_notifications')
+      .insert({
+        user_id: null, // Global notification
+        message: `${notificationData.title}\n${notificationData.body}`,
+        metadata: metadata,
+        delivered_at: new Date().toISOString(),
+        target_criteria: targetCriteria || {}
+      });
+
+    if (error) {
+      throw new Error(`Failed to send broadcast notification: ${error.message}`);
+    }
+
+    console.log('📬 Broadcast notification delivered using legacy system');
+    return;
+  }
+
+  // Personal notifications
   const message = `${notificationData.title}\n${notificationData.body}`;
 
-  // Prepare metadata with all notification info
   const metadata = {
     title: notificationData.title,
     body: notificationData.body,
@@ -548,15 +686,14 @@ async function sendToUsers(
     icon: notificationData.icon,
     action_url: notificationData.action_url,
     data: notificationData.data || {},
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    source: 'edge_function_legacy'
   };
 
   const userNotifications = userIds.map(userId => ({
     user_id: userId,
     message: message,
     metadata: metadata,
-    status: 'unread',
-    delivery_status: 'delivered',
     delivered_at: new Date().toISOString(),
     target_criteria: targetCriteria || {},
     purchase_id: purchaseId || null
@@ -570,5 +707,5 @@ async function sendToUsers(
     throw new Error(`Failed to send notifications: ${error.message}`);
   }
 
-  console.log(`📬 Notifications delivered to ${userIds.length} users`);
+  console.log(`📬 Personal notifications delivered to ${userIds.length} users using legacy system`);
 }

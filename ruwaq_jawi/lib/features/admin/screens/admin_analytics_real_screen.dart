@@ -347,14 +347,14 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         final month = DateTime(now.year, now.month - i, 1);
         final nextMonth = DateTime(now.year, now.month - i + 1, 1);
         
-        final monthPayments = payments.where((p) {
-          final paymentDate = DateTime.parse(p['created_at']);
-          return paymentDate.isAfter(month) && paymentDate.isBefore(nextMonth);
+        final monthTransactions = transactions.where((t) {
+          final transactionDate = DateTime.parse(t['created_at']);
+          return transactionDate.isAfter(month) && transactionDate.isBefore(nextMonth);
         });
 
         double monthTotal = 0;
-        for (final payment in monthPayments) {
-          monthTotal += (payment['amount_cents'] as int? ?? 0) / 100;
+        for (final transaction in monthTransactions) {
+          monthTotal += double.tryParse(transaction['amount'].toString()) ?? 0.0;
         }
         
         final monthKey = '${month.month.toString().padLeft(2, '0')}/${month.year}';
@@ -365,7 +365,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         'totalRevenue': totalRevenue,
         'monthlyRecurringRevenue': monthlyRecurringRevenue,
         'monthlyRevenue': monthlyRevenue,
-        'totalTransactions': payments.length,
+        'totalTransactions': transactions.length,
       };
     } catch (e) {
       return {

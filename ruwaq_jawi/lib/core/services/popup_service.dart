@@ -1,0 +1,179 @@
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import '../config/app_config.dart';
+import '../widgets/subscription_promo_popup.dart';
+import 'supabase_service.dart';
+
+class PopupService {
+  static const String _subscriptionPromoType = 'subscription_promo';
+
+  /// Check if subscription promo popup should be shown
+  /// Returns true if should show, false otherwise
+  static Future<bool> shouldShowSubscriptionPromo() async {
+    try {
+      // Check if user is authenticated
+      final user = SupabaseService.currentUser;
+      if (user == null) return false;
+
+      // Check if user already has active subscription (don't show to premium users)
+      final hasActiveSubscription = await SupabaseService.hasActiveSubscription();
+      if (hasActiveSubscription) return false;
+
+      // Get popup tracking data
+      final popupData = await _getPopupTracking(user.id, _subscriptionPromoType);
+
+      // If no tracking data exists, show popup (first time)
+      if (popupData == null) return true;
+
+      // Check if user dismissed permanently
+      if (popupData['dismissed_permanently'] == true) return false;
+
+      // Get frequency based on environment
+      final daysBetweenShows = AppConfig.isDevelopment ? 0 : 3; // 0 = every time for dev, 3 days for prod
+
+      if (daysBetweenShows == 0) {
+        return true; // Show every time in development
+      }
+
+      // Check if enough time has passed since last show
+      final lastShown = DateTime.parse(popupData['last_shown_at']);
+      final now = DateTime.now();
+      final daysSinceLastShow = now.difference(lastShown).inDays;
+
+      return daysSinceLastShow >= daysBetweenShows;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking popup show criteria: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Show subscription promo popup
+  static Future<void> showSubscriptionPromo(BuildContext context) async {
+    try {
+      // Record that popup was shown
+      await _recordPopupShown(_subscriptionPromoType);
+
+      // Show the popup
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: true,
+          barrierColor: Colors.black.withValues(alpha: 0.6),
+          builder: (BuildContext context) {
+            return SubscriptionPromoPopup(
+              onDismiss: () {
+                if (kDebugMode) {
+                  print('Subscription promo popup dismissed');
+                }
+              },
+              onSubscribe: () {
+                if (kDebugMode) {
+                  print('User clicked subscribe from popup');
+                }
+              },
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error showing subscription promo popup: $e');
+      }
+    }
+  }
+
+  /// Record that popup was shown
+  static Future<void> _recordPopupShown(String popupType) async {
+    try {
+      final user = SupabaseService.currentUser;
+      if (user == null) return;
+
+      await SupabaseService.upsertPopupTracking(
+        userId: user.id,
+        popupType: popupType,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error recording popup shown: $e');
+      }
+    }
+  }
+
+  /// Mark popup as permanently dismissed
+  static Future<void> dismissPermanently(String popupType) async {
+    try {
+      final user = SupabaseService.currentUser;
+      if (user == null) return;
+
+      await SupabaseService.dismissPopupPermanently(
+        userId: user.id,
+        popupType: popupType,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error dismissing popup permanently: $e');
+      }
+    }
+  }
+
+  /// Get popup tracking data for user
+  static Future<Map<String, dynamic>?> _getPopupTracking(
+    String userId,
+    String popupType,
+  ) async {
+    try {
+      return await SupabaseService.getPopupTracking(
+        userId: userId,
+        popupType: popupType,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error getting popup tracking: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Check and show subscription promo if criteria met
+  /// This is the main method to call after login
+  static Future<void> checkAndShowSubscriptionPromo(BuildContext context) async {
+    try {
+      final shouldShow = await shouldShowSubscriptionPromo();
+
+      if (shouldShow && context.mounted) {
+        // Add small delay for better UX
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (context.mounted) {
+          await showSubscriptionPromo(context);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error in checkAndShowSubscriptionPromo: $e');
+      }
+    }
+  }
+
+  /// Reset popup tracking for testing purposes (development only)
+  static Future<void> resetPopupTracking() async {
+    if (!AppConfig.isDevelopment) return;
+
+    try {
+      final user = SupabaseService.currentUser;
+      if (user == null) return;
+
+      await SupabaseService.resetPopupTracking(userId: user.id);
+
+      if (kDebugMode) {
+        print('Popup tracking reset for testing');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error resetting popup tracking: $e');
+      }
+    }
+  }
+}

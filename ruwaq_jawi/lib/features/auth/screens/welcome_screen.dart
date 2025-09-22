@@ -34,7 +34,7 @@ class WelcomeScreen extends StatelessWidget {
               Text(
                 'Email anda telah berjaya disahkan. Akaun anda kini aktif dan anda boleh mula menggunakan aplikasi Ruwaq Jawi.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.grey[600],
+                  color: AppTheme.textSecondaryColor,
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -65,7 +65,7 @@ class WelcomeScreen extends StatelessWidget {
                     Text(
                       'Akses ribuan kitab klasik dan moden dalam pelbagai kategori untuk memperkaya ilmu agama anda.',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
+                        color: AppTheme.textSecondaryColor,
                       ),
                       textAlign: TextAlign.center,
                     ),

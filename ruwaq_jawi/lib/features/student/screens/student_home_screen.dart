@@ -1,16 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/utils/thumbnail_utils.dart';
+import '../../../core/services/popup_service.dart';
 import '../widgets/student_bottom_nav.dart';
 
 class StudentHomeScreen extends StatefulWidget {
@@ -32,12 +34,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   void initState() {
     super.initState();
-    _featuredScrollController = PageController(viewportFraction: 0.9);
+    _featuredScrollController = PageController(viewportFraction: 1.0);
     _progressAnimationController = AnimationController(
       duration: const Duration(seconds: 5),
       vsync: this,
     );
-
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kitabProvider = context.read<KitabProvider>();
@@ -48,9 +49,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       // Load notifications inbox for signed-in users
       context.read<NotificationsProvider>().loadInbox();
 
+      // Check and show subscription promo popup if criteria met
+      _checkSubscriptionPromo();
+
       // Start auto-scroll after content loads
       _startAutoScroll();
     });
+  }
+
+  void _checkSubscriptionPromo() {
+    // Check and show subscription promo popup
+    PopupService.checkAndShowSubscriptionPromo(context);
   }
 
   void _startAutoScroll() {
@@ -119,54 +128,68 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with greeting and search
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: _buildHeader(),
-              ),
+      backgroundColor: Colors.white, // Putih bersih untuk background
+      appBar: _buildAppBar(), // Add transparent app bar
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(), // Smooth scrolling
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with greeting and search
+            Padding(
+              padding: const EdgeInsets.all(
+                20.0,
+              ), // Increased padding for better spacing
+              child: _buildHeader(),
+            ),
 
-              const SizedBox(height: 24),
+            const SizedBox(height: 32), // Increased spacing
+            // Featured content section
+            _buildFeaturedSection(),
 
-              // Featured content section (full width with margins)
-              _buildFeaturedSection(),
+            const SizedBox(height: 32),
 
-              const SizedBox(height: 24),
+            // Categories section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: _buildCategoriesSection(),
+            ),
 
-              // Categories section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _buildCategoriesSection(),
-              ),
+            const SizedBox(height: 32),
 
-              const SizedBox(height: 24),
+            // Recent content section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: _buildRecentSection(),
+            ),
 
-              // Recent content section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _buildRecentSection(),
-              ),
+            const SizedBox(height: 32),
 
-              const SizedBox(height: 24),
+            // Continue reading section
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: _buildContinueReadingSection(),
+            ),
 
-              // Continue reading section
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: _buildContinueReadingSection(),
-              ),
-
-              // Add bottom padding to prevent overflow with bottom navigation
-              const SizedBox(height: 100),
-            ],
-          ),
+            // Add bottom padding to prevent overflow with bottom navigation
+            const SizedBox(height: 120), // Increased bottom padding
+          ],
         ),
       ),
       bottomNavigationBar: const StudentBottomNav(currentIndex: 0),
+    );
+  }
+
+  // Build transparent app bar with phosphor icons
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      toolbarHeight: 0, // Hide default app bar since we have custom header
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
     );
   }
 
@@ -217,107 +240,25 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                           ),
                           onPressed: () async {
                             // Refresh inbox and show simple list
-                            final provider = context.read<NotificationsProvider>();
+                            final provider = context
+                                .read<NotificationsProvider>();
                             await provider.loadInbox();
 
                             // Auto mark all unread notifications as read when user opens notification
-                            final user = Supabase.instance.client.auth.currentUser;
+                            final user =
+                                Supabase.instance.client.auth.currentUser;
                             if (user != null) {
-                              final unreadNotifications = provider.inbox.where((n) => !n.isReadByUser(user.id)).toList();
+                              final unreadNotifications = provider.inbox
+                                  .where((n) => !n.isReadByUser(user.id))
+                                  .toList();
                               for (final notification in unreadNotifications) {
                                 await provider.markAsRead(notification.id);
                               }
                             }
 
                             if (!mounted) return;
-                            // Show bottom sheet with notifications (same behavior)
-                            // ignore: use_build_context_synchronously
-                            showModalBottomSheet(
-                              context: context,
-                              backgroundColor: AppTheme.surfaceColor,
-                              shape: const RoundedRectangleBorder(
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(16),
-                                ),
-                              ),
-                              builder: (_) {
-                                final items = context
-                                    .read<NotificationsProvider>()
-                                    .inbox;
-                                if (items.isEmpty) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(24),
-                                    child: Center(
-                                      child: Text(
-                                        'Tiada notifikasi',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium
-                                            ?.copyWith(
-                                              color:
-                                                  AppTheme.textSecondaryColor,
-                                            ),
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return SafeArea(
-                                  child: ListView.separated(
-                                    padding: const EdgeInsets.all(16),
-                                    itemCount: items.length,
-                                    separatorBuilder: (_, __) =>
-                                        const Divider(height: 16),
-                                    itemBuilder: (ctx, i) {
-                                      final n = items[i];
-                                      final isUnread = n.readAt == null;
-                                      return ListTile(
-                                        contentPadding: EdgeInsets.zero,
-                                        leading: PhosphorIcon(
-                                          isUnread
-                                              ? PhosphorIcons.envelope(
-                                                  PhosphorIconsStyle.fill,
-                                                )
-                                              : PhosphorIcons.envelope(),
-                                          color: isUnread
-                                              ? AppTheme.primaryColor
-                                              : AppTheme.textSecondaryColor,
-                                        ),
-                                        title: Text(
-                                          n.title,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyLarge
-                                              ?.copyWith(
-                                                fontWeight: isUnread
-                                                    ? FontWeight.w700
-                                                    : FontWeight.w500,
-                                                color:
-                                                    AppTheme.textPrimaryColor,
-                                              ),
-                                        ),
-                                        subtitle: Text(
-                                          n.body,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium
-                                              ?.copyWith(
-                                                color:
-                                                    AppTheme.textSecondaryColor,
-                                              ),
-                                        ),
-                                        onTap: () async {
-                                          await context
-                                              .read<NotificationsProvider>()
-                                              .markAsRead(n.id);
-                                          if (!mounted) return;
-                                          Navigator.of(context).pop();
-                                        },
-                                      );
-                                    },
-                                  ),
-                                );
-                              },
-                            );
+                            // Show enhanced notification bottom sheet
+                            _showNotificationBottomSheet();
                           },
                         );
                         if (unread > 0) {
@@ -338,11 +279,15 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                                     minHeight: 16,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFFF3B30), // Pure red, no border
+                                    color: const Color(
+                                      0xFFFF3B30,
+                                    ), // Pure red, no border
                                     borderRadius: BorderRadius.circular(8),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         blurRadius: 2,
                                         offset: const Offset(0, 1),
                                       ),
@@ -382,34 +327,86 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
             const SizedBox(height: 16),
 
-            // Search bar
-            GestureDetector(
-              onTap: () {
-                context.push('/search');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEEEEEE),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIcons.magnifyingGlass(),
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Cari kitab, video, atau topik...',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textSecondaryColor,
+            // Search bar - Enhanced design
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              child: GestureDetector(
+                onTap: () {
+                  context.push('/search');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor, // Use theme surface color
+                    borderRadius: BorderRadius.circular(
+                      16,
+                    ), // Larger rounded corners
+                    border: Border.all(color: AppTheme.borderColor, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.magnifyingGlass(),
+                        color: AppTheme.textSecondaryColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          'Cari kitab, video, atau topik...',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                                fontSize: 15,
+                              ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppTheme.backgroundColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppTheme.borderColor,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIcons.magnifyingGlass(),
+                              color: AppTheme.textSecondaryColor,
+                              size: 12,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Cari',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: AppTheme.textSecondaryColor,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -422,11 +419,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   Widget _buildFeaturedSection() {
     return Consumer<KitabProvider>(
       builder: (context, kitabProvider, child) {
-        // Combine premium video kitab and ebooks for featured section
-        final featuredContent = [
-          ...kitabProvider.premiumVideoKitab.take(3),
-          ...kitabProvider.premiumEbooks.take(2),
-        ];
+        // Show only premium video kitab for featured section
+        final featuredContent = kitabProvider.premiumVideoKitab.take(5).toList();
 
         if (featuredContent.isEmpty) {
           return const SizedBox.shrink();
@@ -435,30 +429,41 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         // Update total cards count for auto-scroll
         _totalCards = featuredContent.length;
 
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                'Pilihan Utama',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.textPrimaryColor,
+        return Container(
+          color: Colors.white, // Pastikan background putih bersih
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.star(PhosphorIconsStyle.fill),
+                      color: AppTheme.primaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Pilihan Utama',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              color: Colors.white,
-              child: ConstrainedBox(
+              const SizedBox(height: 20),
+              ConstrainedBox(
                 constraints: const BoxConstraints(
-                  minHeight: 180,
-                  maxHeight: 220,
+                  minHeight: 200,
+                  maxHeight: 240,
                 ),
                 child: PageView.builder(
                   controller: _featuredScrollController,
+                  padEnds: false,
+                  clipBehavior: Clip.none,
                   onPageChanged: (index) {
                     setState(() {
                       _currentCardIndex = index % featuredContent.length;
@@ -472,17 +477,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     final content = featuredContent[actualIndex];
 
                     return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 8),
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
                       child: _buildFeaturedCard(content),
                     );
                   },
                 ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Dots indicator with progress animation
-            _buildDotsIndicator(),
-          ],
+              const SizedBox(height: 20),
+              // Dots indicator with progress animation
+              _buildDotsIndicator(),
+            ],
+          ),
         );
       },
     );
@@ -547,69 +552,178 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
     return GestureDetector(
       onTap: () => context.push(route),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: const Color(0xFFF8F9FA), // Light gray instead of pure white
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 16,
-              right: 16,
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 300),
+        tween: Tween(begin: 0.0, end: 1.0),
+        curve: Curves.easeOutCubic,
+        builder: (context, value, child) {
+          return Transform.scale(
+            scale: 0.9 + (0.1 * value),
+            child: Opacity(
+              opacity: value,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                height: 280, // Fixed height for proper thumbnail display
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(
+                    24,
+                  ), // xl-2xl radius for modern feel
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppTheme.surfaceColor,
+                      AppTheme.surfaceColor,
+                      AppTheme.backgroundColor,
+                    ],
+                    stops: const [0.0, 0.7, 1.0],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.12),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                      spreadRadius: 0,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                      spreadRadius: 0,
+                    ),
+                  ],
                 ),
-                child: Text(
-                  'PREMIUM',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(24),
+                    onTap: () => context.push(route),
+                    child: Stack(
+                      children: [
+                        // Thumbnail background
+                        if (content.thumbnailUrl != null && content.thumbnailUrl!.isNotEmpty)
+                          Positioned.fill(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(24),
+                              child: Image.network(
+                                content.thumbnailUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(24),
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                        colors: [
+                                          AppTheme.surfaceColor,
+                                          AppTheme.backgroundColor,
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        // Dark overlay for better text readability
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.black.withValues(alpha: 0.3),
+                                  Colors.black.withValues(alpha: 0.7),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Premium crown badge
+                        Positioned(
+                          top: 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFFD700), Color(0xFFB8860B)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PhosphorIcon(
+                                  PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                                  color: Colors.white,
+                                  size: 12,
+                                ),
+                                const SizedBox(width: 4),
+                                const Text(
+                                  'PREMIUM',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Content
+                        Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              const Spacer(),
+                              // Title only, positioned lower to show more thumbnail
+                              Text(
+                                content.title,
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 22,
+                                      height: 1.2,
+                                      shadows: [
+                                        Shadow(
+                                          offset: const Offset(0, 1),
+                                          blurRadius: 3,
+                                          color: Colors.black.withValues(alpha: 0.8),
+                                        ),
+                                      ],
+                                    ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    content.title,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textPrimaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    content.description ??
-                        (isEbook
-                            ? 'E-book premium dengan kandungan berkualiti tinggi'
-                            : 'Video kitab premium dengan kandungan berkualiti tinggi'),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -629,26 +743,54 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Kategori',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/kitab'),
-                  child: Text(
-                    'Lihat Semua',
-                    style: TextStyle(
+                Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.folders(),
                       color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w600,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Kategori',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextButton.icon(
+                    onPressed: () => context.go('/kitab'),
+                    icon: PhosphorIcon(
+                      PhosphorIcons.arrowRight(),
+                      color: AppTheme.primaryColor,
+                      size: 16,
+                    ),
+                    label: Text(
+                      'Lihat Semua',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -670,86 +812,131 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     .length;
                 final totalCount = videoKitabCount + ebookCount;
 
-                return GestureDetector(
-                  onTap: () => context.push(
-                    '/kitab?category=${Uri.encodeComponent(category.name)}',
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.borderColor),
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(
+                      16,
+                    ), // Increased border radius
+                    onTap: () => context.push(
+                      '/kitab?category=${Uri.encodeComponent(category.name)}',
                     ),
-                    child: Column(
-                      children: [
-                        // Top section with Arabic text
-                        Expanded(
-                          flex: 2,
-                          child: Container(
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withOpacity(0.1),
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(12),
-                                topRight: Radius.circular(12),
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                _getArabicTextForCategory(category.name),
-                                style: const TextStyle(
-                                  fontFamily: 'ArefRuqaa',
-                                  fontSize: 35,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primaryColor,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(
+                          16,
+                        ), // xl radius for cards
+                        border: Border.all(
+                          color: AppTheme.borderColor,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.06),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                            spreadRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Top section with Arabic text
+                          Expanded(
+                            flex: 2,
+                            child: Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    AppTheme.primaryColor.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    AppTheme.primaryColor.withValues(
+                                      alpha: 0.06,
+                                    ),
+                                  ],
                                 ),
-                                textAlign: TextAlign.center,
+                                borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(16),
+                                  topRight: Radius.circular(16),
+                                ),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  _getArabicTextForCategory(category.name),
+                                  style: const TextStyle(
+                                    fontFamily: 'ArefRuqaa',
+                                    fontSize:
+                                        32, // Slightly smaller for better fit
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        // Bottom section with category name and count
-                        Expanded(
-                          flex: 1,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6,
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    category.name,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.textPrimaryColor,
-                                          fontSize: 12,
-                                        ),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                          // Bottom section with category name and count
+                          Expanded(
+                            flex: 1,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      category.name,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppTheme.textPrimaryColor,
+                                            fontSize: 12,
+                                            height: 1.2,
+                                          ),
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Flexible(
-                                  child: Text(
-                                    '$totalCount item',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: AppTheme.textSecondaryColor,
-                                          fontSize: 10,
-                                        ),
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.backgroundColor,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '$totalCount item',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppTheme.textSecondaryColor,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -785,31 +972,56 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Terbaru',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textPrimaryColor,
-                  ),
-                ),
-                TextButton(
-                  onPressed: () => context.go('/kitab?sort=newest'),
-                  child: Text(
-                    'Lihat Semua',
-                    style: TextStyle(
+                Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.clockCounterClockwise(),
                       color: AppTheme.primaryColor,
-                      fontWeight: FontWeight.w600,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Terbaru',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextButton.icon(
+                    onPressed: () => context.go('/kitab?sort=newest'),
+                    icon: PhosphorIcon(
+                      PhosphorIcons.arrowRight(),
+                      color: AppTheme.primaryColor,
+                      size: 16,
+                    ),
+                    label: Text(
+                      'Lihat Semua',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 20),
             ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: 220,
-                maxHeight: 260,
-              ),
+              constraints: const BoxConstraints(minHeight: 220, maxHeight: 260),
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: displayContent.length,
@@ -877,7 +1089,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             return Container(
               width: double.infinity,
               height: double.infinity,
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               child: Center(
                 child: PhosphorIcon(
                   PhosphorIcons.videoCamera(),
@@ -892,7 +1104,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             return Container(
               width: double.infinity,
               height: double.infinity,
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               child: Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(
@@ -910,7 +1122,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       return Container(
         width: double.infinity,
         height: double.infinity,
-        color: AppTheme.primaryColor.withOpacity(0.1),
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
         child: Center(
           child: PhosphorIcon(
             PhosphorIcons.videoCamera(),
@@ -926,108 +1138,121 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     final isEbook = content.runtimeType.toString().contains('Ebook');
     final route = isEbook ? '/ebook/${content.id}' : '/kitab/${content.id}';
 
-    return GestureDetector(
-      onTap: () => context.push(route),
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppTheme.borderColor),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Thumbnail section with proper constraints
-            SizedBox(
-              height: 120,
-              width: double.infinity,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16), // xl radius for cards
+        onTap: () => context.push(route),
+        child: Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(16), // xl radius for cards
+            border: Border.all(color: AppTheme.borderColor, width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Thumbnail section with proper constraints
+              SizedBox(
+                height: 120,
+                width: double.infinity,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(16), // Match card radius
+                    ),
+                  ),
+                  child: isEbook
+                      ? // Keep icon for ebooks
+                        Center(
+                          child: PhosphorIcon(
+                            PhosphorIcons.filePdf(),
+                            size: 48,
+                            color: AppTheme.primaryColor,
+                          ),
+                        )
+                      : // Use thumbnail for video kitab with proper clipping
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16), // Match card radius
+                          ),
+                          child: _buildVideoThumbnail(content),
+                        ),
+                ),
+              ),
+              // Content section with flexible height
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        content.title,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        content.author ?? 'Unknown Author',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Spacer(),
+                      // Show appropriate info based on content type
+                      Row(
+                        children: [
+                          PhosphorIcon(
+                            isEbook
+                                ? PhosphorIcons.filePdf()
+                                : PhosphorIcons.videoCamera(),
+                            size: 16,
+                            color: AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              isEbook
+                                  ? (content.totalPages != null
+                                        ? '${content.totalPages} hal'
+                                        : 'E-book')
+                                  : (content.totalVideos > 0
+                                        ? '${content.totalVideos} episod'
+                                        : '1 episod'),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                child: isEbook
-                    ? // Keep icon for ebooks
-                      Center(
-                        child: PhosphorIcon(
-                          PhosphorIcons.filePdf(),
-                          size: 48,
-                          color: AppTheme.primaryColor,
-                        ),
-                      )
-                    : // Use thumbnail for video kitab with proper clipping
-                      ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(12),
-                        ),
-                        child: _buildVideoThumbnail(content),
-                      ),
               ),
-            ),
-            // Content section with flexible height
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      content.title,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      content.author ?? 'Unknown Author',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: AppTheme.textSecondaryColor,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const Spacer(),
-                    // Show appropriate info based on content type
-                    Row(
-                      children: [
-                        PhosphorIcon(
-                          isEbook
-                              ? PhosphorIcons.filePdf()
-                              : PhosphorIcons.videoCamera(),
-                          size: 16,
-                          color: AppTheme.primaryColor,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            isEbook
-                                ? (content.totalPages != null
-                                      ? '${content.totalPages} hal'
-                                      : 'E-book')
-                                : (content.totalVideos > 0
-                                      ? '${content.totalVideos} episod'
-                                      : '1 episod'),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1062,7 +1287,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                       color: AppTheme.primaryColor,
                       size: 24,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     Text(
                       'Sambung Bacaan',
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -1072,84 +1297,117 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                GestureDetector(
-                  onTap: () => context.push('/kitab/${kitab.id}'),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.surfaceColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.borderColor),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                const SizedBox(height: 20),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(
+                      20,
+                    ), // 2xl radius for enhanced cards
+                    onTap: () => context.push('/kitab/${kitab.id}'),
+                    child: Container(
+                      padding: const EdgeInsets.all(20), // Increased padding
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(20), // 2xl radius
+                        border: Border.all(
+                          color: AppTheme.borderColor,
+                          width: 1,
                         ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                            spreadRadius: 0,
                           ),
-                          child: PhosphorIcon(
-                            PhosphorIcons.bookOpen(),
-                            color: AppTheme.primaryColor,
-                            size: 24,
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                            spreadRadius: 0,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                kitab.title,
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.textPrimaryColor,
-                                    ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  AppTheme.primaryColor.withValues(alpha: 0.15),
+                                  AppTheme.primaryColor.withValues(alpha: 0.08),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                kitab.author ?? '—',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: AppTheme.textSecondaryColor,
-                                    ),
-                              ),
-                              const SizedBox(height: 8),
-                              LinearProgressIndicator(
-                                value: progressValue.clamp(0.0, 1.0),
-                                backgroundColor: AppTheme.borderColor,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppTheme.primaryColor,
+                              borderRadius: BorderRadius.circular(
+                                16,
+                              ), // Larger radius
+                              border: Border.all(
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.2,
                                 ),
+                                width: 1,
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${(progressValue * 100).toStringAsFixed(0)}% selesai',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: AppTheme.textSecondaryColor,
-                                    ),
+                            ),
+                            child: Center(
+                              child: PhosphorIcon(
+                                PhosphorIcons.bookOpen(PhosphorIconsStyle.fill),
+                                color: AppTheme.primaryColor,
+                                size: 28,
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                        PhosphorIcon(
-                          PhosphorIcons.caretRight(),
-                          color: AppTheme.textSecondaryColor,
-                          size: 16,
-                        ),
-                      ],
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  kitab.title,
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.textPrimaryColor,
+                                      ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  kitab.author ?? '—',
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: AppTheme.textSecondaryColor,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                LinearProgressIndicator(
+                                  value: progressValue.clamp(0.0, 1.0),
+                                  backgroundColor: AppTheme.borderColor,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppTheme.primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${(progressValue * 100).toStringAsFixed(0)}% selesai',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: AppTheme.textSecondaryColor,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          PhosphorIcon(
+                            PhosphorIcons.caretRight(),
+                            color: AppTheme.textSecondaryColor,
+                            size: 20,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1165,7 +1423,8 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
     final userProfile = authProvider.userProfile;
     final userName = userProfile?.fullName ?? 'User';
     final profileImageUrl = userProfile?.avatarUrl;
-    final isPremium = authProvider.hasActiveSubscription; // Check if user has active subscription
+    final isPremium = authProvider
+        .hasActiveSubscription; // Check if user has active subscription
 
     // Get initials from name
     String getInitials(String name) {
@@ -1185,48 +1444,59 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: isPremium ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFFFFD700), // Bright gold
-                const Color(0xFFFFA500), // Orange gold
-                const Color(0xFFFFD700), // Bright gold
-                const Color(0xFFDAA520), // Darker gold
-              ],
-              stops: const [0.0, 0.3, 0.7, 1.0],
-            ) : null,
-            border: isPremium ? null : Border.all(
-              color: Colors.white,
-              width: 2,
-            ),
+            gradient: isPremium
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFFFFD700), // Bright gold
+                      const Color(0xFFFFA500), // Orange gold
+                      const Color(0xFFFFD700), // Bright gold
+                      const Color(0xFFDAA520), // Darker gold
+                    ],
+                    stops: const [0.0, 0.3, 0.7, 1.0],
+                  )
+                : null,
+            border: isPremium
+                ? null
+                : Border.all(color: Colors.white, width: 2),
           ),
           padding: EdgeInsets.all(isPremium ? 2 : 1),
           child: isPremium
-            ? Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white, // White layer untuk spacing
-                ),
-                padding: const EdgeInsets.all(2), // Spacing antara gold dan avatar
-                child: Container(
+              ? Container(
                   decoration: const BoxDecoration(
                     shape: BoxShape.circle,
+                    color: Colors.white, // White layer untuk spacing
+                  ),
+                  padding: const EdgeInsets.all(
+                    2,
+                  ), // Spacing antara gold dan avatar
+                  child: Container(
+                    decoration: const BoxDecoration(shape: BoxShape.circle),
+                    child: ClipOval(
+                      child: _buildAvatarContent(
+                        profileImageUrl,
+                        userName,
+                        isPremium,
+                        getInitials,
+                      ),
+                    ),
+                  ),
+                )
+              : Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white, // Same as appbar background
                   ),
                   child: ClipOval(
-                    child: _buildAvatarContent(profileImageUrl, userName, isPremium, getInitials),
+                    child: _buildAvatarContent(
+                      profileImageUrl,
+                      userName,
+                      isPremium,
+                      getInitials,
+                    ),
                   ),
                 ),
-              )
-            : Container(
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white, // Same as appbar background
-                ),
-                child: ClipOval(
-                  child: _buildAvatarContent(profileImageUrl, userName, isPremium, getInitials),
-                ),
-              ),
         ),
         // Premium crown icon
         if (isPremium)
@@ -1246,23 +1516,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                   ],
                 ),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: Colors.white,
-                  width: 1.8,
-                ),
+                border: Border.all(color: Colors.white, width: 1.8),
               ),
-              child: const Icon(
-                Icons.diamond,
-                size: 9,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.diamond, size: 9, color: Colors.white),
             ),
           ),
       ],
     );
   }
 
-  Widget _buildAvatarContent(String? profileImageUrl, String userName, bool isPremium, String Function(String) getInitials) {
+  Widget _buildAvatarContent(
+    String? profileImageUrl,
+    String userName,
+    bool isPremium,
+    String Function(String) getInitials,
+  ) {
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return Image.network(
         profileImageUrl,
@@ -1277,7 +1545,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
           return Container(
             width: isPremium ? 32 : 38,
             height: isPremium ? 32 : 38,
-            color: AppTheme.primaryColor.withOpacity(0.1),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
             child: Center(
               child: SizedBox(
                 width: 16,
@@ -1331,19 +1599,21 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         shape: BoxShape.circle,
         color: isPremium ? null : null,
         gradient: isPremium
-          ? LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: getGradientFromLetter(initials.isNotEmpty ? initials[0] : 'A'),
-            )
-          : LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                AppTheme.primaryColor,
-                AppTheme.primaryColor.withOpacity(0.8),
-              ],
-            ),
+            ? LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: getGradientFromLetter(
+                  initials.isNotEmpty ? initials[0] : 'A',
+                ),
+              )
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primaryColor,
+                  AppTheme.primaryColor.withValues(alpha: 0.8),
+                ],
+              ),
       ),
       child: Center(
         child: Text(
@@ -1379,6 +1649,489 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
       return 'لغة العربية';
     } else {
       return 'كتاب';
+    }
+  }
+
+  // Enhanced notification bottom sheet with modern design
+  void _showNotificationBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.4,
+        maxChildSize: 0.95,
+        builder: (context, scrollController) {
+          return Container(
+            decoration: BoxDecoration(
+              color: AppTheme.backgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -4),
+                  spreadRadius: 0,
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textSecondaryColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primaryColor,
+                              AppTheme.primaryColor.withValues(alpha: 0.8),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.3,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: PhosphorIcon(
+                            PhosphorIcons.bell(PhosphorIconsStyle.fill),
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Notifikasi',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                            ),
+                            Consumer<NotificationsProvider>(
+                              builder: (context, provider, child) {
+                                final unreadCount = provider.inbox
+                                    .where((n) => n.readAt == null)
+                                    .length;
+                                return Text(
+                                  unreadCount > 0
+                                      ? '$unreadCount notifikasi belum dibaca'
+                                      : 'Semua notifikasi sudah dibaca',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: AppTheme.textSecondaryColor,
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Mark all as read button
+                      Consumer<NotificationsProvider>(
+                        builder: (context, provider, child) {
+                          final hasUnread = provider.inbox.any(
+                            (n) => n.readAt == null,
+                          );
+                          if (!hasUnread) return const SizedBox.shrink();
+
+                          return Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () async {
+                                for (final notification in provider.inbox) {
+                                  if (notification.readAt == null) {
+                                    await provider.markAsRead(notification.id);
+                                  }
+                                }
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 6,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppTheme.primaryColor.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Tandai semua',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Content
+                Expanded(
+                  child: Consumer<NotificationsProvider>(
+                    builder: (context, provider, child) {
+                      final notifications = provider.inbox;
+
+                      if (notifications.isEmpty) {
+                        return _buildEmptyNotificationState();
+                      }
+
+                      return TweenAnimationBuilder<double>(
+                        duration: const Duration(milliseconds: 400),
+                        tween: Tween(begin: 0.0, end: 1.0),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, value, child) {
+                          return Opacity(
+                            opacity: value.clamp(0.0, 1.0),
+                            child: Transform.translate(
+                              offset: Offset(0, 20 * (1 - value)),
+                              child: ListView.separated(
+                                controller: scrollController,
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  0,
+                                  20,
+                                  20,
+                                ),
+                                itemCount: notifications.length,
+                                separatorBuilder: (context, index) =>
+                                    const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  return _buildNotificationCard(
+                                    notifications[index],
+                                    index,
+                                  );
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildEmptyNotificationState() {
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 600),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.8 + (0.2 * value),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(40),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedNotification02,
+                          color: AppTheme.primaryColor,
+                          size: 40,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Text(
+                      'Tiada Notifikasi',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Semua notifikasi akan muncul di sini',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textSecondaryColor,
+                        height: 1.4,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationCard(dynamic notification, int index) {
+    final isUnread = notification.readAt == null;
+
+    return TweenAnimationBuilder<double>(
+      duration: Duration(milliseconds: 300 + (index * 50)),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.95 + (0.05 * value),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isUnread
+                    ? AppTheme.primaryColor.withValues(alpha: 0.05)
+                    : AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isUnread
+                      ? AppTheme.primaryColor.withValues(alpha: 0.2)
+                      : AppTheme.borderColor,
+                  width: isUnread ? 1.5 : 1,
+                ),
+                boxShadow: isUnread
+                    ? [
+                        BoxShadow(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () async {
+                    if (isUnread) {
+                      await context.read<NotificationsProvider>().markAsRead(
+                        notification.id,
+                      );
+                    }
+                    if (mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        // Icon container
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            gradient: isUnread
+                                ? LinearGradient(
+                                    colors: [
+                                      AppTheme.primaryColor,
+                                      AppTheme.primaryColor.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                    ],
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      AppTheme.textSecondaryColor.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      AppTheme.textSecondaryColor.withValues(
+                                        alpha: 0.05,
+                                      ),
+                                    ],
+                                  ),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: isUnread
+                                ? [
+                                    BoxShadow(
+                                      color: AppTheme.primaryColor.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: PhosphorIcon(
+                              isUnread
+                                  ? PhosphorIcons.envelope(
+                                      PhosphorIconsStyle.fill,
+                                    )
+                                  : PhosphorIcons.envelopeOpen(
+                                      PhosphorIconsStyle.fill,
+                                    ),
+                              color: isUnread
+                                  ? Colors.white
+                                  : AppTheme.textSecondaryColor,
+                              size: 22,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        // Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      notification.title,
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: isUnread
+                                            ? FontWeight.w700
+                                            : FontWeight.w600,
+                                        color: AppTheme.textPrimaryColor,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isUnread)
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.primaryColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                notification.body,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondaryColor,
+                                  height: 1.4,
+                                ),
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedClock01,
+                                    color: AppTheme.textSecondaryColor,
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _formatNotificationTime(
+                                      notification.deliveredAt,
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppTheme.textSecondaryColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatNotificationTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 1) {
+      return 'Baru saja';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes} minit lalu';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours} jam lalu';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} hari lalu';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
   }
 }

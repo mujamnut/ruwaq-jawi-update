@@ -37,12 +37,18 @@ import '../models/payment_models.dart';
 import '../../features/admin/screens/admin_settings_screen.dart';
 import '../../features/admin/screens/admin_ebook_list_screen.dart';
 import '../../features/admin/screens/kitab_detail_screen.dart' as admin_kitab;
+import '../../features/admin/screens/admin_categories_screen.dart';
+import '../../features/admin/screens/admin_add_category_screen.dart';
+import '../../features/admin/screens/admin_reports_screen.dart';
+import '../../features/admin/screens/admin_notifications_screen.dart';
 import '../../features/payment/screens/payment_callback_page.dart';
 
 class AppRouter {
   static GoRouter createRouter() {
     return GoRouter(
       initialLocation: '/',
+      debugLogDiagnostics: false,
+      redirectLimit: 10,
       routes: [
         // Splash Screen Route
         GoRoute(
@@ -155,20 +161,44 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/auth/confirm',
+          name: 'email-confirm',
+          pageBuilder: (context, state) {
+            final email = state.uri.queryParameters['email'];
+
+            return CustomTransitionPage(
+              key: state.pageKey,
+              child: EmailVerificationScreen(
+                email: email,
+                message: 'Email confirmation link clicked successfully',
+              ),
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                    return SlideTransition(
+                      position: animation.drive(
+                        Tween(
+                          begin: const Offset(1.0, 0.0),
+                          end: Offset.zero,
+                        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                      ),
+                      child: child,
+                    );
+                  },
+              transitionDuration: const Duration(milliseconds: 300),
+            );
+          },
+        ),
+        GoRoute(
           path: '/auth/verify-email',
           name: 'verify-email',
           pageBuilder: (context, state) {
             final email = state.uri.queryParameters['email'];
             final message = state.uri.queryParameters['message'];
-            final token = state.uri.queryParameters['token'];
-            final type = state.uri.queryParameters['type'];
             return CustomTransitionPage(
               key: state.pageKey,
               child: EmailVerificationScreen(
                 email: email,
                 message: message,
-                token: token,
-                type: type,
               ),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
@@ -413,6 +443,48 @@ class AppRouter {
           name: 'admin-ebooks',
           builder: (context, state) => const AdminEbookListScreen(),
         ),
+        // Admin Categories Routes
+        GoRoute(
+          path: '/admin/categories',
+          name: 'admin-categories',
+          builder: (context, state) => const AdminCategoriesScreen(),
+        ),
+        GoRoute(
+          path: '/admin/categories/add',
+          name: 'admin-categories-add',
+          builder: (context, state) => const AdminAddCategoryScreen(),
+        ),
+        GoRoute(
+          path: '/admin/categories/edit/:id',
+          name: 'admin-categories-edit',
+          builder: (context, state) {
+            final categoryId = state.pathParameters['id']!;
+            return AdminAddCategoryScreen(categoryId: categoryId);
+          },
+        ),
+        // Admin Reports Route
+        GoRoute(
+          path: '/admin/reports',
+          name: 'admin-reports',
+          builder: (context, state) => const AdminReportsScreen(),
+        ),
+        // Admin Notifications Routes
+        GoRoute(
+          path: '/admin/notifications',
+          name: 'admin-notifications',
+          builder: (context, state) => const AdminNotificationsScreen(),
+        ),
+        GoRoute(
+          path: '/admin/notifications/send',
+          name: 'admin-notifications-send',
+          builder: (context, state) => const AdminNotificationsScreen(),
+        ),
+        // Admin Kitabs Routes
+        GoRoute(
+          path: '/admin/kitabs/add',
+          name: 'admin-kitabs-add',
+          builder: (context, state) => const AdminVideoKitabFormScreen(),
+        ),
         GoRoute(
           path: '/admin/kitab/:id',
           name: 'admin-kitab-detail',
@@ -566,7 +638,21 @@ class AppRouter {
           ],
         ),
       ],
-      errorBuilder: (context, state) => const NotFoundScreen(),
+      errorBuilder: (context, state) {
+        // Check if this is a hot restart scenario - redirect to splash instead of error
+        if (state.error?.toString().contains('redirect') == true ||
+            state.error?.toString().contains('loop') == true) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            context.go('/');
+          });
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        return const NotFoundScreen();
+      },
     );
   }
 }
@@ -671,12 +757,29 @@ class PaymentCancelledScreen extends StatelessWidget {
   }
 }
 
-class NotFoundScreen extends StatelessWidget {
+class NotFoundScreen extends StatefulWidget {
   const NotFoundScreen({super.key});
+
+  @override
+  State<NotFoundScreen> createState() => _NotFoundScreenState();
+}
+
+class _NotFoundScreenState extends State<NotFoundScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Auto-redirect to splash after a short delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        context.go('/');
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -688,6 +791,11 @@ class NotFoundScreen extends StatelessWidget {
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Halaman yang anda cari tidak wujud.',
+              style: TextStyle(color: Colors.grey),
             ),
             const SizedBox(height: 24),
             ElevatedButton(

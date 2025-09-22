@@ -300,4 +300,50 @@ class SupabaseService {
         .map((json) => KitabVideoPart.fromJson(json))
         .toList();
   }
+
+  // Popup tracking operations
+  static Future<Map<String, dynamic>?> getPopupTracking({
+    required String userId,
+    required String popupType,
+  }) async {
+    try {
+      final response = await from('user_popup_tracking')
+          .select()
+          .eq('user_id', userId)
+          .eq('popup_type', popupType)
+          .maybeSingle();
+
+      return response;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<void> upsertPopupTracking({
+    required String userId,
+    required String popupType,
+  }) async {
+    await from('user_popup_tracking').upsert({
+      'user_id': userId,
+      'popup_type': popupType,
+      'last_shown_at': DateTime.now().toIso8601String(),
+      'show_count': 1, // This will be incremented by database trigger if record exists
+    });
+  }
+
+  static Future<void> dismissPopupPermanently({
+    required String userId,
+    required String popupType,
+  }) async {
+    await from('user_popup_tracking').upsert({
+      'user_id': userId,
+      'popup_type': popupType,
+      'dismissed_permanently': true,
+      'last_shown_at': DateTime.now().toIso8601String(),
+    });
+  }
+
+  static Future<void> resetPopupTracking({required String userId}) async {
+    await from('user_popup_tracking').delete().eq('user_id', userId);
+  }
 }

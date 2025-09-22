@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../../core/providers/kitab_provider.dart';
@@ -20,7 +22,15 @@ class EbookDetailScreen extends StatefulWidget {
   State<EbookDetailScreen> createState() => _EbookDetailScreenState();
 }
 
-class _EbookDetailScreenState extends State<EbookDetailScreen> {
+class _EbookDetailScreenState extends State<EbookDetailScreen>
+    with TickerProviderStateMixin {
+  // Animation controllers for smooth animations
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
+  late AnimationController _scaleAnimationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _scaleAnimation;
   Ebook? _ebook;
   bool _isLoading = true;
   String? _error;
@@ -32,6 +42,46 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controllers
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _scaleAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    // Create animations
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _fadeAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _slideAnimationController,
+      curve: Curves.easeOutCubic,
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _scaleAnimationController,
+      curve: Curves.easeOutBack,
+    ));
+
     _loadEbookData();
     _checkSavedStatus();
     _loadSubscriptionData();
@@ -53,8 +103,16 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
         setState(() {});
       }
     } catch (e) {
-      print('Error loading subscription data: $e');
+      debugPrint('Error loading subscription data: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
+    _scaleAnimationController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkSavedStatus() async {
@@ -104,6 +162,14 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
           _isLoading = false;
         });
         await _checkSavedStatus();
+        // Start animations
+        Future.delayed(const Duration(milliseconds: 100), () {
+          if (mounted) {
+            _fadeAnimationController.forward();
+            _slideAnimationController.forward();
+            _scaleAnimationController.forward();
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -155,9 +221,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.amber.withOpacity(0.1),
+                color: Colors.amber.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.amber.withOpacity(0.3)),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -272,7 +338,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
       final subscriptionProvider = context.read<SubscriptionProvider>();
       return subscriptionProvider.hasActiveSubscription;
     } catch (e) {
-      print('Error checking subscription status: $e');
+      debugPrint('Error checking subscription status: $e');
       return false;
     }
   }
@@ -385,54 +451,103 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: PhosphorIcon(
-              PhosphorIcons.arrowLeft(),
-              color: Colors.black,
-              size: 20,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+          ),
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            onPressed: () => context.pop(),
+            child: IconButton(
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowLeft01,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
           ),
           title: Text(
             'Detail E-Book',
-            style: Theme.of(context).textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textPrimaryColor,
+            ),
           ),
           centerTitle: true,
-          actions: [
-            IconButton(
-              icon: PhosphorIcon(
-                PhosphorIcons.heart(),
-                color: Colors.black,
-                size: 20,
-              ),
-              onPressed: () {},
-            ),
-          ],
         ),
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 800),
+            tween: Tween(begin: 0.0, end: 1.0),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.8 + (0.2 * value),
+                child: Opacity(
+                  opacity: value.clamp(0.0, 1.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppTheme.primaryColor.withValues(alpha: 0.15),
+                              AppTheme.primaryColor.withValues(alpha: 0.05),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                          strokeWidth: 3,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        'Memuat E-Book',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: AppTheme.textPrimaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Sila tunggu sebentar...',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const CircularProgressIndicator(
-                  color: AppTheme.primaryColor,
-                  strokeWidth: 3,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Memuatkan E-Book...',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
+              );
+            },
           ),
         ),
       );
@@ -444,74 +559,133 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
-          leading: IconButton(
-            icon: PhosphorIcon(
-              PhosphorIcons.arrowLeft(),
-              color: Colors.black,
-              size: 20,
-            ),
-            onPressed: () => context.pop(),
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
           ),
-        ),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: AppTheme.errorColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: PhosphorIcon(
-                    PhosphorIcons.warningCircle(),
-                    size: 64,
-                    color: AppTheme.errorColor,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'E-Book Tidak Dijumpai',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: AppTheme.textPrimaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  _error ?? 'E-book yang anda cari tidak wujud',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton.icon(
-                  onPressed: () => context.pop(),
-                  icon: PhosphorIcon(
-                    PhosphorIcons.arrowLeft(),
-                    color: AppTheme.textLightColor,
-                    size: 18,
-                  ),
-                  label: const Text('Kembali'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: AppTheme.textLightColor,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 4,
-                  ),
+          leading: Container(
+            margin: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
+            child: IconButton(
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedArrowLeft01,
+                color: AppTheme.textPrimaryColor,
+                size: 20,
+              ),
+              onPressed: () => context.pop(),
+            ),
           ),
+        ),
+        body: TweenAnimationBuilder<double>(
+          duration: const Duration(milliseconds: 600),
+          tween: Tween(begin: 0.0, end: 1.0),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: 0.8 + (0.2 * value),
+              child: Opacity(
+                opacity: value.clamp(0.0, 1.0),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: AppTheme.errorColor.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.errorColor.withValues(alpha: 0.2),
+                              width: 2,
+                            ),
+                          ),
+                          child: Center(
+                            child: HugeIcon(
+                              icon: HugeIcons.strokeRoundedAlert02,
+                              color: AppTheme.errorColor,
+                              size: 48,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Text(
+                          'E-Book Tidak Dijumpai',
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          _error ?? 'E-book yang anda cari tidak wujud',
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.textSecondaryColor,
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: () => context.pop(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            icon: HugeIcon(
+                              icon: HugeIcons.strokeRoundedArrowLeft01,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                            label: const Text(
+                              'Kembali',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       );
     }
@@ -521,70 +695,129 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: PhosphorIcon(PhosphorIcons.caretLeft(), color: Colors.black),
-          onPressed: () => context.pop(),
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
+        leading: Container(
+          margin: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowLeft01,
+              color: AppTheme.textPrimaryColor,
+              size: 20,
+            ),
+            onPressed: () => context.pop(),
+          ),
         ),
         title: Text(
           'Detail E-Book',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppTheme.textPrimaryColor,
+          ),
         ),
         centerTitle: true,
         actions: [
           Container(
-            margin: const EdgeInsets.only(right: 8),
+            margin: const EdgeInsets.only(right: 8, top: 8, bottom: 8),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppTheme.surfaceColor,
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppTheme.borderColor),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: IconButton(
-              icon: PhosphorIcon(
-                _isSaved
-                    ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
-                    : PhosphorIcons.heart(),
-                color: _isSaved ? Colors.red : Colors.black54,
-                size: 20,
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: HugeIcon(
+                  key: ValueKey(_isSaved),
+                  icon: _isSaved
+                      ? HugeIcons.strokeRoundedFavourite
+                      : HugeIcons.strokeRoundedHeartAdd,
+                  color: _isSaved
+                      ? const Color(0xFFE91E63)
+                      : AppTheme.textSecondaryColor,
+                  size: 20,
+                ),
               ),
               onPressed: _toggleSaved,
             ),
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            _buildEbookCover(),
-            const SizedBox(height: 24),
-            Text(
-              _ebook!.title,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
+      body: AnimatedBuilder(
+        animation: _fadeAnimation,
+        builder: (context, child) {
+          return Opacity(
+            opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+            child: SlideTransition(
+              position: _slideAnimation,
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: _buildEbookCover(),
+                    ),
+                    const SizedBox(height: 32),
+                    TweenAnimationBuilder<double>(
+                      duration: const Duration(milliseconds: 600),
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      curve: Curves.easeOut,
+                      builder: (context, value, child) {
+                        return Opacity(
+                          opacity: value.clamp(0.0, 1.0),
+                          child: Text(
+                            _ebook!.title,
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              color: AppTheme.textPrimaryColor,
+                              fontWeight: FontWeight.bold,
+                              height: 1.3,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    _buildAuthorInfo(),
+                    const SizedBox(height: 32),
+                    _buildStatisticsRow(),
+                    const SizedBox(height: 32),
+                    if (_ebook!.description != null &&
+                        _ebook!.description!.trim().isNotEmpty)
+                      _buildDescription(),
+                    const SizedBox(height: 40),
+                    _buildActionButtons(),
+                    const SizedBox(height: 24),
+                  ],
+                ),
               ),
-              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            _buildAuthorInfo(),
-            const SizedBox(height: 24),
-            _buildStatisticsRow(),
-            const SizedBox(height: 24),
-            if (_ebook!.description != null &&
-                _ebook!.description!.trim().isNotEmpty)
-              _buildDescription(),
-            const SizedBox(height: 32),
-            _buildActionButtons(),
-            const SizedBox(height: 16),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -592,7 +825,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   Widget _buildEbookCover() {
     return Hero(
       tag: 'ebook-cover-${_ebook!.id}',
-      child: Container(
+      child: SizedBox(
         width: 220,
         height: 320,
         child: Stack(
@@ -604,13 +837,13 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primaryColor.withOpacity(0.3),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     blurRadius: 25,
                     offset: const Offset(0, 15),
                     spreadRadius: -5,
                   ),
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 15,
                     offset: const Offset(0, 8),
                   ),
@@ -636,7 +869,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                                 colors: [
                                   Colors.transparent,
                                   Colors.transparent,
-                                  Colors.black.withOpacity(0.7),
+                                  Colors.black.withValues(alpha: 0.7),
                                 ],
                                 stops: const [0.0, 0.6, 1.0],
                               ),
@@ -663,7 +896,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.amber.withOpacity(0.4),
+                        color: Colors.amber.withValues(alpha: 0.4),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
@@ -698,10 +931,10 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
@@ -733,7 +966,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                       Container(
                         height: 6,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(3),
                         ),
                         child: FractionallySizedBox(
@@ -744,13 +977,13 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                               gradient: LinearGradient(
                                 colors: [
                                   AppTheme.primaryColor,
-                                  AppTheme.primaryColor.withOpacity(0.8),
+                                  AppTheme.primaryColor.withValues(alpha: 0.8),
                                 ],
                               ),
                               borderRadius: BorderRadius.circular(3),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppTheme.primaryColor.withOpacity(0.4),
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.4),
                                   blurRadius: 4,
                                   offset: const Offset(0, 1),
                                 ),
@@ -769,11 +1002,11 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
               child: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -799,9 +1032,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.primaryColor.withOpacity(0.8),
+            AppTheme.primaryColor.withValues(alpha: 0.8),
             AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.9),
+            AppTheme.primaryColor.withValues(alpha: 0.9),
           ],
         ),
       ),
@@ -819,10 +1052,10 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.15),
+                    color: Colors.white.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withValues(alpha: 0.3),
                       width: 1,
                     ),
                   ),
@@ -836,7 +1069,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -864,8 +1097,8 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.primaryColor.withOpacity(0.3),
-            AppTheme.primaryColor.withOpacity(0.1),
+            AppTheme.primaryColor.withValues(alpha: 0.3),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
           ],
         ),
       ),
@@ -876,7 +1109,7 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.2),
+                color: AppTheme.primaryColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: CircularProgressIndicator(
@@ -899,67 +1132,117 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   Widget _buildAuthorInfo() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: PhosphorIcon(
-              PhosphorIcons.student(),
-              color: AppTheme.primaryColor,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _ebook!.author ?? 'Unknown Author',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 800),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.translate(
+          offset: Offset(0, 20 * (1 - value)),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(20), // xl rounded corners
+                border: Border.all(
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIcons.star(PhosphorIconsStyle.fill),
-                      color: Colors.amber,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _rating.toString(),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          AppTheme.primaryColor.withValues(alpha: 0.15),
+                          AppTheme.primaryColor.withValues(alpha: 0.08),
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                        width: 1,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '$_reviewsCount reviews',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.grey[600],
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedUserAccount,
+                        color: AppTheme.primaryColor,
+                        size: 28,
                       ),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _ebook!.author ?? 'Unknown Author',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedStar,
+                                    color: Colors.amber,
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _rating.toString(),
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.amber.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              '$_reviewsCount reviews',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1002,32 +1285,85 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
     required String value,
     required Color color,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        children: [
-          PhosphorIcon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Colors.grey[600],
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 600),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutBack,
+      builder: (context, animValue, child) {
+        return Transform.scale(
+          scale: 0.8 + (0.2 * animValue),
+          child: Opacity(
+            opacity: animValue.clamp(0.0, 1.0),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    color.withValues(alpha: 0.15),
+                    color.withValues(alpha: 0.05),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20), // xl rounded corners
+                border: Border.all(
+                  color: color.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: _getHugeIcon(icon, color),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    value,
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
+  }
+
+  Widget _getHugeIcon(PhosphorIconData phosphorIcon, Color color) {
+    // Map Phosphor icons to HugeIcons
+    if (phosphorIcon == PhosphorIcons.fileText()) {
+      return HugeIcon(icon: HugeIcons.strokeRoundedFile02, color: color, size: 24);
+    } else if (phosphorIcon == PhosphorIcons.clock()) {
+      return HugeIcon(icon: HugeIcons.strokeRoundedClock03, color: color, size: 24);
+    } else if (phosphorIcon == PhosphorIcons.trendUp()) {
+      return HugeIcon(icon: HugeIcons.strokeRoundedAnalytics02, color: color, size: 24);
+    }
+    // Fallback to a generic icon
+    return HugeIcon(icon: HugeIcons.strokeRoundedFile02, color: color, size: 24);
   }
 
   Widget _buildDescription() {
@@ -1054,36 +1390,75 @@ class _EbookDetailScreenState extends State<EbookDetailScreen> {
   }
 
   Widget _buildActionButtons() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {
-          _showReadingOptions(context);
-        },
-        icon: PhosphorIcon(
-          PhosphorIcons.readCvLogo(),
-          color: Colors.white,
-          size: 20,
-        ),
-        label: Text(
-          _ebook!.isPremium && !_hasActiveSubscription()
-              ? 'LANGGAN UNTUK BACA'
-              : 'BACA SEKARANG',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _ebook!.isPremium && !_hasActiveSubscription()
-              ? Colors.grey[400]
-              : AppTheme.primaryColor,
-          foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    final isPremiumLocked = _ebook!.isPremium && !_hasActiveSubscription();
+
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 800),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutBack,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.9 + (0.1 * value),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isPremiumLocked
+                      ? [
+                          AppTheme.textSecondaryColor.withValues(alpha: 0.6),
+                          AppTheme.textSecondaryColor.withValues(alpha: 0.4),
+                        ]
+                      : [
+                          AppTheme.primaryColor,
+                          AppTheme.primaryColor.withValues(alpha: 0.8),
+                        ],
+                ),
+                borderRadius: BorderRadius.circular(20), // xl rounded corners
+                boxShadow: [
+                  BoxShadow(
+                    color: isPremiumLocked
+                        ? Colors.black.withValues(alpha: 0.1)
+                        : AppTheme.primaryColor.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  _showReadingOptions(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                ),
+                icon: HugeIcon(
+                  icon: isPremiumLocked
+                      ? HugeIcons.strokeRoundedCrown
+                      : HugeIcons.strokeRoundedBook02,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                label: Text(
+                  isPremiumLocked ? 'LANGGAN UNTUK BACA' : 'BACA SEKARANG',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
           ),
-          elevation: 4,
-          shadowColor: AppTheme.primaryColor.withOpacity(0.3),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -1092,7 +1467,7 @@ class PatternPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
+      ..color = Colors.white.withValues(alpha: 0.1)
       ..strokeWidth = 1
       ..style = PaintingStyle.stroke;
 

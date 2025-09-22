@@ -155,6 +155,16 @@ class AuthProvider extends ChangeNotifier {
         final Session? session = data.session;
 
         if (event == AuthChangeEvent.signedIn && session != null) {
+          // Check if email is confirmed before allowing sign in
+          if (session.user.emailConfirmedAt == null) {
+            if (kDebugMode) {
+              print('DEBUG: User signed in but email not confirmed, signing out');
+            }
+            // Sign out immediately if email not confirmed
+            SupabaseService.signOut();
+            return;
+          }
+
           _user = session.user;
           _loadUserProfile().then((_) {
             // Check subscription after profile is loaded
@@ -172,9 +182,22 @@ class AuthProvider extends ChangeNotifier {
       // Check current user (nullable) to determine auth state
       final currentUser = SupabaseService.client.auth.currentUser;
       if (currentUser != null) {
+        // Check if email is confirmed
+        if (currentUser.emailConfirmedAt == null) {
+          if (kDebugMode) {
+            print('DEBUG: User email not confirmed, signing out');
+          }
+          // Sign out unverified users
+          await SupabaseService.signOut();
+          _user = null;
+          _userProfile = null;
+          _scheduleStatus(AuthStatus.unauthenticated);
+          return;
+        }
+
         _user = currentUser;
         await _loadUserProfile();
-        
+
         // Check subscription after profile is loaded
         if (_userProfile != null) {
           await checkActiveSubscription();
@@ -305,14 +328,75 @@ class AuthProvider extends ChangeNotifier {
       _scheduleStatus(AuthStatus.loading);
       clearError();
 
+      // Duplicate email will be caught by Supabase signUp AuthException
+      // We'll handle it in the catch block below
+
+      if (kDebugMode) {
+        print('DEBUG: Starting signUp process for $email');
+      }
+
+      // First check if user already exists by trying a magic link with shouldCreateUser: false
+      try {
+        if (kDebugMode) {
+          print('DEBUG: Checking if user already exists');
+        }
+
+        final existingUserCheck = await SupabaseService.client.auth.signInWithOtp(
+          email: email,
+          shouldCreateUser: false, // Don't create if doesn't exist
+        );
+
+        // If we get here without exception, user exists
+        if (kDebugMode) {
+          print('DEBUG: User already exists, signup blocked');
+        }
+        _setError('Email sudah terdaftar. Sila guna email lain atau log masuk.');
+        _scheduleStatus(AuthStatus.unauthenticated);
+        return false;
+      } on AuthException catch (e) {
+        // Check if error indicates user doesn't exist
+        if (e.message.toLowerCase().contains('user not found') ||
+            e.message.toLowerCase().contains('invalid credentials') ||
+            e.message.toLowerCase().contains('signup disabled') ||
+            e.statusCode == '400') {
+          // User doesn't exist, continue with signup
+          if (kDebugMode) {
+            print('DEBUG: User does not exist, proceeding with signup: ${e.message}');
+          }
+        } else {
+          // Some other error, rethrow
+          throw e;
+        }
+      } catch (e) {
+        // User doesn't exist, continue with signup
+        if (kDebugMode) {
+          print('DEBUG: User does not exist (generic error), proceeding with signup: $e');
+        }
+      }
+
       final response = await SupabaseService.signUp(
         email: email,
         password: password,
         data: {'full_name': fullName},
       );
 
+      if (kDebugMode) {
+        print('DEBUG: SignUp response - user: ${response.user?.id}, session: ${response.session?.accessToken != null}');
+      }
+
       if (response.user != null) {
         _user = response.user;
+
+        // Check if this is actually a new user or existing user
+        if (response.user!.emailConfirmedAt != null) {
+          // User already exists and is confirmed - this shouldn't happen for new signups
+          if (kDebugMode) {
+            print('DEBUG: User already exists and is confirmed - treating as duplicate');
+          }
+          _setError('Email sudah terdaftar. Sila guna email lain atau log masuk.');
+          _scheduleStatus(AuthStatus.unauthenticated);
+          return false;
+        }
 
         // Always require email verification - don't auto-login
         if (response.session != null) {
@@ -321,18 +405,43 @@ class AuthProvider extends ChangeNotifier {
           _user = null;
         }
 
-        // Always require email verification
+        // Always require email verification - return success for OTP sent
         _scheduleStatus(AuthStatus.unauthenticated);
-        _setError(
-          'Pautan pengesahan telah dihantar ke e-mel anda. Sila sahkan untuk log masuk.',
-        );
+        clearError(); // Clear error since this is successful registration
         return true;
       }
 
       _setError('Failed to create account');
       return false;
+    } on AuthException catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: AuthException in signUp: ${e.message}');
+        print('DEBUG: AuthException status code: ${e.statusCode}');
+      }
+
+      // Handle specific auth errors like duplicate email
+      final errorMessage = e.message.toLowerCase();
+      if (errorMessage.contains('already registered') ||
+          errorMessage.contains('user already registered') ||
+          errorMessage.contains('already been registered') ||
+          errorMessage.contains('email address already in use') ||
+          errorMessage.contains('duplicate') ||
+          errorMessage.contains('user with this email already exists') ||
+          errorMessage.contains('email already exists') ||
+          errorMessage.contains('email already taken') ||
+          (errorMessage.contains('email') && errorMessage.contains('taken')) ||
+          (errorMessage.contains('email') && errorMessage.contains('exists')) ||
+          e.statusCode == '422' || // Unprocessable Entity for duplicate email
+          e.statusCode == '409') { // Conflict for duplicate resources
+        _setError('Email sudah terdaftar. Sila guna email lain atau log masuk.');
+      } else {
+        _setError('Pendaftaran gagal: ${e.message}');
+      }
+      _scheduleStatus(AuthStatus.unauthenticated);
+      return false;
     } catch (e) {
       _setError('Sign up failed: ${e.toString()}');
+      _scheduleStatus(AuthStatus.unauthenticated);
       return false;
     }
   }
@@ -356,17 +465,27 @@ class AuthProvider extends ChangeNotifier {
       }
 
       if (response.user != null) {
+        // Check if email is confirmed
+        if (response.user!.emailConfirmedAt == null) {
+          if (kDebugMode) {
+            print('DEBUG: User email not confirmed during sign in');
+          }
+          await SupabaseService.signOut(); // Sign out unverified user
+          _setError('Sila sahkan email anda terlebih dahulu sebelum log masuk.');
+          return false;
+        }
+
         _user = response.user;
         if (kDebugMode) {
           print('DEBUG: Loading user profile...');
         }
         await _loadUserProfile();
-        
+
         // Check subscription after profile is loaded
         if (_userProfile != null) {
           await checkActiveSubscription();
         }
-        
+
         if (kDebugMode) {
           print('DEBUG: Sign in completed successfully');
         }
