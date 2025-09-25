@@ -1,9 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -12,6 +15,8 @@ import '../../../core/models/video_kitab.dart';
 import '../../../core/models/video_episode.dart';
 import '../../../core/utils/youtube_utils.dart';
 import '../../../core/widgets/offline_banner.dart';
+import '../../../core/services/preview_service.dart';
+import '../../../core/models/preview_models.dart';
 
 class KitabDetailScreen extends StatefulWidget {
   final String kitabId;
@@ -22,13 +27,16 @@ class KitabDetailScreen extends StatefulWidget {
   State<KitabDetailScreen> createState() => _KitabDetailScreenState();
 }
 
-class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProviderStateMixin {
+class _KitabDetailScreenState extends State<KitabDetailScreen>
+    with TickerProviderStateMixin {
   bool _isSaved = false;
   VideoKitab? _kitab;
   bool _isLoading = true;
   double _collapseRatio = 0.0;
-  List<VideoEpisode>? _cachedEpisodes;
   bool _episodesLoading = false;
+  Map<String, bool> _episodePreviewStatus =
+      {}; // Track preview status for each episode
+  List<VideoEpisode>? _cachedEpisodes;
 
   // Animation controllers for smooth animations
   late AnimationController _fadeAnimationController;
@@ -36,9 +44,20 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  // Carousel controller for header thumbnail/video
+  late PageController _headerCarouselController;
+  int _currentCarouselIndex = 0;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize carousel controller with smooth settings
+    _headerCarouselController = PageController(
+      initialPage: 0,
+      keepPage: true,
+      viewportFraction: 1.0,
+    );
 
     // Initialize animation controllers
     _fadeAnimationController = AnimationController(
@@ -53,21 +72,20 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
     );
 
     // Create animations
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _slideAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     _loadKitabData();
     _checkIfSaved();
@@ -138,6 +156,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
       final episodes = await kitabProvider.loadKitabVideos(_kitab!.id);
 
       if (mounted) {
+        // Check preview status for each episode
+        await _loadPreviewStatus(episodes);
+
         setState(() {
           _cachedEpisodes = episodes;
           _episodesLoading = false;
@@ -153,10 +174,30 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
     }
   }
 
+  Future<void> _loadPreviewStatus(List<VideoEpisode> episodes) async {
+    for (final episode in episodes) {
+      try {
+        final hasPreview = await PreviewService.hasPreview(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episode.id,
+        );
+        _episodePreviewStatus[episode.id] = hasPreview;
+      } catch (e) {
+        print('Error checking preview for episode ${episode.id}: $e');
+        _episodePreviewStatus[episode.id] = false;
+      }
+    }
+  }
+
+  bool _isEpisodePreview(VideoEpisode episode) {
+    return _episodePreviewStatus[episode.id] ?? false;
+  }
+
   @override
   void dispose() {
     _fadeAnimationController.dispose();
     _slideAnimationController.dispose();
+    _headerCarouselController.dispose();
     super.dispose();
   }
 
@@ -267,22 +308,26 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
             ),
           ),
         ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Memuat kitab...',
-                style: TextStyle(
-                  color: AppTheme.textSecondaryColor,
-                  fontSize: 14,
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.primaryColor,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                Text(
+                  'Memuat kitab...',
+                  style: TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -315,194 +360,246 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
             ),
           ),
         ),
-        body: TweenAnimationBuilder<double>(
-          duration: const Duration(milliseconds: 600),
-          tween: Tween(begin: 0.0, end: 1.0),
-          curve: Curves.easeOutBack,
-          builder: (context, value, child) {
-            return Transform.scale(
-              scale: 0.8 + (0.2 * value),
-              child: Opacity(
-                opacity: value.clamp(0.0, 1.0),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: AppTheme.textSecondaryColor.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: AppTheme.textSecondaryColor.withValues(alpha: 0.2),
-                              width: 2,
+        body: SafeArea(
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 600),
+            tween: Tween(begin: 0.0, end: 1.0),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) {
+              return Transform.scale(
+                scale: 0.8 + (0.2 * value),
+                child: Opacity(
+                  opacity: value.clamp(0.0, 1.0),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 120,
+                            height: 120,
+                            decoration: BoxDecoration(
+                              color: AppTheme.textSecondaryColor.withValues(
+                                alpha: 0.1,
+                              ),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppTheme.textSecondaryColor.withValues(
+                                  alpha: 0.2,
+                                ),
+                                width: 2,
+                              ),
+                            ),
+                            child: Center(
+                              child: HugeIcon(
+                                icon: HugeIcons.strokeRoundedBookOpen01,
+                                color: AppTheme.textSecondaryColor,
+                                size: 48,
+                              ),
                             ),
                           ),
-                          child: Center(
-                            child: HugeIcon(
-                              icon: HugeIcons.strokeRoundedBookOpen01,
+                          const SizedBox(height: 24),
+                          Text(
+                            'Kitab Tidak Ditemui',
+                            style: Theme.of(context).textTheme.headlineSmall
+                                ?.copyWith(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Kitab yang dicari tidak wujud atau telah dipadam',
+                            style: TextStyle(
                               color: AppTheme.textSecondaryColor,
-                              size: 48,
+                              fontSize: 14,
+                              height: 1.5,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'Kitab Tidak Ditemui',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            color: AppTheme.textPrimaryColor,
-                            fontWeight: FontWeight.bold,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Kitab yang dicari tidak wujud atau telah dipadam',
-                          style: TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 14,
-                            height: 1.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 32),
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
+                          const SizedBox(height: 32),
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppTheme.primaryColor,
+                                  AppTheme.primaryColor.withValues(alpha: 0.8),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: ElevatedButton.icon(
-                            onPressed: () => context.pop(),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton.icon(
+                              onPressed: () => context.pop(),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
                               ),
-                            ),
-                            icon: PhosphorIcon(
-                              PhosphorIcons.arrowLeft(PhosphorIconsStyle.fill),
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            label: const Text(
-                              'Kembali',
-                              style: TextStyle(
+                              icon: PhosphorIcon(
+                                PhosphorIcons.arrowLeft(
+                                  PhosphorIconsStyle.fill,
+                                ),
                                 color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                                size: 20,
+                              ),
+                              label: const Text(
+                                'Kembali',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       );
     }
 
-    return Scaffold(
-      backgroundColor: AppTheme.backgroundColor,
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification scrollInfo) {
-          if (scrollInfo is ScrollUpdateNotification) {
-            final scrollOffset = scrollInfo.metrics.pixels;
-            final expandedHeight = 280.0;
-            final toolbarHeight = kToolbarHeight;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.transparent,
+        systemNavigationBarIconBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: AppTheme.backgroundColor,
+        body: SafeArea(
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (ScrollNotification scrollInfo) {
+              if (scrollInfo is ScrollUpdateNotification) {
+                final scrollOffset = scrollInfo.metrics.pixels;
+                final expandedHeight = 280.0;
+                final toolbarHeight = kToolbarHeight;
 
-            final newCollapseRatio =
-                ((scrollOffset) / (expandedHeight - toolbarHeight)).clamp(
-                  0.0,
-                  1.0,
-                );
+                final newCollapseRatio =
+                    ((scrollOffset) / (expandedHeight - toolbarHeight)).clamp(
+                      0.0,
+                      1.0,
+                    );
 
-            if (_collapseRatio != newCollapseRatio) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (mounted) {
-                  setState(() {
-                    _collapseRatio = newCollapseRatio;
+                if (_collapseRatio != newCollapseRatio) {
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      setState(() {
+                        _collapseRatio = newCollapseRatio;
+                      });
+                    }
                   });
                 }
-              });
-            }
-          }
-          return false;
-        },
-        child: Stack(
-          children: [
-            AnimatedBuilder(
-              animation: _fadeAnimation,
-              builder: (context, child) {
-                return Opacity(
-                  opacity: _fadeAnimation.value.clamp(0.0, 1.0),
-                  child: SlideTransition(
-                    position: _slideAnimation,
-                    child: CustomScrollView(
-                      physics: const BouncingScrollPhysics(),
-                      slivers: [
-                        _buildFloatingAppBar(),
-                        SliverToBoxAdapter(
-                          child: Column(
-                            children: [
-                              _buildDescription(),
-                              if (_kitab!.totalVideos > 1) _buildEpisodesSection(),
-                              const SizedBox(height: 100),
-                            ],
-                          ),
+              }
+              return false;
+            },
+            child: Stack(
+              children: [
+                AnimatedBuilder(
+                  animation: _fadeAnimation,
+                  builder: (context, child) {
+                    return Opacity(
+                      opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: CustomScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          slivers: [
+                            _buildFloatingAppBar(),
+                            SliverToBoxAdapter(
+                              child: Column(
+                                children: [
+                                  _buildDescription(),
+                                  if (_kitab!.totalVideos > 1)
+                                    _buildEpisodesSection(),
+                                  const SizedBox(height: 100),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
+                    );
+                  },
+                ),
+                // Adaptive floating back button
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    decoration: _collapseRatio > 0.5
+                        ? null // No background when collapsed
+                        : BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                    child: IconButton(
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowLeft01,
+                        color: _collapseRatio > 0.5
+                            ? AppTheme.textPrimaryColor
+                            : Colors.white,
+                        size: 28,
+                      ),
+                      onPressed: () => context.pop(),
                     ),
                   ),
-                );
-              },
-            ),
-            // Adaptive floating love button
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 8,
-              right: 8,
-              child: Container(
-                decoration: _collapseRatio > 0.5
-                    ? null // No background when collapsed
-                    : BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                child: IconButton(
-                  icon: PhosphorIcon(
-                    _isSaved
-                        ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
-                        : PhosphorIcons.heart(),
-                    color: _isSaved
-                        ? const Color(0xFFE91E63)
-                        : (_collapseRatio > 0.5
-                              ? AppTheme.textSecondaryColor
-                              : Colors.white),
-                  ),
-                  onPressed: _toggleSaved,
                 ),
-              ),
+                // Adaptive floating love button
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    decoration: _collapseRatio > 0.5
+                        ? null // No background when collapsed
+                        : BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                    child: IconButton(
+                      icon: PhosphorIcon(
+                        _isSaved
+                            ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
+                            : PhosphorIcons.heart(),
+                        color: _isSaved
+                            ? const Color(0xFFE91E63)
+                            : (_collapseRatio > 0.5
+                                  ? AppTheme.textSecondaryColor
+                                  : Colors.white),
+                      ),
+                      onPressed: _toggleSaved,
+                    ),
+                  ),
+                ),
+                // Fixed bottom button
+                _buildBottomButton(),
+              ],
             ),
-            // Fixed bottom button
-            _buildBottomButton(),
-          ],
+          ),
         ),
       ),
     );
@@ -521,15 +618,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
       shadowColor: Colors.black.withValues(alpha: 0.1),
       surfaceTintColor: AppTheme.backgroundColor,
       title: null,
-      leading: IconButton(
-        icon: PhosphorIcon(
-          PhosphorIcons.arrowLeft(),
-          color: _collapseRatio > 0.5
-              ? AppTheme.textPrimaryColor
-              : Colors.white,
-        ),
-        onPressed: () => context.pop(),
-      ),
+      automaticallyImplyLeading: false,
       actions: [
         const SizedBox(width: 48), // Placeholder space
       ],
@@ -558,54 +647,65 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
             collapseMode: CollapseMode.pin,
             titlePadding: const EdgeInsets.only(
               left: 50,
-              bottom: 17,
+              bottom: 15,
               right: 16,
             ),
-            title: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: Text(
-                    _kitab?.title ?? 'Kitab',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: titleColor,
-                      fontSize: 16,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            title: _currentCarouselIndex == 1
+                ? null // Hide title in video preview mode
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        constraints: BoxConstraints(
+                          maxWidth:
+                              MediaQuery.of(context).size.width *
+                              0.4, // 40% screen width for longer text
+                        ),
+                        child: Text(
+                          _kitab?.title ?? 'Kitab',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: titleColor,
+                            fontSize: 18,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (_kitab?.isPremium == true) ...[
+                        const SizedBox(width: 8),
+                        PhosphorIcon(
+                          PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                          color: const Color(0xFFFFD700),
+                          size: 18,
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                if (_kitab?.isPremium == true) ...[
-                  const SizedBox(width: 8),
-                  PhosphorIcon(
-                    PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                    color: const Color(0xFFFFD700),
-                    size: 18,
-                  ),
-                ],
-              ],
-            ),
             background: RepaintBoundary(
               child: Stack(
                 children: [
-                  // Background image from thumbnail
-                  Positioned.fill(child: _buildThumbnailImage()),
-                  // Gradient overlay
+                  // Carousel untuk thumbnail/video
+                  Positioned.fill(child: _buildHeaderCarousel()),
+                  // Gradient overlay - pointer transparent so taps go through
                   Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.7),
-                          ],
+                    child: IgnorePointer(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.7),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
+                  // Carousel page number indicator
+                  _buildPageNumberIndicator(),
                 ],
               ),
             ),
@@ -626,17 +726,20 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
           left: 0,
           right: 0,
           child: Container(
-            padding: EdgeInsets.only(
+            padding: const EdgeInsets.only(
               left: 20,
               right: 20,
               top: 16,
-              bottom: MediaQuery.of(context).padding.bottom + 16,
+              bottom: 16,
             ),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [AppTheme.backgroundColor.withValues(alpha: 0.5), AppTheme.backgroundColor],
+                colors: [
+                  AppTheme.backgroundColor.withValues(alpha: 0.5),
+                  AppTheme.backgroundColor,
+                ],
               ),
               boxShadow: [
                 BoxShadow(
@@ -778,8 +881,10 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
     final sortedEpisodes = List<VideoEpisode>.from(_cachedEpisodes!);
     sortedEpisodes.sort((a, b) {
       // Preview videos go to top
-      if (a.isPreview && !b.isPreview) return -1;
-      if (!a.isPreview && b.isPreview) return 1;
+      final aIsPreview = _isEpisodePreview(a);
+      final bIsPreview = _isEpisodePreview(b);
+      if (aIsPreview && !bIsPreview) return -1;
+      if (!aIsPreview && bIsPreview) return 1;
 
       // If both are preview or both are regular, sort by part_number (ascending)
       return a.partNumber.compareTo(b.partNumber);
@@ -867,13 +972,14 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
     // Episode is locked if:
     // 1. Premium kitab without subscription and not preview
     // 2. Episode is inactive
-    final isLocked = (!canAccess && !episode.isPreview) || !episode.isActive;
+    final isLocked =
+        (!canAccess && !_isEpisodePreview(episode)) || !episode.isActive;
 
     // Always show premium videos but lock them if no subscription
     final isPremiumLocked =
         _kitab!.isPremium &&
         !authProvider.hasActiveSubscription &&
-        !episode.isPreview;
+        !_isEpisodePreview(episode);
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 300 + (number * 50)),
@@ -889,10 +995,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
               decoration: BoxDecoration(
                 color: AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(20), // xl rounded corners
-                border: Border.all(
-                  color: AppTheme.borderColor,
-                  width: 1,
-                ),
+                border: Border.all(color: AppTheme.borderColor, width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.04),
@@ -936,36 +1039,8 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
                                 child: _buildVideoThumbnail(episode),
                               ),
                             ),
-                            // Duration badge with enhanced design
-                            if (episode.durationMinutes > 0)
-                              Positioned(
-                                bottom: 6,
-                                right: 6,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withValues(alpha: 0.85),
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                      width: 0.5,
-                                    ),
-                                  ),
-                                  child: Text(
-                                    episode.displayDuration,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
                             // Preview badge with enhanced design
-                            if (episode.isPreview)
+                            if (_isEpisodePreview(episode))
                               Positioned(
                                 top: 6,
                                 left: 6,
@@ -978,13 +1053,16 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
                                     gradient: LinearGradient(
                                       colors: [
                                         AppTheme.secondaryColor,
-                                        AppTheme.secondaryColor.withValues(alpha: 0.8),
+                                        AppTheme.secondaryColor.withValues(
+                                          alpha: 0.8,
+                                        ),
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(8),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+                                        color: AppTheme.secondaryColor
+                                            .withValues(alpha: 0.3),
                                         blurRadius: 4,
                                         offset: const Offset(0, 2),
                                       ),
@@ -1013,7 +1091,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
                                     child: Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.9),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
                                         shape: BoxShape.circle,
                                       ),
                                       child: HugeIcon(
@@ -1037,9 +1117,14 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
                             children: [
                               // Episode number badge
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -1068,28 +1153,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
-
-                              const SizedBox(height: 6),
-
-                              // Duration with icon
-                              Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedClock03,
-                                    size: 14,
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    episode.formattedDuration,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondaryColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
                             ],
                           ),
                         ),
@@ -1100,7 +1163,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
                             color: AppTheme.backgroundColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: AppTheme.borderColor.withValues(alpha: 0.5),
+                              color: AppTheme.borderColor.withValues(
+                                alpha: 0.5,
+                              ),
                             ),
                           ),
                           child: IconButton(
@@ -1138,8 +1203,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
       },
     );
   }
-
-
 
   void _toggleSaved() async {
     if (_kitab == null) return;
@@ -1214,8 +1277,10 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
         final sortedEpisodes = List<VideoEpisode>.from(episodes);
         sortedEpisodes.sort((a, b) {
           // Preview videos go to top
-          if (a.isPreview && !b.isPreview) return -1;
-          if (!a.isPreview && b.isPreview) return 1;
+          final aIsPreview = _isEpisodePreview(a);
+          final bIsPreview = _isEpisodePreview(b);
+          if (aIsPreview && !bIsPreview) return -1;
+          if (!aIsPreview && bIsPreview) return 1;
 
           // If both are preview or both are regular, sort by part_number (ascending)
           return a.partNumber.compareTo(b.partNumber);
@@ -1244,7 +1309,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
     final goRouter = GoRouter.of(context);
     goRouter.push('/player/${widget.kitabId}?episode=${episode.id}');
   }
-
 
   void _showPremiumDialog() {
     showDialog(
@@ -1354,7 +1418,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
     );
   }
 
-
   void _showInactiveEpisodeDialog() {
     showDialog(
       context: context,
@@ -1378,6 +1441,502 @@ class _KitabDetailScreenState extends State<KitabDetailScreen> with TickerProvid
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderCarousel() {
+    // Get preview episodes
+    final previewEpisodes =
+        _cachedEpisodes
+            ?.where((episode) => _isEpisodePreview(episode))
+            .toList() ??
+        [];
+    final hasPreview = previewEpisodes.isNotEmpty;
+
+    return PageView(
+      controller: _headerCarouselController,
+      // Smooth scrolling physics
+      physics: const BouncingScrollPhysics(),
+      // Reduce sensitivity for smoother navigation
+      clipBehavior: Clip.none,
+      padEnds: false,
+      onPageChanged: (index) {
+        // Debounce setState to prevent jerky animation
+        if (_currentCarouselIndex != index) {
+          setState(() {
+            _currentCarouselIndex = index;
+          });
+        }
+      },
+      children: [
+        // Slide 1: Thumbnail Image
+        _buildThumbnailImage(),
+        // Slide 2: Preview Video (if available)
+        if (hasPreview)
+          _HeaderVideoPlayer(
+            episode: previewEpisodes.first,
+            onBackToThumbnail: () {
+              // Smooth animation back to thumbnail
+              if (_currentCarouselIndex != 0) {
+                setState(() {
+                  _currentCarouselIndex = 0;
+                });
+                _headerCarouselController.animateToPage(
+                  0,
+                  duration: const Duration(milliseconds: 350),
+                  curve: Curves.easeOutQuart,
+                );
+              }
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPageNumberIndicator() {
+    final previewEpisodes =
+        _cachedEpisodes
+            ?.where((episode) => _isEpisodePreview(episode))
+            .toList() ??
+        [];
+    final hasPreview = previewEpisodes.isNotEmpty;
+
+    if (!hasPreview) return const SizedBox.shrink();
+
+    return Positioned(
+      bottom: 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.6),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '${_currentCarouselIndex + 1}/2',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Header video player for carousel preview
+class _HeaderVideoPlayer extends StatefulWidget {
+  final VideoEpisode episode;
+  final VoidCallback? onBackToThumbnail;
+
+  const _HeaderVideoPlayer({required this.episode, this.onBackToThumbnail});
+
+  @override
+  State<_HeaderVideoPlayer> createState() => _HeaderVideoPlayerState();
+}
+
+class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
+  YoutubePlayerController? _controller;
+  bool _isInitialized = false;
+  bool _hasError = false;
+  bool _isOnline = false;
+  bool _showControls = false;
+  bool _isPlaying = false;
+  Timer? _hideControlsTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkConnectivityAndInitialize();
+  }
+
+  Future<void> _checkConnectivityAndInitialize() async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final isConnected = connectivityResult.any(
+        (result) =>
+            result == ConnectivityResult.mobile ||
+            result == ConnectivityResult.wifi,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isOnline = isConnected;
+      });
+
+      if (isConnected) {
+        await _initializePlayer();
+      } else {
+        setState(() {
+          _hasError = true;
+          _isInitialized = true;
+        });
+      }
+    } catch (e) {
+      print('❌ Connectivity check error: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isInitialized = true;
+          _isOnline = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _initializePlayer() async {
+    try {
+      final videoUrl = widget.episode.youtubeVideoUrl;
+      if (videoUrl != null && videoUrl.isNotEmpty) {
+        final videoId = YoutubePlayer.convertUrlToId(videoUrl);
+        if (videoId != null) {
+          _controller = YoutubePlayerController(
+            initialVideoId: videoId,
+            flags: const YoutubePlayerFlags(
+              autoPlay: false,
+              mute: false,
+              enableCaption: false,
+              loop: false,
+              hideControls: true, // Hide all default controls
+              disableDragSeek: true, // Disable seek by dragging
+              controlsVisibleAtStart: true,
+              showLiveFullscreenButton: false,
+            ),
+          );
+
+          // Add listener to track video state
+          _controller!.addListener(() {
+            if (mounted) {
+              setState(() {
+                _isPlaying = _controller!.value.isPlaying;
+              });
+            }
+          });
+
+          if (mounted) {
+            setState(() {
+              _isInitialized = true;
+              _hasError = false;
+            });
+          }
+        } else {
+          throw Exception('Invalid video URL');
+        }
+      } else {
+        throw Exception('No video URL provided');
+      }
+    } catch (e) {
+      print('❌ YouTube player initialization error: $e');
+      if (mounted) {
+        setState(() {
+          _hasError = true;
+          _isInitialized = true;
+        });
+      }
+    }
+  }
+
+  void _showControlsTemporarily() {
+    setState(() {
+      _showControls = true;
+    });
+
+    // Cancel existing timer
+    _hideControlsTimer?.cancel();
+
+    // Start new timer to hide controls after 3 seconds
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  void _togglePlayPause() {
+    if (_controller != null) {
+      if (_isPlaying) {
+        _controller!.pause();
+      } else {
+        _controller!.play();
+      }
+      _showControlsTemporarily();
+    }
+  }
+
+  @override
+  void dispose() {
+    try {
+      _hideControlsTimer?.cancel();
+      _controller?.dispose();
+      _controller = null;
+    } catch (e) {
+      print('❌ Error disposing YouTube controller: $e');
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show loading state
+    if (!_isInitialized) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        color: Colors.black,
+        child: Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryColor),
+        ),
+      );
+    }
+
+    // Show error/offline state with fallback thumbnail
+    if (_hasError || !_isOnline || _controller == null) {
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        child: Stack(
+          children: [
+            // Fallback thumbnail
+            if (widget.episode.thumbnailUrl != null)
+              Positioned.fill(
+                child: Image.network(
+                  widget.episode.thumbnailUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _buildOfflinePlaceholder();
+                  },
+                ),
+              )
+            else
+              Positioned.fill(child: _buildOfflinePlaceholder()),
+
+            // Offline/Error overlay
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.6),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      HugeIcon(
+                        icon: _isOnline
+                            ? HugeIcons.strokeRoundedAlert01
+                            : HugeIcons.strokeRoundedWifiDisconnected01,
+                        color: Colors.white,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _isOnline ? 'Video Error' : 'Offline',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _isOnline
+                            ? 'Cannot load video'
+                            : 'Connect to internet\nto watch preview',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8),
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Preview badge overlay
+            Positioned(
+              top: 16,
+              left: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _isOnline ? AppTheme.primaryColor : Colors.grey,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  'PREVIEW',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Show working video player
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      child: Stack(
+        children: [
+          // Video Player takes full space - no tap gestures to prevent seek conflicts
+          Positioned.fill(
+            child: YoutubePlayer(
+              controller: _controller!,
+              showVideoProgressIndicator: false, // Hide default progress
+              onReady: () {
+                print('✅ YouTube player ready');
+              },
+              onEnded: (metaData) {
+                print('📺 Video ended');
+              },
+            ),
+          ),
+
+          // Tap overlay to show controls (invisible when controls hidden)
+          if (!_showControls)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _showControlsTemporarily,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+
+          // Custom Controls Overlay (only show when _showControls is true)
+          if (_showControls)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Stack(
+                  children: [
+                    // Center Play/Pause Button
+                    Center(
+                      child: GestureDetector(
+                        onTap: _togglePlayPause,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.5),
+                                blurRadius: 16,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            _isPlaying
+                                ? PhosphorIcons.pause()
+                                : PhosphorIcons.play(),
+                            color: Colors.white,
+                            size: 36,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Bottom Progress Bar (Read-Only)
+                    Positioned(
+                      bottom: 20,
+                      left: 20,
+                      right: 20,
+                      child: Container(
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                        child: StreamBuilder<Duration>(
+                          stream: _controller?.value.position != null
+                              ? Stream.periodic(
+                                  const Duration(milliseconds: 100),
+                                  (_) => _controller!.value.position,
+                                )
+                              : Stream.empty(),
+                          builder: (context, snapshot) {
+                            final position = snapshot.data ?? Duration.zero;
+                            final duration =
+                                _controller?.metadata.duration ?? Duration.zero;
+                            final progress = duration.inMilliseconds > 0
+                                ? position.inMilliseconds /
+                                      duration.inMilliseconds
+                                : 0.0;
+
+                            return FractionallySizedBox(
+                              alignment: Alignment.centerLeft,
+                              widthFactor: progress.clamp(0.0, 1.0),
+                              child: Container(
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflinePlaceholder() {
+    return Container(
+      width: double.infinity,
+      height: double.infinity,
+      color: AppTheme.surfaceColor,
+      child: Stack(
+        children: [
+          // Background pattern
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  AppTheme.primaryColor.withOpacity(0.1),
+                  AppTheme.secondaryColor.withOpacity(0.1),
+                ],
+              ),
+            ),
+          ),
+          // Video icon
+          Center(
+            child: HugeIcon(
+              icon: HugeIcons.strokeRoundedVideoOff,
+              size: 64,
+              color: AppTheme.textSecondaryColor,
+            ),
           ),
         ],
       ),

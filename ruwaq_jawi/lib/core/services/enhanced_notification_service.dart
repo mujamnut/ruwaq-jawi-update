@@ -1,7 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../models/enhanced_notification.dart';
-import 'unified_notification_service.dart';
 
 /// Enhanced notification service supporting both new 2-table system and legacy system
 /// Provides seamless migration and backward compatibility
@@ -12,7 +11,7 @@ class EnhancedNotificationService {
   static String? get currentUserId => _supabase.auth.currentUser?.id;
 
   /// Get all notifications for current user using hybrid approach
-  /// Combines new system (notifications + notification_reads) with legacy (user_notifications)
+  /// Uses enhanced 2-table system (notifications + notification_reads)
   static Future<List<EnhancedNotification>> getNotifications({
     bool unreadOnly = false,
     int limit = 50,
@@ -70,21 +69,10 @@ class EnhancedNotificationService {
     bool unreadOnly = false,
     int limit = 50,
   }) async {
-    try {
-      final legacyNotifications = await UnifiedNotificationService.getNotifications(
-        unreadOnly: unreadOnly,
-        limit: limit,
-      );
-
-      return legacyNotifications
-          .map((legacy) => EnhancedNotification.fromLegacy(legacy))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error in legacy fallback: $e');
-      }
-      return [];
+    if (kDebugMode) {
+      print('❌ Enhanced notification system not available, no fallback');
     }
+    return [];
   }
 
   /// Get unread notifications count using hybrid approach
@@ -103,12 +91,12 @@ class EnhancedNotificationService {
       }
 
       // Fallback to legacy system
-      return await UnifiedNotificationService.getUnreadCount();
+      return 0;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting unread count, using legacy: $e');
+        print('❌ Error getting unread count: $e');
       }
-      return await UnifiedNotificationService.getUnreadCount();
+      return 0;
     }
   }
 
@@ -134,17 +122,16 @@ class EnhancedNotificationService {
           }
         } catch (e) {
           if (kDebugMode) {
-            print('⚠️ New system failed, trying legacy: $e');
+            print('❌ Enhanced system failed to mark as read: $e');
           }
+          return false;
         }
       }
 
-      // Fallback to legacy system
-      final success = await UnifiedNotificationService.markAsRead(notificationId);
-      if (kDebugMode && success) {
-        print('✅ Marked as read using legacy system: $notificationId');
+      if (kDebugMode) {
+        print('❌ Failed to mark as read - no fallback available');
       }
-      return success;
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error marking as read: $e');
@@ -192,34 +179,15 @@ class EnhancedNotificationService {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('⚠️ New system failed, using legacy approach: $e');
+          print('❌ Enhanced broadcast notification failed: $e');
         }
+        throw Exception('Failed to create broadcast notification: $e');
       }
-
-      // Fallback to legacy system - create global notification
-      await _supabase.from('user_notifications').insert({
-        'user_id': null, // Global notification
-        'message': '$title\n$message',
-        'metadata': {
-          'title': title,
-          'body': message,
-          'type': 'broadcast',
-          'source': 'enhanced_notification_service',
-          'target_roles': targetRoles,
-          'created_at': DateTime.now().toIso8601String(),
-          ...(metadata ?? {}),
-        },
-        'delivered_at': DateTime.now().toIso8601String(),
-        'target_criteria': {
-          'approach': 'legacy_fallback',
-          'target_all_students': true,
-        },
-      });
 
       if (kDebugMode) {
-        print('✅ Created broadcast notification using legacy system');
+        print('❌ Enhanced broadcast notification creation failed - no fallback available');
       }
-      return true;
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error creating broadcast notification: $e');
@@ -253,23 +221,15 @@ class EnhancedNotificationService {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('⚠️ New system failed, using legacy approach: $e');
+          print('❌ Enhanced system failed to create personal notification: $e');
         }
+        return false;
       }
 
-      // Fallback to legacy system
-      final success = await UnifiedNotificationService.createIndividualNotification(
-        userId: userId,
-        title: title,
-        body: message,
-        type: 'personal',
-        metadata: metadata,
-      );
-
-      if (kDebugMode && success) {
-        print('✅ Created personal notification using legacy system');
+      if (kDebugMode) {
+        print('❌ Failed to create personal notification - no fallback available');
       }
-      return success;
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error creating personal notification: $e');
@@ -305,14 +265,8 @@ class EnhancedNotificationService {
       final user = _supabase.auth.currentUser;
       if (user == null) return false;
 
-      // For new system, we typically don't delete notifications, just mark as read
-      // For legacy system, use existing delete logic
-      if (source == 'legacy_system' || source == null) {
-        return await UnifiedNotificationService.deleteNotification(notificationId);
-      }
-
-      // For new system, mark as read instead of deleting
-      return await markAsRead(notificationId, source: source);
+      // Enhanced system doesn't support deletion, only mark as read
+      return await markAsRead(notificationId, source: 'new_system');
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error deleting notification: $e');
@@ -390,13 +344,8 @@ class EnhancedNotificationService {
         health['new_reads_table'] = false;
       }
 
-      // Test legacy system
-      try {
-        await _supabase.from('user_notifications').select('id').limit(1);
-        health['legacy_table'] = true;
-      } catch (e) {
-        health['legacy_table'] = false;
-      }
+      // Legacy system no longer available after migration
+      health['legacy_table'] = false;
 
       // Test RPC functions
       try {

@@ -311,7 +311,7 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final videoId = state.uri.queryParameters['video'];
-            return PreviewVideoPlayerScreen(kitabId: kitabId, videoId: videoId);
+            return PreviewVideoPlayerScreen(videoKitabId: kitabId, videoId: videoId);
           },
         ),
         GoRoute(

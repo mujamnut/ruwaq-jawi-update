@@ -30,6 +30,7 @@ import 'core/services/video_progress_service.dart';
 import 'core/services/pdf_cache_service.dart';
 import 'core/services/local_saved_items_service.dart';
 import 'core/widgets/offline_banner.dart';
+import 'core/widgets/error_boundary.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -145,7 +146,11 @@ class MaktabahApp extends StatelessWidget {
       ],
       child: BackgroundPaymentWrapper(
         child: OfflineBanner(
-          child: MaterialApp.router(
+          child: ErrorBoundary(
+            onRetry: () {
+              // Will be handled by the error boundary widget
+            },
+            child: MaterialApp.router(
             title: AppConfig.appName,
             debugShowCheckedModeBanner: false,
 
@@ -166,6 +171,7 @@ class MaktabahApp extends StatelessWidget {
             //   Locale('ms', 'MY'),
             //   Locale('ar', 'SA'),
             // ],
+            ),
           ),
         ),
       ),

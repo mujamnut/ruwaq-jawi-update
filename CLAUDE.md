@@ -8,3 +8,4 @@ analyze the error after every edit file for sure the error.
   background tema putih,guna background untuk semua putih abu-abu dan untuk card buat putih bersih supaya nampak clean(jangan guna terlalu card),dan untuk tema gelap pula sebaliknya,background hitam bersih dan card abu-abu.text pula kalau untuk title atau maklumat penting,bagi terang,kalau untuk maklumat tidak penting warna abu-abu.
   guna icon phospor untuk icon yang perlukan solid icon,kalau tak perlukan solid icon,guna huge icon stroke rounded.
   sentiasa menggunakan mcp server terutama sekali supabase supaya tidak berlaku mismatch.selalu bandingkan supabase dengan flutter code supaya flutter code menggunakan pemanggilan yang betul dari supabase.
+  guna bottom sheet/modal bottom sheet sesuai tempat.

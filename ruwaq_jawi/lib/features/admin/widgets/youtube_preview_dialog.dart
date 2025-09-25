@@ -568,7 +568,7 @@ class YouTubePreviewDialog extends StatelessWidget {
           ),
 
           // Preview badge if applicable
-          if (episode.isPreview)
+          if (false) // Preview status now managed via preview_content table
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(

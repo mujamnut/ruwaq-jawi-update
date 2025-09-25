@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/models/kitab.dart';
+import '../../../core/models/preview_models.dart';
 import '../../../core/services/video_kitab_service.dart';
 import '../../../core/services/video_episode_service.dart';
+import '../../../core/services/preview_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminKitabDetailScreen extends StatefulWidget {
@@ -22,6 +24,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   Kitab? _kitab;
   String? _previewVideoId;
   List<Map<String, dynamic>> _episodes = [];
+  Map<String, bool> _episodePreviewStatus = {}; // Track which episodes have previews
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -77,7 +80,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       _episodes = episodesList.map((e) => e.toJson()).toList();
 
       // Setup episode controllers
-      _setupEpisodeControllers();
+      await _setupEpisodeControllers();
 
       setState(() => _isLoading = false);
     } catch (e) {
@@ -86,7 +89,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     }
   }
 
-  void _setupEpisodeControllers() {
+  Future<void> _setupEpisodeControllers() async {
     // Clear existing controllers
     for (final controller in _episodeControllers) {
       controller.dispose();
@@ -101,7 +104,21 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         controller.text = episode['youtube_video_url'];
       }
       _episodeControllers.add(controller);
-      _episodePremiumFlags.add(!(episode['is_preview'] ?? false));
+
+      // Check preview status using unified preview system
+      final episodeId = episode['id'] as String;
+      try {
+        final hasPreview = await PreviewService.hasPreview(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episodeId,
+        );
+        _episodePreviewStatus[episodeId] = hasPreview;
+        _episodePremiumFlags.add(!hasPreview); // If has preview, it's not premium (accessible)
+      } catch (e) {
+        print('Error checking preview status for episode $episodeId: $e');
+        _episodePreviewStatus[episodeId] = false;
+        _episodePremiumFlags.add(true); // Default to premium if error
+      }
     }
   }
 
@@ -159,17 +176,33 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         if (url.isNotEmpty) {
           final videoId = VideoEpisodeService.extractYouTubeVideoId(url);
           if (videoId != null) {
-            await VideoEpisodeService.createEpisode({
+            // Create episode without is_preview field
+            final episodeData = await VideoEpisodeService.createEpisode({
               'video_kitab_id': widget.kitabId,
               'title': '${_kitab!.title} - Episode ${i + 1}',
               'youtube_video_id': videoId,
               'youtube_video_url': url,
               'thumbnail_url': _defaultThumbnailFor(videoId),
               'part_number': i + 1,
-              'is_preview':
-                  !_episodePremiumFlags[i], // Invert: true = free, false = premium
               'is_active': true,
             });
+
+            // Create preview content if this episode should be free preview
+            if (!_episodePremiumFlags[i]) {
+              try {
+                await PreviewService.createPreview(
+                  PreviewConfig(
+                    contentType: PreviewContentType.videoEpisode,
+                    contentId: episodeData.id,
+                    previewType: PreviewType.freeTrial,
+                    previewDescription: 'Free preview episode',
+                    isActive: true,
+                  ),
+                );
+              } catch (e) {
+                print('Error creating preview for episode ${episodeData.id}: $e');
+              }
+            }
           }
         }
       }

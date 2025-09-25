@@ -17,6 +17,10 @@ class VideoKitab {
   final int viewsCount;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? youtubePlaylistId;
+  final String? youtubePlaylistUrl;
+  final bool autoSyncEnabled;
+  final DateTime? lastSyncedAt;
 
   const VideoKitab({
     required this.id,
@@ -37,6 +41,10 @@ class VideoKitab {
     this.viewsCount = 0,
     required this.createdAt,
     required this.updatedAt,
+    this.youtubePlaylistId,
+    this.youtubePlaylistUrl,
+    this.autoSyncEnabled = true,
+    this.lastSyncedAt,
   });
 
   factory VideoKitab.fromJson(Map<String, dynamic> json) {
@@ -60,6 +68,10 @@ class VideoKitab {
       viewsCount: json['views_count'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      youtubePlaylistId: json['youtube_playlist_id'] as String?,
+      youtubePlaylistUrl: json['youtube_playlist_url'] as String?,
+      autoSyncEnabled: json['auto_sync_enabled'] as bool? ?? true,
+      lastSyncedAt: json['last_synced_at'] != null ? DateTime.parse(json['last_synced_at'] as String) : null,
     );
   }
 
@@ -82,8 +94,13 @@ class VideoKitab {
       'views_count': viewsCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'youtube_playlist_id': youtubePlaylistId,
+      'youtube_playlist_url': youtubePlaylistUrl,
+      'auto_sync_enabled': autoSyncEnabled,
+      'last_synced_at': lastSyncedAt?.toIso8601String(),
     };
   }
+
 
   VideoKitab copyWith({
     String? title,
@@ -100,6 +117,10 @@ class VideoKitab {
     bool? isPremium,
     bool? isActive,
     int? viewsCount,
+    String? youtubePlaylistId,
+    String? youtubePlaylistUrl,
+    bool? autoSyncEnabled,
+    DateTime? lastSyncedAt,
   }) {
     return VideoKitab(
       id: id,
@@ -117,6 +138,10 @@ class VideoKitab {
       isPremium: isPremium ?? this.isPremium,
       isActive: isActive ?? this.isActive,
       viewsCount: viewsCount ?? this.viewsCount,
+      youtubePlaylistId: youtubePlaylistId ?? this.youtubePlaylistId,
+      youtubePlaylistUrl: youtubePlaylistUrl ?? this.youtubePlaylistUrl,
+      autoSyncEnabled: autoSyncEnabled ?? this.autoSyncEnabled,
+      lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -133,6 +158,24 @@ class VideoKitab {
   bool get hasVideos => totalVideos > 0;
   bool get hasPdf => pdfUrl?.isNotEmpty == true;
   bool get hasContent => hasVideos || hasPdf;
+
+  // YouTube sync helpers
+  bool get hasYouTubePlaylist => youtubePlaylistId?.isNotEmpty == true;
+  bool get isAutoSyncEnabled => autoSyncEnabled && hasYouTubePlaylist;
+  String get youtubePlaylistWatchUrl => hasYouTubePlaylist
+      ? 'https://www.youtube.com/playlist?list=$youtubePlaylistId'
+      : '';
+
+  String get lastSyncDisplay {
+    if (lastSyncedAt == null) return 'Belum pernah sync';
+    final now = DateTime.now();
+    final difference = now.difference(lastSyncedAt!);
+
+    if (difference.inMinutes < 1) return 'Baru sahaja';
+    if (difference.inHours < 1) return '${difference.inMinutes} minit yang lalu';
+    if (difference.inDays < 1) return '${difference.inHours} jam yang lalu';
+    return '${difference.inDays} hari yang lalu';
+  }
   
   String get formattedDuration {
     if (totalDurationMinutes <= 0) return '0 min';

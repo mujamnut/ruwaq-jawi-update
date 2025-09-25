@@ -10,6 +10,8 @@ import '../../../core/services/admin_category_service.dart';
 import '../../../core/services/video_kitab_service.dart';
 import '../../../core/services/video_episode_service.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/preview_service.dart';
+import '../../../core/models/preview_models.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminKitabFormScreen extends StatefulWidget {
@@ -144,8 +146,28 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         ascending: true,
       );
 
+      // Load preview status for each episode
+      final episodeJsonList = <Map<String, dynamic>>[];
+      for (final episode in episodes) {
+        final episodeJson = episode.toJson();
+
+        // Check if episode has preview in preview_content table
+        try {
+          final hasPreview = await PreviewService.hasPreview(
+            contentType: PreviewContentType.videoEpisode,
+            contentId: episode.id,
+          );
+          episodeJson['has_preview'] = hasPreview;
+        } catch (e) {
+          print('Error checking preview for episode ${episode.id}: $e');
+          episodeJson['has_preview'] = false;
+        }
+
+        episodeJsonList.add(episodeJson);
+      }
+
       setState(() {
-        _episodes = episodes.map((episode) => episode.toJson()).toList();
+        _episodes = episodeJsonList;
         _isLoadingEpisodes = false;
       });
     } catch (e) {
@@ -974,7 +996,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                   Wrap(
                     spacing: 8,
                     children: [
-                      if (episode['is_preview'] == true)
+                      if (episode['has_preview'] == true)
                         Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 6,
@@ -1192,18 +1214,20 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       final finalThumbnailUrl =
           thumbnailUrl ?? _defaultThumbnailFor(youtubeVideoId);
 
+      String savedEpisodeId;
+
       if (episodeId == null) {
         // Add new episode
-        await VideoEpisodeService.createEpisode({
+        final result = await VideoEpisodeService.createEpisode({
           'video_kitab_id': widget.kitabId!,
           'title': title,
           'youtube_video_id': youtubeVideoId,
           'part_number': episodeNumber,
           'youtube_video_url': youtubeUrl,
           'thumbnail_url': finalThumbnailUrl,
-          'is_preview': isPreview,
           'is_active': isActive,
         });
+        savedEpisodeId = result.id;
         _showSnackBar('Episode berjaya ditambah!');
       } else {
         // Update existing episode
@@ -1213,11 +1237,14 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           'youtube_video_url': youtubeUrl,
           'thumbnail_url': finalThumbnailUrl,
           'part_number': episodeNumber,
-          'is_preview': isPreview,
           'is_active': isActive,
         });
+        savedEpisodeId = episodeId;
         _showSnackBar('Episode berjaya dikemaskini!');
       }
+
+      // Handle preview using preview_content table
+      await _handlePreviewChanges(savedEpisodeId, isPreview);
 
       await _loadEpisodes(); // Refresh episodes list
     } catch (e) {
@@ -1225,6 +1252,36 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     }
   }
 
+  Future<void> _handlePreviewChanges(String episodeId, bool shouldHavePreview) async {
+    try {
+      print('🔍 Kitab Form Preview Changes:');
+      print('   Episode ID: $episodeId');
+      print('   Should Have Preview: $shouldHavePreview');
+      final existingPreview = await PreviewService.getPrimaryPreview(
+        contentType: PreviewContentType.videoEpisode,
+        contentId: episodeId,
+      );
+
+      if (shouldHavePreview && existingPreview == null) {
+        // Create new preview
+        final config = PreviewConfig(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episodeId,
+          previewType: PreviewType.freeTrial,
+          previewDescription: 'Free preview episode',
+        );
+        await PreviewService.createPreview(config);
+      } else if (!shouldHavePreview && existingPreview != null) {
+        // Remove existing preview
+        await PreviewService.deletePreview(existingPreview.id);
+      } else if (shouldHavePreview && existingPreview != null && !existingPreview.isActive) {
+        // Reactivate preview
+        await PreviewService.togglePreviewStatus(existingPreview.id);
+      }
+    } catch (e) {
+      print('Error handling preview changes: $e');
+    }
+  }
   Future<void> _deleteEpisode(String episodeId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1356,7 +1413,7 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
     _youtubeUrlController = TextEditingController();
     _thumbnailUrlController = TextEditingController();
 
-    _isPreview = widget.episode?['is_preview'] ?? false;
+    _isPreview = widget.episode?['has_preview'] ?? false;
     _isActive = widget.episode?['is_active'] ?? true;
     _isEditMode = widget.episode != null;
     _episodeNumber = _isEditMode

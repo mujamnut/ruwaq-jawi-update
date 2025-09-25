@@ -11,6 +11,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/popup_service.dart';
 import '../widgets/student_bottom_nav.dart';
@@ -42,12 +43,17 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kitabProvider = context.read<KitabProvider>();
-      if (kitabProvider.videoKitabList.isEmpty &&
-          kitabProvider.ebookList.isEmpty) {
-        kitabProvider.initialize();
+      final connectivityProvider = context.read<ConnectivityProvider>();
+
+      // Only initialize if we have internet connection
+      if (connectivityProvider.isOnline) {
+        if (kitabProvider.videoKitabList.isEmpty &&
+            kitabProvider.ebookList.isEmpty) {
+          kitabProvider.initialize();
+        }
+        // Load notifications inbox for signed-in users
+        context.read<NotificationsProvider>().loadInbox();
       }
-      // Load notifications inbox for signed-in users
-      context.read<NotificationsProvider>().loadInbox();
 
       // Check and show subscription promo popup if criteria met
       _checkSubscriptionPromo();
@@ -417,8 +423,85 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   }
 
   Widget _buildFeaturedSection() {
-    return Consumer<KitabProvider>(
-      builder: (context, kitabProvider, child) {
+    return Consumer2<KitabProvider, ConnectivityProvider>(
+      builder: (context, kitabProvider, connectivityProvider, child) {
+        // Show loading state
+        if (kitabProvider.isLoading) {
+          return Container(
+            height: 220,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: AppTheme.borderColor,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: 3,
+                    itemBuilder: (context, index) => Container(
+                      width: 300,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.borderColor,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        // Show error state when offline or has error
+        if (connectivityProvider.isOffline || kitabProvider.errorMessage != null) {
+          return Container(
+            height: 120,
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.borderColor),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  connectivityProvider.isOffline
+                    ? Icons.cloud_off_outlined
+                    : Icons.error_outline,
+                  color: AppTheme.textSecondaryColor,
+                  size: 32,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  connectivityProvider.isOffline
+                    ? 'Tiada sambungan internet'
+                    : kitabProvider.errorMessage ?? 'Tidak dapat memuat kandungan',
+                  style: TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          );
+        }
+
         // Show only premium video kitab for featured section
         final featuredContent = kitabProvider.premiumVideoKitab.take(5).toList();
 
@@ -1267,6 +1350,51 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         return FutureBuilder<List<dynamic>>(
           future: context.read<KitabProvider>().loadContinueReading(),
           builder: (context, snapshot) {
+            // Handle loading state
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppTheme.primaryColor,
+                    strokeWidth: 2,
+                  ),
+                ),
+              );
+            }
+
+            // Handle error state
+            if (snapshot.hasError) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.surfaceColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.error_outline,
+                      color: AppTheme.errorColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Tidak dapat memuat bacaan tersimpan',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            // Handle empty data
             if (!snapshot.hasData || snapshot.data!.isEmpty) {
               return const SizedBox.shrink();
             }

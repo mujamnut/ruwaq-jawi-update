@@ -70,38 +70,21 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
         _isLoading = true;
       });
 
-      // Load notifications from both enhanced and legacy systems, and users in parallel
-      final [legacyNotificationsData, usersData] = await Future.wait([
-        SupabaseService.from('user_notifications')
-            .select('*')
-            .order('delivered_at', ascending: false)
+      // Load notifications from enhanced system only, and users in parallel
+      final [enhancedNotificationsData, usersData] = await Future.wait([
+        SupabaseService.from('notifications')
+            .select('*, notification_reads(*)')
+            .order('created_at', ascending: false)
             .limit(100),
         SupabaseService.from('profiles')
             .select('id, full_name, role')
             .order('full_name', ascending: true),
       ]);
 
-      // Also try to get notifications from new system
-      List<Map<String, dynamic>> enhancedNotificationsData = [];
-      try {
-        final newSystemData = await SupabaseService.from('notifications')
-            .select('*, notification_reads(*)')
-            .order('created_at', ascending: false)
-            .limit(100);
-        enhancedNotificationsData = List<Map<String, dynamic>>.from(newSystemData);
-      } catch (e) {
-        // New system might not be available yet, continue with legacy only
-        print('⚠️ New notification system not available: $e');
-      }
-
-      // Combine both systems for display
+      // Convert enhanced system notifications for display
       final allNotifications = <Map<String, dynamic>>[];
 
-      // Add legacy notifications
-      allNotifications.addAll(List<Map<String, dynamic>>.from(legacyNotificationsData));
-
-      // Add enhanced system notifications (convert format for display)
-      for (final notification in enhancedNotificationsData) {
+      for (final notification in enhancedNotificationsData as List) {
         allNotifications.add({
           'id': notification['id'],
           'user_id': notification['target_type'] == 'all' ? null : 'enhanced_system',

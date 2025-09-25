@@ -13,7 +13,6 @@ class AdminVideoService {
   Future<List<Map<String, dynamic>>> getKitabEpisodes({
     required String kitabId,
     bool? isActive,
-    bool? isPreview,
     String orderBy = 'part_number',
     bool ascending = true,
   }) async {
@@ -25,10 +24,6 @@ class AdminVideoService {
 
       if (isActive != null) {
         query = query.eq('is_active', isActive);
-      }
-
-      if (isPreview != null) {
-        query = query.eq('is_preview', isPreview);
       }
 
       // Apply ordering dan execute query
@@ -54,7 +49,6 @@ class AdminVideoService {
     int? durationMinutes,
     int? durationSeconds,
     bool isActive = true,
-    bool isPreview = false,
     int? sortOrder,
   }) async {
     try {
@@ -134,7 +128,6 @@ class AdminVideoService {
         'part_number': partNumber,
         'sort_order': sortOrder,
         'is_active': isActive,
-        'is_preview': isPreview,
       };
 
       final response = await _supabase
@@ -165,7 +158,6 @@ class AdminVideoService {
     int? durationSeconds,
     int? sortOrder,
     bool? isActive,
-    bool? isPreview,
   }) async {
     try {
       // Check episode exists dan dapatkan kitab_id
@@ -218,7 +210,6 @@ class AdminVideoService {
       }
       if (sortOrder != null) updateData['sort_order'] = sortOrder;
       if (isActive != null) updateData['is_active'] = isActive;
-      if (isPreview != null) updateData['is_preview'] = isPreview;
 
       final response = await _supabase
           .from('kitab_videos')

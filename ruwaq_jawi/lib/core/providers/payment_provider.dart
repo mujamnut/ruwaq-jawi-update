@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import '../services/toyyibpay_service.dart';
 import '../services/subscription_service.dart';
 import '../models/payment_models.dart';
@@ -13,9 +14,20 @@ class PaymentProvider with ChangeNotifier {
   List<SubscriptionPlan> _subscriptionPlans = [];
 
   PaymentProvider(this._paymentService, this._subscriptionService);
-  
+
   void setAuthProvider(AuthProvider authProvider) {
     _authProvider = authProvider;
+  }
+
+  /// Safe method to notify listeners, prevents setState during build
+  void _safeNotifyListeners() {
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+      notifyListeners();
+    } else {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        notifyListeners();
+      });
+    }
   }
 
   bool get isProcessing => _isProcessing;
@@ -133,95 +145,124 @@ class PaymentProvider with ChangeNotifier {
 
   void clearError() {
     _error = null;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
-  /// Load available subscription plans
+  /// Load available subscription plans from database
   Future<void> loadSubscriptionPlans() async {
     try {
+      print('🚀 PaymentProvider: Starting to load subscription plans...');
       _isProcessing = true;
       _error = null;
-      notifyListeners();
+      _safeNotifyListeners();
 
-      // Updated to match ACTUAL database structure - Fix plan ID mapping
-      _subscriptionPlans = [
-        SubscriptionPlan(
-          id: 'monthly_basic',  // ← FIXED: Use actual 1 month plan ID from database
-          name: '1 Bulan Premium',
-          description: 'Akses penuh kepada semua kandungan Islam',
-          price: 6.90,
-          currency: 'MYR',
-          durationDays: 30,
-          features: [
-            'Akses kepada 500+ kitab Islam',
-            'Video kuliah premium',
-            'Muat turun offline',
-            'Sokongan keutamaan',
-            'Ciri carian lanjutan',
-          ],
-          isActive: true,
-        ),
-        SubscriptionPlan(
-          id: 'quarterly_pr',
-          name: '3 Bulan Premium',
-          description: 'Akses penuh dengan jimat 20%',
-          price: 17.90,
-          currency: 'MYR',
-          durationDays: 90,
-          features: [
-            'Akses kepada 500+ kitab Islam',
-            'Video kuliah premium',
-            'Muat turun offline',
-            'Sokongan keutamaan',
-            'Ciri carian lanjutan',
-            'Jimat RM 3.80',
-          ],
-          isActive: true,
-        ),
-        SubscriptionPlan(
-          id: 'monthly_premium',  // ← FIXED: Database "monthly_premium" is actually 6 month plan
-          name: '6 Bulan Premium',
-          description: 'Akses penuh dengan jimat 33%',
-          price: 27.90,
-          currency: 'MYR',
-          durationDays: 180, // ✅ FIXED: 6 months should be 180 days
-          features: [
-            'Akses kepada 500+ kitab Islam',
-            'Video kuliah premium',
-            'Muat turun offline',
-            'Sokongan keutamaan',
-            'Ciri carian lanjutan',
-            'Jimat RM 13.50',
-          ],
-          isActive: true,
-        ),
-        SubscriptionPlan(
-          id: 'yearly_premium',
-          name: '1 Tahun Premium',
-          description: 'Akses penuh dengan jimat terbanyak',
-          price: 60.00,
-          currency: 'MYR',
-          durationDays: 365,
-          features: [
-            'Akses kepada 500+ kitab Islam',
-            'Video kuliah premium',
-            'Muat turun offline',
-            'Sokongan keutamaan',
-            'Ciri carian lanjutan',
-            'Jimat RM 22.80 (hampir 3 bulan percuma!)',
-          ],
-          isActive: true,
-        ),
-      ];
+      print('📡 PaymentProvider: Fetching plans from database...');
+      // Fetch subscription plans from database
+      final plansData = await _subscriptionService.getSubscriptionPlans();
 
-      notifyListeners();
+      print('📦 PaymentProvider: Received ${plansData.length} plans from database');
+      if (plansData.isEmpty) {
+        print('⚠️ PaymentProvider: No plans found in database');
+        _error = 'Tiada pelan langganan dijumpai dalam pangkalan data';
+        _safeNotifyListeners();
+        return;
+      }
+
+      print('🔄 PaymentProvider: Converting database records to SubscriptionPlan objects...');
+      // Convert database records to SubscriptionPlan objects
+      _subscriptionPlans = plansData.map((planData) {
+        try {
+          final planId = planData['id'] as String;
+          final durationDays = planData['duration_days'] as int;
+          final price = double.parse(planData['price'].toString());
+
+          print('📋 PaymentProvider: Processing plan $planId - $durationDays days - RM$price');
+
+          return SubscriptionPlan(
+            id: planId,
+            name: _getLocalizedPlanName(planId, durationDays),
+            description: _getPlanDescription(planId, durationDays),
+            price: price,
+            currency: planData['currency'] as String,
+            durationDays: durationDays,
+            features: _getPlanFeatures(planId, durationDays),
+            isActive: planData['is_active'] as bool,
+          );
+        } catch (e) {
+          print('❌ PaymentProvider: Error processing plan ${planData['id']}: $e');
+          throw Exception('Ralat memproses pelan ${planData['id']}: $e');
+        }
+      }).toList();
+
+      print('✅ PaymentProvider: Successfully loaded ${_subscriptionPlans.length} subscription plans');
+      print('📊 PaymentProvider: Plans: ${_subscriptionPlans.map((p) => '${p.name} (${p.id})').join(', ')}');
+
+      _safeNotifyListeners();
     } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-      rethrow;
+      print('❌ PaymentProvider: Error loading subscription plans: $e');
+      _error = 'Gagal memuatkan pelan langganan: ${e.toString()}';
+      _safeNotifyListeners();
+      // Don't rethrow to prevent ErrorBoundary conflicts
     } finally {
       _isProcessing = false;
-      notifyListeners();
+      print('🏁 PaymentProvider: Finished loading subscription plans (isProcessing: $_isProcessing)');
+      _safeNotifyListeners();
+    }
+  }
+
+  /// Generate localized plan name based on duration
+  String _getLocalizedPlanName(String planId, int durationDays) {
+    switch (durationDays) {
+      case 30:
+        return '1 Bulan Premium';
+      case 90:
+        return '3 Bulan Premium';
+      case 180:
+        return '6 Bulan Premium';
+      case 365:
+        return '1 Tahun Premium';
+      default:
+        return '$durationDays Hari Premium';
+    }
+  }
+
+  /// Generate plan description with savings information
+  String _getPlanDescription(String planId, int durationDays) {
+    switch (durationDays) {
+      case 30:
+        return 'Akses penuh kepada semua kandungan Islam';
+      case 90:
+        return 'Akses penuh dengan jimat 20%';
+      case 180:
+        return 'Akses penuh dengan jimat 33%';
+      case 365:
+        return 'Akses penuh dengan jimat terbanyak';
+      default:
+        return 'Akses penuh kepada semua kandungan Islam';
+    }
+  }
+
+  /// Generate plan features based on duration and calculate savings
+  List<String> _getPlanFeatures(String planId, int durationDays) {
+    final baseFeatures = [
+      'Akses kepada 500+ kitab Islam',
+      'Video kuliah premium',
+      'Muat turun offline',
+      'Sokongan keutamaan',
+      'Ciri carian lanjutan',
+    ];
+
+    switch (durationDays) {
+      case 30:
+        return baseFeatures;
+      case 90:
+        return [...baseFeatures, 'Jimat RM 3.80'];
+      case 180:
+        return [...baseFeatures, 'Jimat RM 13.50'];
+      case 365:
+        return [...baseFeatures, 'Jimat RM 22.80 (hampir 3 bulan percuma!)'];
+      default:
+        return baseFeatures;
     }
   }
 

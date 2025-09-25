@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/subscription_provider.dart';
-import 'unified_notification_service.dart';
+import 'enhanced_notification_service.dart';
 
 /// Service untuk background verification of pending payments
 /// Runs automatically dan check pending payments secara berkala
@@ -139,23 +139,27 @@ class BackgroundPaymentService {
       final amount = payment['amount']?.toString() ?? '0';
 
       // Get current user ID
-      final currentUser = UnifiedNotificationService.currentUserId;
+      final currentUser = EnhancedNotificationService.currentUserId;
       if (currentUser == null) {
         print('❌ No current user found, cannot insert payment notification');
         return;
       }
 
-      final success = await UnifiedNotificationService.createIndividualNotification(
+      final success = await EnhancedNotificationService.createPersonalNotification(
         userId: currentUser,
         title: 'Pembayaran Berjaya! 🎉',
-        body: 'Terima kasih! Pembayaran RM$amount untuk langganan $planId telah berjaya. Langganan anda kini aktif.',
-        type: 'payment_success',
+        message: 'Terima kasih! Pembayaran RM$amount untuk langganan $planId telah berjaya. Langganan anda kini aktif.',
         metadata: {
+          'type': 'payment_success',
+          'sub_type': 'payment_success',
+          'icon': '🎉',
+          'priority': 'high',
           'bill_id': billId,
           'plan_id': planId,
           'amount': amount,
           'payment_date': DateTime.now().toIso8601String(),
           'action_url': '/subscription',
+          'source': 'background_payment_service',
         },
       );
 

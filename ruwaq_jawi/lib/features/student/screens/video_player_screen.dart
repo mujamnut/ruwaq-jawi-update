@@ -15,6 +15,8 @@ import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/models/kitab.dart';
 import '../../../core/models/kitab_video.dart';
 import '../../../core/models/video_episode.dart';
+import '../../../core/services/preview_service.dart';
+import '../../../core/models/preview_models.dart';
 import '../widgets/save_video_button.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -45,12 +47,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   bool _isBookmarkLoading = false;
   bool _isLoading = true;
 
+  // Custom controls state
+  bool _showControls = false;
+  bool _isPlaying = false;
+  Timer? _hideControlsTimer;
+
   static const String _boxName = 'video_progress';
 
   // Real data from database
   Kitab? _kitab;
   VideoEpisode? _currentEpisode;
   List<VideoEpisode> _episodes = [];
+
+  // Preview status tracking
+  final Map<String, bool> _episodePreviewStatus = {};
 
   @override
   void initState() {
@@ -142,6 +152,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         }
 
         _currentVideoId = _currentEpisode?.youtubeVideoId;
+
+        // Load preview status for all episodes
+        await _loadPreviewStatus();
       } else {
         // Single episode kitab - use deprecated field for now
         _currentVideoId = _kitab!.youtubeVideoId;
@@ -182,6 +195,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     }
   }
 
+  /// Load preview status for all episodes
+  Future<void> _loadPreviewStatus() async {
+    try {
+      for (final episode in _episodes) {
+        final hasPreview = await PreviewService.hasPreview(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episode.id,
+        );
+        _episodePreviewStatus[episode.id] = hasPreview;
+      }
+    } catch (e) {
+      debugPrint('Error loading preview status: $e');
+      // If there's an error, assume no previews available
+      for (final episode in _episodes) {
+        _episodePreviewStatus[episode.id] = false;
+      }
+    }
+  }
+
+  /// Check if an episode has preview access
+  bool _isEpisodePreview(VideoEpisode episode) {
+    return _episodePreviewStatus[episode.id] ?? false;
+  }
+
   Future<void> _initPlayer() async {
     if (_currentVideoId == null) return;
 
@@ -195,17 +232,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
       initialVideoId: _currentVideoId!,
       flags: const YoutubePlayerFlags(
         autoPlay: true,
-        enableCaption: true,
-        controlsVisibleAtStart: true,
+        enableCaption: false,
+        controlsVisibleAtStart: false, // Fix: Don't show controls at start
         forceHD: false,
-        hideControls: false,
-        disableDragSeek: false,
+        hideControls: true, // Hide default controls
+        disableDragSeek: true, // Disable default seek
+        showLiveFullscreenButton: false, // Hide fullscreen button
+        loop: false,
+        mute: false,
       ),
     );
 
     // Seek to saved position after player is ready
     _controller!.addListener(() async {
       if (!_controller!.value.isReady) return;
+
+      // Track playing state for custom controls
+      if (mounted) {
+        setState(() {
+          _isPlaying = _controller!.value.isPlaying;
+        });
+      }
+
       // One-time seek after ready if we have progress
       if (savedSeconds > 0 &&
           _controller!.metadata.duration.inSeconds > savedSeconds) {
@@ -236,6 +284,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
   @override
   void dispose() {
     _progressTimer?.cancel();
+    _hideControlsTimer?.cancel();
     _saveProgress();
     _controller?.dispose();
     _tabController.dispose();
@@ -453,15 +502,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     return YoutubePlayerBuilder(
       player: YoutubePlayer(
         controller: _controller!,
-        showVideoProgressIndicator: true,
-        progressIndicatorColor: AppTheme.primaryColor,
+        showVideoProgressIndicator: false, // Hide default progress
+        topActions: const [], // Remove all top controls
+        bottomActions: const [], // Remove all bottom controls
+        progressColors: const ProgressBarColors(
+          playedColor: Colors.transparent,
+          handleColor: Colors.transparent,
+          bufferedColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
+        ),
         onReady: () {},
-        bottomActions: [
-          CurrentPosition(),
-          ProgressBar(isExpanded: true),
-          RemainingDuration(),
-          FullScreenButton(),
-        ],
       ),
       builder: (context, player) {
         return Scaffold(
@@ -471,10 +521,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
               // Main content
               Column(
                 children: [
-                  // Video Player
+                  // Video Player with Custom Controls
                   AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Container(color: Colors.black, child: player),
+                    child: Container(
+                      color: Colors.black,
+                      child: Stack(
+                        children: [
+                          // YouTube Player - Block all gestures
+                          Positioned.fill(
+                            child: IgnorePointer(
+                              child: player,
+                            ),
+                          ),
+                          // Custom Controls Overlay
+                          _buildCustomControls(),
+                        ],
+                      ),
+                    ),
                   ),
                   // Content below video with animations
                   Expanded(
@@ -981,7 +1045,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     final isCurrentEpisode = _currentEpisode?.id == episode.id;
     final authProvider = context.read<AuthProvider>();
     final canAccess = !_kitab!.isPremium || authProvider.hasActiveSubscription;
-    final isLocked = !canAccess && !episode.isPreview;
+    final isLocked = !canAccess && !_isEpisodePreview(episode);
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 400 + (index * 100)),
@@ -1094,7 +1158,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               // Episode badge
-                              if (episode.isPreview)
+                              if (_isEpisodePreview(episode))
                                 Container(
                                   margin: const EdgeInsets.only(bottom: 8),
                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1296,5 +1360,133 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     await _initPlayer();
 
     setState(() {});
+  }
+
+  // Custom Controls Methods
+  void _showControlsTemporarily() {
+    setState(() {
+      _showControls = true;
+    });
+
+    // Cancel existing timer
+    _hideControlsTimer?.cancel();
+
+    // Start new timer to hide controls after 3 seconds
+    _hideControlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  void _togglePlayPause() {
+    if (_controller != null) {
+      if (_isPlaying) {
+        _controller!.pause();
+      } else {
+        _controller!.play();
+      }
+      _showControlsTemporarily();
+    }
+  }
+
+  Widget _buildCustomControls() {
+    return Stack(
+      children: [
+        // Tap overlay to show controls (invisible when controls hidden)
+        if (!_showControls)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _showControlsTemporarily,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
+        // Custom Controls Overlay (only show when _showControls is true)
+        if (_showControls)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withOpacity(0.3),
+              child: Stack(
+                children: [
+                  // Center Play/Pause Button
+                  Center(
+                    child: GestureDetector(
+                      onTap: _togglePlayPause,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _isPlaying
+                              ? PhosphorIcons.pause()
+                              : PhosphorIcons.play(),
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Progress Bar (Read-Only)
+                  Positioned(
+                    bottom: 20,
+                    left: 20,
+                    right: 20,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: StreamBuilder<Duration>(
+                        stream: _controller?.value.position != null
+                            ? Stream.periodic(
+                                const Duration(milliseconds: 100),
+                                (_) => _controller!.value.position,
+                              )
+                            : Stream.empty(),
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          final duration =
+                              _controller?.metadata.duration ?? Duration.zero;
+                          final progress = duration.inMilliseconds > 0
+                              ? position.inMilliseconds /
+                                    duration.inMilliseconds
+                              : 0.0;
+
+                          return FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: progress.clamp(0.0, 1.0),
+                            child: Container(
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 }

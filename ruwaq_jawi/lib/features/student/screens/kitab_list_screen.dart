@@ -5,10 +5,14 @@ import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
+import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/models/video_kitab.dart';
+import '../../../core/models/kitab.dart';
 import '../../../core/utils/youtube_utils.dart';
 import '../../../core/utils/thumbnail_utils.dart';
 import '../widgets/student_bottom_nav.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 class KitabListScreen extends StatefulWidget {
   final String? initialCategory;
@@ -29,6 +33,8 @@ class _KitabListScreenState extends State<KitabListScreen>
   bool _isScrolled = false;
   late AnimationController _animationController;
   late AnimationController _searchAnimationController;
+  late AnimationController _fadeAnimationController;
+  late AnimationController _slideAnimationController;
   bool _isSearchFocused = false;
 
   @override
@@ -41,6 +47,14 @@ class _KitabListScreenState extends State<KitabListScreen>
     );
     _searchAnimationController = AnimationController(
       duration: const Duration(milliseconds: 200),
+      vsync: this,
+    );
+    _fadeAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _slideAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
 
@@ -56,6 +70,8 @@ class _KitabListScreenState extends State<KitabListScreen>
     // Start entrance animation
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _animationController.forward();
+      _fadeAnimationController.forward();
+      _slideAnimationController.forward();
     });
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -78,6 +94,8 @@ class _KitabListScreenState extends State<KitabListScreen>
     _scrollController.dispose();
     _animationController.dispose();
     _searchAnimationController.dispose();
+    _fadeAnimationController.dispose();
+    _slideAnimationController.dispose();
     super.dispose();
   }
 
@@ -108,7 +126,6 @@ class _KitabListScreenState extends State<KitabListScreen>
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor,
           appBar: _buildAppBar(),
-          extendBodyBehindAppBar: true,
           body: kitabProvider.isLoading
               ? _buildLoadingState()
               : kitabProvider.errorMessage != null
@@ -154,10 +171,20 @@ class _KitabListScreenState extends State<KitabListScreen>
     return RefreshIndicator(
       onRefresh: () async {
         await kitabProvider.refresh();
+        if (mounted) {
+          _fadeAnimationController.reset();
+          _slideAnimationController.reset();
+          _fadeAnimationController.forward();
+          _slideAnimationController.forward();
+        }
       },
-      child: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
+      color: AppTheme.primaryColor,
+      child: FadeTransition(
+        opacity: _fadeAnimationController,
+        child: CustomScrollView(
+          controller: _scrollController,
+          physics: const BouncingScrollPhysics(),
+          slivers: [
           // Search and Filters
           SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
 
@@ -167,37 +194,37 @@ class _KitabListScreenState extends State<KitabListScreen>
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
                 final kitab = filteredKitab[index];
-                return AnimatedBuilder(
-                  animation: _animationController,
-                  builder: (context, child) {
-                    final animationDelay = (index * 0.1).clamp(0.0, 1.0);
-                    final animation = Tween<double>(
-                      begin: 0.0,
-                      end: 1.0,
-                    ).animate(
-                      CurvedAnimation(
-                        parent: _animationController,
-                        curve: Interval(
-                          animationDelay,
-                          (animationDelay + 0.3).clamp(0.0, 1.0),
-                          curve: Curves.easeOutCubic,
-                        ),
+                return SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.3),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: _slideAnimationController,
+                      curve: Interval(
+                        (index * 0.1).clamp(0.0, 1.0),
+                        1.0,
+                        curve: Curves.easeOutBack,
                       ),
-                    );
-
-                    return Transform.translate(
-                      offset: Offset(0, 30 * (1 - animation.value)),
-                      child: Opacity(
-                        opacity: animation.value,
-                        child: _buildKitabCard(kitab),
+                    ),
+                  ),
+                  child: FadeTransition(
+                    opacity: CurvedAnimation(
+                      parent: _fadeAnimationController,
+                      curve: Interval(
+                        (index * 0.1).clamp(0.0, 1.0),
+                        1.0,
+                        curve: Curves.easeOut,
                       ),
-                    );
-                  },
+                    ),
+                    child: _buildKitabCard(kitab),
+                  ),
                 );
               }, childCount: filteredKitab.length),
             ),
           ),
         ],
+        ),
       ),
     );
   }
@@ -217,8 +244,8 @@ class _KitabListScreenState extends State<KitabListScreen>
       color: AppTheme.backgroundColor,
       child: Column(
         children: [
-          // Add top padding for status bar
-          const SizedBox(height: 100),
+          // Add top padding consistent with ebook screen
+          const SizedBox(height: 20),
 
           // Enhanced Search Bar
           Container(
@@ -233,15 +260,15 @@ class _KitabListScreenState extends State<KitabListScreen>
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: _isSearchFocused
-                        ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                        : AppTheme.borderColor,
+                          ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                          : AppTheme.borderColor,
                       width: _isSearchFocused ? 2 : 1,
                     ),
                     boxShadow: [
                       BoxShadow(
                         color: _isSearchFocused
-                          ? AppTheme.primaryColor.withValues(alpha: 0.08)
-                          : Colors.black.withValues(alpha: 0.04),
+                            ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.04),
                         blurRadius: _isSearchFocused ? 12 : 8,
                         offset: const Offset(0, 2),
                       ),
@@ -271,8 +298,8 @@ class _KitabListScreenState extends State<KitabListScreen>
                         child: PhosphorIcon(
                           PhosphorIcons.magnifyingGlass(),
                           color: _isSearchFocused
-                            ? AppTheme.primaryColor
-                            : AppTheme.textSecondaryColor,
+                              ? AppTheme.primaryColor
+                              : AppTheme.textSecondaryColor,
                           size: 20,
                         ),
                       ),
@@ -367,19 +394,24 @@ class _KitabListScreenState extends State<KitabListScreen>
                                 boxShadow: isSelected
                                     ? [
                                         BoxShadow(
-                                          color: AppTheme.primaryColor.withValues(alpha: 0.25),
+                                          color: AppTheme.primaryColor
+                                              .withValues(alpha: 0.25),
                                           blurRadius: 12,
                                           offset: const Offset(0, 4),
                                         ),
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.06),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.06,
+                                          ),
                                           blurRadius: 6,
                                           offset: const Offset(0, 2),
                                         ),
                                       ]
                                     : [
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.04),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.04,
+                                          ),
                                           blurRadius: 8,
                                           offset: const Offset(0, 2),
                                         ),
@@ -543,10 +575,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: AppTheme.borderColor,
-                      width: 1,
-                    ),
+                    border: Border.all(color: AppTheme.borderColor, width: 1),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.08),
@@ -590,13 +619,18 @@ class _KitabListScreenState extends State<KitabListScreen>
                               bottom: 6,
                               right: 6,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.85),
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.3),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       blurRadius: 4,
                                       offset: const Offset(0, 1),
                                     ),
@@ -619,17 +653,25 @@ class _KitabListScreenState extends State<KitabListScreen>
                               top: 6,
                               left: 6,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   gradient: const LinearGradient(
-                                    colors: [Color(0xFFFFD700), Color(0xFFB8860B)],
+                                    colors: [
+                                      Color(0xFFFFD700),
+                                      Color(0xFFB8860B),
+                                    ],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                                      color: const Color(
+                                        0xFFFFD700,
+                                      ).withValues(alpha: 0.4),
                                       blurRadius: 6,
                                       offset: const Offset(0, 2),
                                     ),
@@ -639,7 +681,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     PhosphorIcon(
-                                      PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                                      PhosphorIcons.crown(
+                                        PhosphorIconsStyle.fill,
+                                      ),
                                       color: Colors.white,
                                       size: 10,
                                     ),
@@ -680,7 +724,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                     shape: BoxShape.circle,
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         blurRadius: 8,
                                         offset: const Offset(0, 2),
                                       ),
@@ -708,12 +754,13 @@ class _KitabListScreenState extends State<KitabListScreen>
                             // Title
                             Text(
                               kitab.title,
-                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimaryColor,
-                                height: 1.3,
-                              ),
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.textPrimaryColor,
+                                    height: 1.3,
+                                  ),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -731,12 +778,17 @@ class _KitabListScreenState extends State<KitabListScreen>
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    kitab.author ?? kitab.categoryName ?? 'Kategori Umum',
-                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontSize: 13,
-                                      color: AppTheme.textSecondaryColor,
-                                      fontWeight: FontWeight.w500,
-                                    ),
+                                    kitab.author ??
+                                        kitab.categoryName ??
+                                        'Kategori Umum',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontSize: 13,
+                                          color: AppTheme.textSecondaryColor,
+                                          fontWeight: FontWeight.w500,
+                                        ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -746,33 +798,50 @@ class _KitabListScreenState extends State<KitabListScreen>
 
                             const SizedBox(height: 8),
 
-                            // Enhanced metadata row
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: _buildMetadataChip(
-                                    PhosphorIcons.eye(),
-                                    _formatViews(kitab.viewsCount),
+                            // Category display only
+                            if (kitab.categoryName != null)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: AppTheme.primaryColor.withValues(
+                                      alpha: 0.2,
+                                    ),
+                                    width: 0.5,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: _buildMetadataChip(
-                                    PhosphorIcons.clock(),
-                                    _formatTimeAgo(kitab.createdAt),
+                                child: Text(
+                                  kitab.categoryName!,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w600,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ],
-                            ),
+                              ),
 
                             const SizedBox(height: 8),
 
                             // Video count badge
                             if (kitab.totalVideos > 0)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -786,11 +855,14 @@ class _KitabListScreenState extends State<KitabListScreen>
                                     const SizedBox(width: 4),
                                     Text(
                                       '${kitab.totalVideos} episod',
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppTheme.primaryColor,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 11,
-                                      ),
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.copyWith(
+                                            color: AppTheme.primaryColor,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                          ),
                                     ),
                                   ],
                                 ),
@@ -799,7 +871,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                         ),
                       ),
 
-                      // Action button
+                      // Action button with bottom sheet
                       Container(
                         width: 32,
                         height: 32,
@@ -816,7 +888,8 @@ class _KitabListScreenState extends State<KitabListScreen>
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
                             onTap: () {
-                              // Add bookmark/menu functionality here
+                              HapticFeedback.lightImpact();
+                              _showKitabOptionsBottomSheet(kitab);
                             },
                             child: Center(
                               child: PhosphorIcon(
@@ -839,42 +912,6 @@ class _KitabListScreenState extends State<KitabListScreen>
     );
   }
 
-  Widget _buildMetadataChip(PhosphorIconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppTheme.backgroundColor,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppTheme.borderColor.withValues(alpha: 0.5),
-          width: 0.5,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          PhosphorIcon(
-            icon,
-            color: AppTheme.textSecondaryColor,
-            size: 12,
-          ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 11,
-                color: AppTheme.textSecondaryColor,
-                fontWeight: FontWeight.w500,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // Fixed app bar with better visibility
   PreferredSizeWidget _buildAppBar() {
@@ -896,7 +933,7 @@ class _KitabListScreenState extends State<KitabListScreen>
         ),
       ),
       centerTitle: false,
-      titleSpacing: 0,
+      titleSpacing: 20,
     );
   }
 
@@ -906,7 +943,7 @@ class _KitabListScreenState extends State<KitabListScreen>
       color: AppTheme.backgroundColor,
       child: Column(
         children: [
-          const SizedBox(height: 100),
+          const SizedBox(height: 20),
           // Shimmer search bar
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -992,7 +1029,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                               height: 16,
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                color: AppTheme.borderColor.withValues(alpha: 0.3),
+                                color: AppTheme.borderColor.withValues(
+                                  alpha: 0.3,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
@@ -1001,7 +1040,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                               height: 14,
                               width: 120,
                               decoration: BoxDecoration(
-                                color: AppTheme.borderColor.withValues(alpha: 0.2),
+                                color: AppTheme.borderColor.withValues(
+                                  alpha: 0.2,
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
@@ -1012,7 +1053,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   height: 12,
                                   width: 60,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.borderColor.withValues(alpha: 0.2),
+                                    color: AppTheme.borderColor.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
@@ -1021,7 +1064,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   height: 12,
                                   width: 80,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.borderColor.withValues(alpha: 0.2),
+                                    color: AppTheme.borderColor.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
@@ -1041,25 +1086,541 @@ class _KitabListScreenState extends State<KitabListScreen>
     );
   }
 
-  String _formatViews(int views) {
-    if (views < 1000) return views.toString();
-    if (views < 1000000) return '${(views / 1000).toStringAsFixed(0)}K';
-    return '${(views / 1000000).toStringAsFixed(1)}M';
+
+  /// Show bottom sheet with kitab options
+  void _showKitabOptionsBottomSheet(VideoKitab kitab) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            border: Border.all(
+              color: AppTheme.borderColor,
+              width: 1,
+            ),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header with kitab info
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      // Thumbnail
+                      Container(
+                        width: 60,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: AppTheme.backgroundColor,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: kitab.thumbnailUrl?.isNotEmpty == true
+                              ? Image.network(
+                                  kitab.thumbnailUrl!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                      child: Center(
+                                        child: PhosphorIcon(
+                                          PhosphorIcons.videoCamera(),
+                                          size: 16,
+                                          color: AppTheme.primaryColor,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                  child: Center(
+                                    child: PhosphorIcon(
+                                      PhosphorIcons.videoCamera(),
+                                      size: 16,
+                                      color: AppTheme.primaryColor,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Title and author
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              kitab.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (kitab.author?.isNotEmpty == true) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                kitab.author!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Divider
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  height: 1,
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
+                ),
+
+                // Options
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    children: [
+                      // Save option
+                      FutureBuilder<bool>(
+                        future: _isVideoKitabSaved(kitab.id),
+                        builder: (context, snapshot) {
+                          final isSaved = snapshot.data ?? false;
+                          return _buildBottomSheetOption(
+                            icon: isSaved
+                                ? HugeIcons.strokeRoundedBookmark02
+                                : HugeIcons.strokeRoundedBookmarkAdd01,
+                            title: isSaved ? 'Buang dari Simpanan' : 'Simpan ke Koleksi',
+                            subtitle: isSaved
+                                ? 'Alih keluar dari senarai simpanan'
+                                : 'Simpan untuk tontonnan kemudian',
+                            iconColor: isSaved ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              _handleMenuAction('save', kitab);
+                            },
+                          );
+                        },
+                      ),
+
+                      // Share option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedShare08,
+                        title: 'Kongsi',
+                        subtitle: 'Kongsi dengan rakan dan keluarga',
+                        iconColor: AppTheme.textSecondaryColor,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _handleMenuAction('share', kitab);
+                        },
+                      ),
+
+                      // View details option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedEye,
+                        title: 'Lihat Detail',
+                        subtitle: 'Buka halaman detail kitab',
+                        iconColor: AppTheme.textSecondaryColor,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          context.push('/kitab/${kitab.id}');
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom padding for safe area
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
-  String _formatTimeAgo(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
+  /// Build individual option in bottom sheet
+  Widget _buildBottomSheetOption({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor == AppTheme.primaryColor
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                      : AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: iconColor == AppTheme.primaryColor
+                        ? AppTheme.primaryColor.withValues(alpha: 0.2)
+                        : AppTheme.borderColor,
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: HugeIcon(
+                    icon: icon,
+                    color: iconColor,
+                    size: 20,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
 
-    if (difference.inDays > 0) {
-      return '${difference.inDays}d';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}j';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}m';
-    } else {
-      return 'Baru';
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondaryColor,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow
+              PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: AppTheme.textSecondaryColor.withValues(alpha: 0.5),
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Check if a video kitab is saved by the user
+  Future<bool> _isVideoKitabSaved(String videoKitabId) async {
+    try {
+      final savedItemsProvider = context.read<SavedItemsProvider>();
+      return await savedItemsProvider.isKitabSaved(videoKitabId);
+    } catch (e) {
+      debugPrint('Error checking if video kitab is saved: $e');
+      return false;
     }
+  }
+
+  /// Handle menu action selection
+  Future<void> _handleMenuAction(String action, VideoKitab kitab) async {
+    try {
+      final authProvider = context.read<AuthProvider>();
+      final userId = authProvider.user?.id;
+
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Sila log masuk terlebih dahulu'),
+            backgroundColor: AppTheme.errorColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+        return;
+      }
+
+      switch (action) {
+        case 'save':
+          await _handleSaveAction(userId, kitab);
+          break;
+        case 'share':
+          await _handleShareAction(kitab);
+          break;
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Ralat: ${e.toString()}'),
+          backgroundColor: AppTheme.errorColor,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Handle save/unsave action
+  Future<void> _handleSaveAction(String userId, VideoKitab kitab) async {
+    HapticFeedback.lightImpact();
+
+    final isSaved = await _isVideoKitabSaved(kitab.id);
+
+    if (isSaved) {
+      // Remove from saved
+      final savedItemsProvider = context.read<SavedItemsProvider>();
+      await savedItemsProvider.removeKitabFromLocal(kitab.id);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedBookmarkRemove01,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                const Text('Dibuang dari simpanan'),
+              ],
+            ),
+            backgroundColor: AppTheme.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      // Add to saved
+      final savedItemsProvider = context.read<SavedItemsProvider>();
+      // Convert VideoKitab to Kitab for the provider
+      final kitabToSave = Kitab(
+        id: kitab.id,
+        title: kitab.title,
+        author: kitab.author,
+        description: kitab.description,
+        categoryId: kitab.categoryId,
+        pdfUrl: kitab.pdfUrl,
+        thumbnailUrl: kitab.thumbnailUrl,
+        totalPages: kitab.totalPages,
+        isPremium: kitab.isPremium,
+        isActive: kitab.isActive,
+        createdAt: kitab.createdAt,
+        updatedAt: kitab.updatedAt,
+        youtubeVideoId: null,
+        youtubeVideoUrl: null,
+        hasMultipleVideos: kitab.hasVideos,
+        totalVideos: kitab.totalVideos,
+        totalDurationMinutes: kitab.totalDurationMinutes,
+        sortOrder: 0, // Default sort order
+        isEbookAvailable: kitab.hasPdf,
+      );
+      await savedItemsProvider.addKitabToLocal(kitabToSave);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedBookmarkAdd01,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                const Text('Disimpan ke koleksi anda'),
+              ],
+            ),
+            backgroundColor: AppTheme.primaryColor,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            duration: const Duration(seconds: 2),
+            action: SnackBarAction(
+              label: 'Lihat',
+              textColor: Colors.white,
+              onPressed: () {
+                context.push('/saved');
+              },
+            ),
+          ),
+        );
+      }
+    }
+
+    // Trigger rebuild to update the UI
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  /// Handle share action
+  Future<void> _handleShareAction(VideoKitab kitab) async {
+    HapticFeedback.lightImpact();
+
+    // For now, show a simple dialog
+    // In a real app, you'd use share_plus package or similar
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(
+          children: [
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedShare08,
+              color: AppTheme.primaryColor,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'Kongsi Kitab',
+              style: TextStyle(
+                color: AppTheme.textPrimaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Kongsi "${kitab.title}" dengan rakan-rakan anda!',
+              style: TextStyle(
+                color: AppTheme.textSecondaryColor,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.borderColor,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'https://ruwaqjawi.app/kitab/${kitab.id}',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        // Copy to clipboard functionality would go here
+                        Navigator.of(context).pop();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Pautan disalin!'),
+                            backgroundColor: AppTheme.primaryColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedCopy01,
+                          color: AppTheme.primaryColor,
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Tutup',
+              style: TextStyle(
+                color: AppTheme.textSecondaryColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyState() {
@@ -1073,141 +1634,155 @@ class _KitabListScreenState extends State<KitabListScreen>
               physics: const BouncingScrollPhysics(),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 600),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  curve: Curves.easeOutBack,
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: Container(
-                        padding: const EdgeInsets.all(40),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              AppTheme.primaryColor.withValues(alpha: 0.12),
-                              AppTheme.primaryColor.withValues(alpha: 0.06),
+                children: [
+                  TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 600),
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    curve: Curves.easeOutBack,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: Container(
+                          padding: const EdgeInsets.all(40),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                AppTheme.primaryColor.withValues(alpha: 0.12),
+                                AppTheme.primaryColor.withValues(alpha: 0.06),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(32),
+                            border: Border.all(
+                              color: AppTheme.primaryColor.withValues(
+                                alpha: 0.2,
+                              ),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(32),
-                          border: Border.all(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                            width: 1,
+                          child: PhosphorIcon(
+                            PhosphorIcons.chalkboardTeacher(),
+                            size: 80,
+                            color: AppTheme.primaryColor,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
                         ),
-                        child: PhosphorIcon(
-                          PhosphorIcons.chalkboardTeacher(),
-                          size: 80,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
-                TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 800),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  curve: Curves.easeOutCubic,
-                  builder: (context, value, child) {
-                    return Opacity(
-                      opacity: value,
-                      child: Transform.translate(
-                        offset: Offset(0, 20 * (1 - value)),
-                        child: Column(
-                          children: [
-                            Text(
-                              'Tiada Kitab Video Ditemui',
-                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: AppTheme.textPrimaryColor,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 40),
-                              child: Text(
-                                'Cuba ubah penapis kategori atau kata kunci pencarian untuk melihat kitab video yang tersedia',
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                  color: AppTheme.textSecondaryColor,
-                                  height: 1.5,
-                                ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 32),
+                  TweenAnimationBuilder<double>(
+                    duration: const Duration(milliseconds: 800),
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, value, child) {
+                      return Opacity(
+                        opacity: value,
+                        child: Transform.translate(
+                          offset: Offset(0, 20 * (1 - value)),
+                          child: Column(
+                            children: [
+                              Text(
+                                'Tiada Kitab Video Ditemui',
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      color: AppTheme.textPrimaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                 textAlign: TextAlign.center,
                               ),
-                            ),
-                            const SizedBox(height: 32),
-                            Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  HapticFeedback.lightImpact();
-                                  setState(() {
-                                    _selectedCategoryId = null;
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  });
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 16,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.primaryColor,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
+                              const SizedBox(height: 16),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                ),
+                                child: Text(
+                                  'Cuba ubah penapis kategori atau kata kunci pencarian untuk melihat kitab video yang tersedia',
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        color: AppTheme.textSecondaryColor,
+                                        height: 1.5,
                                       ),
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.08),
-                                        blurRadius: 6,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      PhosphorIcon(
-                                        PhosphorIcons.arrowClockwise(),
-                                        color: Colors.white,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Reset Penapis',
-                                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                              const SizedBox(height: 32),
+                              Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(16),
+                                  onTap: () {
+                                    HapticFeedback.lightImpact();
+                                    setState(() {
+                                      _selectedCategoryId = null;
+                                      _searchController.clear();
+                                      _searchQuery = '';
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 16,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor,
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppTheme.primaryColor
+                                              .withValues(alpha: 0.3),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 6),
                                         ),
-                                      ),
-                                    ],
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.08,
+                                          ),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        PhosphorIcon(
+                                          PhosphorIcons.arrowClockwise(),
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Reset Penapis',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
           ),
@@ -1253,7 +1828,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.errorColor.withValues(alpha: 0.1),
+                                color: AppTheme.errorColor.withValues(
+                                  alpha: 0.1,
+                                ),
                                 blurRadius: 20,
                                 offset: const Offset(0, 8),
                               ),
@@ -1282,21 +1859,25 @@ class _KitabListScreenState extends State<KitabListScreen>
                             children: [
                               Text(
                                 'Ralat Memuat Data',
-                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  color: AppTheme.textPrimaryColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: Theme.of(context).textTheme.headlineSmall
+                                    ?.copyWith(
+                                      color: AppTheme.textPrimaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                 textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 16),
                               Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 40),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 40,
+                                ),
                                 child: Text(
                                   errorMessage,
-                                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                    height: 1.5,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        color: AppTheme.textSecondaryColor,
+                                        height: 1.5,
+                                      ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -1319,12 +1900,15 @@ class _KitabListScreenState extends State<KitabListScreen>
                                       borderRadius: BorderRadius.circular(16),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                                          color: AppTheme.primaryColor
+                                              .withValues(alpha: 0.3),
                                           blurRadius: 12,
                                           offset: const Offset(0, 6),
                                         ),
                                         BoxShadow(
-                                          color: Colors.black.withValues(alpha: 0.08),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.08,
+                                          ),
                                           blurRadius: 6,
                                           offset: const Offset(0, 2),
                                         ),
@@ -1341,10 +1925,13 @@ class _KitabListScreenState extends State<KitabListScreen>
                                         const SizedBox(width: 8),
                                         Text(
                                           'Cuba Lagi',
-                                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyLarge
+                                              ?.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                         ),
                                       ],
                                     ),

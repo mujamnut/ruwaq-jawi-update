@@ -92,19 +92,33 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   Future<void> _loadPlans() async {
     try {
+      print('🔥 SubscriptionScreen: Starting to load plans...');
       final paymentProvider = Provider.of<PaymentProvider>(
         context,
         listen: false,
       );
+
+      print('📱 SubscriptionScreen: Calling PaymentProvider.loadSubscriptionPlans()...');
       await paymentProvider.loadSubscriptionPlans();
 
       // Set initial plan selection after loading plans
       final plans = paymentProvider.subscriptionPlans;
+      print('📋 SubscriptionScreen: Received ${plans.length} plans from PaymentProvider');
+
       if (plans.isNotEmpty && _selectedPlanId == null) {
         _selectedPlanId = plans.first.id;
+        print('✅ SubscriptionScreen: Selected initial plan: ${_selectedPlanId}');
+      } else if (plans.isEmpty) {
+        print('⚠️ SubscriptionScreen: No plans available');
+      }
+
+      // Check for any errors from PaymentProvider
+      if (paymentProvider.error != null) {
+        print('❌ SubscriptionScreen: PaymentProvider has error: ${paymentProvider.error}');
       }
     } catch (e) {
-      print('Error loading plans: $e');
+      print('❌ SubscriptionScreen: Error loading plans: $e');
+      // Don't rethrow to prevent ErrorBoundary conflicts during build
     }
   }
 
@@ -223,9 +237,119 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
             );
           }
 
+          // Check for FutureBuilder errors
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  PhosphorIcon(
+                    PhosphorIcons.warning(),
+                    color: AppTheme.errorColor,
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ralat Memuat Pelan',
+                    style: TextStyle(
+                      color: AppTheme.textPrimaryColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    child: Text(
+                      'Gagal memuatkan pelan langganan: ${snapshot.error}',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 14,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _loadPlansFuture = _loadPlans();
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Cuba Lagi'),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return Consumer<PaymentProvider>(
             builder: (context, paymentProvider, child) {
               final plans = paymentProvider.subscriptionPlans;
+              final error = paymentProvider.error;
+
+              // Check for PaymentProvider errors
+              if (error != null) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.warning(),
+                        color: AppTheme.errorColor,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Ralat Sistem Pembayaran',
+                        style: TextStyle(
+                          color: AppTheme.textPrimaryColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Text(
+                          error,
+                          style: TextStyle(
+                            color: AppTheme.textSecondaryColor,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () async {
+                          paymentProvider.clearError();
+                          setState(() {
+                            _loadPlansFuture = _loadPlans();
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Cuba Lagi'),
+                      ),
+                    ],
+                  ),
+                );
+              }
 
               if (plans.isEmpty) {
                 return Center(
@@ -253,6 +377,23 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                           color: AppTheme.textSecondaryColor,
                           fontSize: 14,
                         ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () {
+                          setState(() {
+                            _loadPlansFuture = _loadPlans();
+                          });
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('Muat Semula'),
                       ),
                     ],
                   ),

@@ -6,16 +6,18 @@ import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
-import '../../../core/models/kitab.dart';
+import '../../../core/models/video_kitab.dart';
 import '../../../core/models/video_episode.dart';
+import '../../../core/models/preview_models.dart';
+import '../../../core/services/preview_service.dart';
 
 class PreviewVideoPlayerScreen extends StatefulWidget {
-  final String kitabId;
+  final String videoKitabId;
   final String? videoId; // Specific preview video ID
 
   const PreviewVideoPlayerScreen({
     super.key,
-    required this.kitabId,
+    required this.videoKitabId,
     this.videoId,
   });
 
@@ -30,9 +32,10 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
   late TabController _tabController;
   bool _isLoading = true;
 
-  Kitab? _kitab;
+  VideoKitab? _videoKitab;
   List<VideoEpisode> _previewVideos = [];
   VideoEpisode? _currentVideo;
+  List<PreviewContent> _previewContent = [];
 
   @override
   void initState() {
@@ -48,19 +51,46 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
     try {
       final kitabProvider = context.read<KitabProvider>();
 
-      // Get kitab data
-      _kitab = kitabProvider.getKitabById(widget.kitabId);
-      if (_kitab == null) {
+      // Get video kitab data
+      _videoKitab = kitabProvider.getVideoKitabById(widget.videoKitabId);
+      if (_videoKitab == null) {
         await kitabProvider.initialize();
-        _kitab = kitabProvider.getKitabById(widget.kitabId);
+        _videoKitab = kitabProvider.getVideoKitabById(widget.videoKitabId);
       }
 
-      if (_kitab == null) {
-        throw Exception('Kitab not found');
+      if (_videoKitab == null) {
+        throw Exception('Video Kitab not found');
       }
 
-      // Load preview videos
-      _previewVideos = await kitabProvider.loadPreviewVideos(widget.kitabId);
+      // Load preview content using unified preview system
+      _previewContent = await PreviewService.getPreviewForContent(
+        contentType: PreviewContentType.videoKitab,
+        contentId: widget.videoKitabId,
+        onlyActive: true,
+      );
+
+      if (_previewContent.isEmpty) {
+        // Fallback: check for episode-level previews
+        _previewContent = await PreviewService.getPreviewContent(
+          filter: PreviewQueryFilter(
+            contentType: PreviewContentType.videoEpisode,
+            isActive: true,
+          ),
+          includeContentDetails: true,
+        );
+
+        // Filter to only episodes from this video kitab
+        final allEpisodes = await kitabProvider.loadKitabVideos(widget.videoKitabId);
+        final episodeIds = allEpisodes.map((e) => e.id).toSet();
+        _previewContent = _previewContent.where((pc) => episodeIds.contains(pc.contentId)).toList();
+      }
+
+      if (_previewContent.isEmpty) {
+        throw Exception('No preview content available');
+      }
+
+      // Load preview videos based on preview content
+      _previewVideos = await kitabProvider.loadPreviewVideos(widget.videoKitabId);
 
       if (_previewVideos.isEmpty) {
         throw Exception('No preview videos available');
@@ -181,7 +211,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
       );
     }
 
-    if (_kitab == null || _controller == null || _currentVideo == null) {
+    if (_videoKitab == null || _controller == null || _currentVideo == null) {
       return Scaffold(
         backgroundColor: AppTheme.backgroundColor,
         appBar: AppBar(
@@ -539,7 +569,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _kitab!.title,
+            _videoKitab!.title,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
               color: AppTheme.textPrimaryColor,
@@ -547,7 +577,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            _kitab!.author ?? 'Unknown Author',
+            _videoKitab!.author ?? 'Unknown Author',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               color: AppTheme.primaryColor,
               fontWeight: FontWeight.w500,
@@ -558,11 +588,11 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
           // Stats
           Row(
             children: [
-              _buildStatChip(Icons.access_time, _kitab!.formattedDuration),
+              _buildStatChip(Icons.access_time, _videoKitab!.formattedDuration),
               const SizedBox(width: 12),
               _buildStatChip(
                 Icons.video_library,
-                '${_kitab!.totalVideos} Video',
+                '${_videoKitab!.totalVideos} Video',
               ),
             ],
           ),
@@ -577,7 +607,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            _kitab!.description ?? 'Tiada penerangan tersedia.',
+            _videoKitab!.description ?? 'Tiada penerangan tersedia.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               height: 1.6,
               color: AppTheme.textPrimaryColor,

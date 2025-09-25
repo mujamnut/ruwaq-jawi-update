@@ -700,7 +700,7 @@ class _AdminYouTubeAutoFormScreenState
                 (episode) => VideoEpisodePreview(
                   title: episode['title'] ?? 'Untitled Episode',
                   duration: episode['duration'],
-                  isPreview: episode['is_preview'] ?? false,
+                  isPreview: false, // Preview status now managed via preview_content table
                 ),
               )
               .toList() ??

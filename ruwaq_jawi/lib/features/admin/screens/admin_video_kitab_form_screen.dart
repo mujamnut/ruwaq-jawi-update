@@ -15,8 +15,10 @@ import '../../../core/services/admin_category_service.dart';
 import '../../../core/services/video_kitab_service.dart';
 import '../../../core/services/video_episode_service.dart';
 import '../../../core/models/video_episode.dart';
+import '../../../core/models/preview_models.dart';
 import 'admin_episode_form_screen.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/preview_service.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminVideoKitabFormScreen extends StatefulWidget {
@@ -56,6 +58,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
   List<Map<String, dynamic>> _categories = [];
   List<VideoEpisode> _episodes = [];
+
+  // Preview tracking
+  Map<String, bool> _episodePreviewStatus = {}; // Track which episodes have previews
+  Set<String> _episodesWithPreviewChanges = {}; // Track which episodes had preview changes
 
   // Track the current video kitab ID (can be updated when creating new kitab)
   String? _currentVideoKitabId;
@@ -161,8 +167,27 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         orderBy: 'part_number',
         ascending: true,
       );
+
+      // Load preview status for each episode
+      final Map<String, bool> previewStatus = {};
+      for (final episode in episodes) {
+        try {
+          final hasPreview = await PreviewService.hasPreview(
+            contentType: PreviewContentType.videoEpisode,
+            contentId: episode.id,
+          );
+          previewStatus[episode.id] = hasPreview;
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error checking preview for episode ${episode.id}: $e');
+          }
+          previewStatus[episode.id] = false;
+        }
+      }
+
       setState(() {
         _episodes = episodes;
+        _episodePreviewStatus = previewStatus;
       });
     } catch (e) {
       // Don't show error for episodes - just log it
@@ -171,6 +196,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       }
       setState(() {
         _episodes = [];
+        _episodePreviewStatus.clear();
       });
     }
   }
@@ -183,6 +209,56 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     _totalPagesController.dispose();
     _tabController.dispose();
     super.dispose();
+  }
+
+  // =====================================================
+  // PREVIEW MANAGEMENT METHODS
+  // =====================================================
+
+  /// Toggle preview status for an episode
+  Future<void> _toggleEpisodePreview(VideoEpisode episode, bool isPreview) async {
+    try {
+      if (isPreview) {
+        // Create preview
+        await PreviewService.createPreview(
+          PreviewConfig(
+            contentType: PreviewContentType.videoEpisode,
+            contentId: episode.id,
+            previewType: PreviewType.freeTrial,
+            previewDescription: 'Preview episode for ${episode.title}',
+            isActive: true,
+          ),
+        );
+        _showSnackBar('Preview diaktifkan untuk ${episode.title}');
+      } else {
+        // Remove preview - get existing preview and delete it
+        final previews = await PreviewService.getPreviewForContent(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episode.id,
+          onlyActive: false,
+        );
+
+        for (final preview in previews) {
+          await PreviewService.deletePreview(preview.id);
+        }
+        _showSnackBar('Preview dinyahaktifkan untuk ${episode.title}');
+      }
+
+      // Update local state
+      setState(() {
+        _episodePreviewStatus[episode.id] = isPreview;
+        _episodesWithPreviewChanges.add(episode.id);
+      });
+
+    } catch (e) {
+      _showSnackBar(
+        'Ralat mengemas kini preview: $e',
+        isError: true,
+      );
+      if (kDebugMode) {
+        print('Error toggling preview for episode ${episode.id}: $e');
+      }
+    }
   }
 
   // =====================================================
@@ -587,33 +663,42 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
   Widget _buildEpisodeTab() {
     return Column(
       children: [
-        // Episode List Header
+        // Episode List Header with Preview Summary
         Container(
           padding: const EdgeInsets.all(16.0),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  'Episode Video (${_episodes.length})',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Episode Video (${_episodes.length})',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _effectiveVideoKitabId != null
+                        ? _addNewEpisode
+                        : null,
+                    icon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedPlusSign,
+                      color: Colors.white,
+                    ),
+                    label: const Text('Tambah Episode'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
               ),
-              ElevatedButton.icon(
-                onPressed: _effectiveVideoKitabId != null
-                    ? _addNewEpisode
-                    : null,
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedPlusSign,
-                  color: Colors.white,
-                ),
-                label: const Text('Tambah Episode'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                ),
-              ),
+              if (_episodes.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildPreviewSummary(),
+              ],
             ],
           ),
         ),
@@ -911,23 +996,49 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             Text(
               '${episode.durationMinutes} minit${episode.isActive ? '' : ' • Tidak aktif'}',
             ),
-            if (episode.isPreview)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.orange.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(4),
+            const SizedBox(height: 8),
+            // Preview Toggle Row
+            Row(
+              children: [
+                Switch(
+                  value: _episodePreviewStatus[episode.id] ?? false,
+                  onChanged: (value) => _toggleEpisodePreview(episode, value),
+                  activeColor: AppTheme.primaryColor,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
-                  'PREVIEW',
+                const SizedBox(width: 8),
+                Text(
+                  'Preview Episode',
                   style: TextStyle(
-                    fontSize: 10,
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: (_episodePreviewStatus[episode.id] ?? false)
+                        ? AppTheme.primaryColor
+                        : AppTheme.textSecondaryColor,
+                    fontWeight: (_episodePreviewStatus[episode.id] ?? false)
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
-              ),
+                if (_episodePreviewStatus[episode.id] ?? false) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      'PREVIEW',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ],
         ),
         trailing: Row(
@@ -1357,6 +1468,58 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         _isLoading = false;
       });
     }
+  }
+
+  Widget _buildPreviewSummary() {
+    final totalEpisodes = _episodes.length;
+    final previewEpisodes = _episodePreviewStatus.values.where((hasPreview) => hasPreview).length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppTheme.primaryColor.withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          HugeIcon(
+            icon: HugeIcons.strokeRoundedEye,
+            color: AppTheme.primaryColor,
+            size: 16,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Pratonton: $previewEpisodes/$totalEpisodes episode',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: AppTheme.primaryColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const Spacer(),
+          if (previewEpisodes > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '$previewEpisodes',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   void _showSnackBar(String message, {bool isError = false}) {

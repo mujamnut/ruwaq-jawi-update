@@ -10,7 +10,6 @@ class VideoEpisode {
   final int durationMinutes;
   final int? durationSeconds;
   final bool isActive;
-  final bool isPreview;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -26,7 +25,6 @@ class VideoEpisode {
     this.durationMinutes = 0,
     this.durationSeconds,
     this.isActive = true,
-    this.isPreview = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -53,7 +51,6 @@ class VideoEpisode {
       durationMinutes: json['duration_minutes'] as int? ?? 0,
       durationSeconds: json['duration_seconds'] as int?,
       isActive: json['is_active'] as bool? ?? true,
-      isPreview: json['is_preview'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -72,7 +69,6 @@ class VideoEpisode {
       'duration_minutes': durationMinutes,
       'duration_seconds': durationSeconds,
       'is_active': isActive,
-      'is_preview': isPreview,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -105,7 +101,6 @@ class VideoEpisode {
     int? durationMinutes,
     int? durationSeconds,
     bool? isActive,
-    bool? isPreview,
   }) {
     return VideoEpisode(
       id: id,
@@ -119,7 +114,6 @@ class VideoEpisode {
       durationMinutes: durationMinutes ?? this.durationMinutes,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       isActive: isActive ?? this.isActive,
-      isPreview: isPreview ?? this.isPreview,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -140,7 +134,7 @@ class VideoEpisode {
   }
 
   String get statusBadge => isActive ? 'Aktif' : 'Tidak Aktif';
-  String get typeBadge => isPreview ? 'Preview' : 'Penuh';
+  String get typeBadge => 'Penuh';
   
   // YouTube helpers
   String get youtubeWatchUrl => 'https://www.youtube.com/watch?v=$youtubeVideoId';

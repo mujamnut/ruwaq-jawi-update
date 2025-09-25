@@ -12,6 +12,7 @@ import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../widgets/admin_bottom_nav.dart';
 import 'admin_notification_detail_screen.dart';
+import 'admin_preview_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -690,6 +691,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 
+  void _navigateToPreviewManagement() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const AdminPreviewManagementScreen(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1095,6 +1105,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               HugeIcons.strokeRoundedFolder02,
               const Color(0xFF00BF6D),
               () => context.go('/admin/categories'),
+            ),
+            _buildActionButton(
+              'Preview Content',
+              HugeIcons.strokeRoundedEye,
+              const Color(0xFF00BF6D),
+              () => _navigateToPreviewManagement(),
             ),
           ],
         ),

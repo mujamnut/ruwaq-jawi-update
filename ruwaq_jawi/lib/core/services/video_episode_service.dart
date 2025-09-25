@@ -8,7 +8,6 @@ class VideoEpisodeService {
   static Future<List<VideoEpisode>> getEpisodesForVideoKitab(
     String videoKitabId, {
     bool? isActive,
-    bool? isPreview,
     String orderBy = 'part_number',
     bool ascending = true,
   }) async {
@@ -19,10 +18,6 @@ class VideoEpisodeService {
 
       if (isActive != null) {
         query = query.eq('is_active', isActive);
-      }
-
-      if (isPreview != null) {
-        query = query.eq('is_preview', isPreview);
       }
 
       final response = await query.order(orderBy, ascending: ascending);

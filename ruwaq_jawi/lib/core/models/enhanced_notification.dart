@@ -1,9 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'user_notification.dart';
-import '../services/unified_notification_service.dart';
-
-/// Enhanced notification model that supports both new 2-table system and legacy system
-/// Provides seamless integration between notifications + notification_reads tables and legacy user_notifications
+/// Enhanced notification model for the 2-table system
+/// Uses notifications + notification_reads tables
 class EnhancedNotification {
   final String id;
   final String type; // 'broadcast', 'personal', 'group'
@@ -68,24 +66,7 @@ class EnhancedNotification {
     );
   }
 
-  /// Create from legacy UnifiedNotification
-  factory EnhancedNotification.fromLegacy(UnifiedNotification legacy) {
-    return EnhancedNotification(
-      id: legacy.id,
-      type: legacy.isGlobal ? 'broadcast' : 'personal',
-      title: legacy.title,
-      message: legacy.message,
-      metadata: Map<String, dynamic>.from(legacy.metadata),
-      createdAt: legacy.deliveredAt,
-      isRead: legacy.readAt != null,
-      readAt: legacy.readAt,
-      source: 'legacy_system',
-      targetType: legacy.isGlobal ? 'all' : 'user',
-      targetCriteria: Map<String, dynamic>.from(legacy.targetCriteria),
-    );
-  }
-
-  /// Create from legacy user_notifications table directly
+  /// Create from migrated legacy notifications (no longer used)
   factory EnhancedNotification.fromLegacyJson(Map<String, dynamic> json) {
     final metadata = Map<String, dynamic>.from(json['metadata'] ?? {});
     final isGlobal = json['user_id'] == null;
@@ -249,16 +230,23 @@ class EnhancedNotification {
     };
   }
 
-  /// Convert to legacy UserNotification format for compatibility
-  UserNotification toLegacyUserNotification() {
-    return UserNotification(
+  /// Convert to UserNotificationItem format for backward compatibility
+  UserNotificationItem toLegacyUserNotificationItem() {
+    return UserNotificationItem(
       id: id,
-      title: title,
-      body: message,
-      type: type,
-      createdAt: createdAt,
-      isRead: isRead,
-      data: metadata,
+      userId: isPersonal ? targetCriteria['user_id'] : null,
+      message: '$title\n$message',
+      metadata: {
+        'title': title,
+        'body': message,
+        'type': type,
+        'source': source,
+        'read_at': readAt?.toIso8601String(),
+        ...metadata,
+      },
+      deliveredAt: createdAt,
+      targetCriteria: targetCriteria,
+      readAt: readAt,
     );
   }
 

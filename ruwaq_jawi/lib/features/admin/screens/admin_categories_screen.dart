@@ -5,7 +5,9 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/widgets/auto_generated_form.dart';
 import '../widgets/admin_bottom_nav.dart';
+import 'generic_admin_form_screen.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
   const AdminCategoriesScreen({super.key});
@@ -232,10 +234,27 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               size: 24.0,
             ),
             onPressed: () async {
-              final result = await context.push('/admin/categories/add');
-              if (result != null) {
-                _loadCategories();
-              }
+              // Use auto-generated form instead of custom form
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const GenericAdminFormScreen(
+                    tableName: 'categories',
+                    fieldConfigs: {
+                      'icon_url': FormFieldConfig(
+                        label: 'Icon URL',
+                        placeholder: 'https://example.com/icon.png',
+                      ),
+                      'sort_order': FormFieldConfig(
+                        label: 'Sort Order',
+                        placeholder: '0',
+                      ),
+                    },
+                    hiddenFields: ['id', 'created_at', 'updated_at'],
+                    title: 'Tambah Kategori Baru',
+                  ),
+                ),
+              );
+              _loadCategories();
             },
             tooltip: 'Tambah Kategori',
           ),

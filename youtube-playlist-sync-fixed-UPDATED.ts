@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
         part_number: index + 1,
         duration_seconds: duration,
         is_active: false, // Draft state
-        is_preview: index < 2, // First 2 episodes as preview
+        is_preview: index < 1, // First 1 episode as preview
         video_kitab_id: kitab.id
       };
     });

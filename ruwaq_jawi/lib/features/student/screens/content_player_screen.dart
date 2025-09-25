@@ -79,6 +79,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   // Control visibility state
   bool _showControls = true;
   Timer? _controlsTimer;
+  bool _isFullscreen = false;
 
   @override
   void initState() {
@@ -399,9 +400,13 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         flags: const YoutubePlayerFlags(
           autoPlay: false,
           mute: false,
-          enableCaption: true,
-          controlsVisibleAtStart: true,
+          enableCaption: false,
+          controlsVisibleAtStart: false, // Fix: Don't show controls at start
           forceHD: false,
+          hideControls: true, // Hide default controls
+          disableDragSeek: true, // Disable default seek
+          showLiveFullscreenButton: false, // Hide fullscreen button
+          loop: false,
           useHybridComposition: true,
         ),
       );
@@ -566,6 +571,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     _progressTimer?.cancel();
     _skipAnimationTimer?.cancel();
     _controlsTimer?.cancel();
+
+    // Reset system UI and orientation on dispose
+    if (_isFullscreen) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+
     _videoController?.dispose();
     _tabController.dispose();
     _fadeAnimationController.dispose();
@@ -825,6 +839,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
     return YoutubePlayerBuilder(
       builder: (context, player) {
+        // Fullscreen mode - hide AppBar and take full screen
+        if (_isFullscreen) {
+          return Scaffold(
+            backgroundColor: Colors.black,
+            body: _buildFullscreenView(player),
+          );
+        }
+
+        // Normal mode - show AppBar and tabs
         return Scaffold(
           backgroundColor: Colors.white,
           appBar: _buildAppBar(),
@@ -838,20 +861,25 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       },
       player: YoutubePlayer(
         controller: _videoController!,
-        showVideoProgressIndicator: true,
-        progressIndicatorColor: AppTheme.primaryColor,
-        bottomActions: [
-          CurrentPosition(),
-          ProgressBar(isExpanded: true),
-          RemainingDuration(),
-          FullScreenButton(),
-        ],
-        topActions: [],
+        showVideoProgressIndicator: false, // Hide default progress
+        topActions: const [], // Remove all top controls
+        bottomActions: const [], // Remove all bottom controls
+        progressColors: const ProgressBarColors(
+          playedColor: Colors.transparent,
+          handleColor: Colors.transparent,
+          bufferedColor: Colors.transparent,
+          backgroundColor: Colors.transparent,
+        ),
         onReady: () {
           if (mounted) {
             setState(() {
               _isVideoLoading = false;
             });
+
+            // Start auto-hide timer when video is ready and playing
+            if (_videoController?.value.isPlaying == true && _showControls) {
+              _startControlsTimer();
+            }
           }
         },
         onEnded: (metaData) {
@@ -1185,7 +1213,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     return Stack(
       children: [
         GestureDetector(
-          behavior: HitTestBehavior.deferToChild,
+          behavior: HitTestBehavior.translucent,
           onTap: () {
             // Single tap to toggle controls
             _toggleControls();
@@ -1194,7 +1222,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             // This will be handled by onDoubleTapDown, but we need this to enable double tap detection
           },
           onDoubleTapDown: (details) {
-            if (_videoController == null) return;
+            // Only handle double tap here if controls are hidden
+            if (_showControls || _videoController == null) return;
 
             // Get tap position relative to the player
             final size = MediaQuery.of(context).size;
@@ -1210,17 +1239,131 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               final videoDuration = _videoController!.metadata.duration.inSeconds;
               final newPosition = (currentPosition + skipSeconds).clamp(0, videoDuration);
 
-              // Seek to new position
+              // Custom seek to new position
               _videoController!.seekTo(Duration(seconds: newPosition.toInt()));
 
               // Show feedback with visual indicator
               _showSkipFeedback(isLeftSide, skipSeconds.abs(), isLeftSide);
             } catch (e) {
-              debugPrint('Error in double tap skip: $e');
+              debugPrint('Error in custom double tap seek: $e');
             }
           },
           child: player,
         ),
+        // Custom Controls Overlay
+        if (_showControls)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                // Single tap on overlay (not on buttons) should toggle controls
+                _toggleControls();
+                // Start auto-hide timer if controls are now visible and video is playing
+                if (_showControls && _videoController?.value.isPlaying == true) {
+                  _startControlsTimer();
+                }
+              },
+              onDoubleTap: () {
+                // Enable double tap detection
+              },
+              onDoubleTapDown: (details) {
+                if (_videoController == null) return;
+
+                // Get tap position relative to the overlay
+                final size = MediaQuery.of(context).size;
+                final position = details.localPosition;
+
+                // Calculate if tap is on left or right side
+                final isLeftSide = position.dx < size.width / 2;
+                final skipSeconds = isLeftSide ? -10 : 10; // Skip backward or forward
+
+                try {
+                  // Get current position and calculate new position
+                  final currentPosition = _videoController!.value.position.inSeconds;
+                  final videoDuration = _videoController!.metadata.duration.inSeconds;
+                  final newPosition = (currentPosition + skipSeconds).clamp(0, videoDuration);
+
+                  // Custom seek to new position
+                  _videoController!.seekTo(Duration(seconds: newPosition.toInt()));
+
+                  // Show feedback with visual indicator
+                  _showSkipFeedback(isLeftSide, skipSeconds.abs(), isLeftSide);
+
+                  // Reset auto-hide timer after skip (works in both normal and fullscreen)
+                  if (_videoController!.value.isPlaying) {
+                    _startControlsTimer();
+                  }
+                } catch (e) {
+                  debugPrint('Error in custom double tap seek: $e');
+                }
+              },
+              child: Container(
+                color: Colors.black.withOpacity(0.3),
+                child: Stack(
+                  children: [
+                    // Center Play/Pause Button
+                    Center(
+                      child: StreamBuilder<Duration>(
+                        stream: Stream.periodic(
+                          const Duration(milliseconds: 100),
+                          (_) => _videoController?.value.position ?? Duration.zero,
+                        ),
+                        builder: (context, snapshot) {
+                          final isPlaying = _videoController?.value.isPlaying ?? false;
+                          return GestureDetector(
+                            onTap: () {
+                              if (_videoController != null) {
+                                if (_videoController!.value.isPlaying) {
+                                  _videoController!.pause();
+                                } else {
+                                  _videoController!.play();
+                                  // Start auto-hide timer after play
+                                  _startControlsTimer();
+                                }
+                              }
+                            },
+                            child: Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.7),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.5),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: Icon(
+                                isPlaying
+                                    ? PhosphorIcons.pause()
+                                    : PhosphorIcons.play(),
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // Custom Seekable Progress Bar
+                    Positioned(
+                      bottom: 20,
+                      left: 20,
+                      right: 20,
+                      child: GestureDetector(
+                        onTap: null, // Prevent tap on progress bar from hiding controls
+                        child: _buildCustomProgressBar(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
         // YouTube-style skip animation overlay
         if (_showSkipAnimation)
           Positioned(
@@ -1316,6 +1459,73 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     if (_showControls && _videoController?.value.isPlaying == true) {
       _startControlsTimer();
     }
+  }
+
+  void _toggleFullscreen() {
+    if (!mounted) return;
+
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+    });
+
+    if (_isFullscreen) {
+      // Enter fullscreen
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+      // Show controls when entering fullscreen
+      _showControls = true;
+    } else {
+      // Exit fullscreen
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    }
+
+    // Reset controls timer when toggling fullscreen
+    if (_showControls && _videoController?.value.isPlaying == true) {
+      _startControlsTimer();
+    }
+  }
+
+  Widget _buildFullscreenView(Widget? player) {
+    if (player == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: Colors.white),
+      );
+    }
+
+    return Stack(
+      children: [
+        // Video player taking full screen
+        Positioned.fill(
+          child: _buildPlayerWithDoubleTap(player),
+        ),
+        // Exit fullscreen button (always visible in top-right)
+        Positioned(
+          top: 20,
+          right: 20,
+          child: GestureDetector(
+            onTap: _toggleFullscreen,
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const HugeIcon(
+                icon: HugeIcons.strokeRoundedCancelSquare,
+                color: Colors.white,
+                size: 20,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildVideoTabContent() {
@@ -2352,5 +2562,159 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         );
       },
     );
+  }
+
+  // Custom Progress Bar with Seek Functionality
+  Widget _buildCustomProgressBar() {
+    if (_videoController == null) {
+      return Container(
+        height: 4,
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.3),
+          borderRadius: BorderRadius.circular(2),
+        ),
+      );
+    }
+
+    return StreamBuilder<Duration>(
+      stream: Stream.periodic(
+        const Duration(milliseconds: 100),
+        (_) => _videoController!.value.position,
+      ),
+      builder: (context, snapshot) {
+        final position = snapshot.data ?? Duration.zero;
+        final duration = _videoController!.metadata.duration;
+        final progress = duration.inMilliseconds > 0
+            ? position.inMilliseconds / duration.inMilliseconds
+            : 0.0;
+
+        return Column(
+          children: [
+            // Time display and fullscreen button
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Combined duration display on left
+                  Text(
+                    '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  // Fullscreen button on right
+                  GestureDetector(
+                    onTap: _toggleFullscreen,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: HugeIcon(
+                        icon: _isFullscreen
+                            ? HugeIcons.strokeRoundedCancelSquare
+                            : HugeIcons.strokeRoundedFullScreen,
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Custom draggable progress bar
+            GestureDetector(
+              onTapDown: (details) => _onProgressBarTap(details, duration),
+              onPanUpdate: (details) => _onProgressBarPan(details, duration),
+              child: Container(
+                height: 20, // Larger touch area
+                width: double.infinity,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Background track
+                    Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    // Progress track
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: progress.clamp(0.0, 1.0),
+                        child: Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Seek handle
+                    Positioned(
+                      left: (MediaQuery.of(context).size.width - 48) * progress.clamp(0.0, 1.0) - 8, // Account for handle width and padding
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryColor,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _onProgressBarTap(TapDownDetails details, Duration duration) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final localPosition = renderBox.globalToLocal(details.globalPosition);
+    final progress = (localPosition.dx / renderBox.size.width).clamp(0.0, 1.0);
+    final newPosition = Duration(milliseconds: (duration.inMilliseconds * progress).toInt());
+
+    _videoController?.seekTo(newPosition);
+  }
+
+  void _onProgressBarPan(DragUpdateDetails details, Duration duration) {
+    final RenderBox renderBox = context.findRenderObject() as RenderBox;
+    final localPosition = renderBox.globalToLocal(details.globalPosition);
+    final progress = (localPosition.dx / renderBox.size.width).clamp(0.0, 1.0);
+    final newPosition = Duration(milliseconds: (duration.inMilliseconds * progress).toInt());
+
+    _videoController?.seekTo(newPosition);
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
+    } else {
+      return '${twoDigits(minutes)}:${twoDigits(seconds)}';
+    }
   }
 }

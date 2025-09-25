@@ -43,7 +43,22 @@
       "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\ruwaq_jawi\\test_popup_import.dart\")",
       "Bash(timeout 60 flutter analyze)",
       "Bash(timeout 30 flutter build:*)",
-      "Bash(timeout 30 flutter analyze)"
+      "Bash(timeout 30 flutter analyze)",
+      "Bash(timeout 30 flutter analyze:*)",
+      "Bash(timeout 60 flutter build:*)",
+      "Bash(timeout 15 flutter analyze)",
+      "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\ruwaq_jawi\\lib\\core\\services\\unified_notification_service.dart\")",
+      "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\ruwaq_jawi\\lib\\core\\widgets\\floating_video_player.dart\")",
+      "Bash(timeout 10 flutter analyze lib/features/student/screens/kitab_detail_screen.dart)",
+      "Bash(git restore:*)",
+      "Bash(timeout 15 flutter analyze lib/features/student/screens/kitab_detail_screen.dart)",
+      "Bash(timeout 15 flutter analyze:*)",
+      "Bash(timeout 60 flutter analyze:*)",
+      "Bash(del test_compilation.dart)",
+      "Bash(del backup_kitab_detail.dart)",
+      "mcp__supabase__list_projects",
+      "mcp__supabase__get_project",
+      "Bash(timeout 10 flutter analyze:*)"
     ],
     "deny": [],
     "ask": []

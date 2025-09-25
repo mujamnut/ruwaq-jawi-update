@@ -5,7 +5,9 @@ import '../models/ebook.dart';
 import '../models/category.dart';
 import '../models/reading_progress.dart';
 import '../models/video_episode.dart';
+import '../models/preview_models.dart';
 import '../services/supabase_service.dart';
+import '../services/preview_service.dart';
 
 class KitabProvider extends ChangeNotifier {
   final List<Kitab> _kitabList = [];
@@ -64,13 +66,42 @@ class KitabProvider extends ChangeNotifier {
       _setLoading(true);
       _setError(null);
 
-      await Future.wait([
-        loadCategories(),
-        loadVideoKitabList(),
-        loadEbookList(),
-      ]);
+      // Use timeout and individual error handling for better resilience
+      final results = await Future.wait([
+        loadCategories().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () => throw Exception('Categories loading timeout'),
+        ),
+        loadVideoKitabList().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Video kitab loading timeout'),
+        ),
+        loadEbookList().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Ebook loading timeout'),
+        ),
+      ], eagerError: false); // Continue loading even if some fail
+
+      // Check if any operations failed
+      bool hasAnyData = _categories.isNotEmpty ||
+                       _videoKitabList.isNotEmpty ||
+                       _ebookList.isNotEmpty;
+
+      if (!hasAnyData) {
+        _setError('Tidak dapat memuat data. Sila semak sambungan internet.');
+      }
     } catch (e) {
-      _setError('Failed to initialize: ${e.toString()}');
+      // Provide user-friendly error messages
+      String errorMessage = 'Tidak dapat memuat data';
+      if (e.toString().contains('timeout')) {
+        errorMessage = 'Sambungan internet terlalu perlahan. Sila cuba lagi.';
+      } else if (e.toString().contains('network') || e.toString().contains('connection')) {
+        errorMessage = 'Tiada sambungan internet. Sila semak sambungan anda.';
+      } else if (e.toString().contains('Failed to initialize')) {
+        errorMessage = e.toString().replaceFirst('Failed to initialize: ', '');
+      }
+
+      _setError(errorMessage);
     } finally {
       _setLoading(false);
     }
@@ -458,68 +489,190 @@ class KitabProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Load preview videos for a specific kitab
-  Future<List<VideoEpisode>> loadPreviewVideos(String kitabId) async {
+  /// Load preview videos for a specific video kitab using unified preview system
+  Future<List<VideoEpisode>> loadPreviewVideos(String videoKitabId) async {
     try {
-      final response = await SupabaseService.from('video_episodes')
-          .select()
-          .eq('video_kitab_id', kitabId)
-          .eq('is_active', true) // Only show active preview videos
-          .eq('is_preview', true)
-          .order('part_number');
+      // Get preview content for this video kitab
+      final previews = await PreviewService.getPreviewForContent(
+        contentType: PreviewContentType.videoKitab,
+        contentId: videoKitabId,
+        onlyActive: true,
+      );
 
-      final previewVideos = (response as List)
-          .map((json) => VideoEpisode.fromJson(json))
-          .toList();
+      if (previews.isEmpty) {
+        // Fallback: check for video episode previews
+        return await loadVideoEpisodePreviews(videoKitabId);
+      }
 
-      return previewVideos;
+      // For video kitab previews, return the full video episodes
+      final allVideos = await loadKitabVideos(videoKitabId);
+      return allVideos; // Return all videos as preview for video kitab type previews
     } catch (e) {
       print('Error loading preview videos: $e');
       return [];
     }
   }
 
-  /// Get preview videos from cache (filter from already loaded videos)
-  List<VideoEpisode> getPreviewVideosFromCache(String kitabId) {
-    final allVideos = _kitabVideosCache[kitabId] ?? [];
-    return allVideos.where((video) => video.isPreview).toList();
+  /// Load preview video episodes for a specific video kitab
+  Future<List<VideoEpisode>> loadVideoEpisodePreviews(String videoKitabId) async {
+    try {
+      // Get all video episodes for this kitab
+      final allEpisodes = await loadKitabVideos(videoKitabId);
+      final previewEpisodes = <VideoEpisode>[];
+
+      for (final episode in allEpisodes) {
+        // Check if this episode has preview content
+        final hasPreview = await PreviewService.hasPreview(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episode.id,
+        );
+
+        if (hasPreview) {
+          previewEpisodes.add(episode);
+        }
+      }
+
+      return previewEpisodes;
+    } catch (e) {
+      print('Error loading video episode previews: $e');
+      return [];
+    }
   }
 
-  /// Check if kitab has any preview videos
-  Future<bool> hasPreviewVideos(String kitabId) async {
+  /// Get preview videos from cache using unified preview system
+  Future<List<VideoEpisode>> getPreviewVideosFromCache(String videoKitabId) async {
+    final allVideos = _kitabVideosCache[videoKitabId] ?? [];
+    final previewVideos = <VideoEpisode>[];
+
+    for (final video in allVideos) {
+      // Check if this video has preview content using the unified system
+      final hasPreview = await PreviewService.hasPreview(
+        contentType: PreviewContentType.videoEpisode,
+        contentId: video.id,
+      );
+
+      if (hasPreview) {
+        previewVideos.add(video);
+      }
+    }
+
+    return previewVideos;
+  }
+
+  /// Check if video kitab has any preview content using unified preview system
+  Future<bool> hasPreviewVideos(String videoKitabId) async {
     try {
-      print('DEBUG: Checking preview videos for kitab: $kitabId');
-      final previews = await loadPreviewVideos(kitabId);
-      print('DEBUG: Found ${previews.length} preview videos');
-      return previews.isNotEmpty;
+      print('DEBUG: Checking preview content for video kitab: $videoKitabId');
+
+      // First check if video kitab itself has preview content
+      final hasVideoKitabPreview = await PreviewService.hasPreview(
+        contentType: PreviewContentType.videoKitab,
+        contentId: videoKitabId,
+      );
+
+      if (hasVideoKitabPreview) {
+        print('DEBUG: Found video kitab level preview');
+        return true;
+      }
+
+      // Check if any episodes have preview content
+      final allEpisodes = await loadKitabVideos(videoKitabId);
+      for (final episode in allEpisodes) {
+        final hasEpisodePreview = await PreviewService.hasPreview(
+          contentType: PreviewContentType.videoEpisode,
+          contentId: episode.id,
+        );
+
+        if (hasEpisodePreview) {
+          print('DEBUG: Found episode level preview');
+          return true;
+        }
+      }
+
+      print('DEBUG: No preview content found');
+      return false;
     } catch (e) {
       print('Error checking preview videos: $e');
       return false;
     }
   }
 
-  /// Load all available preview videos across all kitab (for general preview browsing)
+  /// Load all available preview videos using unified preview system
   Future<List<VideoEpisode>> loadAllPreviewVideos({int limit = 20}) async {
     try {
-      final response = await SupabaseService.from('video_episodes')
-          .select('''
-            *,
-            video_kitab:video_kitab_id (
-              id, title, author, thumbnail_url, category_id
-            )
-          ''')
-          .eq('is_active', true)
-          .eq('is_preview', true)
-          .order('created_at', ascending: false)
-          .limit(limit);
+      // Get all video episode preview content
+      final episodePreviews = await PreviewService.getPreviewContent(
+        filter: PreviewQueryFilter(
+          contentType: PreviewContentType.videoEpisode,
+          isActive: true,
+        ),
+        includeContentDetails: true,
+      );
 
-      final previewVideos = (response as List)
-          .map((json) => VideoEpisode.fromJson(json))
-          .toList();
+      // Convert preview content to video episodes
+      final previewVideos = <VideoEpisode>[];
+
+      for (final preview in episodePreviews.take(limit)) {
+        try {
+          // Get the actual video episode data
+          final response = await SupabaseService.from('video_episodes')
+              .select('''
+                *,
+                video_kitab:video_kitab_id (
+                  id, title, author, thumbnail_url, category_id
+                )
+              ''')
+              .eq('id', preview.contentId)
+              .eq('is_active', true)
+              .single();
+
+          final videoEpisode = VideoEpisode.fromJson(response);
+          previewVideos.add(videoEpisode);
+        } catch (e) {
+          print('Error loading preview video episode ${preview.contentId}: $e');
+          // Skip this preview if episode not found or inactive
+          continue;
+        }
+      }
+
+      // Sort by creation date (newest first)
+      previewVideos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
       return previewVideos;
     } catch (e) {
       print('Error loading all preview videos: $e');
+      return [];
+    }
+  }
+
+  /// Get preview content for ebooks using unified preview system
+  Future<List<PreviewContent>> getEbookPreviews({int limit = 20}) async {
+    try {
+      return await PreviewService.getPreviewContent(
+        filter: PreviewQueryFilter(
+          contentType: PreviewContentType.ebook,
+          isActive: true,
+        ),
+        includeContentDetails: true,
+      );
+    } catch (e) {
+      print('Error loading ebook previews: $e');
+      return [];
+    }
+  }
+
+  /// Get preview content for video kitab using unified preview system
+  Future<List<PreviewContent>> getVideoKitabPreviews({int limit = 20}) async {
+    try {
+      return await PreviewService.getPreviewContent(
+        filter: PreviewQueryFilter(
+          contentType: PreviewContentType.videoKitab,
+          isActive: true,
+        ),
+        includeContentDetails: true,
+      );
+    } catch (e) {
+      print('Error loading video kitab previews: $e');
       return [];
     }
   }

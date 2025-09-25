@@ -4,6 +4,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_profile.dart';
 import '../services/supabase_service.dart';
+import '../services/enhanced_notification_service.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -311,11 +312,56 @@ class AuthProvider extends ChangeNotifier {
       
       // Load the newly created profile
       await _loadUserProfile();
+
+      // Send welcome notification for new user
+      if (_userProfile != null) {
+        await _sendWelcomeNotification();
+      }
     } catch (e) {
       if (kDebugMode) {
         print('DEBUG: Profile creation error: $e');
       }
       throw Exception('Profile creation failed: ${e.toString()}');
+    }
+  }
+
+  Future<void> _sendWelcomeNotification() async {
+    if (_user == null || _userProfile == null) return;
+
+    try {
+      if (kDebugMode) {
+        print('🎉 Sending welcome notification to new user: ${_user!.id}');
+      }
+
+      final notificationSuccess = await EnhancedNotificationService.createPersonalNotification(
+        userId: _user!.id,
+        title: 'Selamat Datang ke Maktabah Ruwaq Jawi! 👋',
+        message: 'Terima kasih kerana menyertai kami, ${_userProfile!.fullName}! Jelajahi koleksi kitab, video pembelajaran dan banyak lagi. Mula pembelajaran Islam anda hari ini.',
+        metadata: {
+          'type': 'welcome',
+          'sub_type': 'welcome',
+          'icon': '👋',
+          'priority': 'high',
+          'action_url': '/home',
+          'source': 'auth_provider',
+          'user_registration_date': DateTime.now().toIso8601String(),
+          'welcome_message': true,
+        },
+      );
+
+      if (notificationSuccess) {
+        if (kDebugMode) {
+          print('✅ Welcome notification sent successfully to ${_userProfile!.fullName}');
+        }
+      } else {
+        if (kDebugMode) {
+          print('❌ Failed to send welcome notification to user: ${_user!.id}');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error sending welcome notification: $e');
+      }
     }
   }
 
