@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../core/theme/app_theme.dart';
@@ -15,13 +15,13 @@ class AdminBottomNav extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 12,
             offset: const Offset(0, -4),
             spreadRadius: 0,
           ),
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.05),
+            color: AppTheme.primaryColor.withValues(alpha: 0.05),
             blurRadius: 24,
             offset: const Offset(0, -8),
             spreadRadius: 0,
@@ -29,7 +29,7 @@ class AdminBottomNav extends StatelessWidget {
         ],
         border: Border(
           top: BorderSide(
-            color: AppTheme.borderColor.withOpacity(0.3),
+            color: AppTheme.borderColor.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -80,12 +80,12 @@ class AdminBottomNav extends StatelessWidget {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF00BF6D).withOpacity(0.15)
+              ? const Color(0xFF00BF6D).withValues(alpha: 0.15)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           border: isSelected
               ? Border.all(
-                  color: const Color(0xFF00BF6D).withOpacity(0.3),
+                  color: const Color(0xFF00BF6D).withValues(alpha: 0.3),
                   width: 1,
                 )
               : null,

@@ -53,8 +53,10 @@ class ContentService {
   Future<List<Map<String, dynamic>>> getAccessibleKitab() async {
     final hasAccess = await canAccessPremiumContent();
 
+    // For video kitabs, we now show all kitabs regardless of premium status
+    // Access control is handled at the episode level
     var query = _supabase
-        .from('kitab')
+        .from('video_kitab')
         .select('''
       id,
       title,
@@ -62,49 +64,58 @@ class ContentService {
       description,
       category_id,
       pdf_url,
-      youtube_video_id,
-      youtube_video_url,
       thumbnail_url,
       is_premium,
-      duration_minutes,
-      total_pages
+      total_videos,
+      total_duration_minutes,
+      total_pages,
+      youtube_playlist_id,
+      youtube_playlist_url
     ''')
         .eq('is_active', true);
-
-    if (!hasAccess) {
-      // If user doesn't have premium access, only return non-premium content
-      query = query.eq('is_premium', false);
-    }
 
     final response = await query.order('title');
     return List<Map<String, dynamic>>.from(response);
   }
 
   Future<Map<String, dynamic>?> getKitabDetails(String kitabId) async {
-    final hasAccess = await canAccessPremiumContent();
-
     try {
       final response = await _supabase
-          .from('kitab')
+          .from('video_kitab')
           .select()
           .eq('id', kitabId)
           .single();
 
-      final isPremium = response['is_premium'] ?? false;
-      if (isPremium && !hasAccess) {
-        // Return basic info without sensitive URLs for premium content
-        return {
-          ...response,
-          'pdf_url': null,
-          'youtube_video_url': null,
-          'requires_subscription': true,
-        };
-      }
-
+      // For video kitabs, always return full details
+      // Episode-level access control is handled separately
       return response;
     } catch (e) {
       print('Error fetching kitab details: $e');
       return null;
+    }
+  }
+
+  // New method to check episode access
+  Future<bool> canAccessEpisode(String episodeId) async {
+    try {
+      final hasActiveSubscription = await canAccessPremiumContent();
+
+      final episodeData = await _supabase
+          .from('video_episodes')
+          .select('is_premium, is_active')
+          .eq('id', episodeId)
+          .single();
+
+      final isPremium = episodeData['is_premium'] ?? false;
+      final isActive = episodeData['is_active'] ?? false;
+
+      // Episode can be accessed if:
+      // 1. Episode is active AND
+      // 2. Episode is not premium OR user has active subscription
+      return isActive && (!isPremium || hasActiveSubscription);
+    } catch (e) {
+      print('Error checking episode access: $e');
+      return false;
     }
   }
 

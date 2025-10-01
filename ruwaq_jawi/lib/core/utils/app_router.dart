@@ -4,6 +4,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/student/screens/profile_screen.dart';
+import '../../features/student/screens/edit_profile_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/email_verification_screen.dart';
@@ -353,6 +354,11 @@ class AppRouter {
           path: '/profile',
           name: 'profile',
           builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/edit-profile',
+          name: 'edit-profile',
+          builder: (context, state) => const EditProfileScreen(),
         ),
 
         // Admin Routes

@@ -47,10 +47,9 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
     }
 
     try {
-      final profile = await SupabaseService.from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+      final profile = await SupabaseService.from(
+        'profiles',
+      ).select('role').eq('id', user.id).maybeSingle();
 
       if (profile == null || profile['role'] != 'admin') {
         if (mounted) {
@@ -74,10 +73,9 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
     });
 
     try {
-      final response = await SupabaseService.from('categories')
-          .select('*')
-          .eq('id', widget.categoryId!)
-          .maybeSingle();
+      final response = await SupabaseService.from(
+        'categories',
+      ).select('*').eq('id', widget.categoryId!).maybeSingle();
 
       if (response == null) {
         setState(() {
@@ -125,14 +123,16 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
 
       if (_isEditing) {
         // Update existing category
-        await SupabaseService.from('categories')
-            .update(data)
-            .eq('id', widget.categoryId!);
+        await SupabaseService.from(
+          'categories',
+        ).update(data).eq('id', widget.categoryId!);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Kategori "${_nameController.text}" berjaya dikemas kini'),
+              content: Text(
+                'Kategori "${_nameController.text}" berjaya dikemas kini',
+              ),
               backgroundColor: AppTheme.primaryColor,
             ),
           );
@@ -144,7 +144,9 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Kategori "${_nameController.text}" berjaya ditambah'),
+              content: Text(
+                'Kategori "${_nameController.text}" berjaya ditambah',
+              ),
               backgroundColor: AppTheme.primaryColor,
             ),
           );
@@ -211,9 +213,9 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
             const SizedBox(height: 16),
             Text(
               'Ralat',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -280,19 +282,19 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
                       children: [
                         Text(
                           _isEditing ? 'Edit Kategori' : 'Kategori Baharu',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.primaryColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryColor,
+                              ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           _isEditing
                               ? 'Kemas kini maklumat kategori'
                               : 'Tambah kategori baharu untuk mengorganisasi kandungan',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.grey.shade600),
                         ),
                       ],
                     ),
@@ -404,16 +406,14 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
                         children: [
                           Text(
                             'Status Kategori',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 4),
                           Text(
                             'Kategori yang tidak aktif tidak akan dipaparkan kepada pengguna',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey.shade600,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey.shade600),
                           ),
                         ],
                       ),
@@ -421,7 +421,7 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
                     Switch(
                       value: _isActive,
                       onChanged: (value) => setState(() => _isActive = value),
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                     ),
                   ],
                 ),
@@ -444,14 +444,18 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           ),
                           SizedBox(width: 8),
                           Text('Menyimpan...'),
                         ],
                       )
-                    : Text(_isEditing ? 'Kemas Kini Kategori' : 'Tambah Kategori'),
+                    : Text(
+                        _isEditing ? 'Kemas Kini Kategori' : 'Tambah Kategori',
+                      ),
               ),
             ),
           ],

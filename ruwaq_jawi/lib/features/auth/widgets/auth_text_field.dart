@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AuthTextField extends StatelessWidget {
@@ -99,7 +99,7 @@ class AuthTextField extends StatelessWidget {
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
-                color: AppTheme.borderColor.withOpacity(0.5),
+                color: AppTheme.borderColor.withValues(alpha: 0.5),
               ),
             ),
             contentPadding: const EdgeInsets.symmetric(

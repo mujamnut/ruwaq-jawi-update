@@ -1,4 +1,4 @@
-// ignore_for_file: unused_import
+﻿// ignore_for_file: unused_import
 
 import 'dart:async';
 
@@ -675,15 +675,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                                           )
                                         : AnimatedSwitcher(
                                             duration: const Duration(milliseconds: 200),
-                                            child: HugeIcon(
+                                            child: PhosphorIcon(
                                               key: ValueKey(isBookmarked),
-                                              icon: isBookmarked
-                                                  ? HugeIcons.strokeRoundedFavourite
-                                                  : HugeIcons.strokeRoundedHeartAdd,
+                                              isBookmarked
+                                                  ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
+                                                  : PhosphorIcons.heart(),
                                               color: isBookmarked
                                                   ? const Color(0xFFE91E63)
                                                   : Colors.white,
-                                              size: 20,
+                                              size: 24,
                                             ),
                                           ),
                                   ),
@@ -1408,7 +1408,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
         if (_showControls)
           Positioned.fill(
             child: Container(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               child: Stack(
                 children: [
                   // Center Play/Pause Button
@@ -1419,11 +1419,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                         width: 80,
                         height: 80,
                         decoration: BoxDecoration(
-                          color: Colors.black.withOpacity(0.7),
+                          color: Colors.black.withValues(alpha: 0.7),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.5),
+                              color: Colors.black.withValues(alpha: 0.5),
                               blurRadius: 16,
                               offset: const Offset(0, 4),
                             ),
@@ -1448,7 +1448,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
                     child: Container(
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(2),
                       ),
                       child: StreamBuilder<Duration>(

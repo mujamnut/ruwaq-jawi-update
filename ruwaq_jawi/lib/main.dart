@@ -288,7 +288,7 @@ class MaktabahErrorApp extends StatelessWidget {
                   'Tidak dapat menyambung ke pelayan. Sila semak sambungan internet anda.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: AppTheme.textLightColor.withOpacity(0.8),
+                    color: AppTheme.textLightColor.withValues(alpha: 0.8),
                   ),
                   textAlign: TextAlign.center,
                 ),

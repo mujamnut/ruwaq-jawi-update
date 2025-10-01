@@ -163,7 +163,7 @@ class _PreviewVideoSelectionDialogState
                     Text(
                       widget.kitab.author!,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppTheme.textLightColor.withOpacity(0.8),
+                        color: AppTheme.textLightColor.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
@@ -258,7 +258,7 @@ class _PreviewVideoSelectionDialogState
         Container(
           width: double.infinity,
           padding: const EdgeInsets.all(16),
-          color: AppTheme.secondaryColor.withOpacity(0.1),
+          color: AppTheme.secondaryColor.withValues(alpha: 0.1),
           child: Row(
             children: [
               PhosphorIcon(
@@ -351,7 +351,7 @@ class _PreviewVideoSelectionDialogState
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withOpacity(0.1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Center(

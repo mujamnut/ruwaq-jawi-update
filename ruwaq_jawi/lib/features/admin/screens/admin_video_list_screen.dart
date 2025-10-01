@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -271,7 +271,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
           ),
           boxShadow: [
             BoxShadow(
-              color: AppTheme.primaryColor.withOpacity(0.3),
+              color: AppTheme.primaryColor.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),
@@ -289,7 +289,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -305,7 +305,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               color: AppTheme.backgroundColor,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -317,14 +317,14 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               decoration: InputDecoration(
                 hintText: 'Cari kitab, pengarang, atau kategori...',
                 hintStyle: TextStyle(
-                  color: AppTheme.textSecondaryColor.withOpacity(0.6),
+                  color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
                   fontSize: 16,
                 ),
                 prefixIcon: Padding(
                   padding: const EdgeInsets.all(12),
                   child: HugeIcon(
                     icon: HugeIcons.strokeRoundedSearch01,
-                    color: AppTheme.textSecondaryColor.withOpacity(0.7),
+                    color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
                     size: 20,
                   ),
                 ),
@@ -427,14 +427,14 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               boxShadow: isSelected
                   ? [
                       BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.3),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ]
                   : [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
+                        color: Colors.black.withValues(alpha: 0.05),
                         blurRadius: 4,
                         offset: const Offset(0, 1),
                       ),
@@ -478,7 +478,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(30),
             ),
             child: const Center(
@@ -514,7 +514,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -527,7 +527,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppTheme.errorColor.withOpacity(0.1),
+                color: AppTheme.errorColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(40),
               ),
               child: const Center(
@@ -603,14 +603,14 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.05),
+                color: AppTheme.primaryColor.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(60),
               ),
               child: Center(
                 child: HugeIcon(
                   icon: HugeIcons.strokeRoundedInbox,
                   size: 60,
-                  color: AppTheme.textSecondaryColor.withOpacity(0.6),
+                  color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -712,13 +712,13 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 20,
             offset: const Offset(0, 8),
             spreadRadius: 0,
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 4,
             offset: const Offset(0, 2),
             spreadRadius: 0,
@@ -744,8 +744,8 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      AppTheme.primaryColor.withOpacity(0.1),
-                      AppTheme.primaryLightColor.withOpacity(0.05),
+                      AppTheme.primaryColor.withValues(alpha: 0.1),
+                      AppTheme.primaryLightColor.withValues(alpha: 0.05),
                     ],
                   ),
                   borderRadius: const BorderRadius.only(
@@ -803,7 +803,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                             end: Alignment.bottomCenter,
                             colors: [
                               Colors.transparent,
-                              Colors.black.withOpacity(0.05),
+                              Colors.black.withValues(alpha: 0.05),
                             ],
                           ),
                           borderRadius: const BorderRadius.only(
@@ -867,10 +867,10 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                         vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: AppTheme.primaryColor.withOpacity(0.2),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.2),
                           width: 1,
                         ),
                       ),
@@ -932,11 +932,11 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
       margin: margin,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.9),
+        color: color.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.3),
+            color: color.withValues(alpha: 0.3),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -991,8 +991,8 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            AppTheme.primaryColor.withOpacity(0.1),
-            AppTheme.primaryLightColor.withOpacity(0.05),
+            AppTheme.primaryColor.withValues(alpha: 0.1),
+            AppTheme.primaryLightColor.withValues(alpha: 0.05),
           ],
         ),
         borderRadius: const BorderRadius.only(
@@ -1006,13 +1006,13 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: HugeIcon(
               icon: HugeIcons.strokeRoundedVideo01,
               size: 40,
-              color: AppTheme.primaryColor.withOpacity(0.7),
+              color: AppTheme.primaryColor.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 12),
@@ -1020,7 +1020,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
             'Video Kitab',
             style: TextStyle(
               fontSize: 14,
-              color: AppTheme.primaryColor.withOpacity(0.8),
+              color: AppTheme.primaryColor.withValues(alpha: 0.8),
               fontWeight: FontWeight.w600,
               letterSpacing: 0.5,
             ),
@@ -1058,7 +1058,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1073,7 +1073,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: HugeIcon(
@@ -1179,7 +1179,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             border: Border.all(
-              color: AppTheme.borderColor.withOpacity(0.5),
+              color: AppTheme.borderColor.withValues(alpha: 0.5),
               width: 1,
             ),
             borderRadius: BorderRadius.circular(16),
@@ -1190,7 +1190,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Center(

@@ -12,7 +12,8 @@ class AdminNotificationsScreen extends StatefulWidget {
   const AdminNotificationsScreen({super.key});
 
   @override
-  State<AdminNotificationsScreen> createState() => _AdminNotificationsScreenState();
+  State<AdminNotificationsScreen> createState() =>
+      _AdminNotificationsScreenState();
 }
 
 class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
@@ -40,10 +41,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     }
 
     try {
-      final profile = await SupabaseService.from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+      final profile = await SupabaseService.from(
+        'profiles',
+      ).select('role').eq('id', user.id).maybeSingle();
 
       if (profile == null || profile['role'] != 'admin') {
         if (mounted) {
@@ -76,9 +76,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
             .select('*, notification_reads(*)')
             .order('created_at', ascending: false)
             .limit(100),
-        SupabaseService.from('profiles')
-            .select('id, full_name, role')
-            .order('full_name', ascending: true),
+        SupabaseService.from(
+          'profiles',
+        ).select('id, full_name, role').order('full_name', ascending: true),
       ]);
 
       // Convert enhanced system notifications for display
@@ -87,7 +87,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
       for (final notification in enhancedNotificationsData as List) {
         allNotifications.add({
           'id': notification['id'],
-          'user_id': notification['target_type'] == 'all' ? null : 'enhanced_system',
+          'user_id': notification['target_type'] == 'all'
+              ? null
+              : 'enhanced_system',
           'message': notification['message'],
           'metadata': {
             'title': notification['title'],
@@ -206,9 +208,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
             const SizedBox(height: 16),
             Text(
               'Ralat',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -219,10 +221,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ShadButton(
-              onPressed: _loadData,
-              child: const Text('Cuba Lagi'),
-            ),
+            ShadButton(onPressed: _loadData, child: const Text('Cuba Lagi')),
           ],
         ),
       );
@@ -230,10 +229,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
 
     return TabBarView(
       controller: _tabController,
-      children: [
-        _buildSendNotificationTab(),
-        _buildHistoryTab(),
-      ],
+      children: [_buildSendNotificationTab(), _buildHistoryTab()],
     );
   }
 
@@ -305,10 +301,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
           // Quick Actions
           const Text(
             'Tindakan Pantas',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
@@ -356,10 +349,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
           // Notification Templates
           const Text(
             'Template Notifikasi',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
@@ -429,7 +419,13 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     );
   }
 
-  Widget _buildQuickActionCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionCard(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -475,9 +471,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -487,7 +483,12 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     );
   }
 
-  Widget _buildTemplateCard(String title, String description, String template, Color color) {
+  Widget _buildTemplateCard(
+    String title,
+    String description,
+    String template,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -523,16 +524,16 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               children: [
                 Text(
                   title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey.shade600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -575,8 +576,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     final title = metadata['title'] ?? 'Notifikasi';
     final body = metadata['body'] ?? notification['message'] ?? '';
     final targetType = metadata['target_type'] ?? 'unknown';
-    final isGlobal = notification['user_id'] == null ||
-                    notification['user_id'] == '00000000-0000-0000-0000-000000000000';
+    final isGlobal =
+        notification['user_id'] == null ||
+        notification['user_id'] == '00000000-0000-0000-0000-000000000000';
     final isEnhancedSystem = metadata['source'] == 'enhanced_system';
 
     Color typeColor;
@@ -605,9 +607,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
@@ -621,18 +621,11 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               color: typeColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: HugeIcon(
-              icon: typeIcon,
-              color: typeColor,
-              size: 24.0,
-            ),
+            child: HugeIcon(icon: typeIcon, color: typeColor, size: 24.0),
           ),
           title: Text(
             title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
           ),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -640,10 +633,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               const SizedBox(height: 6),
               Text(
                 body,
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -651,11 +641,16 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: typeColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
-                      border: Border.all(color: typeColor.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: typeColor.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Text(
                       typeText,
@@ -669,11 +664,16 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                   const SizedBox(width: 8),
                   if (isEnhancedSystem) ...[
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.teal.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: Colors.teal.withValues(alpha: 0.3)),
+                        border: Border.all(
+                          color: Colors.teal.withValues(alpha: 0.3),
+                        ),
                       ),
                       child: Text(
                         'V2',
@@ -688,10 +688,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                   ],
                   Text(
                     timeAgo,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                   ),
                 ],
               ),
@@ -750,16 +747,25 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: selectedTargetType,
+                initialValue: selectedTargetType,
                 decoration: const InputDecoration(
                   labelText: 'Sasaran',
                   border: OutlineInputBorder(),
                 ),
                 items: const [
                   DropdownMenuItem(value: 'all', child: Text('Semua Pengguna')),
-                  DropdownMenuItem(value: 'premium', child: Text('Pengguna Premium')),
-                  DropdownMenuItem(value: 'free', child: Text('Pengguna Percuma')),
-                  DropdownMenuItem(value: 'custom', child: Text('Pilih Pengguna')),
+                  DropdownMenuItem(
+                    value: 'premium',
+                    child: Text('Pengguna Premium'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'free',
+                    child: Text('Pengguna Percuma'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'custom',
+                    child: Text('Pilih Pengguna'),
+                  ),
                 ],
                 onChanged: (value) {
                   selectedTargetType = value ?? 'all';
@@ -810,32 +816,42 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
 
       if (targetType == 'all') {
         // Send global broadcast notification using enhanced service
-        final success = await EnhancedNotificationService.createBroadcastNotification(
-          title: title,
-          message: message,
-          metadata: metadata,
-          targetRoles: ['student', 'admin'], // Include all roles for global notifications
-        );
+        final success =
+            await EnhancedNotificationService.createBroadcastNotification(
+              title: title,
+              message: message,
+              metadata: metadata,
+              targetRoles: [
+                'student',
+                'admin',
+              ], // Include all roles for global notifications
+            );
 
         if (!success) {
-          throw Exception('Failed to create broadcast notification using enhanced service');
+          throw Exception(
+            'Failed to create broadcast notification using enhanced service',
+          );
         }
       } else if (targetType == 'premium' || targetType == 'free') {
         // Send broadcast notification with specific target roles using enhanced service
         List<String> targetRoles = ['student']; // Default to students
 
-        final success = await EnhancedNotificationService.createBroadcastNotification(
-          title: title,
-          message: message,
-          metadata: {
-            ...metadata,
-            'subscription_filter': targetType, // Add filter for enhanced processing
-          },
-          targetRoles: targetRoles,
-        );
+        final success =
+            await EnhancedNotificationService.createBroadcastNotification(
+              title: title,
+              message: message,
+              metadata: {
+                ...metadata,
+                'subscription_filter':
+                    targetType, // Add filter for enhanced processing
+              },
+              targetRoles: targetRoles,
+            );
 
         if (!success) {
-          throw Exception('Failed to create targeted broadcast notification using enhanced service');
+          throw Exception(
+            'Failed to create targeted broadcast notification using enhanced service',
+          );
         }
       } else {
         // Custom user selection - send individual notifications
@@ -843,12 +859,13 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
 
         int successCount = 0;
         for (String userId in targetUserIds) {
-          final success = await EnhancedNotificationService.createPersonalNotification(
-            userId: userId,
-            title: title,
-            message: message,
-            metadata: metadata,
-          );
+          final success =
+              await EnhancedNotificationService.createPersonalNotification(
+                userId: userId,
+                title: title,
+                message: message,
+                metadata: metadata,
+              );
 
           if (success) {
             successCount++;
@@ -863,7 +880,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Notifikasi "$title" berjaya dihantar menggunakan enhanced system'),
+            content: Text(
+              'Notifikasi "$title" berjaya dihantar menggunakan enhanced system',
+            ),
             backgroundColor: AppTheme.primaryColor,
           ),
         );

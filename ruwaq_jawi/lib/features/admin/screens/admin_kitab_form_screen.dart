@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -388,7 +388,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           controller: _tabController,
           indicatorColor: AppTheme.textLightColor,
           labelColor: AppTheme.textLightColor,
-          unselectedLabelColor: AppTheme.textLightColor.withOpacity(0.7),
+          unselectedLabelColor: AppTheme.textLightColor.withValues(alpha: 0.7),
           tabs: const [
             Tab(
               icon: HugeIcon(
@@ -1003,10 +1003,10 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.1),
+                            color: Colors.blue.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                             border: Border.all(
-                              color: Colors.blue.withOpacity(0.3),
+                              color: Colors.blue.withValues(alpha: 0.3),
                             ),
                           ),
                           child: const Text(
@@ -1028,14 +1028,14 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                               (episode['is_active'] == true
                                       ? Colors.green
                                       : Colors.grey)
-                                  .withOpacity(0.1),
+                                  .withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                           border: Border.all(
                             color:
                                 (episode['is_active'] == true
                                         ? Colors.green
                                         : Colors.grey)
-                                    .withOpacity(0.3),
+                                    .withValues(alpha: 0.3),
                           ),
                         ),
                         child: Text(
@@ -1588,9 +1588,9 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.green.withOpacity(0.05),
+                    color: Colors.green.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green.withOpacity(0.2)),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [

@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -101,6 +102,10 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
         backgroundColor: Colors.transparent,
         foregroundColor: AppTheme.textPrimaryColor,
         elevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
         leading: Container(
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
@@ -109,7 +114,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
             border: Border.all(color: AppTheme.borderColor),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -198,15 +203,15 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: isActive
-              ? AppTheme.primaryColor.withOpacity(0.3)
+              ? AppTheme.primaryColor.withValues(alpha: 0.3)
               : AppTheme.borderColor,
           width: isActive ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
             color: isActive
-                ? AppTheme.primaryColor.withOpacity(0.15)
-                : Colors.black.withOpacity(0.05),
+                ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                : Colors.black.withValues(alpha: 0.05),
             blurRadius: isActive ? 20 : 8,
             offset: Offset(0, isActive ? 8 : 2),
             spreadRadius: isActive ? 2 : 0,
@@ -222,12 +227,12 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: isActive
-                      ? AppTheme.primaryColor.withOpacity(0.1)
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
                       : AppTheme.neutralGray,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color: isActive
-                        ? AppTheme.primaryColor.withOpacity(0.2)
+                        ? AppTheme.primaryColor.withValues(alpha: 0.2)
                         : AppTheme.borderColor,
                   ),
                 ),
@@ -449,7 +454,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: PhosphorIcon(
@@ -502,7 +507,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
               border: Border.all(color: AppTheme.borderColor),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -577,7 +582,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
               border: Border.all(color: AppTheme.borderColor),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -647,7 +652,7 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
         border: Border.all(color: AppTheme.borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -693,10 +698,10 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: statusColor.withOpacity(0.1),
+                  color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: statusColor.withOpacity(0.3),
+                    color: statusColor.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Text(

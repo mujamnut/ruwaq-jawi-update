@@ -9,7 +9,9 @@ class VideoEpisode {
   final int partNumber;
   final int durationMinutes;
   final int? durationSeconds;
+  final int sortOrder;
   final bool isActive;
+  final bool isPremium;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -24,7 +26,9 @@ class VideoEpisode {
     required this.partNumber,
     this.durationMinutes = 0,
     this.durationSeconds,
+    this.sortOrder = 0,
     this.isActive = true,
+    this.isPremium = false,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -50,7 +54,9 @@ class VideoEpisode {
       partNumber: json['part_number'] as int? ?? 0,
       durationMinutes: json['duration_minutes'] as int? ?? 0,
       durationSeconds: json['duration_seconds'] as int?,
+      sortOrder: json['sort_order'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
+      isPremium: json['is_premium'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -68,7 +74,9 @@ class VideoEpisode {
       'part_number': partNumber,
       'duration_minutes': durationMinutes,
       'duration_seconds': durationSeconds,
+      'sort_order': sortOrder,
       'is_active': isActive,
+      'is_premium': isPremium,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -100,7 +108,9 @@ class VideoEpisode {
     int? partNumber,
     int? durationMinutes,
     int? durationSeconds,
+    int? sortOrder,
     bool? isActive,
+    bool? isPremium,
   }) {
     return VideoEpisode(
       id: id,
@@ -113,7 +123,9 @@ class VideoEpisode {
       partNumber: partNumber ?? this.partNumber,
       durationMinutes: durationMinutes ?? this.durationMinutes,
       durationSeconds: durationSeconds ?? this.durationSeconds,
+      sortOrder: sortOrder ?? this.sortOrder,
       isActive: isActive ?? this.isActive,
+      isPremium: isPremium ?? this.isPremium,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -123,14 +135,23 @@ class VideoEpisode {
   String get displayTitle => title.isNotEmpty ? title : 'Episode $partNumber';
   String get displayDuration {
     if (durationMinutes <= 0) return '0 min';
-    
+
     final hours = durationMinutes ~/ 60;
     final minutes = durationMinutes % 60;
-    
+
     if (hours > 0) {
       return minutes > 0 ? '${hours}j ${minutes}m' : '${hours}j';
     }
     return '${minutes}m';
+  }
+
+  /// Get duration as Duration object
+  Duration? get duration {
+    if (durationMinutes <= 0 && (durationSeconds == null || durationSeconds! <= 0)) {
+      return null;
+    }
+    final totalSeconds = (durationMinutes * 60) + (durationSeconds ?? 0);
+    return Duration(seconds: totalSeconds);
   }
 
   String get statusBadge => isActive ? 'Aktif' : 'Tidak Aktif';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -181,9 +181,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
                   ),
                   child: Text(
                     '$_currentPage / $_totalPages',
@@ -249,7 +249,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
             Container(
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: IconButton(
@@ -279,7 +279,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: CircularProgressIndicator(
@@ -317,7 +317,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.errorColor.withOpacity(0.1),
+                  color: AppTheme.errorColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: PhosphorIcon(
@@ -410,7 +410,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
             ),
             child: Row(
               children: [
@@ -449,7 +449,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -457,7 +457,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -483,7 +483,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
         color: AppTheme.surfaceColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
@@ -496,9 +496,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -526,7 +526,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.borderColor.withOpacity(0.3),
+                    color: AppTheme.borderColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: IconButton(
@@ -542,9 +542,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with TickerProviderSt
                 const SizedBox(width: 12),
                 Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+                    border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
                   ),
                   child: IconButton(
                     icon: PhosphorIcon(

@@ -34,7 +34,7 @@ class OfflineStateScreen extends StatelessWidget {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: AppTheme.errorColor.withOpacity(0.1),
+                  color: AppTheme.errorColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -76,14 +76,14 @@ class OfflineStateScreen extends StatelessWidget {
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: connectivity.isOnline 
-                          ? AppTheme.successColor.withOpacity(0.1)
-                          : AppTheme.errorColor.withOpacity(0.1),
+                      color: connectivity.isOnline
+                          ? AppTheme.successColor.withValues(alpha: 0.1)
+                          : AppTheme.errorColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: connectivity.isOnline 
-                            ? AppTheme.successColor.withOpacity(0.3)
-                            : AppTheme.errorColor.withOpacity(0.3),
+                        color: connectivity.isOnline
+                            ? AppTheme.successColor.withValues(alpha: 0.3)
+                            : AppTheme.errorColor.withValues(alpha: 0.3),
                       ),
                     ),
                     child: Row(

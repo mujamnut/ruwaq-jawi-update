@@ -1,5 +1,3 @@
-import '../services/supabase_service.dart';
-
 /// Simple validation rules for form fields
 enum ValidationRule {
   required,
@@ -61,8 +59,10 @@ class TableSchema {
 
   // Computed properties for compatibility
   String get name => tableName;
-  List<DatabaseField> get foreignKeyFields => formFields.where((f) => f.foreignKeyTable != null).toList();
-  DatabaseField? get primaryKeyField => formFields.where((f) => f.isPrimaryKey).firstOrNull;
+  List<DatabaseField> get foreignKeyFields =>
+      formFields.where((f) => f.foreignKeyTable != null).toList();
+  DatabaseField? get primaryKeyField =>
+      formFields.where((f) => f.isPrimaryKey).firstOrNull;
 
   TableSchema({
     required this.tableName,

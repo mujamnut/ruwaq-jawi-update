@@ -68,7 +68,7 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
               end: Alignment.bottomRight,
               colors: [
                 AppTheme.borderColor,
-                AppTheme.borderColor.withOpacity(0.5),
+                AppTheme.borderColor.withValues(alpha: 0.5),
                 AppTheme.borderColor,
               ],
               stops: [

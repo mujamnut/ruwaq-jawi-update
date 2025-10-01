@@ -155,21 +155,13 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
         backgroundColor: Colors.transparent,
         foregroundColor: AppTheme.textPrimaryColor,
         elevation: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppTheme.borderColor),
+        leading: IconButton(
+          icon: HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
+            color: AppTheme.textPrimaryColor,
+            size: 24,
           ),
-          child: IconButton(
-            icon: PhosphorIcon(
-              PhosphorIcons.arrowLeft(),
-              color: AppTheme.textPrimaryColor,
-              size: 20,
-            ),
-            onPressed: () => context.go('/home'),
-          ),
+          onPressed: () => context.go('/home'),
         ),
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
@@ -848,7 +840,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                     final episodeId = bookmark is Map
                         ? bookmark['episodeId']
                         : bookmark.episodeId;
-                    context.push('/video/$kitabId?episode=$episodeId');
+                    context.push('/player/$kitabId?episode=$episodeId');
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(

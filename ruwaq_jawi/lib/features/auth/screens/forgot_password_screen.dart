@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -112,10 +112,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: Colors.red.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: Colors.red.withOpacity(0.3),
+                            color: Colors.red.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -148,10 +148,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.green.withOpacity(0.1),
+                color: Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: Colors.green.withOpacity(0.3),
+                  color: Colors.green.withValues(alpha: 0.3),
                 ),
               ),
               child: Column(
@@ -223,7 +223,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     .textTheme
                     .bodyLarge!
                     .color!
-                    .withOpacity(0.64),
+                    .withValues(alpha: 0.64),
               ),
             ),
           ),
@@ -277,7 +277,7 @@ class LogoWithTitle extends StatelessWidget {
                         .textTheme
                         .bodyLarge!
                         .color!
-                        .withOpacity(0.64),
+                        .withValues(alpha: 0.64),
                   ),
                 ),
               ),

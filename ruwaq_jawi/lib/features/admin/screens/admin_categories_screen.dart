@@ -38,10 +38,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
 
     try {
-      final profile = await SupabaseService.from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+      final profile = await SupabaseService.from(
+        'profiles',
+      ).select('role').eq('id', user.id).maybeSingle();
 
       if (profile == null || profile['role'] != 'admin') {
         if (mounted) {
@@ -68,9 +67,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         _isLoading = true;
       });
 
-      final response = await SupabaseService.from('categories')
-          .select('*')
-          .order('sort_order', ascending: true);
+      final response = await SupabaseService.from(
+        'categories',
+      ).select('*').order('sort_order', ascending: true);
 
       setState(() {
         _categories = List<Map<String, dynamic>>.from(response);
@@ -90,7 +89,8 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
     return _categories.where((category) {
       final name = category['name']?.toString().toLowerCase() ?? '';
-      final description = category['description']?.toString().toLowerCase() ?? '';
+      final description =
+          category['description']?.toString().toLowerCase() ?? '';
       final query = _searchQuery.toLowerCase();
       return name.contains(query) || description.contains(query);
     }).toList();
@@ -127,9 +127,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     if (!confirmed) return;
 
     try {
-      await SupabaseService.from('categories')
-          .delete()
-          .eq('id', category['id']);
+      await SupabaseService.from(
+        'categories',
+      ).delete().eq('id', category['id']);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -152,13 +152,18 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       final newStatus = !(category['is_active'] ?? true);
 
       await SupabaseService.from('categories')
-          .update({'is_active': newStatus, 'updated_at': DateTime.now().toIso8601String()})
+          .update({
+            'is_active': newStatus,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('id', category['id']);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Kategori "${category['name']}" ${newStatus ? 'diaktifkan' : 'dinyahaktifkan'}'),
+            content: Text(
+              'Kategori "${category['name']}" ${newStatus ? 'diaktifkan' : 'dinyahaktifkan'}',
+            ),
             backgroundColor: AppTheme.primaryColor,
           ),
         );
@@ -292,9 +297,9 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
             const SizedBox(height: 16),
             Text(
               'Ralat Memuat Kategori',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -375,20 +380,18 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                         const SizedBox(height: 16),
                         Text(
                           _searchQuery.isNotEmpty
-                              ? 'Tiada kategori ditemui untuk "${_searchQuery}"'
+                              ? 'Tiada kategori ditemui untuk "$_searchQuery"'
                               : 'Tiada kategori tersedia',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.grey.shade600,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(color: Colors.grey.shade600),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           _searchQuery.isNotEmpty
                               ? 'Cuba cari dengan kata kunci yang berbeza'
                               : 'Tekan butang + untuk menambah kategori baharu',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Colors.grey.shade500,
-                          ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(color: Colors.grey.shade500),
                         ),
                       ],
                     ),
@@ -456,7 +459,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               ),
               if (!isActive)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(6),
@@ -476,12 +482,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (category['description'] != null && category['description'].toString().isNotEmpty) ...[
+              if (category['description'] != null &&
+                  category['description'].toString().isNotEmpty) ...[
                 const SizedBox(height: 6),
                 Text(
                   category['description'],
                   style: TextStyle(
-                    color: isActive ? Colors.grey.shade600 : Colors.orange.shade700,
+                    color: isActive
+                        ? Colors.grey.shade600
+                        : Colors.orange.shade700,
                     fontSize: 14,
                   ),
                   maxLines: 2,
@@ -492,7 +501,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(4),
@@ -509,7 +521,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(4),
@@ -543,12 +558,13 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
             onSelected: (value) {
               switch (value) {
                 case 'edit':
-                  context.push('/admin/categories/edit/${category['id']}')
-                      .then((result) {
-                    if (result != null) {
-                      _loadCategories();
-                    }
-                  });
+                  context.push('/admin/categories/edit/${category['id']}').then(
+                    (result) {
+                      if (result != null) {
+                        _loadCategories();
+                      }
+                    },
+                  );
                   break;
                 case 'toggle':
                   _toggleCategoryStatus(category);

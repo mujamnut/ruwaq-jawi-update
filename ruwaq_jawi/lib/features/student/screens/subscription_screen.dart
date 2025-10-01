@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -53,29 +53,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutCubic),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.1),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.95,
-    ).animate(CurvedAnimation(
-      parent: _scaleAnimationController,
-      curve: Curves.easeInOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(
+        parent: _scaleAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
 
     // Start animation after a brief delay
     Future.delayed(const Duration(milliseconds: 100), () {
@@ -98,23 +93,29 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         listen: false,
       );
 
-      print('📱 SubscriptionScreen: Calling PaymentProvider.loadSubscriptionPlans()...');
+      print(
+        '📱 SubscriptionScreen: Calling PaymentProvider.loadSubscriptionPlans()...',
+      );
       await paymentProvider.loadSubscriptionPlans();
 
       // Set initial plan selection after loading plans
       final plans = paymentProvider.subscriptionPlans;
-      print('📋 SubscriptionScreen: Received ${plans.length} plans from PaymentProvider');
+      print(
+        '📋 SubscriptionScreen: Received ${plans.length} plans from PaymentProvider',
+      );
 
       if (plans.isNotEmpty && _selectedPlanId == null) {
         _selectedPlanId = plans.first.id;
-        print('✅ SubscriptionScreen: Selected initial plan: ${_selectedPlanId}');
+        print('✅ SubscriptionScreen: Selected initial plan: $_selectedPlanId');
       } else if (plans.isEmpty) {
         print('⚠️ SubscriptionScreen: No plans available');
       }
 
       // Check for any errors from PaymentProvider
       if (paymentProvider.error != null) {
-        print('❌ SubscriptionScreen: PaymentProvider has error: ${paymentProvider.error}');
+        print(
+          '❌ SubscriptionScreen: PaymentProvider has error: ${paymentProvider.error}',
+        );
       }
     } catch (e) {
       print('❌ SubscriptionScreen: Error loading plans: $e');
@@ -138,79 +139,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         automaticallyImplyLeading: false,
-        actions: [
-          Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: PhosphorIcon(
-                PhosphorIcons.arrowClockwise(),
-                color: AppTheme.textPrimaryColor,
-                size: 20,
-              ),
-              onPressed: () async {
-                try {
-                  final authProvider = Provider.of<AuthProvider>(
-                    context,
-                    listen: false,
-                  );
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: const Text('Refreshing subscription status...'),
-                      backgroundColor: AppTheme.primaryColor,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-
-                  await authProvider.checkActiveSubscription();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        authProvider.hasActiveSubscription
-                            ? 'Subscription: AKTIF ✅'
-                            : 'Subscription: TIDAK AKTIF ❌',
-                      ),
-                      backgroundColor: authProvider.hasActiveSubscription
-                          ? AppTheme.successColor
-                          : AppTheme.warningColor,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: $e'),
-                      backgroundColor: AppTheme.errorColor,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                  );
-                }
-              },
-            ),
-          ),
-        ],
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
       ),
       body: FutureBuilder<void>(
         future: _loadPlansFuture,
@@ -279,7 +211,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 12,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -339,7 +274,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -388,7 +326,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -408,7 +349,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                     child: SlideTransition(
                       position: _slideAnimation,
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -468,11 +412,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.05),
+            color: AppTheme.primaryColor.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppTheme.primaryColor.withOpacity(0.1),
-            ),
+            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -533,7 +475,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     );
   }
 
-  Widget _buildBenefitItem(String title, PhosphorIconData icon, String description, int index) {
+  Widget _buildBenefitItem(
+    String title,
+    PhosphorIconData icon,
+    String description,
+    int index,
+  ) {
     return TweenAnimationBuilder(
       duration: Duration(milliseconds: 600 + (index * 100)),
       tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -554,17 +501,13 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                       borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryColor.withOpacity(0.3),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: PhosphorIcon(
-                      icon,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+                    child: PhosphorIcon(icon, color: Colors.white, size: 20),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -594,7 +537,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: AppTheme.successColor.withOpacity(0.1),
+                      color: AppTheme.successColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: PhosphorIcon(
@@ -615,9 +558,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   Widget _buildSubscriptionPlans(List<SubscriptionPlan> plans) {
     // Sort plans by duration (shortest first)
     final sortedPlans = [...plans];
-    sortedPlans.sort(
-      (a, b) => a.durationDays.compareTo(b.durationDays),
-    );
+    sortedPlans.sort((a, b) => a.durationDays.compareTo(b.durationDays));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -633,10 +574,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         const SizedBox(height: 4),
         Text(
           'Semua pelan termasuk 7 hari percubaan percuma',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppTheme.textSecondaryColor,
-          ),
+          style: TextStyle(fontSize: 14, color: AppTheme.textSecondaryColor),
         ),
         const SizedBox(height: 24),
         ...sortedPlans.asMap().entries.map(
@@ -682,17 +620,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
           border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryColor
-                : AppTheme.borderColor,
+            color: isSelected ? AppTheme.primaryColor : AppTheme.borderColor,
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? AppTheme.primaryColor.withOpacity(0.15)
-                  : Colors.black.withOpacity(0.05),
+                  ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                  : Colors.black.withValues(alpha: 0.05),
               spreadRadius: isSelected ? 2 : 0,
               blurRadius: isSelected ? 20 : 8,
               offset: Offset(0, isSelected ? 8 : 2),
@@ -716,12 +652,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                 padding: const EdgeInsets.all(8),
                                 decoration: BoxDecoration(
                                   color: isSelected
-                                      ? AppTheme.primaryColor.withOpacity(0.1)
+                                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
                                       : AppTheme.neutralGray,
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
                                     color: isSelected
-                                        ? AppTheme.primaryColor.withOpacity(0.3)
+                                        ? AppTheme.primaryColor.withValues(alpha: 0.3)
                                         : AppTheme.borderColor,
                                   ),
                                 ),
@@ -798,12 +734,12 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? AppTheme.primaryColor.withOpacity(0.05)
+                        ? AppTheme.primaryColor.withValues(alpha: 0.05)
                         : AppTheme.neutralGray,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: isSelected
-                          ? AppTheme.primaryColor.withOpacity(0.2)
+                          ? AppTheme.primaryColor.withValues(alpha: 0.2)
                           : AppTheme.borderColor,
                     ),
                   ),
@@ -836,7 +772,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                                     ),
                                   ),
                                   TextSpan(
-                                    text: ' setiap ${_getPlanDisplayName(plan).toLowerCase()}',
+                                    text:
+                                        ' setiap ${_getPlanDisplayName(plan).toLowerCase()}',
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: AppTheme.textSecondaryColor,
@@ -878,12 +815,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   ),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppTheme.primaryColor, AppTheme.primaryLightColor],
+                      colors: [
+                        AppTheme.primaryColor,
+                        AppTheme.primaryLightColor,
+                      ],
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryColor.withOpacity(0.4),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.4),
                         spreadRadius: 1,
                         blurRadius: 8,
                         offset: const Offset(0, 3),
@@ -932,7 +872,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
         border: Border.all(color: AppTheme.borderColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
@@ -944,11 +884,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.05),
+              color: AppTheme.primaryColor.withValues(alpha: 0.05),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppTheme.primaryColor.withOpacity(0.2),
-              ),
+              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
             ),
             child: Row(
               children: [
@@ -1006,7 +944,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                   borderRadius: BorderRadius.circular(20),
                 ),
                 elevation: 3,
-                shadowColor: AppTheme.primaryColor.withOpacity(0.3),
+                shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -1142,7 +1080,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),

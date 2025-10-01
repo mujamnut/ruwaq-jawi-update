@@ -664,14 +664,14 @@ class _AdminYouTubeAutoFormScreenState
         );
       }
 
-      print('Calling edge function: youtube-playlist-sync-fixed');
+      print('Calling edge function: youtube-playlist-sync');
       print(
         'Request body: ${{'playlist_url': _playlistUrlController.text, 'category_id': _selectedCategoryId, 'is_premium': _isPremium, 'is_active': _isActive}}',
       );
 
       // Call YouTube sync API
       final response = await Supabase.instance.client.functions.invoke(
-        'youtube-playlist-sync-fixed',
+        'youtube-playlist-sync',
         body: {
           'playlist_url': _playlistUrlController.text,
           'category_id': _selectedCategoryId,

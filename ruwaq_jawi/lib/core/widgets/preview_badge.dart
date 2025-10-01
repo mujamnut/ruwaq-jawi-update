@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../models/preview_models.dart';
 import '../services/preview_service.dart';
@@ -35,7 +35,7 @@ class PreviewBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: _getPreviewColor().withOpacity(0.1),
+          color: _getPreviewColor().withValues(alpha: 0.1),
           border: Border.all(color: _getPreviewColor()),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -68,8 +68,8 @@ class PreviewBadge extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: _getPreviewColor().withOpacity(0.05),
-          border: Border.all(color: _getPreviewColor().withOpacity(0.2)),
+          color: _getPreviewColor().withValues(alpha: 0.05),
+          border: Border.all(color: _getPreviewColor().withValues(alpha: 0.2)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -185,7 +185,7 @@ class NoPreviewIndicator extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: AppTheme.textSecondaryColor.withOpacity(0.1),
+            color: AppTheme.textSecondaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
@@ -212,7 +212,7 @@ class NoPreviewIndicator extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
             border: Border.all(color: AppTheme.primaryColor),
             borderRadius: BorderRadius.circular(12),
           ),
@@ -317,8 +317,8 @@ class PreviewListTile extends StatelessWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: preview.isActive
-              ? AppTheme.successColor.withOpacity(0.1)
-              : AppTheme.textSecondaryColor.withOpacity(0.1),
+              ? AppTheme.successColor.withValues(alpha: 0.1)
+              : AppTheme.textSecondaryColor.withValues(alpha: 0.1),
           child: Icon(
             _getContentTypeIcon(),
             color: preview.isActive
@@ -373,8 +373,8 @@ class PreviewListTile extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: preview.isActive
-                    ? AppTheme.successColor.withOpacity(0.1)
-                    : AppTheme.textSecondaryColor.withOpacity(0.1),
+                    ? AppTheme.successColor.withValues(alpha: 0.1)
+                    : AppTheme.textSecondaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AuthButton extends StatelessWidget {
@@ -39,11 +39,11 @@ class AuthButton extends StatelessWidget {
                 : BorderSide.none,
           ),
           disabledBackgroundColor: isSecondary 
-              ? AppTheme.surfaceColor.withOpacity(0.5)
-              : AppTheme.primaryColor.withOpacity(0.5),
+              ? AppTheme.surfaceColor.withValues(alpha: 0.5)
+              : AppTheme.primaryColor.withValues(alpha: 0.5),
           disabledForegroundColor: isSecondary 
               ? AppTheme.textSecondaryColor
-              : AppTheme.textLightColor.withOpacity(0.7),
+              : AppTheme.textLightColor.withValues(alpha: 0.7),
         ),
         child: isLoading
             ? SizedBox(

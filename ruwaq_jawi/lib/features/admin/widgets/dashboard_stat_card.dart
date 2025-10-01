@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../core/theme/app_theme.dart';
 
@@ -26,7 +26,7 @@ class DashboardStatCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -46,7 +46,7 @@ class DashboardStatCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.1),
+                      color: color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: HugeIcon(icon: icon, size: 24.0, color: color),

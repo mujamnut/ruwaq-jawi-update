@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -312,7 +312,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
               // Preview Notice Banner
               Container(
                 width: double.infinity,
-                color: AppTheme.secondaryColor.withOpacity(0.1),
+                color: AppTheme.secondaryColor.withValues(alpha: 0.1),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 8,
@@ -433,7 +433,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: isCurrentVideo
-            ? AppTheme.primaryColor.withOpacity(0.1)
+            ? AppTheme.primaryColor.withValues(alpha: 0.1)
             : AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
@@ -454,7 +454,7 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
                 decoration: BoxDecoration(
                   color: isCurrentVideo
                       ? AppTheme.primaryColor
-                      : AppTheme.primaryColor.withOpacity(0.1),
+                      : AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Center(
@@ -620,9 +620,9 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
             ),
             child: Column(
               children: [

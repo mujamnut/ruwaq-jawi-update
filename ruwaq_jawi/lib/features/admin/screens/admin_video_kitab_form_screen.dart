@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -60,8 +60,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
   List<VideoEpisode> _episodes = [];
 
   // Preview tracking
-  Map<String, bool> _episodePreviewStatus = {}; // Track which episodes have previews
-  Set<String> _episodesWithPreviewChanges = {}; // Track which episodes had preview changes
+  Map<String, bool> _episodePreviewStatus =
+      {}; // Track which episodes have previews
+  final Set<String> _episodesWithPreviewChanges =
+      {}; // Track which episodes had preview changes
 
   // Track the current video kitab ID (can be updated when creating new kitab)
   String? _currentVideoKitabId;
@@ -92,10 +94,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     }
 
     try {
-      final profile = await SupabaseService.from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle();
+      final profile = await SupabaseService.from(
+        'profiles',
+      ).select('role').eq('id', user.id).maybeSingle();
 
       if (profile == null || profile['role'] != 'admin') {
         if (mounted) {
@@ -216,7 +217,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
   // =====================================================
 
   /// Toggle preview status for an episode
-  Future<void> _toggleEpisodePreview(VideoEpisode episode, bool isPreview) async {
+  Future<void> _toggleEpisodePreview(
+    VideoEpisode episode,
+    bool isPreview,
+  ) async {
     try {
       if (isPreview) {
         // Create preview
@@ -249,12 +253,8 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         _episodePreviewStatus[episode.id] = isPreview;
         _episodesWithPreviewChanges.add(episode.id);
       });
-
     } catch (e) {
-      _showSnackBar(
-        'Ralat mengemas kini preview: $e',
-        isError: true,
-      );
+      _showSnackBar('Ralat mengemas kini preview: $e', isError: true);
       if (kDebugMode) {
         print('Error toggling preview for episode ${episode.id}: $e');
       }
@@ -674,9 +674,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                   Expanded(
                     child: Text(
                       'Episode Video (${_episodes.length})',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(
@@ -870,9 +870,9 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withOpacity(0.3)),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -1003,7 +1003,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 Switch(
                   value: _episodePreviewStatus[episode.id] ?? false,
                   onChanged: (value) => _toggleEpisodePreview(episode, value),
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 const SizedBox(width: 8),
@@ -1022,9 +1022,12 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                 if (_episodePreviewStatus[episode.id] ?? false) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.2),
+                      color: Colors.orange.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
@@ -1472,15 +1475,17 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
 
   Widget _buildPreviewSummary() {
     final totalEpisodes = _episodes.length;
-    final previewEpisodes = _episodePreviewStatus.values.where((hasPreview) => hasPreview).length;
+    final previewEpisodes = _episodePreviewStatus.values
+        .where((hasPreview) => hasPreview)
+        .length;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppTheme.primaryColor.withOpacity(0.3),
+          color: AppTheme.primaryColor.withValues(alpha: 0.3),
           width: 1,
         ),
       ),

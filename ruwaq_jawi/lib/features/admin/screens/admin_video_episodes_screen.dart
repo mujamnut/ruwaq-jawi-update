@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/kitab.dart';
 import '../../../core/models/kitab_video.dart';
@@ -198,9 +198,9 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -289,7 +289,7 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -425,7 +425,7 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -457,7 +457,7 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withOpacity(0.1),
+                        color: Colors.blue.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -477,7 +477,7 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

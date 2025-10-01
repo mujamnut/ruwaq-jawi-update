@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:async';
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 import '../models/kitab.dart';
 import '../models/video_kitab.dart';
@@ -67,7 +69,7 @@ class KitabProvider extends ChangeNotifier {
       _setError(null);
 
       // Use timeout and individual error handling for better resilience
-      final results = await Future.wait([
+      await Future.wait([
         loadCategories().timeout(
           const Duration(seconds: 10),
           onTimeout: () => throw Exception('Categories loading timeout'),
@@ -466,6 +468,12 @@ class KitabProvider extends ChangeNotifier {
       notifyListeners();
 
       return videos;
+    } on SocketException catch (e) {
+      print('Network error loading kitab videos: $e');
+      rethrow; // Let caller handle network error
+    } on TimeoutException catch (e) {
+      print('Timeout loading kitab videos: $e');
+      rethrow; // Let caller handle timeout
     } catch (e) {
       print('Error loading kitab videos: $e');
       return [];

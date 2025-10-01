@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
@@ -412,7 +412,7 @@ class _AdminCategoryFormScreenState extends State<AdminCategoryFormScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: (_isActive ? Colors.green : Colors.grey).withOpacity(0.1),
+              color: (_isActive ? Colors.green : Colors.grey).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: HugeIcon(

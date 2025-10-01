@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/user_profile.dart';
 import '../../../core/models/subscription.dart';
@@ -243,8 +243,8 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
           CircleAvatar(
             radius: 50,
             backgroundColor: _user!.isAdmin
-                ? Colors.purple.withOpacity(0.1)
-                : AppTheme.primaryColor.withOpacity(0.1),
+                ? Colors.purple.withValues(alpha: 0.1)
+                : AppTheme.primaryColor.withValues(alpha: 0.1),
             child: _user!.avatarUrl != null
                 ? ClipOval(
                     child: Image.network(

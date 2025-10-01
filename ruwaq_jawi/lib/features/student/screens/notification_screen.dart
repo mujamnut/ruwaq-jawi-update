@@ -57,6 +57,10 @@ class _NotificationScreenState extends State<NotificationScreen> {
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
         elevation: 0,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: AppTheme.primaryColor,
+          statusBarIconBrightness: Brightness.light,
+        ),
         actions: [
           Consumer<NotificationsProvider>(
             builder: (context, notificationProvider, child) {
@@ -685,9 +689,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 : null;
 
             if (episodeParam != null) {
-              context.go('/video/$kitabId?episode=$episodeParam');
+              context.go('/player/$kitabId?episode=$episodeParam');
             } else {
-              context.go('/video/$kitabId');
+              context.go('/player/$kitabId');
             }
           } else if (actionUrl.contains('/ebook/')) {
             // E-book navigation

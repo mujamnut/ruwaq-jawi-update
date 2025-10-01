@@ -61,6 +61,11 @@ class SupabaseService {
       password: password,
       data: data,
       emailRedirectTo: 'ruwaqjawi://auth/confirm',
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Masa pendaftaran terlalu lama. Sila semak sambungan internet anda.');
+      },
     );
   }
 
@@ -71,6 +76,11 @@ class SupabaseService {
     return await client.auth.signInWithPassword(
       email: email,
       password: password,
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Masa log masuk terlalu lama. Sila semak sambungan internet anda.');
+      },
     );
   }
 
@@ -82,6 +92,11 @@ class SupabaseService {
     await client.auth.resetPasswordForEmail(
       email,
       redirectTo: 'ruwaqjawi://auth/reset-password',
+    ).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        throw Exception('Masa reset kata laluan terlalu lama. Sila semak sambungan internet anda.');
+      },
     );
   }
 

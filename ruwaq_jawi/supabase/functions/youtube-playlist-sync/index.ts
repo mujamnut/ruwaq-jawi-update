@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🎬 YouTube Playlist Sync Fixed called');
+    console.log('🎬 YouTube Playlist Sync called');
     const YOUTUBE_API_KEY = 'AIzaSyDD83zBGMED3tRk46Zqm5Kr8_mvr-n2b9U';
 
     // Initialize Supabase client
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     let allVideos = [];
     let nextPageToken = null;
     let totalDuration = 0;
-    let firstVideoId = null; // ✅ For main kitab thumbnail
+    let firstVideoId = null;
 
     do {
       const videosUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50&key=${YOUTUBE_API_KEY}${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
@@ -68,7 +68,7 @@ Deno.serve(async (req) => {
 
     console.log(`🎬 Found ${allVideos.length} videos in playlist`);
 
-    // ✅ Get first video ID for main kitab thumbnail
+    // Get first video ID for main kitab thumbnail
     if (allVideos.length > 0) {
       firstVideoId = allVideos[0].snippet.resourceId.videoId;
     }
@@ -87,13 +87,13 @@ Deno.serve(async (req) => {
       totalDuration += duration;
     });
 
-    // ✅ AUTO-GENERATE THUMBNAIL URL for main kitab
+    // Generate thumbnail URL for main kitab
     const kitabThumbnailUrl = firstVideoId ?
       `https://img.youtube.com/vi/${firstVideoId}/maxresdefault.jpg` : null;
 
     console.log('🖼️ Generated kitab thumbnail:', kitabThumbnailUrl);
 
-    // Create video kitab entry (draft state) WITH AUTO-GENERATED THUMBNAIL
+    // Create video kitab entry - SET TO ACTIVE IMMEDIATELY
     const { data: kitab, error: kitabError } = await supabase
       .from('video_kitab')
       .insert({
@@ -103,13 +103,13 @@ Deno.serve(async (req) => {
         youtube_playlist_id: playlistId,
         youtube_playlist_url: playlist_url,
         category_id,
-        is_premium,
-        is_active: false, // Draft state
+        is_premium: is_premium || false,
+        is_active: is_active !== false, // Default to true unless explicitly false
         auto_sync_enabled: true,
         total_videos: allVideos.length,
         total_duration_minutes: Math.round(totalDuration / 60),
         last_synced_at: new Date().toISOString(),
-        thumbnail_url: kitabThumbnailUrl // ✅ AUTO-GENERATED THUMBNAIL
+        thumbnail_url: kitabThumbnailUrl
       })
       .select()
       .single();
@@ -117,14 +117,12 @@ Deno.serve(async (req) => {
     if (kitabError) {
       throw new Error(`Failed to create kitab: ${kitabError.message}`);
     }
-    console.log('📚 Kitab created with thumbnail:', kitab.id);
+    console.log('📚 Kitab created with ID:', kitab.id);
 
-    // Prepare episodes data WITH AUTO-GENERATED THUMBNAILS
+    // Prepare episodes data - SET TO ACTIVE IMMEDIATELY
     const episodes = allVideos.map((video, index) => {
       const videoId = video.snippet.resourceId.videoId;
       const duration = videoDurations[videoId] || 0;
-
-      // ✅ AUTO-GENERATE THUMBNAIL URL for each episode
       const episodeThumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 
       return {
@@ -132,16 +130,17 @@ Deno.serve(async (req) => {
         description: video.snippet.description,
         youtube_video_id: videoId,
         youtube_video_url: `https://www.youtube.com/watch?v=${videoId}`,
-        thumbnail_url: episodeThumbnailUrl, // ✅ AUTO-GENERATED THUMBNAIL
+        thumbnail_url: episodeThumbnailUrl,
         part_number: index + 1,
         duration_seconds: duration,
-        is_active: false, // Draft state
-        is_preview: index < 1, // First 1 episode as preview
+        duration_minutes: Math.round(duration / 60),
+        is_active: is_active !== false, // Default to true unless explicitly false
+        is_premium: is_premium || false,
         video_kitab_id: kitab.id
       };
     });
 
-    console.log('🖼️ Generated thumbnails for', episodes.length, 'episodes');
+    console.log('📹 Prepared', episodes.length, 'episodes for insertion');
 
     // Insert episodes in batches
     const batchSize = 100;
@@ -162,14 +161,14 @@ Deno.serve(async (req) => {
       insertedEpisodes.push(...batchData);
     }
 
-    console.log(`✅ Created ${insertedEpisodes.length} episodes with thumbnails`);
+    console.log(`✅ Created ${insertedEpisodes.length} episodes`);
 
-    // Prepare response data for preview
+    // Prepare response data
     const episodesPreviews = insertedEpisodes.map(episode => ({
       title: episode.title,
       duration: episode.duration_seconds,
-      is_preview: episode.is_preview,
-      thumbnail_url: episode.thumbnail_url // ✅ Include thumbnail in preview
+      is_active: episode.is_active,
+      thumbnail_url: episode.thumbnail_url
     }));
 
     const response = {
@@ -180,11 +179,12 @@ Deno.serve(async (req) => {
       channel_title: kitab.author,
       total_videos: kitab.total_videos,
       total_duration_minutes: kitab.total_duration_minutes,
-      thumbnail_url: kitab.thumbnail_url, // ✅ Include main thumbnail
+      thumbnail_url: kitab.thumbnail_url,
+      is_active: kitab.is_active,
       episodes: episodesPreviews
     };
 
-    console.log('🎉 Sync completed successfully with auto-generated thumbnails');
+    console.log('🎉 Sync completed successfully');
     return new Response(JSON.stringify(response), {
       status: 200,
       headers: {

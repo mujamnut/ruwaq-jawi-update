@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -539,7 +539,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: HugeIcon(icon: icon, color: iconColor, size: 20.0),
@@ -716,7 +716,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   color: const Color(0xFF00BF6D),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF00BF6D).withOpacity(0.3),
+                      color: const Color(0xFF00BF6D).withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -806,12 +806,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
-                                        color: Colors.white.withOpacity(0.3),
+                                        color: Colors.white.withValues(alpha: 0.3),
                                         width: 2,
                                       ),
                                     ),
                                     child: CircleAvatar(
-                                      backgroundColor: Colors.white.withOpacity(0.2),
+                                      backgroundColor: Colors.white.withValues(alpha: 0.2),
                                       radius: 18,
                                       child: authProvider.userProfile?.avatarUrl != null
                                           ? ClipOval(
@@ -928,13 +928,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           end: Alignment.bottomRight,
           colors: [
             AppTheme.primaryColor,
-            AppTheme.primaryColor.withOpacity(0.8),
+            AppTheme.primaryColor.withValues(alpha: 0.8),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primaryColor.withOpacity(0.3),
+            color: AppTheme.primaryColor.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -955,7 +955,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           Text(
             'Urus kandungan dan pengguna aplikasi Ruwaq Jawi',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
         ],
@@ -1008,7 +1008,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1024,7 +1024,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: HugeIcon(icon: icon, color: color, size: 24.0),
@@ -1125,17 +1125,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.08),
+            color: color.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: color.withOpacity(0.15), width: 1),
+        border: Border.all(color: color.withValues(alpha: 0.15), width: 1),
       ),
       child: Material(
         color: Colors.transparent,
@@ -1143,8 +1143,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          splashColor: color.withOpacity(0.1),
-          highlightColor: color.withOpacity(0.05),
+          splashColor: color.withValues(alpha: 0.1),
+          highlightColor: color.withValues(alpha: 0.05),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
@@ -1152,7 +1152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: HugeIcon(icon: icon, color: color, size: 20.0),
@@ -1229,7 +1229,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withOpacity(0.1),
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: HugeIcon(

@@ -27,13 +27,13 @@ class AuthProvider extends ChangeNotifier {
   // Check subscription from database and update profile status
   Future<bool> checkActiveSubscription() async {
     if (_user == null) return false;
-    
+
     try {
       final now = DateTime.now().toUtc();
       if (kDebugMode) {
         print('AuthProvider: Checking subscription for user: ${_user!.id}');
       }
-      
+
       final response = await SupabaseService.from('user_subscriptions')
           .select()
           .eq('user_id', _user!.id)
@@ -41,12 +41,12 @@ class AuthProvider extends ChangeNotifier {
           .lte('start_date', now.toIso8601String())
           .gte('end_date', now.toIso8601String())
           .maybeSingle();
-      
+
       final hasActive = response != null;
       if (kDebugMode) {
         print('AuthProvider: Active subscription found: $hasActive');
       }
-      
+
       // Update profile status based on subscription
       if (hasActive) {
         final currentProfileStatus = _userProfile?.subscriptionStatus;
@@ -63,10 +63,12 @@ class AuthProvider extends ChangeNotifier {
             .eq('user_id', _user!.id)
             .lt('end_date', now.toIso8601String())
             .maybeSingle();
-            
+
         if (expiredSub != null) {
           if (kDebugMode) {
-            print('AuthProvider: Found expired subscription, updating profile status');
+            print(
+              'AuthProvider: Found expired subscription, updating profile status',
+            );
           }
           await _updateProfileSubscriptionStatus('expired');
         } else {
@@ -74,7 +76,7 @@ class AuthProvider extends ChangeNotifier {
           await _updateProfileSubscriptionStatus('inactive');
         }
       }
-      
+
       return hasActive;
     } catch (e) {
       if (kDebugMode) {
@@ -83,10 +85,10 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   Future<void> _updateProfileSubscriptionStatus(String status) async {
     if (_user == null) return;
-    
+
     try {
       await SupabaseService.from('profiles')
           .update({
@@ -94,7 +96,7 @@ class AuthProvider extends ChangeNotifier {
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('id', _user!.id);
-      
+
       // Update local profile without causing infinite loop
       if (_userProfile != null) {
         _userProfile = _userProfile!.copyWith(subscriptionStatus: status);
@@ -159,7 +161,9 @@ class AuthProvider extends ChangeNotifier {
           // Check if email is confirmed before allowing sign in
           if (session.user.emailConfirmedAt == null) {
             if (kDebugMode) {
-              print('DEBUG: User signed in but email not confirmed, signing out');
+              print(
+                'DEBUG: User signed in but email not confirmed, signing out',
+              );
             }
             // Sign out immediately if email not confirmed
             SupabaseService.signOut();
@@ -250,15 +254,31 @@ class AuthProvider extends ChangeNotifier {
         print('DEBUG: Profile loaded successfully');
       }
       _userProfile = UserProfile.fromJson(response);
-      
+
+      // Add email from auth user if not in profile
+      if (_userProfile != null && _user != null && _userProfile!.email == null) {
+        _userProfile = UserProfile(
+          id: _userProfile!.id,
+          fullName: _userProfile!.fullName,
+          email: _user!.email,
+          role: _userProfile!.role,
+          subscriptionStatus: _userProfile!.subscriptionStatus,
+          phoneNumber: _userProfile!.phoneNumber,
+          avatarUrl: _userProfile!.avatarUrl,
+          subscriptionEndDate: _userProfile!.subscriptionEndDate,
+          createdAt: _userProfile!.createdAt,
+          updatedAt: _userProfile!.updatedAt,
+        );
+      }
+
       _scheduleStatus(AuthStatus.authenticated);
     } catch (e) {
       if (kDebugMode) {
         print('DEBUG: Profile load error: $e');
       }
-      
+
       // If profile doesn't exist, create it first
-      if (e.toString().contains('No rows returned') || 
+      if (e.toString().contains('No rows returned') ||
           e.toString().contains('PGRST116')) {
         if (kDebugMode) {
           print('DEBUG: Profile not found, creating new profile');
@@ -274,7 +294,7 @@ class AuthProvider extends ChangeNotifier {
           return;
         }
       }
-      
+
       if (kDebugMode) {
         print('DEBUG: Setting error and unauthenticated status');
       }
@@ -284,20 +304,22 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> _createUserProfile() async {
     if (_user == null) return;
-    
+
     try {
       if (kDebugMode) {
         print('DEBUG: Creating profile for user: ${_user!.id}');
       }
-      
+
       // Get user metadata
-      final fullName = _user!.userMetadata?['full_name'] as String? ?? 
-                      _user!.email?.split('@').first ?? 'User';
-      
+      final fullName =
+          _user!.userMetadata?['full_name'] as String? ??
+          _user!.email?.split('@').first ??
+          'User';
+
       if (kDebugMode) {
         print('DEBUG: Profile data - fullName: $fullName');
       }
-      
+
       // Create profile
       await SupabaseService.from('profiles').insert({
         'id': _user!.id,
@@ -305,11 +327,11 @@ class AuthProvider extends ChangeNotifier {
         'role': 'student',
         'subscription_status': 'inactive',
       });
-      
+
       if (kDebugMode) {
         print('DEBUG: Profile created, loading profile...');
       }
-      
+
       // Load the newly created profile
       await _loadUserProfile();
 
@@ -333,25 +355,29 @@ class AuthProvider extends ChangeNotifier {
         print('🎉 Sending welcome notification to new user: ${_user!.id}');
       }
 
-      final notificationSuccess = await EnhancedNotificationService.createPersonalNotification(
-        userId: _user!.id,
-        title: 'Selamat Datang ke Maktabah Ruwaq Jawi! 👋',
-        message: 'Terima kasih kerana menyertai kami, ${_userProfile!.fullName}! Jelajahi koleksi kitab, video pembelajaran dan banyak lagi. Mula pembelajaran Islam anda hari ini.',
-        metadata: {
-          'type': 'welcome',
-          'sub_type': 'welcome',
-          'icon': '👋',
-          'priority': 'high',
-          'action_url': '/home',
-          'source': 'auth_provider',
-          'user_registration_date': DateTime.now().toIso8601String(),
-          'welcome_message': true,
-        },
-      );
+      final notificationSuccess =
+          await EnhancedNotificationService.createPersonalNotification(
+            userId: _user!.id,
+            title: 'Selamat Datang ke Maktabah Ruwaq Jawi! 👋',
+            message:
+                'Terima kasih kerana menyertai kami, ${_userProfile!.fullName}! Jelajahi koleksi kitab, video pembelajaran dan banyak lagi. Mula pembelajaran Islam anda hari ini.',
+            metadata: {
+              'type': 'welcome',
+              'sub_type': 'welcome',
+              'icon': '👋',
+              'priority': 'high',
+              'action_url': '/home',
+              'source': 'auth_provider',
+              'user_registration_date': DateTime.now().toIso8601String(),
+              'welcome_message': true,
+            },
+          );
 
       if (notificationSuccess) {
         if (kDebugMode) {
-          print('✅ Welcome notification sent successfully to ${_userProfile!.fullName}');
+          print(
+            '✅ Welcome notification sent successfully to ${_userProfile!.fullName}',
+          );
         }
       } else {
         if (kDebugMode) {
@@ -387,16 +413,19 @@ class AuthProvider extends ChangeNotifier {
           print('DEBUG: Checking if user already exists');
         }
 
-        final existingUserCheck = await SupabaseService.client.auth.signInWithOtp(
-          email: email,
-          shouldCreateUser: false, // Don't create if doesn't exist
-        );
+        await SupabaseService.client.auth
+            .signInWithOtp(
+              email: email,
+              shouldCreateUser: false, // Don't create if doesn't exist
+            );
 
         // If we get here without exception, user exists
         if (kDebugMode) {
           print('DEBUG: User already exists, signup blocked');
         }
-        _setError('Email sudah terdaftar. Sila guna email lain atau log masuk.');
+        _setError(
+          'Email sudah terdaftar. Sila guna email lain atau log masuk.',
+        );
         _scheduleStatus(AuthStatus.unauthenticated);
         return false;
       } on AuthException catch (e) {
@@ -407,16 +436,20 @@ class AuthProvider extends ChangeNotifier {
             e.statusCode == '400') {
           // User doesn't exist, continue with signup
           if (kDebugMode) {
-            print('DEBUG: User does not exist, proceeding with signup: ${e.message}');
+            print(
+              'DEBUG: User does not exist, proceeding with signup: ${e.message}',
+            );
           }
         } else {
           // Some other error, rethrow
-          throw e;
+          rethrow;
         }
       } catch (e) {
         // User doesn't exist, continue with signup
         if (kDebugMode) {
-          print('DEBUG: User does not exist (generic error), proceeding with signup: $e');
+          print(
+            'DEBUG: User does not exist (generic error), proceeding with signup: $e',
+          );
         }
       }
 
@@ -427,7 +460,9 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (kDebugMode) {
-        print('DEBUG: SignUp response - user: ${response.user?.id}, session: ${response.session?.accessToken != null}');
+        print(
+          'DEBUG: SignUp response - user: ${response.user?.id}, session: ${response.session?.accessToken != null}',
+        );
       }
 
       if (response.user != null) {
@@ -437,9 +472,13 @@ class AuthProvider extends ChangeNotifier {
         if (response.user!.emailConfirmedAt != null) {
           // User already exists and is confirmed - this shouldn't happen for new signups
           if (kDebugMode) {
-            print('DEBUG: User already exists and is confirmed - treating as duplicate');
+            print(
+              'DEBUG: User already exists and is confirmed - treating as duplicate',
+            );
           }
-          _setError('Email sudah terdaftar. Sila guna email lain atau log masuk.');
+          _setError(
+            'Email sudah terdaftar. Sila guna email lain atau log masuk.',
+          );
           _scheduleStatus(AuthStatus.unauthenticated);
           return false;
         }
@@ -478,8 +517,11 @@ class AuthProvider extends ChangeNotifier {
           (errorMessage.contains('email') && errorMessage.contains('taken')) ||
           (errorMessage.contains('email') && errorMessage.contains('exists')) ||
           e.statusCode == '422' || // Unprocessable Entity for duplicate email
-          e.statusCode == '409') { // Conflict for duplicate resources
-        _setError('Email sudah terdaftar. Sila guna email lain atau log masuk.');
+          e.statusCode == '409') {
+        // Conflict for duplicate resources
+        _setError(
+          'Email sudah terdaftar. Sila guna email lain atau log masuk.',
+        );
       } else {
         _setError('Pendaftaran gagal: ${e.message}');
       }
@@ -517,7 +559,9 @@ class AuthProvider extends ChangeNotifier {
             print('DEBUG: User email not confirmed during sign in');
           }
           await SupabaseService.signOut(); // Sign out unverified user
-          _setError('Sila sahkan email anda terlebih dahulu sebelum log masuk.');
+          _setError(
+            'Sila sahkan email anda terlebih dahulu sebelum log masuk.',
+          );
           return false;
         }
 
@@ -554,9 +598,9 @@ class AuthProvider extends ChangeNotifier {
 
   String _getSignInErrorMessage(dynamic error) {
     final errorString = error.toString().toLowerCase();
-    
+
     // Connection related errors
-    if (errorString.contains('socketexception') || 
+    if (errorString.contains('socketexception') ||
         errorString.contains('failed host lookup') ||
         errorString.contains('no address associated with hostname') ||
         errorString.contains('network is unreachable') ||
@@ -564,7 +608,7 @@ class AuthProvider extends ChangeNotifier {
         errorString.contains('connection timed out')) {
       return 'Tiada sambungan internet. Sila semak sambungan anda dan cuba lagi.';
     }
-    
+
     // Authentication specific errors
     if (errorString.contains('invalid_grant') ||
         errorString.contains('invalid credentials') ||
@@ -572,27 +616,30 @@ class AuthProvider extends ChangeNotifier {
         errorString.contains('invalid login credentials')) {
       return 'Email atau kata laluan tidak sah. Sila semak dan cuba lagi.';
     }
-    
+
     // Rate limiting
-    if (errorString.contains('too many requests') || errorString.contains('rate limit')) {
+    if (errorString.contains('too many requests') ||
+        errorString.contains('rate limit')) {
       return 'Terlalu banyak percubaan. Sila tunggu sebentar sebelum cuba lagi.';
     }
-    
+
     // Server errors
-    if (errorString.contains('500') || errorString.contains('internal server error')) {
+    if (errorString.contains('500') ||
+        errorString.contains('internal server error')) {
       return 'Pelayan mengalami masalah. Sila cuba lagi dalam beberapa minit.';
     }
-    
+
     // Timeout errors
     if (errorString.contains('timeout')) {
       return 'Permintaan mengambil masa terlalu lama. Sila cuba lagi.';
     }
-    
+
     // Generic network error
-    if (errorString.contains('clientexception') || errorString.contains('httperror')) {
+    if (errorString.contains('clientexception') ||
+        errorString.contains('httperror')) {
       return 'Masalah sambungan rangkaian. Sila semak sambungan internet anda.';
     }
-    
+
     // Default fallback
     return 'Ralat log masuk. Sila semak maklumat anda dan cuba lagi.';
   }
@@ -659,14 +706,14 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
-  
+
   // Force refresh subscription status
   Future<void> refreshSubscriptionStatus() async {
     if (_user != null) {
       await checkActiveSubscription();
     }
   }
-  
+
   // Change user password
   Future<bool> changePassword({
     required String oldPassword,
@@ -677,39 +724,38 @@ class AuthProvider extends ChangeNotifier {
         _setError('User not authenticated');
         return false;
       }
-      
+
       clearError();
-      
+
       // First verify the old password by attempting to sign in
       final email = _user!.email;
       if (email == null) {
         _setError('User email not found');
         return false;
       }
-      
+
       try {
         // Verify old password by attempting sign in
-        await SupabaseService.signIn(
-          email: email,
-          password: oldPassword,
-        );
+        await SupabaseService.signIn(email: email, password: oldPassword);
       } catch (e) {
         _setError('Kata laluan lama tidak betul');
         return false;
       }
-      
+
       // Update password using Supabase auth
       await SupabaseService.client.auth.updateUser(
         UserAttributes(password: newPassword),
       );
-      
+
       return true;
     } catch (e) {
       if (kDebugMode) {
         print('Change password error: $e');
       }
       if (e.toString().contains('Same password')) {
-        _setError('Kata laluan baru mestilah berbeza daripada kata laluan lama');
+        _setError(
+          'Kata laluan baru mestilah berbeza daripada kata laluan lama',
+        );
       } else if (e.toString().contains('Password should be at least')) {
         _setError('Kata laluan mestilah sekurang-kurangnya 6 aksara');
       } else {

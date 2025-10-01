@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../../payment/screens/payment_callback_page.dart';
 
 class ToyyibpayPaymentScreen extends StatefulWidget {
   final String billCode;
@@ -84,13 +83,13 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
         url.contains('Payment Successful') ||
         url.contains('Payment Failed') ||
         url.contains('Transaction ID')) {
-
       shouldHandle = true;
 
       // Determine success/failure
-      isSuccess = url.contains('status=success') ||
-                 url.contains('status=1') ||
-                 url.contains('Payment Successful');
+      isSuccess =
+          url.contains('status=success') ||
+          url.contains('status=1') ||
+          url.contains('Payment Successful');
 
       print('🔍 Payment completion detected: URL=$url, Success=$isSuccess');
     }
@@ -127,7 +126,9 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
           );
         } else {
           // FAILED/CANCELLED: Navigate back to subscription with error message
-          print('❌ Payment failed/cancelled - navigating back to subscription...');
+          print(
+            '❌ Payment failed/cancelled - navigating back to subscription...',
+          );
 
           if (Navigator.canPop(context)) {
             Navigator.pop(context, false);
@@ -263,10 +264,7 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
                       SizedBox(height: 16),
                       Text(
                         'Memproses pembayaran...',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
+                        style: TextStyle(fontSize: 16, color: Colors.black87),
                       ),
                     ],
                   ),

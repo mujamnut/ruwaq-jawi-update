@@ -46,7 +46,7 @@ mixin ProviderStateMixin on ChangeNotifier {
     } catch (e) {
       setError(e.toString());
       if (kDebugMode) {
-        print('Error in ${runtimeType}: $e');
+        print('Error in $runtimeType: $e');
       }
       return null;
     } finally {
@@ -64,7 +64,7 @@ mixin ProviderStateMixin on ChangeNotifier {
     } catch (e) {
       setError(e.toString());
       if (kDebugMode) {
-        print('Error in ${runtimeType}: $e');
+        print('Error in $runtimeType: $e');
       }
       rethrow;
     } finally {
@@ -79,7 +79,7 @@ mixin ProviderStateMixin on ChangeNotifier {
     } catch (e) {
       setError(e.toString());
       if (kDebugMode) {
-        print('Error in ${runtimeType}: $e');
+        print('Error in $runtimeType: $e');
       }
     }
   }

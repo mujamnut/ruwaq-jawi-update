@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -24,7 +24,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   Kitab? _kitab;
   String? _previewVideoId;
   List<Map<String, dynamic>> _episodes = [];
-  Map<String, bool> _episodePreviewStatus = {}; // Track which episodes have previews
+  final Map<String, bool> _episodePreviewStatus =
+      {}; // Track which episodes have previews
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -113,7 +114,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
           contentId: episodeId,
         );
         _episodePreviewStatus[episodeId] = hasPreview;
-        _episodePremiumFlags.add(!hasPreview); // If has preview, it's not premium (accessible)
+        _episodePremiumFlags.add(
+          !hasPreview,
+        ); // If has preview, it's not premium (accessible)
       } catch (e) {
         print('Error checking preview status for episode $episodeId: $e');
         _episodePreviewStatus[episodeId] = false;
@@ -200,7 +203,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                   ),
                 );
               } catch (e) {
-                print('Error creating preview for episode ${episodeData.id}: $e');
+                print(
+                  'Error creating preview for episode ${episodeData.id}: $e',
+                );
               }
             }
           }
@@ -437,9 +442,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.red.withOpacity(0.3)),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -463,9 +468,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -741,13 +746,13 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: isPremium
-                    ? AppTheme.secondaryColor.withOpacity(0.1)
-                    : Colors.green.withOpacity(0.1),
+                    ? AppTheme.secondaryColor.withValues(alpha: 0.1)
+                    : Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: isPremium
-                      ? AppTheme.secondaryColor.withOpacity(0.3)
-                      : Colors.green.withOpacity(0.3),
+                      ? AppTheme.secondaryColor.withValues(alpha: 0.3)
+                      : Colors.green.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(

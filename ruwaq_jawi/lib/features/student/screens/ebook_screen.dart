@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/models/ebook.dart';
 import '../widgets/student_bottom_nav.dart';
+import 'ebook_screen/managers/ebook_filter_manager.dart';
+import 'ebook_screen/widgets/ebook_app_bar_widget.dart';
+import 'ebook_screen/widgets/ebook_search_bar_widget.dart';
+import 'ebook_screen/widgets/ebook_category_chips_widget.dart';
+import 'ebook_screen/widgets/ebook_list_widget.dart';
+import 'ebook_screen/widgets/ebook_empty_state_widget.dart';
+import 'ebook_screen/widgets/ebook_loading_state_widget.dart';
 
 class EbookScreen extends StatefulWidget {
   const EbookScreen({super.key});
@@ -17,19 +21,22 @@ class EbookScreen extends StatefulWidget {
 
 class _EbookScreenState extends State<EbookScreen>
     with TickerProviderStateMixin {
-  String? _selectedCategoryId;
   final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
   final ScrollController _scrollController = ScrollController();
-  bool _isScrolled = false;
+
+  late EbookFilterManager _filterManager;
   late AnimationController _fadeAnimationController;
   late AnimationController _slideAnimationController;
   late AnimationController _searchAnimationController;
+
   bool _isSearchFocused = false;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize filter manager
+    _filterManager = EbookFilterManager(onStateChanged: () => setState(() {}));
 
     // Initialize animation controllers
     _fadeAnimationController = AnimationController(
@@ -45,15 +52,7 @@ class _EbookScreenState extends State<EbookScreen>
       vsync: this,
     );
 
-    _scrollController.addListener(() {
-      bool scrolled = _scrollController.offset > 10;
-      if (scrolled != _isScrolled) {
-        setState(() {
-          _isScrolled = scrolled;
-        });
-      }
-    });
-
+    // Load ebooks after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final kitabProvider = context.read<KitabProvider>();
       if (kitabProvider.ebookList.isEmpty) {
@@ -86,210 +85,26 @@ class _EbookScreenState extends State<EbookScreen>
       builder: (context, kitabProvider, child) {
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor,
-          appBar: _buildAppBar(),
+          appBar: const EbookAppBarWidget(),
           body: kitabProvider.isLoading
-              ? _buildLoadingState()
+              ? const EbookLoadingStateWidget()
               : kitabProvider.errorMessage != null
               ? _buildErrorState(kitabProvider.errorMessage!)
-              : _buildScrollableContent(kitabProvider),
+              : _buildContent(kitabProvider),
           bottomNavigationBar: const StudentBottomNav(currentIndex: 2),
         );
       },
     );
   }
 
-  // Build app bar without back button and always show title
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: _isScrolled
-          ? AppTheme.surfaceColor.withValues(alpha: 0.9)
-          : Colors.transparent,
-      elevation: _isScrolled ? 4 : 0,
-      centerTitle: false,
-      title: Text(
-        'E-Book',
-        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-          color: AppTheme.textPrimaryColor,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-      automaticallyImplyLeading: false,
-      systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.dark,
-      ),
+  Widget _buildContent(KitabProvider kitabProvider) {
+    // Filter and sort ebooks
+    final filteredEbooks = _filterManager.sortByNewest(
+      _filterManager.filterEbooks(kitabProvider.activeEbooks),
     );
-  }
-
-  // Enhanced loading state with smooth animations
-  Widget _buildLoadingState() {
-    return Container(
-      color: AppTheme.backgroundColor,
-      child: Column(
-        children: [
-          // Header section placeholder
-          Container(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 20),
-                Text(
-                  'E-Book',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppTheme.textPrimaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Koleksi buku digital untuk pembelajaran',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Loading shimmer effect
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: GridView.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                itemCount: 6,
-                itemBuilder: (context, index) {
-                  return _buildShimmerCard(index);
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShimmerCard(int index) {
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300 + (index * 100)),
-      curve: Curves.easeOutBack,
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Shimmer thumbnail
-          Expanded(
-            flex: 3,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey.shade200,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(20),
-                ),
-              ),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  color: AppTheme.primaryColor,
-                  strokeWidth: 3,
-                ),
-              ),
-            ),
-          ),
-          // Shimmer content
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        height: 16,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        height: 12,
-                        width: 100,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    height: 12,
-                    width: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade200,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScrollableContent(KitabProvider kitabProvider) {
-    // Filter only ebooks from the ebooks table
-    List<Ebook> filteredEbooks = kitabProvider.activeEbooks.where((ebook) {
-      bool categoryMatch =
-          _selectedCategoryId == null ||
-          ebook.categoryId == _selectedCategoryId;
-
-      bool searchMatch =
-          _searchQuery.isEmpty ||
-          ebook.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (ebook.author?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
-              false);
-
-      return categoryMatch && searchMatch;
-    }).toList();
-
-    // Sort by newest by default
-    filteredEbooks.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     if (filteredEbooks.isEmpty) {
-      return FadeTransition(
-        opacity: _fadeAnimationController,
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            SliverToBoxAdapter(child: _buildHeader()),
-            SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
-            SliverFillRemaining(child: _buildEmptyState()),
-          ],
-        ),
-      );
+      return _buildEmptyContent(kitabProvider);
     }
 
     return RefreshIndicator(
@@ -310,729 +125,159 @@ class _EbookScreenState extends State<EbookScreen>
           controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
-            // Header
-            SliverToBoxAdapter(child: _buildHeader()),
-
-            // Search and Filters
-            SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
-
-            // E-book Grid
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              sliver: SliverGrid(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  childAspectRatio: 0.85,
-                  crossAxisSpacing: 16,
-                  mainAxisSpacing: 16,
-                ),
-                delegate: SliverChildBuilderDelegate((context, index) {
-                  final ebook = filteredEbooks[index];
-                  return SlideTransition(
-                    position:
-                        Tween<Offset>(
-                          begin: const Offset(0, 0.3),
-                          end: Offset.zero,
-                        ).animate(
-                          CurvedAnimation(
-                            parent: _slideAnimationController,
-                            curve: Interval(
-                              (index * 0.1).clamp(0.0, 1.0),
-                              1.0,
-                              curve: Curves.easeOutBack,
-                            ),
-                          ),
-                        ),
-                    child: FadeTransition(
-                      opacity: CurvedAnimation(
-                        parent: _fadeAnimationController,
-                        curve: Interval(
-                          (index * 0.1).clamp(0.0, 1.0),
-                          1.0,
-                          curve: Curves.easeOut,
-                        ),
-                      ),
-                      child: _buildEbookCard(ebook, index),
-                    ),
-                  );
-                }, childCount: filteredEbooks.length),
+            // Header with spacing
+            SliverToBoxAdapter(
+              child: Container(
+                color: AppTheme.backgroundColor,
+                padding: const EdgeInsets.only(top: 20),
               ),
             ),
 
-            // Bottom padding for navigation
-            const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            // Search and filters
+            SliverToBoxAdapter(
+              child: Container(
+                color: AppTheme.backgroundColor,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    EbookSearchBarWidget(
+                      controller: _searchController,
+                      searchQuery: _filterManager.searchQuery,
+                      isSearchFocused: _isSearchFocused,
+                      animationController: _searchAnimationController,
+                      onFocusChanged: (focused) {
+                        setState(() => _isSearchFocused = focused);
+                      },
+                      onChanged: (value) {
+                        _filterManager.updateSearch(value);
+                      },
+                      onClear: () {
+                        _searchController.clear();
+                        _filterManager.clearSearch();
+                      },
+                    ),
+                    EbookCategoryChipsWidget(
+                      categories: kitabProvider.categories,
+                      selectedCategoryId: _filterManager.selectedCategoryId,
+                      onCategorySelected: (categoryId) {
+                        _filterManager.updateCategory(categoryId);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // List
+            EbookListWidget(
+              ebooks: filteredEbooks,
+              fadeController: _fadeAnimationController,
+              slideController: _slideAnimationController,
+            ),
           ],
         ),
       ),
     );
   }
 
-  // Header section - removed as requested
-  Widget _buildHeader() {
-    return const SizedBox(height: 20);
-  }
+  Widget _buildEmptyContent(KitabProvider kitabProvider) {
+    return FadeTransition(
+      opacity: _fadeAnimationController,
+      child: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Header with spacing
+          SliverToBoxAdapter(
+            child: Container(
+              color: AppTheme.backgroundColor,
+              padding: const EdgeInsets.only(top: 20),
+            ),
+          ),
 
-  Widget _buildSearchAndFilters(KitabProvider kitabProvider) {
-    final categories = [
-      'Semua',
-      ...kitabProvider.categories.map((c) => c.name),
-    ];
-    final selectedCategory = _selectedCategoryId == null
-        ? 'Semua'
-        : kitabProvider.categories
-              .firstWhere((c) => c.id == _selectedCategoryId)
-              .name;
-
-    return Container(
-      color: AppTheme.backgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        children: [
-          // Enhanced Search Bar
-          Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            child: AnimatedBuilder(
-              animation: _searchAnimationController,
-              builder: (context, child) {
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: _isSearchFocused
-                          ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                          : AppTheme.borderColor,
-                      width: _isSearchFocused ? 2 : 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _isSearchFocused
-                            ? AppTheme.primaryColor.withValues(alpha: 0.08)
-                            : Colors.black.withValues(alpha: 0.04),
-                        blurRadius: _isSearchFocused ? 12 : 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: TextField(
+          // Search and filters
+          SliverToBoxAdapter(
+            child: Container(
+              color: AppTheme.backgroundColor,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Column(
+                children: [
+                  EbookSearchBarWidget(
                     controller: _searchController,
-                    onTap: () {
-                      setState(() => _isSearchFocused = true);
-                      _searchAnimationController.forward();
+                    searchQuery: _filterManager.searchQuery,
+                    isSearchFocused: _isSearchFocused,
+                    animationController: _searchAnimationController,
+                    onFocusChanged: (focused) {
+                      setState(() => _isSearchFocused = focused);
                     },
-                    onEditingComplete: () {
-                      setState(() => _isSearchFocused = false);
-                      _searchAnimationController.reverse();
-                      FocusScope.of(context).unfocus();
-                    },
-                    decoration: InputDecoration(
-                      filled: false,
-                      hintText: 'Cari e-book yang anda inginkan...',
-                      hintStyle: TextStyle(
-                        color: AppTheme.textSecondaryColor,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w400,
-                      ),
-                      prefixIcon: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: PhosphorIcon(
-                          PhosphorIcons.magnifyingGlass(),
-                          color: _isSearchFocused
-                              ? AppTheme.primaryColor
-                              : AppTheme.textSecondaryColor,
-                          size: 20,
-                        ),
-                      ),
-                      suffixIcon: _searchQuery.isNotEmpty
-                          ? IconButton(
-                              icon: PhosphorIcon(
-                                PhosphorIcons.x(),
-                                color: AppTheme.textSecondaryColor,
-                                size: 18,
-                              ),
-                              onPressed: () {
-                                _searchController.clear();
-                                setState(() {
-                                  _searchQuery = '';
-                                });
-                              },
-                            )
-                          : null,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
-                    ),
                     onChanged: (value) {
-                      setState(() {
-                        _searchQuery = value;
-                      });
+                      _filterManager.updateSearch(value);
+                    },
+                    onClear: () {
+                      _searchController.clear();
+                      _filterManager.clearSearch();
                     },
                   ),
-                );
+                  EbookCategoryChipsWidget(
+                    categories: kitabProvider.categories,
+                    selectedCategoryId: _filterManager.selectedCategoryId,
+                    onCategorySelected: (categoryId) {
+                      _filterManager.updateCategory(categoryId);
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Empty state
+          SliverFillRemaining(
+            child: EbookEmptyStateWidget(
+              searchQuery: _filterManager.searchQuery,
+              hasCategory: _filterManager.selectedCategoryId != null,
+              onClearSearch: () {
+                _searchController.clear();
+                _filterManager.clearSearch();
+              },
+              onResetCategory: () {
+                _filterManager.updateCategory(null);
               },
             ),
           ),
-
-          // Enhanced Category Filters
-          if (categories.length > 1)
-            Container(
-              height: 50,
-              margin: const EdgeInsets.only(bottom: 20),
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                physics: const BouncingScrollPhysics(),
-                itemCount: categories.length,
-                itemBuilder: (context, index) {
-                  final category = categories[index];
-                  final isSelected = selectedCategory == category;
-
-                  return Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          setState(() {
-                            if (category == 'Semua') {
-                              _selectedCategoryId = null;
-                            } else {
-                              _selectedCategoryId = kitabProvider.categories
-                                  .firstWhere((c) => c.name == category)
-                                  .id;
-                            }
-                          });
-                        },
-                        child: TweenAnimationBuilder<double>(
-                          duration: const Duration(milliseconds: 300),
-                          tween: Tween(begin: 0.0, end: isSelected ? 1.0 : 0.0),
-                          curve: Curves.easeOutCubic,
-                          builder: (context, value, child) {
-                            return Transform.scale(
-                              scale: 0.95 + (0.05 * value),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : AppTheme.surfaceColor,
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppTheme.primaryColor
-                                        : AppTheme.borderColor,
-                                    width: 1,
-                                  ),
-                                  boxShadow: isSelected
-                                      ? [
-                                          BoxShadow(
-                                            color: AppTheme.primaryColor
-                                                .withValues(alpha: 0.25),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 4),
-                                          ),
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.06,
-                                            ),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ]
-                                      : [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.04,
-                                            ),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (isSelected)
-                                      Padding(
-                                        padding: const EdgeInsets.only(
-                                          right: 8,
-                                        ),
-                                        child: PhosphorIcon(
-                                          PhosphorIcons.check(),
-                                          color: Colors.white,
-                                          size: 14,
-                                        ),
-                                      ),
-                                    Text(
-                                      category,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppTheme.textSecondaryColor,
-                                        fontSize: 14,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
         ],
       ),
     );
   }
 
-  Widget _buildEbookCard(Ebook ebook, int index) {
-    final totalPages = ebook.totalPages ?? 0;
-
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () {
-          HapticFeedback.lightImpact();
-          context.push('/ebook/${ebook.id}');
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            color: AppTheme.surfaceColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
+  Widget _buildErrorState(String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Ralat',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimaryColor,
               ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: AppTheme.textSecondaryColor,
               ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Thumbnail with gradient and icons
-              Expanded(
-                flex: 3,
-                child: Hero(
-                  tag: 'ebook-cover-${ebook.id}',
-                  child: Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppTheme.primaryColor.withValues(alpha: 0.12),
-                          AppTheme.secondaryColor.withValues(alpha: 0.08),
-                          AppTheme.primaryColor.withValues(alpha: 0.04),
-                        ],
-                      ),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(20),
-                      ),
-                    ),
-                    child: Stack(
-                      children: [
-                        // Background pattern - Multiple circles for depth
-                        Positioned(
-                          top: -15,
-                          right: -15,
-                          child: Container(
-                            width: 70,
-                            height: 70,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(
-                                alpha: 0.08,
-                              ),
-                              borderRadius: BorderRadius.circular(35),
-                            ),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: -20,
-                          left: -20,
-                          child: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: AppTheme.secondaryColor.withValues(
-                                alpha: 0.06,
-                              ),
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                        ),
-
-                        // Main PDF icon
-                        Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              PhosphorIcon(
-                                PhosphorIcons.filePdf(),
-                                color: AppTheme.primaryColor,
-                                size: 48,
-                              ),
-                              const SizedBox(height: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppTheme.primaryColor.withValues(
-                                        alpha: 0.3,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Text(
-                                  'E-BOOK',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
-                                        letterSpacing: 0.5,
-                                      ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Premium Badge
-                        if (ebook.isPremium == true)
-                          Positioned(
-                            top: 12,
-                            right: 12,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppTheme.secondaryColor,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppTheme.secondaryColor.withValues(
-                                      alpha: 0.3,
-                                    ),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: PhosphorIcon(
-                                PhosphorIcons.crown(),
-                                color: Colors.white,
-                                size: 14,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              // Content Info
-              Expanded(
-                flex: 2,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              ebook.title,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: AppTheme.textPrimaryColor,
-                                    fontSize: 15,
-                                    height: 1.3,
-                                  ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              ebook.author ?? 'Pengarang Tidak Diketahui',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 12,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Metadata row - page count only
-                      if (totalPages > 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              '$totalPages hal',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                    fontWeight: FontWeight.w500,
-                                    fontSize: 11,
-                                  ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Enhanced empty state illustration
-          Container(
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.primaryColor.withValues(alpha: 0.1),
-                  AppTheme.secondaryColor.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(40),
-              border: Border.all(color: AppTheme.borderColor, width: 1),
-            ),
-            child: PhosphorIcon(
-              PhosphorIcons.filePdf(),
-              size: 80,
-              color: AppTheme.primaryColor,
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Title and description
-          Text(
-            'Tiada E-Book Ditemui',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textPrimaryColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              _searchQuery.isNotEmpty
-                  ? 'Tiada e-book yang sepadan dengan pencarian "$_searchQuery". Cuba gunakan kata kunci yang berbeza.'
-                  : 'Cuba ubah kategori atau periksa semula untuk melihat e-book yang tersedia.',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.textSecondaryColor,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 40),
-
-          // Action buttons
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_searchQuery.isNotEmpty)
-                OutlinedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _searchController.clear();
-                      _searchQuery = '';
-                    });
-                  },
-                  icon: PhosphorIcon(
-                    PhosphorIcons.x(),
-                    color: AppTheme.textSecondaryColor,
-                    size: 18,
-                  ),
-                  label: const Text('Hapus Pencarian'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppTheme.textSecondaryColor,
-                    side: const BorderSide(color: AppTheme.borderColor),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                ),
-
-              if (_searchQuery.isNotEmpty && _selectedCategoryId != null)
-                const SizedBox(width: 12),
-
-              if (_selectedCategoryId != null)
-                ElevatedButton.icon(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _selectedCategoryId = null;
-                    });
-                  },
-                  icon: PhosphorIcon(
-                    PhosphorIcons.arrowClockwise(),
-                    color: Colors.white,
-                    size: 18,
-                  ),
-                  label: const Text('Reset Filter'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 4,
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildErrorState(String errorMessage) {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Enhanced error state illustration
-          Container(
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.errorColor.withValues(alpha: 0.1),
-                  AppTheme.errorColor.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(40),
-              border: Border.all(
-                color: AppTheme.errorColor.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-            child: PhosphorIcon(
-              PhosphorIcons.warning(),
-              size: 80,
-              color: AppTheme.errorColor,
-            ),
-          ),
-          const SizedBox(height: 32),
-
-          // Title and description
-          Text(
-            'Ralat Memuat Data',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              color: AppTheme.textPrimaryColor,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Text(
-              errorMessage,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppTheme.textSecondaryColor,
-                height: 1.5,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ),
-          const SizedBox(height: 40),
-
-          // Action button
-          ElevatedButton.icon(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              context.read<KitabProvider>().refresh();
-            },
-            icon: PhosphorIcon(
-              PhosphorIcons.arrowClockwise(),
-              color: Colors.white,
-              size: 18,
-            ),
-            label: const Text('Cuba Lagi'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              elevation: 4,
-              shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -58,7 +58,15 @@
       "Bash(del backup_kitab_detail.dart)",
       "mcp__supabase__list_projects",
       "mcp__supabase__get_project",
-      "Bash(timeout 10 flutter analyze:*)"
+      "Bash(timeout 10 flutter analyze:*)",
+      "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\youtube-playlist-sync-fixed-UPDATED.ts\")",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(findstr:*)",
+      "Bash(python:*)",
+      "Bash(python3:*)",
+      "Bash(powershell.exe:*)",
+      "Bash(del lib/features/student/screens/search_screen_old.dart)"
     ],
     "deny": [],
     "ask": []

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../../core/theme/app_theme.dart';
@@ -63,7 +63,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -132,7 +132,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
 
   Widget _buildLoadingOverlay() {
     return Container(
-      color: Colors.black.withOpacity(0.3),
+      color: Colors.black.withValues(alpha: 0.3),
       child: const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -164,7 +164,7 @@ class _PdfViewerScreenState extends State<PdfViewerScreen> {
             Icon(
               Icons.error_outline,
               size: 80,
-              color: Colors.red.withOpacity(0.7),
+              color: Colors.red.withValues(alpha: 0.7),
             ),
             const SizedBox(height: 24),
             Text(

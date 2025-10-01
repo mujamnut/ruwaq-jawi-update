@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -376,10 +376,10 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppTheme.primaryColor.withOpacity(0.3),
+                      color: AppTheme.primaryColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(

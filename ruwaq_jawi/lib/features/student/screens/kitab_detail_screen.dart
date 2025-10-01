@@ -34,7 +34,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
   bool _isLoading = true;
   double _collapseRatio = 0.0;
   bool _episodesLoading = false;
-  Map<String, bool> _episodePreviewStatus =
+  final Map<String, bool> _episodePreviewStatus =
       {}; // Track preview status for each episode
   List<VideoEpisode>? _cachedEpisodes;
 
@@ -590,6 +590,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                             : (_collapseRatio > 0.5
                                   ? AppTheme.textSecondaryColor
                                   : Colors.white),
+                        size: 24,
                       ),
                       onPressed: _toggleSaved,
                     ),
@@ -718,8 +719,40 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
   Widget _buildBottomButton() {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
-        final canAccess =
-            !_kitab!.isPremium || authProvider.hasActiveSubscription;
+        final hasActiveSubscription = authProvider.hasActiveSubscription;
+
+        // Check if user can access any content (first episode at minimum)
+        // If there are episodes, check first episode accessibility
+        // If no episodes, use kitab-level access (existing behavior for non-video kitabs)
+        bool canAccess = true;
+        String buttonText = 'Tonton Sekarang';
+
+        if (_cachedEpisodes != null && _cachedEpisodes!.isNotEmpty) {
+          // Find the first accessible episode
+          final sortedEpisodes = List<VideoEpisode>.from(_cachedEpisodes!);
+          sortedEpisodes.sort((a, b) {
+            final aIsPreview = _isEpisodePreview(a);
+            final bIsPreview = _isEpisodePreview(b);
+            if (aIsPreview && !bIsPreview) return -1;
+            if (!aIsPreview && bIsPreview) return 1;
+            return a.partNumber.compareTo(b.partNumber);
+          });
+
+          final firstEpisode = sortedEpisodes.first;
+          final episodeRequiresPremium =
+              firstEpisode.isPremium && !_isEpisodePreview(firstEpisode);
+          canAccess = !episodeRequiresPremium || hasActiveSubscription;
+
+          if (!canAccess) {
+            buttonText = 'Premium Diperlukan';
+          }
+        } else {
+          // Fallback to kitab-level check for non-video content
+          canAccess = !_kitab!.isPremium || hasActiveSubscription;
+          if (!canAccess) {
+            buttonText = 'Premium Diperlukan';
+          }
+        }
 
         return Positioned(
           bottom: 0,
@@ -766,7 +799,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                   ),
                 ),
                 child: Text(
-                  canAccess ? 'Tonton Sekarang' : 'Premium Diperlukan',
+                  buttonText,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -967,19 +1000,24 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
 
   Widget _buildEpisodeCard(VideoEpisode episode, int number) {
     final authProvider = context.read<AuthProvider>();
-    final canAccess = !_kitab!.isPremium || authProvider.hasActiveSubscription;
+    final hasActiveSubscription = authProvider.hasActiveSubscription;
+
+    // New logic: Check both kitab and episode premium status
+    // Episode access rules:
+    // 1. If episode is not premium (episode.isPremium = false) -> always accessible
+    // 2. If episode is premium (episode.isPremium = true) -> requires subscription
+    // 3. Preview episodes are always accessible regardless of premium status
+    final episodeRequiresPremium =
+        episode.isPremium && !_isEpisodePreview(episode);
+    final canAccessEpisode = !episodeRequiresPremium || hasActiveSubscription;
 
     // Episode is locked if:
-    // 1. Premium kitab without subscription and not preview
+    // 1. Episode requires premium but user has no subscription
     // 2. Episode is inactive
-    final isLocked =
-        (!canAccess && !_isEpisodePreview(episode)) || !episode.isActive;
+    final isLocked = !canAccessEpisode || !episode.isActive;
 
-    // Always show premium videos but lock them if no subscription
-    final isPremiumLocked =
-        _kitab!.isPremium &&
-        !authProvider.hasActiveSubscription &&
-        !_isEpisodePreview(episode);
+    // Show premium lock specifically when episode requires subscription
+    final isPremiumLocked = episodeRequiresPremium && !hasActiveSubscription;
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 300 + (number * 50)),
@@ -1115,26 +1153,100 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Episode number badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(
-                                    alpha: 0.1,
+                              // Episode number badge with premium indicator
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.primaryColor.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Episode ${episode.partNumber}',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                    ),
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Episode ${episode.partNumber}',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  // Free/Premium badge
+                                  if (episode.isPremium &&
+                                      !_isEpisodePreview(episode))
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFFFFD700,
+                                        ).withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: const Color(
+                                            0xFFFFD700,
+                                          ).withValues(alpha: 0.3),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          PhosphorIcon(
+                                            PhosphorIcons.crown(
+                                              PhosphorIconsStyle.fill,
+                                            ),
+                                            color: const Color(0xFFFFD700),
+                                            size: 10,
+                                          ),
+                                          const SizedBox(width: 2),
+                                          const Text(
+                                            'PREMIUM',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFFFFD700),
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  else if (!episode.isPremium)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.green.withValues(
+                                            alpha: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                      child: const Text(
+                                        'FREE',
+                                        style: TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.green,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
 
                               const SizedBox(height: 8),
@@ -1512,7 +1624,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.6),
+          color: Colors.black.withValues(alpha: 0.6),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
@@ -1698,7 +1810,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
 
     // Show error/offline state with fallback thumbnail
     if (_hasError || !_isOnline || _controller == null) {
-      return Container(
+      return SizedBox(
         width: double.infinity,
         height: double.infinity,
         child: Stack(
@@ -1720,7 +1832,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
             // Offline/Error overlay
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha: 0.6),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1748,7 +1860,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
                             : 'Connect to internet\nto watch preview',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           fontSize: 12,
                         ),
                       ),
@@ -1772,7 +1884,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
+                      color: Colors.black.withValues(alpha: 0.3),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -1795,7 +1907,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
     }
 
     // Show working video player
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: double.infinity,
       child: Stack(
@@ -1827,7 +1939,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
           if (_showControls)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 child: Stack(
                   children: [
                     // Center Play/Pause Button
@@ -1838,11 +1950,11 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
                           width: 80,
                           height: 80,
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.7),
+                            color: Colors.black.withValues(alpha: 0.7),
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 blurRadius: 16,
                                 offset: const Offset(0, 4),
                               ),
@@ -1867,7 +1979,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
                       child: Container(
                         height: 4,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.3),
+                          color: Colors.white.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(2),
                         ),
                         child: StreamBuilder<Duration>(
@@ -1924,8 +2036,8 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  AppTheme.primaryColor.withOpacity(0.1),
-                  AppTheme.secondaryColor.withOpacity(0.1),
+                  AppTheme.primaryColor.withValues(alpha: 0.1),
+                  AppTheme.secondaryColor.withValues(alpha: 0.1),
                 ],
               ),
             ),

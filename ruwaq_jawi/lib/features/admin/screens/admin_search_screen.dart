@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/services/supabase_service.dart';
@@ -253,7 +253,7 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: AppTheme.primaryColor.withOpacity(0.05),
+          color: AppTheme.primaryColor.withValues(alpha: 0.05),
           width: double.infinity,
           child: Text(
             '${_searchResults.length} hasil ditemui untuk "$_searchQuery"',
@@ -343,8 +343,8 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: category.name == 'Tiada Kategori'
-                          ? Colors.grey.withOpacity(0.2)
-                          : AppTheme.primaryColor.withOpacity(0.1),
+                          ? Colors.grey.withValues(alpha: 0.2)
+                          : AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -362,8 +362,8 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: kitab.isPremium 
-                          ? AppTheme.secondaryColor.withOpacity(0.2)
-                          : Colors.green.withOpacity(0.2),
+                          ? AppTheme.secondaryColor.withValues(alpha: 0.2)
+                          : Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -381,7 +381,7 @@ class _AdminSearchScreenState extends State<AdminSearchScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.2),
+                        color: Colors.red.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

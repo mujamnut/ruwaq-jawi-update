@@ -44,10 +44,7 @@ class UIUtils {
             ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: onRetry,
-                child: Text(retryText),
-              ),
+              ElevatedButton(onPressed: onRetry, child: Text(retryText)),
             ],
           ],
         ),
@@ -94,10 +91,7 @@ class UIUtils {
             ],
             if (onAction != null && actionText != null) ...[
               const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onAction,
-                child: Text(actionText),
-              ),
+              ElevatedButton(onPressed: onAction, child: Text(actionText)),
             ],
           ],
         ),
@@ -184,7 +178,10 @@ class UIUtils {
         decoration: InputDecoration(
           hintText: hintText,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
           prefixIcon: const HugeIcon(
             icon: HugeIcons.strokeRoundedSearch01,
             color: Colors.grey,
@@ -221,7 +218,8 @@ class UIUtils {
       leading: leading,
       trailing: trailing,
       onTap: onTap,
-      contentPadding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 16),
+      contentPadding:
+          contentPadding ?? const EdgeInsets.symmetric(horizontal: 16),
     );
   }
 
@@ -233,7 +231,8 @@ class UIUtils {
     EdgeInsetsGeometry? padding,
   }) {
     return Container(
-      padding: padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding:
+          padding ?? const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Expanded(
@@ -251,10 +250,7 @@ class UIUtils {
                 if (subtitle != null)
                   Text(
                     subtitle,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey,
-                    ),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
                   ),
               ],
             ),
@@ -280,7 +276,9 @@ class UIUtils {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isPrimary ? Theme.of(GlobalKey().currentContext!).primaryColor : Colors.grey[100],
+          backgroundColor: isPrimary
+              ? Theme.of(GlobalKey().currentContext!).primaryColor
+              : Colors.grey[100],
           foregroundColor: isPrimary ? Colors.white : Colors.black87,
           padding: const EdgeInsets.symmetric(vertical: 12),
           shape: RoundedRectangleBorder(
@@ -299,7 +297,11 @@ class UIUtils {
   }
 
   /// Show a standard snackbar
-  static void showSnackBar(BuildContext context, String message, {bool isError = false}) {
+  static void showSnackBar(
+    BuildContext context,
+    String message, {
+    bool isError = false,
+  }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
@@ -347,17 +349,12 @@ class UIUtils {
     required Widget child,
     required Future<void> Function() onRefresh,
   }) {
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: child,
-    );
+    return RefreshIndicator(onRefresh: onRefresh, child: child);
   }
 }
 
 /// Mixin for screens with common state handling
 mixin ScreenStateMixin<T extends StatefulWidget> on State<T> {
-  bool get mounted => super.mounted;
-
   /// Safe setState that checks if widget is still mounted
   void safeSetState(VoidCallback callback) {
     if (mounted) {
@@ -386,7 +383,9 @@ mixin ScreenStateMixin<T extends StatefulWidget> on State<T> {
         context: context,
         barrierDismissible: false,
         builder: (context) => Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(20),
             child: Row(

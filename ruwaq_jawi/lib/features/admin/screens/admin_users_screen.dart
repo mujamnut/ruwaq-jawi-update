@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -353,7 +353,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -479,7 +479,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             _selectedFilter = selected ? value : 'all';
           });
         },
-        selectedColor: AppTheme.primaryColor.withOpacity(0.2),
+        selectedColor: AppTheme.primaryColor.withValues(alpha: 0.2),
         backgroundColor: AppTheme.backgroundColor,
         checkmarkColor: AppTheme.primaryColor,
         labelStyle: TextStyle(
@@ -500,7 +500,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      color: AppTheme.primaryColor.withOpacity(0.05),
+      color: AppTheme.primaryColor.withValues(alpha: 0.05),
       child: Row(
         children: [
           Text(
@@ -596,8 +596,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 children: [
                   CircleAvatar(
                     backgroundColor: user.isAdmin
-                        ? Colors.purple.withOpacity(0.1)
-                        : AppTheme.primaryColor.withOpacity(0.1),
+                        ? Colors.purple.withValues(alpha: 0.1)
+                        : AppTheme.primaryColor.withValues(alpha: 0.1),
                     child: HugeIcon(
                       icon: user.isAdmin
                           ? HugeIcons.strokeRoundedUserSettings01
@@ -699,8 +699,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: user.isAdmin
-                          ? Colors.purple.withOpacity(0.2)
-                          : Colors.blue.withOpacity(0.2),
+                          ? Colors.purple.withValues(alpha: 0.2)
+                          : Colors.blue.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -719,8 +719,8 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: hasActiveSubscription
-                          ? Colors.green.withOpacity(0.2)
-                          : Colors.red.withOpacity(0.2),
+                          ? Colors.green.withValues(alpha: 0.2)
+                          : Colors.red.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -946,7 +946,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Row(

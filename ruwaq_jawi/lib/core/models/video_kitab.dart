@@ -12,6 +12,7 @@ class VideoKitab {
   final int? totalPages;
   final int totalVideos;
   final int totalDurationMinutes;
+  final int sortOrder;
   final bool isPremium;
   final bool isActive;
   final int viewsCount;
@@ -36,6 +37,7 @@ class VideoKitab {
     this.totalPages,
     this.totalVideos = 0,
     this.totalDurationMinutes = 0,
+    this.sortOrder = 0,
     this.isPremium = true,
     this.isActive = true,
     this.viewsCount = 0,
@@ -63,6 +65,7 @@ class VideoKitab {
       totalPages: json['total_pages'] as int?,
       totalVideos: json['total_videos'] as int? ?? 0,
       totalDurationMinutes: json['total_duration_minutes'] as int? ?? 0,
+      sortOrder: json['sort_order'] as int? ?? 0,
       isPremium: json['is_premium'] as bool? ?? true,
       isActive: json['is_active'] as bool? ?? true,
       viewsCount: json['views_count'] as int? ?? 0,
@@ -89,6 +92,7 @@ class VideoKitab {
       'total_pages': totalPages,
       'total_videos': totalVideos,
       'total_duration_minutes': totalDurationMinutes,
+      'sort_order': sortOrder,
       'is_premium': isPremium,
       'is_active': isActive,
       'views_count': viewsCount,
@@ -114,6 +118,7 @@ class VideoKitab {
     int? totalPages,
     int? totalVideos,
     int? totalDurationMinutes,
+    int? sortOrder,
     bool? isPremium,
     bool? isActive,
     int? viewsCount,
@@ -135,6 +140,7 @@ class VideoKitab {
       totalPages: totalPages ?? this.totalPages,
       totalVideos: totalVideos ?? this.totalVideos,
       totalDurationMinutes: totalDurationMinutes ?? this.totalDurationMinutes,
+      sortOrder: sortOrder ?? this.sortOrder,
       isPremium: isPremium ?? this.isPremium,
       isActive: isActive ?? this.isActive,
       viewsCount: viewsCount ?? this.viewsCount,

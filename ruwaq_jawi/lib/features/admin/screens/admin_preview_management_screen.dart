@@ -10,10 +10,12 @@ class AdminPreviewManagementScreen extends StatefulWidget {
   const AdminPreviewManagementScreen({super.key});
 
   @override
-  State<AdminPreviewManagementScreen> createState() => _AdminPreviewManagementScreenState();
+  State<AdminPreviewManagementScreen> createState() =>
+      _AdminPreviewManagementScreenState();
 }
 
-class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScreen> {
+class _AdminPreviewManagementScreenState
+    extends State<AdminPreviewManagementScreen> {
   List<PreviewContent> _previews = [];
   bool _isLoading = true;
   String _errorMessage = '';
@@ -63,7 +65,7 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
       builder: (context) => AlertDialog(
         title: const Text('Delete Preview'),
         content: Text(
-          'Are you sure you want to delete the preview for "${preview.contentTitle ?? 'Unknown Content'}"?'
+          'Are you sure you want to delete the preview for "${preview.contentTitle ?? 'Unknown Content'}"?',
         ),
         actions: [
           TextButton(
@@ -72,8 +74,8 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -87,9 +89,9 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
         );
         _loadPreviews();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete preview: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to delete preview: $e')));
       }
     }
   }
@@ -102,7 +104,7 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
           content: Text(
             preview.isActive
                 ? 'Preview deactivated successfully'
-                : 'Preview activated successfully'
+                : 'Preview activated successfully',
           ),
         ),
       );
@@ -130,7 +132,8 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AdminFormExamples.buildPreviewContentForm(context),
+        builder: (context) =>
+            AdminFormExamples.buildPreviewContentForm(context),
       ),
     ).then((_) => _loadPreviews());
   }
@@ -200,19 +203,22 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<PreviewContentType>(
-                        value: _selectedContentType,
+                        initialValue: _selectedContentType,
                         decoration: const InputDecoration(
                           labelText: 'Content Type',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         items: [
                           const DropdownMenuItem<PreviewContentType>(
                             value: null,
                             child: Text('All Types'),
                           ),
-                          ...PreviewContentType.values.map((type) =>
-                            DropdownMenuItem(
+                          ...PreviewContentType.values.map(
+                            (type) => DropdownMenuItem(
                               value: type,
                               child: Text(type.displayName),
                             ),
@@ -229,19 +235,22 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<PreviewType>(
-                        value: _selectedPreviewType,
+                        initialValue: _selectedPreviewType,
                         decoration: const InputDecoration(
                           labelText: 'Preview Type',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         items: [
                           const DropdownMenuItem<PreviewType>(
                             value: null,
                             child: Text('All Previews'),
                           ),
-                          ...PreviewType.values.map((type) =>
-                            DropdownMenuItem(
+                          ...PreviewType.values.map(
+                            (type) => DropdownMenuItem(
                               value: type,
                               child: Text(type.displayName),
                             ),
@@ -258,21 +267,21 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<bool>(
-                        value: _selectedActiveStatus,
+                        initialValue: _selectedActiveStatus,
                         decoration: const InputDecoration(
                           labelText: 'Status',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                         ),
                         items: const [
                           DropdownMenuItem<bool>(
                             value: null,
                             child: Text('All Status'),
                           ),
-                          DropdownMenuItem(
-                            value: true,
-                            child: Text('Active'),
-                          ),
+                          DropdownMenuItem(value: true, child: Text('Active')),
                           DropdownMenuItem(
                             value: false,
                             child: Text('Inactive'),
@@ -297,74 +306,72 @@ class _AdminPreviewManagementScreenState extends State<AdminPreviewManagementScr
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _errorMessage.isNotEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(
-                              HugeIcons.strokeRoundedAlert02,
-                              size: 64,
-                              color: AppTheme.errorColor,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _errorMessage,
-                              style: const TextStyle(
-                                color: AppTheme.errorColor,
-                                fontSize: 16,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: _loadPreviews,
-                              child: const Text('Retry'),
-                            ),
-                          ],
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          HugeIcons.strokeRoundedAlert02,
+                          size: 64,
+                          color: AppTheme.errorColor,
                         ),
-                      )
-                    : _previews.isEmpty
-                        ? const Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  HugeIcons.strokeRoundedEye,
-                                  size: 64,
-                                  color: AppTheme.textSecondaryColor,
-                                ),
-                                SizedBox(height: 16),
-                                Text(
-                                  'No previews found',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w500,
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'Create your first preview to get started',
-                                  style: TextStyle(
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : ListView.builder(
-                            padding: const EdgeInsets.all(16),
-                            itemCount: _previews.length,
-                            itemBuilder: (context, index) {
-                              final preview = _previews[index];
-                              return PreviewListTile(
-                                preview: preview,
-                                onEdit: () => _editPreview(preview),
-                                onDelete: () => _deletePreview(preview),
-                                onToggleStatus: () => _togglePreviewStatus(preview),
-                              );
-                            },
+                        const SizedBox(height: 16),
+                        Text(
+                          _errorMessage,
+                          style: const TextStyle(
+                            color: AppTheme.errorColor,
+                            fontSize: 16,
                           ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadPreviews,
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  )
+                : _previews.isEmpty
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          HugeIcons.strokeRoundedEye,
+                          size: 64,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'No previews found',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w500,
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Create your first preview to get started',
+                          style: TextStyle(color: AppTheme.textSecondaryColor),
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _previews.length,
+                    itemBuilder: (context, index) {
+                      final preview = _previews[index];
+                      return PreviewListTile(
+                        preview: preview,
+                        onEdit: () => _editPreview(preview),
+                        onDelete: () => _deletePreview(preview),
+                        onToggleStatus: () => _togglePreviewStatus(preview),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
