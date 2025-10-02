@@ -93,7 +93,8 @@ Deno.serve(async (req) => {
 
     console.log('🖼️ Generated kitab thumbnail:', kitabThumbnailUrl);
 
-    // Create video kitab entry - SET TO ACTIVE IMMEDIATELY
+    // Create video kitab entry - SET TO ACTIVE AND AUTO-SYNC ENABLED
+    // Note: auto_sync_enabled will be set to true automatically by database trigger
     const { data: kitab, error: kitabError } = await supabase
       .from('video_kitab')
       .insert({
@@ -105,7 +106,7 @@ Deno.serve(async (req) => {
         category_id,
         is_premium: is_premium || false,
         is_active: is_active !== false, // Default to true unless explicitly false
-        auto_sync_enabled: true,
+        auto_sync_enabled: true, // Always true for YouTube playlists
         total_videos: allVideos.length,
         total_duration_minutes: Math.round(totalDuration / 60),
         last_synced_at: new Date().toISOString(),

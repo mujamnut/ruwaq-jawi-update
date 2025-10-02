@@ -22,6 +22,8 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get all video kitabs with auto sync enabled
+    // Note: All playlists with youtube_playlist_id should have auto_sync_enabled = true
+    // This is enforced by database trigger (see migration 035_auto_enable_youtube_sync.sql)
     const { data: kitabs, error: kitabsError } = await supabase
       .from('video_kitab')
       .select('*')
