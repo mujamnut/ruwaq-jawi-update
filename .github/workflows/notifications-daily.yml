@@ -20,16 +20,17 @@ jobs:
           echo "📱 Running subscription expiry, inactive user, and new content notifications"
 
           # Check for new video content in the last 24 hours and send notifications
-          echo "📹 Checking for new video content published in last 24 hours using enhanced notification system..."
+          echo "📹 Checking for new video content published in last 24 hours using unified notification system..."
           new_content_response=$(curl -s -w "\n%{http_code}" -X POST \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/notification-triggers" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/unified-notifications" \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Content-Type: application/json" \
             -H "x-client-info: github-cron-daily" \
             -d '{
               "check_hours": 24,
-              "system": "enhanced"
+              "check_payments": true,
+              "check_subscriptions": true
             }')
 
           # Test subscription expiry notifications
@@ -52,40 +53,42 @@ jobs:
           content_http_code=$(echo "$new_content_response" | tail -n1)
           content_response_body=$(echo "$new_content_response" | head -n -1)
 
-          echo "📊 Enhanced Content Check Response Code: $content_http_code"
-          echo "📄 Enhanced Content Check Response: $content_response_body"
+          echo "📊 Unified Notification Check Response Code: $content_http_code"
+          echo "📄 Unified Notification Check Response: $content_response_body"
 
           if [ "$content_http_code" = "200" ]; then
-            echo "✅ Enhanced notification system content check completed successfully!"
-            echo "🆕 New notifications will be available in both new (notifications table) and legacy (user_notifications table) systems"
+            echo "✅ Unified notification system completed successfully!"
+            echo "🆕 New content notifications sent to all students"
+            echo "📧 Payment and subscription notifications sent to respective users"
           else
-            echo "❌ Enhanced notification system content check failed with code: $content_http_code"
+            echo "❌ Unified notification system failed with code: $content_http_code"
             echo "Error details: $content_response_body"
           fi
 
-          echo "🏁 Enhanced notification system completed at $(date)"
+          echo "🏁 Unified notification system completed at $(date)"
 
       - name: 📊 Notification Summary
         if: always()
         run: |
           if [ "${{ job.status }}" = "success" ]; then
-            echo "✅ Enhanced notification system completed successfully"
-            echo "📱 Check Supabase database for new notifications in both systems:"
-            echo "   • notifications table (new enhanced system)"
-            echo "   • user_notifications table (legacy compatibility)"
+            echo "✅ Unified notification system completed successfully"
+            echo "📱 Check Supabase database for new notifications:"
+            echo "   • user_notifications table (unified system)"
+            echo "   • Global notifications (NULL user_id) for content"
+            echo "   • Personal notifications for payments/subscriptions"
             echo "🔄 Next run will be in 6 hours"
           else
-            echo "❌ Enhanced notification system failed - check logs above"
+            echo "❌ Unified notification system failed - check logs above"
             echo "⚠️ Admin should review the error and fix any issues"
           fi
 
       - name: 🧹 Production Status
         if: success()
         run: |
-          echo "🚀 Enhanced production notification system running every 6 hours"
+          echo "🚀 Unified production notification system running every 6 hours"
           echo "📧 Check Supabase Edge Function logs for detailed insights:"
-          echo "   • notification-triggers function (enhanced system)"
+          echo "   • unified-notifications function"
           echo "📋 Monitor database tables for new entries:"
-          echo "   • notifications table (new system)"
-          echo "   • notification_reads table (new system)"
-          echo "   • user_notifications table (legacy compatibility)"
+          echo "   • user_notifications table (unified system)"
+          echo "   • Global notifications (NULL user_id) visible to all students"
+          echo "   • Personal notifications for specific users"
