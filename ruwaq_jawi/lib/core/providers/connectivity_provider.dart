@@ -60,12 +60,15 @@ class ConnectivityProvider with ChangeNotifier {
     _connectionStatus = result;
     final wasOnline = _isOnline;
     _isOnline = result.isNotEmpty && !result.every((status) => status == ConnectivityResult.none);
-    
+
     debugPrint('🌐 Connectivity changed: ${_isOnline ? 'Online' : 'Offline'} ($_connectionType)');
-    
+
     // Only notify if status actually changed
+    // Use scheduleMicrotask to defer notification and avoid setState during build
     if (wasOnline != _isOnline) {
-      notifyListeners();
+      scheduleMicrotask(() {
+        notifyListeners();
+      });
     }
   }
 
