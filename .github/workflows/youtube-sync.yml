@@ -10,21 +10,36 @@ jobs:
   youtube-sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger YouTube Playlist Sync
+      - name: YouTube Auto Sync - Check for New Videos
         run: |
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"action":"sync_all","triggered_by":"github_actions","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}' \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/youtube-playlist-sync-fixed"
+          echo "🔄 Starting YouTube auto-sync at $(date)"
 
-      - name: Check New Videos
-        run: |
-          curl -X POST \
+          response=$(curl -s -w "\n%{http_code}" -X POST \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"triggered_by":"github_actions","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}' \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/youtube-check-new-videos-fixed"
+            "${{ secrets.SUPABASE_URL }}/functions/v1/youtube-auto-sync")
 
-      - name: Log sync completion
-        run: echo "YouTube sync job completed at $(date)"
+          http_code=$(echo "$response" | tail -n1)
+          response_body=$(echo "$response" | head -n -1)
+
+          echo "📊 Response Code: $http_code"
+          echo "📄 Response: $response_body"
+
+          if [ "$http_code" = "200" ]; then
+            echo "✅ YouTube auto-sync completed successfully!"
+
+            # Parse response to show results
+            new_videos=$(echo "$response_body" | grep -o '"total_new_videos":[0-9]*' | cut -d':' -f2)
+            checked_playlists=$(echo "$response_body" | grep -o '"checked_playlists":[0-9]*' | cut -d':' -f2)
+
+            echo "📹 New videos found: ${new_videos:-0}"
+            echo "📚 Playlists checked: ${checked_playlists:-0}"
+          else
+            echo "❌ YouTube auto-sync failed with code: $http_code"
+            echo "Error details: $response_body"
+            exit 1
+          fi
+
+          echo "🏁 YouTube sync completed at $(date)"
