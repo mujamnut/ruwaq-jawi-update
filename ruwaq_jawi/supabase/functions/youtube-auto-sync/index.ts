@@ -45,10 +45,12 @@ Deno.serve(async (req) => {
         console.log(`🔍 Checking kitab: ${kitab.title} (${kitab.youtube_playlist_id})`);
 
         // Get existing video episodes for this kitab
+        // IMPORTANT: Select part_number to get max and continue sequence
         const { data: existingEpisodes, error: episodesError } = await supabase
           .from('video_episodes')
-          .select('youtube_video_id')
-          .eq('video_kitab_id', kitab.id);
+          .select('youtube_video_id, part_number')
+          .eq('video_kitab_id', kitab.id)
+          .order('part_number', { ascending: false });
 
         if (episodesError) {
           console.error(`❌ Failed to fetch episodes for kitab ${kitab.id}:`, episodesError);
@@ -56,6 +58,13 @@ Deno.serve(async (req) => {
         }
 
         const existingVideoIds = new Set(existingEpisodes?.map(ep => ep.youtube_video_id) || []);
+
+        // Get the highest part_number to continue sequence
+        const currentMaxPart = existingEpisodes && existingEpisodes.length > 0
+          ? (existingEpisodes[0].part_number || 0) // First item has highest due to DESC order
+          : 0;
+
+        console.log(`📊 Existing episodes: ${existingEpisodes?.length || 0}, Max part_number: ${currentMaxPart}`);
 
         // Fetch current videos from YouTube playlist
         let allVideos = [];
@@ -99,11 +108,16 @@ Deno.serve(async (req) => {
           }
 
           // Prepare new episodes data
-          const currentMaxPart = Math.max(...(existingEpisodes?.map(ep => ep.part_number || 0) || [0]));
+          // Note: currentMaxPart already calculated above after fetching episodes
+          console.log(`🔢 Starting part_number from: ${currentMaxPart + 1}`);
+
           const newEpisodes = newVideos.map((video, index) => {
             const videoId = video.snippet.resourceId.videoId;
             const duration = videoDurations[videoId] || 0;
             const episodeThumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+            const partNumber = currentMaxPart + index + 1;
+
+            console.log(`  📝 Episode ${partNumber}: ${video.snippet.title}`);
 
             return {
               title: video.snippet.title,
@@ -111,7 +125,7 @@ Deno.serve(async (req) => {
               youtube_video_id: videoId,
               youtube_video_url: `https://www.youtube.com/watch?v=${videoId}`,
               thumbnail_url: episodeThumbnailUrl,
-              part_number: currentMaxPart + index + 1,
+              part_number: partNumber,
               duration_seconds: duration,
               duration_minutes: Math.round(duration / 60),
               is_active: true, // New videos are active by default
