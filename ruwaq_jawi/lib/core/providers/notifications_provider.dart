@@ -100,6 +100,18 @@ class NotificationsProvider with ChangeNotifier {
             print('✅ Loaded ${enhancedNotifications.length} notifications using enhanced system');
             print('📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
                   '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast');
+
+            // Debug: Check read status conversion
+            for (var i = 0; i < enhancedNotifications.length && i < 3; i++) {
+              final enhanced = enhancedNotifications[i];
+              final legacy = legacyNotifications[i];
+              print('🔍 [$i] ${enhanced.title.substring(0, 20)}...');
+              print('   Enhanced: isRead=${enhanced.isRead}, readAt=${enhanced.readAt}');
+              print('   Legacy: readAt=${legacy.readAt}, isGlobal=${legacy.isGlobal}');
+              if (user != null) {
+                print('   isReadByUser(${user.id})=${legacy.isReadByUser(user.id)}');
+              }
+            }
           }
 
           _loading = false;

@@ -2,6 +2,7 @@ import 'package:hive/hive.dart';
 import 'dart:convert';
 import '../models/kitab.dart';
 import '../models/saved_item.dart';
+import 'local_favorites_service.dart';
 
 class LocalSavedItemsService {
   static const String _boxName = 'saved_items';
@@ -63,13 +64,17 @@ class LocalSavedItemsService {
     }
   }
 
-  // Saved Kitab
+  // Saved Kitab (delegates to LocalFavoritesService for Supabase sync)
   static Future<void> saveKitab(Kitab kitab) async {
     if (_savedKitabBox == null) return;
-    
+
     try {
+      // Save to local Hive for backward compatibility
       final json = jsonEncode(kitab.toJson());
       await _savedKitabBox!.put(kitab.id, json);
+
+      // Also save via LocalFavoritesService (dual-write to Supabase)
+      await LocalFavoritesService.addVideoKitabToFavorites(kitab.id);
     } catch (e) {
       print('Error saving kitab: $e');
     }
@@ -93,9 +98,13 @@ class LocalSavedItemsService {
 
   static Future<void> removeKitab(String kitabId) async {
     if (_savedKitabBox == null) return;
-    
+
     try {
+      // Remove from local Hive
       await _savedKitabBox!.delete(kitabId);
+
+      // Also remove via LocalFavoritesService (sync to Supabase)
+      await LocalFavoritesService.removeVideoKitabFromFavorites(kitabId);
     } catch (e) {
       print('Error removing kitab: $e');
     }
@@ -152,13 +161,18 @@ class LocalSavedItemsService {
     return _savedVideosBox!.containsKey(key);
   }
 
-  // Saved E-books
+  // Saved E-books (delegates to LocalFavoritesService for Supabase sync)
   static Future<void> saveEbook(Map<String, dynamic> ebookData) async {
     if (_savedEbooksBox == null) return;
-    
+
     try {
+      // Save to local Hive for backward compatibility
       final json = jsonEncode(ebookData);
       await _savedEbooksBox!.put(ebookData['id'], json);
+
+      // Also save via LocalFavoritesService (dual-write to Supabase)
+      final ebookId = ebookData['id'] as String;
+      await LocalFavoritesService.addEbookToFavorites(ebookId);
     } catch (e) {
       print('Error saving ebook: $e');
     }
@@ -182,9 +196,13 @@ class LocalSavedItemsService {
 
   static Future<void> removeEbook(String ebookId) async {
     if (_savedEbooksBox == null) return;
-    
+
     try {
+      // Remove from local Hive
       await _savedEbooksBox!.delete(ebookId);
+
+      // Also remove via LocalFavoritesService (sync to Supabase)
+      await LocalFavoritesService.removeEbookFromFavorites(ebookId);
     } catch (e) {
       print('Error removing ebook: $e');
     }

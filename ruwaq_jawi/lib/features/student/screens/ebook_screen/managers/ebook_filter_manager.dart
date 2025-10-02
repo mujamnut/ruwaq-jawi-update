@@ -13,20 +13,29 @@ class EbookFilterManager {
 
   // Update category filter
   void updateCategory(String? categoryId) {
-    selectedCategoryId = categoryId;
-    onStateChanged?.call();
+    // Only rebuild if value actually changed
+    if (selectedCategoryId != categoryId) {
+      selectedCategoryId = categoryId;
+      onStateChanged?.call();
+    }
   }
 
   // Update search query
   void updateSearch(String query) {
-    searchQuery = query;
-    onStateChanged?.call();
+    // Only rebuild if value actually changed
+    if (searchQuery != query) {
+      searchQuery = query;
+      onStateChanged?.call();
+    }
   }
 
   // Clear search
   void clearSearch() {
-    searchQuery = '';
-    onStateChanged?.call();
+    // Only rebuild if there was something to clear
+    if (searchQuery.isNotEmpty) {
+      searchQuery = '';
+      onStateChanged?.call();
+    }
   }
 
   // Filter ebooks based on category and search

@@ -22,30 +22,33 @@ class EbookListWidget extends StatelessWidget {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             final ebook = ebooks[index];
-            return SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.2),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(
-                  parent: slideController,
-                  curve: Interval(
-                    (index * 0.05).clamp(0.0, 1.0),
-                    1.0,
-                    curve: Curves.easeOut,
+            // Wrap with RepaintBoundary for better performance
+            return RepaintBoundary(
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.3),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: slideController,
+                    curve: Interval(
+                      (index * 0.1).clamp(0.0, 1.0),
+                      1.0,
+                      curve: Curves.easeOutBack,
+                    ),
                   ),
                 ),
-              ),
-              child: FadeTransition(
-                opacity: CurvedAnimation(
-                  parent: fadeController,
-                  curve: Interval(
-                    (index * 0.05).clamp(0.0, 1.0),
-                    1.0,
-                    curve: Curves.easeOut,
+                child: FadeTransition(
+                  opacity: CurvedAnimation(
+                    parent: fadeController,
+                    curve: Interval(
+                      (index * 0.1).clamp(0.0, 1.0),
+                      1.0,
+                      curve: Curves.easeOut,
+                    ),
                   ),
+                  child: EbookListCardWidget(ebook: ebook),
                 ),
-                child: EbookListCardWidget(ebook: ebook),
               ),
             );
           },

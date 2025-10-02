@@ -244,27 +244,11 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
                             PhosphorIcons.bell(),
                             color: AppTheme.textPrimaryColor,
                           ),
-                          onPressed: () async {
-                            // Refresh inbox and show simple list
-                            final provider = context
-                                .read<NotificationsProvider>();
-                            await provider.loadInbox();
-
-                            // Auto mark all unread notifications as read when user opens notification
-                            final user =
-                                Supabase.instance.client.auth.currentUser;
-                            if (user != null) {
-                              final unreadNotifications = provider.inbox
-                                  .where((n) => !n.isReadByUser(user.id))
-                                  .toList();
-                              for (final notification in unreadNotifications) {
-                                await provider.markAsRead(notification.id);
-                              }
-                            }
-
-                            if (!mounted) return;
-                            // Show enhanced notification bottom sheet
-                            _showNotificationBottomSheet();
+                          onPressed: () {
+                            // ✅ IMPROVED: Navigate to dedicated notification screen
+                            // Uses improved notification screen with detail bottom sheet
+                            // User has full control over mark as read
+                            context.push('/notifications');
                           },
                         );
                         if (unread > 0) {

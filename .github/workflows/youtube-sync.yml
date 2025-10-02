@@ -10,13 +10,21 @@ jobs:
   youtube-sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger YouTube Auto Sync
+      - name: Trigger YouTube Playlist Sync
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action":"sync_all","triggered_by":"github_actions","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}' \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/youtube-playlist-sync-fixed"
+
+      - name: Check New Videos
         run: |
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
             -d '{"triggered_by":"github_actions","timestamp":"'$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)'"}' \
-            "${{ secrets.SUPABASE_URL }}/functions/v1/youtube-sync-cron"
+            "${{ secrets.SUPABASE_URL }}/functions/v1/youtube-check-new-videos-fixed"
 
       - name: Log sync completion
         run: echo "YouTube sync job completed at $(date)"

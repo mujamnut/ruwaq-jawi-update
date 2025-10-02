@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/providers/connectivity_provider.dart';
+import '../../../core/services/network_service.dart';
 import '../widgets/admin_app_bar.dart';
 import '../widgets/youtube_sync_loading_dialog.dart';
 import '../widgets/youtube_preview_dialog.dart';
@@ -601,14 +603,15 @@ class _AdminYouTubeAutoFormScreenState
 
   Future<bool> _checkNetworkConnectivity() async {
     try {
-      final connectivityResults = await Connectivity().checkConnectivity();
+      // Use centralized connectivity provider
+      final connectivity = context.read<ConnectivityProvider>();
+      await connectivity.refreshConnectivity();
 
-      if (connectivityResults.contains(ConnectivityResult.none) ||
-          connectivityResults.isEmpty) {
+      if (connectivity.isOffline) {
         return false;
       }
 
-      // Additional DNS check
+      // Additional DNS check to verify actual internet access
       final result = await InternetAddress.lookup('supabase.co');
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (e) {

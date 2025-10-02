@@ -2,282 +2,249 @@ import 'package:flutter/foundation.dart';
 
 import '../models/ebook.dart';
 import '../models/kitab.dart';
-import '../models/saved_item.dart';
-import '../services/local_saved_items_service.dart';
-import '../utils/auth_utils.dart';
-import '../utils/database_utils.dart';
-import '../utils/provider_utils.dart';
+import '../models/video_episode.dart';
+import '../services/supabase_saved_items_service.dart';
+import '../services/supabase_favorites_service.dart';
 
-class SavedItemsProvider extends BaseProvider {
-  List<SavedItem> _savedItems = [];
+/// Provider untuk manage saved items (favorites) - SUPABASE ONLY
+/// Guna interaction tables:
+/// - ebook_user_interactions
+/// - video_kitab_user_interactions
+/// - video_episode_user_interactions
+class SavedItemsProvider extends ChangeNotifier {
   List<Kitab> _savedKitab = [];
   List<Ebook> _savedEbooks = [];
+  List<VideoEpisode> _savedEpisodes = [];
 
-  List<SavedItem> get savedItems => _savedItems;
+  bool _isLoading = false;
+  String? _error;
+
   List<Kitab> get savedKitab => _savedKitab;
   List<Ebook> get savedEbooks => _savedEbooks;
-  String? get error => errorMessage;
+  List<VideoEpisode> get savedEpisodes => _savedEpisodes;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
-  /// Add kitab to local storage
-  Future<bool> addKitabToLocal(Kitab kitab) async {
-    return await _executeWithErrorHandling(() async {
-      await LocalSavedItemsService.saveKitab(kitab);
-      await _loadFromLocalStorage();
+  /// Load all saved items from Supabase interaction tables
+  Future<void> loadSavedItems() async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final results = await Future.wait([
+        SupabaseSavedItemsService.getSavedKitabs(),
+        SupabaseSavedItemsService.getSavedEpisodes(),
+        SupabaseSavedItemsService.getSavedEbooks(),
+      ]);
+
+      _savedKitab = results[0] as List<Kitab>;
+      _savedEpisodes = results[1] as List<VideoEpisode>;
+      _savedEbooks = results[2] as List<Ebook>;
+
+      debugPrint('✅ Loaded saved items: ${_savedKitab.length} kitabs, ${_savedEpisodes.length} episodes, ${_savedEbooks.length} ebooks');
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ Error loading saved items: $e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // ==================== KITAB METHODS ====================
+
+  /// Check if kitab is saved
+  bool isKitabSaved(String kitabId) {
+    return _savedKitab.any((k) => k.id == kitabId);
+  }
+
+  /// Check if kitab saved (async version untuk compatibility)
+  Future<bool> isSaved(String kitabId) async {
+    return isKitabSaved(kitabId);
+  }
+
+  /// Toggle kitab saved status
+  Future<bool> toggleKitabSaved(Kitab kitab) async {
+    try {
+      final isSaved = isKitabSaved(kitab.id);
+
+      if (isSaved) {
+        // Unsave
+        await SupabaseFavoritesService.unsaveVideoKitab(kitab.id);
+        _savedKitab.removeWhere((k) => k.id == kitab.id);
+        debugPrint('✅ Video kitab unsaved: ${kitab.id}');
+      } else {
+        // Save
+        await SupabaseFavoritesService.saveVideoKitab(kitab.id);
+        _savedKitab.insert(0, kitab);
+        debugPrint('✅ Video kitab saved: ${kitab.id}');
+      }
+
+      notifyListeners();
       return true;
-    }) ?? false;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ Error toggling kitab saved: $e');
+      notifyListeners();
+      return false;
+    }
   }
 
-  Future<bool> removeKitabFromLocal(String kitabId) async {
-    return await _executeWithErrorHandling(() async {
-      await LocalSavedItemsService.removeKitab(kitabId);
-      await _loadFromLocalStorage();
+  /// Add kitab to saved (untuk compatibility)
+  Future<bool> addToSaved(String kitabId, {String folderName = 'Default'}) async {
+    try {
+      await SupabaseFavoritesService.saveVideoKitab(kitabId);
+      await loadSavedItems();
       return true;
-    }) ?? false;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ Error adding kitab to saved: $e');
+      return false;
+    }
   }
 
-  Future<bool> isKitabSaved(String kitabId) async {
-    return await LocalSavedItemsService.isKitabSaved(kitabId);
-  }
-
-  /// Add ebook to local storage
-  Future<bool> addEbookToLocal(Ebook ebook) async {
-    return await _executeWithErrorHandling(() async {
-      await LocalSavedItemsService.saveEbook(ebook.toJson());
-      await _loadFromLocalStorage();
+  /// Remove kitab from saved (untuk compatibility)
+  Future<bool> removeFromSaved(String kitabId) async {
+    try {
+      await SupabaseFavoritesService.unsaveVideoKitab(kitabId);
+      _savedKitab.removeWhere((k) => k.id == kitabId);
+      notifyListeners();
       return true;
-    }) ?? false;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ Error removing kitab from saved: $e');
+      return false;
+    }
   }
 
-  /// Remove ebook from local storage
-  Future<bool> removeEbookFromLocal(String ebookId) async {
-    return await _executeWithErrorHandling(() async {
-      await LocalSavedItemsService.removeEbook(ebookId);
-      await _loadFromLocalStorage();
+  // ==================== EBOOK METHODS ====================
+
+  /// Check if ebook is saved
+  bool isEbookSaved(String ebookId) {
+    return _savedEbooks.any((e) => e.id == ebookId);
+  }
+
+  /// Toggle ebook saved status
+  Future<bool> toggleEbookSaved(Ebook ebook) async {
+    try {
+      final isSaved = isEbookSaved(ebook.id);
+
+      if (isSaved) {
+        // Unsave
+        await SupabaseFavoritesService.unsaveEbook(ebook.id);
+        _savedEbooks.removeWhere((e) => e.id == ebook.id);
+        debugPrint('✅ Ebook unsaved: ${ebook.id}');
+      } else {
+        // Save
+        await SupabaseFavoritesService.saveEbook(ebook.id);
+        _savedEbooks.insert(0, ebook);
+        debugPrint('✅ Ebook saved: ${ebook.id}');
+      }
+
+      notifyListeners();
       return true;
-    }) ?? false;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ Error toggling ebook saved: $e');
+      notifyListeners();
+      return false;
+    }
   }
 
-  Future<bool> isEbookSaved(String ebookId) async {
-    return await LocalSavedItemsService.isEbookSaved(ebookId);
-  }
+  // ==================== EPISODE METHODS ====================
 
-  // Episode methods
+  /// Check if episode is saved
   bool isEpisodeSaved(String episodeId) {
-    return _savedItems.any(
-      (item) => item.itemType == 'video' && item.videoId == episodeId,
-    );
+    return _savedEpisodes.any((e) => e.id == episodeId);
   }
 
-  Future<bool> addEpisodeToLocal(dynamic episode) async {
-    try {
-      await LocalSavedItemsService.saveVideo({
-        'kitabId': episode.videoKitabId,
-        'episodeId': episode.id,
-        'title': episode.title,
-        'url': episode.youtubeWatchUrl,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
-
-      await loadSavedItems();
-      return true;
-    } catch (e) {
-      setError('Error saving episode locally: $e');
-      return false;
-    }
-  }
-
-  Future<bool> removeEpisodeFromLocal(String episodeId) async {
-    try {
-      // Find the episode first to get kitabId
-      final episode = _savedItems.firstWhere(
-        (item) => item.itemType == 'video' && item.videoId == episodeId,
-        orElse: () => SavedItem(
-          id: '',
-          userId: '',
-          kitabId: '',
-          folderName: 'default',
-          itemType: 'video',
-          videoId: episodeId,
-          createdAt: DateTime.now(),
-        ),
-      );
-
-      await LocalSavedItemsService.removeVideo(
-        episode.kitabId ?? '',
-        episodeId,
-      );
-      await loadSavedItems();
-      return true;
-    } catch (e) {
-      setError('Error removing episode locally: $e');
-      return false;
-    }
-  }
-
-  // Video methods untuk compatibility dengan save_video_button
+  /// Check if video saved (untuk compatibility)
   bool isVideoSaved(String videoId) {
-    return _savedItems.any(
-      (item) => item.itemType == 'video' && item.videoId == videoId,
-    );
+    return isEpisodeSaved(videoId);
   }
 
+  /// Toggle episode saved status
+  Future<bool> toggleEpisodeSaved(VideoEpisode episode) async {
+    try {
+      final isSaved = isEpisodeSaved(episode.id);
+
+      if (isSaved) {
+        // Unsave
+        await SupabaseFavoritesService.unsaveVideoEpisode(episode.id);
+        _savedEpisodes.removeWhere((e) => e.id == episode.id);
+        debugPrint('✅ Episode unsaved: ${episode.id}');
+      } else {
+        // Save
+        await SupabaseFavoritesService.saveVideoEpisode(episode.id);
+        _savedEpisodes.insert(0, episode);
+        debugPrint('✅ Episode saved: ${episode.id}');
+      }
+
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('❌ Error toggling episode saved: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Add video to saved (untuk compatibility dengan save_video_button)
   Future<bool> addVideoToSaved(
     String videoId,
     String videoTitle,
     String? videoUrl,
   ) async {
     try {
-      // Save to local storage only
-      await LocalSavedItemsService.saveVideo({
-        'kitabId': videoId,
-        'episodeId': videoId,
-        'title': videoTitle,
-        'url': videoUrl,
-        'createdAt': DateTime.now().toIso8601String(),
-      });
-
-      print('Video saved to local storage: $videoTitle');
+      await SupabaseFavoritesService.saveVideoEpisode(videoId);
       await loadSavedItems();
+      debugPrint('✅ Video saved: $videoTitle');
       return true;
     } catch (e) {
-      print('Error adding video to saved: $e');
+      _error = e.toString();
+      debugPrint('❌ Error adding video to saved: $e');
       return false;
     }
   }
 
+  /// Remove video from saved (untuk compatibility)
   Future<bool> removeVideoFromSaved(String videoId) async {
     try {
-      // Remove from local storage only
-      await LocalSavedItemsService.removeVideo(videoId, videoId);
-
-      print('Video removed from local storage: $videoId');
-      await loadSavedItems();
+      await SupabaseFavoritesService.unsaveVideoEpisode(videoId);
+      _savedEpisodes.removeWhere((e) => e.id == videoId);
+      notifyListeners();
+      debugPrint('✅ Video removed from saved: $videoId');
       return true;
     } catch (e) {
-      print('Error removing video from saved: $e');
+      _error = e.toString();
+      debugPrint('❌ Error removing video from saved: $e');
       return false;
     }
   }
 
-  Future<void> loadSavedItems() async {
-    await withLoading(() async {
-      await _loadFromLocalStorage();
-      if (kDebugMode) {
-        print('Loaded ${_savedKitab.length} kitab and ${_savedEbooks.length} ebooks from local storage');
-      }
-    });
+  // ==================== UTILITY METHODS ====================
+
+  /// Clear error message
+  void clearError() {
+    _error = null;
+    notifyListeners();
   }
 
-  Future<void> _loadFromLocalStorage() async {
-    final savedKitab = await LocalSavedItemsService.getSavedKitab();
-    _savedKitab = savedKitab;
-
-    // Load saved ebooks
-    final savedEbooksData = await LocalSavedItemsService.getSavedEbooks();
-    _savedEbooks = savedEbooksData
-        .map((ebookData) => Ebook.fromJson(ebookData))
-        .toList();
-  }
-
-  Future<void> _loadFromSupabase() async {
-    return await AuthUtils.withRequiredUserAsync((user) async {
-      final response = await DatabaseUtils.getUserRecords(
-        'saved_items',
-        select: '''
-          *,
-          kitab:kitab_id (
-            *,
-            categories:category_id (
-              id,
-              name,
-              description
-            )
-          )
-        ''',
-      );
-
-      _savedItems = response.map((item) => SavedItem.fromJson(item)).toList();
-      _savedKitab = response
-          .where((item) => item['kitab'] != null)
-          .map((item) => Kitab.fromJson(item['kitab']))
-          .toList();
-
-      // Save to local storage for offline access
-      for (final kitab in _savedKitab) {
-        await LocalSavedItemsService.saveKitab(kitab);
-      }
-    });
-  }
-
-  Future<bool> addToSaved(
-    String kitabId, {
-    String folderName = 'Default',
-  }) async {
-    return await _executeWithErrorHandling(() async {
-      return await AuthUtils.withRequiredUserAsync((user) async {
-        await DatabaseUtils.insert('saved_items', {
-          'user_id': user.id,
-          'kitab_id': kitabId,
-          'folder_name': folderName,
-          'item_type': 'kitab',
-        });
-
-        await loadSavedItems();
-        return true;
-      });
-    }) ?? false;
-  }
-
-  Future<bool> removeFromSaved(String kitabId) async {
-    return await _executeWithErrorHandling(() async {
-      // Remove from local storage
-      await LocalSavedItemsService.removeKitab(kitabId);
-
-      // Try to remove from Supabase if possible
-      await AuthUtils.withUserAsync((user) async {
-        await DatabaseUtils.getAll(
-          'saved_items',
-          filters: {'user_id': user.id, 'kitab_id': kitabId},
-        ).then((items) async {
-          for (final item in items) {
-            await DatabaseUtils.delete('saved_items', item['id']);
-          }
-        });
-      });
-
-      await _loadFromLocalStorage();
-      return true;
-    }) ?? false;
-  }
-
-  bool isSaved(String kitabId) {
-    return _savedItems.any((item) => item.kitabId == kitabId);
-  }
-
-  @override
+  /// Refresh saved items
   Future<void> refresh() async {
     clearError();
     await loadSavedItems();
   }
 
-  /// Helper method for executing operations with error handling
-  Future<T?> _executeWithErrorHandling<T>(Future<T> Function() callback) async {
-    try {
-      return await callback();
-    } catch (e) {
-      setError('Error: $e');
-      if (kDebugMode) {
-        print('SavedItemsProvider error: $e');
-      }
-      return null;
-    }
-  }
-
-  @override
+  /// Clear all data
   void clear() {
-    super.clear();
-    _savedItems.clear();
     _savedKitab.clear();
     _savedEbooks.clear();
+    _savedEpisodes.clear();
+    _error = null;
+    _isLoading = false;
+    notifyListeners();
   }
 }

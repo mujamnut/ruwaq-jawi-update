@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 
 class OfflineBanner extends StatelessWidget {
   final Widget child;
-  
+
   const OfflineBanner({super.key, required this.child});
 
   @override
@@ -14,68 +14,73 @@ class OfflineBanner extends StatelessWidget {
       builder: (context, connectivity, _) {
         return Column(
           children: [
-            // Show banner when offline
-            if (connectivity.isOffline)
-              Container(
-                width: double.infinity,
-                color: AppTheme.errorColor,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: SafeArea(
-                  bottom: false,
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.cloud_off,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Tiada sambungan internet',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () async {
-                          await connectivity.refreshConnectivity();
-                          if (!context.mounted) return;
-                          
-                          if (connectivity.isOnline) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Row(
-                                  children: [
-                                    Icon(Icons.check_circle, color: Colors.white, size: 16),
-                                    const SizedBox(width: 8),
-                                    Text('Sambungan internet dipulihkan'),
-                                  ],
-                                ),
-                                backgroundColor: AppTheme.successColor,
-                                duration: const Duration(seconds: 2),
-                                behavior: SnackBarBehavior.floating,
+            // Animated banner - smooth slide down/up transition
+            AnimatedSize(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              child: connectivity.isOffline
+                  ? Container(
+                        width: double.infinity,
+                        color: AppTheme.errorColor,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: SafeArea(
+                          bottom: false,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.cloud_off,
+                                color: Colors.white,
+                                size: 16,
                               ),
-                            );
-                          }
-                        },
-                        child: Text(
-                          'Cuba Lagi',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Tiada sambungan internet',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () async {
+                                  await connectivity.refreshConnectivity();
+                                  if (!context.mounted) return;
+
+                                  if (connectivity.isOnline) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Row(
+                                          children: [
+                                            Icon(Icons.check_circle, color: Colors.white, size: 16),
+                                            SizedBox(width: 8),
+                                            Text('Sambungan internet dipulihkan'),
+                                          ],
+                                        ),
+                                        backgroundColor: AppTheme.successColor,
+                                        duration: const Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: const Text(
+                                  'Cuba Lagi',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            
+                      )
+                  : const SizedBox.shrink(),
+            ),
+
             // Main content
             Expanded(child: child),
           ],

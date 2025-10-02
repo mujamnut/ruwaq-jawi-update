@@ -136,7 +136,12 @@ class BackgroundPaymentService {
       // 1. Insert payment success notification to database
       final billId = payment['bill_id']?.toString() ?? 'Unknown';
       final planId = payment['plan_id']?.toString() ?? 'Unknown';
-      final amount = payment['amount']?.toString() ?? '0';
+      final amountRaw = payment['amount'];
+
+      // Format amount with 2 decimal places
+      final amount = (amountRaw is num)
+          ? amountRaw.toStringAsFixed(2)
+          : (double.tryParse(amountRaw?.toString() ?? '0') ?? 0.0).toStringAsFixed(2);
 
       // Get current user ID
       final currentUser = EnhancedNotificationService.currentUserId;

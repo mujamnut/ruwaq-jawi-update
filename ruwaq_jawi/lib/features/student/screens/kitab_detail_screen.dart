@@ -6,15 +6,15 @@ import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/connectivity_provider.dart';
 import '../../../core/services/local_favorites_service.dart';
+import '../../../core/services/network_service.dart';
 import '../../../core/models/video_kitab.dart';
 import '../../../core/models/video_episode.dart';
 import '../../../core/utils/youtube_utils.dart';
-import '../../../core/widgets/offline_banner.dart';
 import '../../../core/services/preview_service.dart';
 import '../../../core/models/preview_models.dart';
 
@@ -1368,9 +1368,10 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
   }
 
   void _startReading() async {
-    final hasInternet = await requiresInternet(
+    // Use centralized network check
+    final hasInternet = await NetworkService.requiresInternet(
       context,
-      message: 'error starting video. Please check your internet connection.',
+      message: 'Video memerlukan sambungan internet. Sila periksa sambungan anda.',
     );
 
     if (!hasInternet) return;
@@ -1410,9 +1411,10 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
   }
 
   void _playEpisode(VideoEpisode episode) async {
-    final hasInternet = await requiresInternet(
+    // Use centralized network check
+    final hasInternet = await NetworkService.requiresInternet(
       context,
-      message: 'error starting video. Please check your internet connection.',
+      message: 'Video memerlukan sambungan internet. Sila periksa sambungan anda.',
     );
 
     if (!hasInternet) return;
@@ -1668,14 +1670,13 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
 
   Future<void> _checkConnectivityAndInitialize() async {
     try {
-      final connectivityResult = await Connectivity().checkConnectivity();
-      final isConnected = connectivityResult.any(
-        (result) =>
-            result == ConnectivityResult.mobile ||
-            result == ConnectivityResult.wifi,
-      );
+      // Use centralized connectivity provider
+      final connectivity = context.read<ConnectivityProvider>();
+      await connectivity.refreshConnectivity();
 
       if (!mounted) return;
+
+      final isConnected = connectivity.isOnline;
 
       setState(() {
         _isOnline = isConnected;

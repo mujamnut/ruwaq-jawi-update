@@ -5,6 +5,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/student/screens/profile_screen.dart';
 import '../../features/student/screens/edit_profile_screen.dart';
+import '../../features/student/screens/notification_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/reset_password_screen.dart';
 import '../../features/auth/screens/email_verification_screen.dart';
@@ -15,7 +16,6 @@ import '../../features/student/screens/kitab_detail_screen.dart';
 import '../../features/student/screens/saved_items_screen.dart';
 import '../../features/student/screens/subscription_screen.dart';
 import '../../features/student/screens/subscription_detail_screen.dart';
-import '../../features/student/screens/video_player_screen.dart';
 import '../../features/student/screens/search_screen.dart';
 import '../../features/student/screens/content_player_screen.dart';
 import '../../features/student/screens/ebook_screen.dart';
@@ -294,6 +294,7 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final episodeId = state.uri.queryParameters['episode'];
+            // Use original - stable and working
             return ContentPlayerScreen(kitabId: kitabId, episodeId: episodeId);
           },
         ),
@@ -303,7 +304,8 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final episodeId = state.uri.queryParameters['episode'];
-            return VideoPlayerScreen(kitabId: kitabId, episodeId: episodeId);
+            // Use original - stable and working
+            return ContentPlayerScreen(kitabId: kitabId, episodeId: episodeId);
           },
         ),
         GoRoute(
@@ -354,6 +356,27 @@ class AppRouter {
           path: '/profile',
           name: 'profile',
           builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: '/notifications',
+          name: 'notifications',
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            child: const NotificationScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return SlideTransition(
+                position: animation.drive(
+                  Tween(
+                    begin: const Offset(1.0, 0.0),
+                    end: Offset.zero,
+                  ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                ),
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
         ),
         GoRoute(
           path: '/edit-profile',

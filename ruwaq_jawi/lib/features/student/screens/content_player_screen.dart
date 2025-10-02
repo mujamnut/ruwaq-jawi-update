@@ -1,31 +1,27 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-// Import extracted widgets
-import 'content_player_screen/widgets/pdf_tab_widget.dart';
-import 'content_player_screen/widgets/loading_error_screens.dart';
-import 'content_player_screen/widgets/content_player_appbar.dart';
-import 'content_player_screen/widgets/resume_banner_widget.dart';
-import 'content_player_screen/widgets/video_tab_content_widget.dart';
-import 'content_player_screen/widgets/youtube_player_config_widget.dart';
-import 'content_player_screen/widgets/normal_view_layout_widget.dart';
-import 'content_player_screen/widgets/content_player_scaffold_widget.dart';
-
-// Import extracted managers
-import 'content_player_screen/managers/video_controls_manager.dart';
-import 'content_player_screen/managers/data_loader_manager.dart';
-import 'content_player_screen/managers/pdf_manager.dart';
-import 'content_player_screen/managers/player_lifecycle_manager.dart';
-import 'content_player_screen/managers/animation_manager.dart';
-import 'content_player_screen/managers/favorites_manager.dart';
-
-// Import services
-import 'content_player_screen/services/notification_helper.dart';
-import 'content_player_screen/services/premium_dialog_helper.dart';
+// Import models
+import '../../../core/models/video_kitab.dart';
+import '../../../core/models/video_episode.dart';
 
 // Import providers
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/kitab_provider.dart';
+
+// Import theme
+import '../../../core/theme/app_theme.dart';
+
+// Import widgets
+import 'content_player_screen/widgets/episode_card_widget.dart';
+import 'content_player_screen/services/premium_dialog_helper.dart';
+
+// Import services
+import '../../../core/services/video_progress_service.dart';
 
 class ContentPlayerScreen extends StatefulWidget {
   final String kitabId;
@@ -43,23 +39,23 @@ class ContentPlayerScreen extends StatefulWidget {
   State<ContentPlayerScreen> createState() => _ContentPlayerScreenState();
 }
 
-class _ContentPlayerScreenState extends State<ContentPlayerScreen>
-    with TickerProviderStateMixin {
-  late TabController _tabController;
+class _ContentPlayerScreenState extends State<ContentPlayerScreen> {
+  VideoKitab? _kitab;
+  List<VideoEpisode> _episodes = [];
+  VideoEpisode? _currentEpisode;
+  bool _isLoading = true;
+  int _currentEpisodeIndex = 0;
 
-  // Progress tracking
-  int _currentPdfPage = 1;
-  int _totalPdfPages = 0;
+  // Video player state
+  YoutubePlayerController? _videoController;
+  bool _isFullscreen = false; // Track fullscreen state
+  bool _showControls = true;
+  Timer? _controlsTimer;
+  bool _showSkipAnimation = false;
+  bool _isSkipForward = false;
+  bool _isSkipOnLeftSide = false;
+  Timer? _skipAnimationTimer;
 
-  // Managers
-  late VideoControlsManager _videoControlsManager;
-  late DataLoaderManager _dataLoaderManager;
-  late PdfManager _pdfManager;
-  late PlayerLifecycleManager _lifecycleManager;
-  late AnimationManager _animationManager;
-  late FavoritesManager _favoritesManager;
-
-  // Premium user state
   bool get _isPremiumUser {
     final authProvider = context.read<AuthProvider>();
     return authProvider.hasActiveSubscription;
@@ -68,319 +64,923 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
 
-    // Initialize managers
-    _videoControlsManager = VideoControlsManager(
-      onStateChanged: () => setState(() {}),
-    );
-    _dataLoaderManager = DataLoaderManager(
-      onStateChanged: () => setState(() {}),
-      onShowNotification: (message) =>
-          NotificationHelper.showError(context, message),
-    );
-    _pdfManager = PdfManager(onStateChanged: () => setState(() {}));
-    _lifecycleManager = PlayerLifecycleManager(
-      onStateChanged: () => setState(() {}),
-    );
-    _animationManager = AnimationManager(onStateChanged: () => setState(() {}));
-    _favoritesManager = FavoritesManager(onStateChanged: () => setState(() {}));
+    // Allow all orientations for auto-rotation
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
 
-    // Initialize animations
-    _animationManager.initialize(this);
-
-    // Load real data
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
     });
-
-    // Start progress tracking timer
-    _lifecycleManager.initializeProgressTimer();
   }
 
   Future<void> _loadData() async {
-    await _dataLoaderManager.loadRealData(
-      context,
-      widget.kitabId,
-      widget.episodeId,
-    );
+    try {
+      final kitabProvider = context.read<KitabProvider>();
+      final videoKitabList = kitabProvider.activeVideoKitab;
 
-    // Check save status after episode is loaded
-    _favoritesManager.checkSaveStatus(
-      _dataLoaderManager.currentEpisode,
-      _dataLoaderManager.kitab?.id,
-    );
-
-    // Check PDF cache
-    await _pdfManager.checkPdfCache(_dataLoaderManager.kitab);
-
-    if (mounted) {
-      // Start animations
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          _animationManager.startAnimations();
-        }
-      });
-    }
-  }
-
-  Widget _buildResumeBanner(int seconds) {
-    return ResumeBannerWidget(
-      seconds: seconds,
-      onResume: () => _resumeFromBookmark(seconds),
-    );
-  }
-
-  void _resumeFromBookmark(int seconds) {
-    if (_dataLoaderManager.videoController == null) return;
-    if (_tabController.index != 0) {
-      _tabController.animateTo(0);
-    }
-    _dataLoaderManager.videoController!.seekTo(Duration(seconds: seconds));
-    NotificationHelper.showVideoResumeSuccess(context, seconds);
-  }
-
-  void _onVideoEnded(YoutubeMetaData metaData) {
-    debugPrint(
-      '🎬 Video ended. Current episode index: ${_dataLoaderManager.currentEpisodeIndex}',
-    );
-    debugPrint(
-      '🎬 Current episode part: ${_dataLoaderManager.currentEpisode?.partNumber}',
-    );
-    debugPrint('🎬 Total episodes: ${_dataLoaderManager.episodes.length}');
-    debugPrint(
-      '🎬 Next episode index would be: ${_dataLoaderManager.currentEpisodeIndex + 1}',
-    );
-
-    if (_dataLoaderManager.currentEpisodeIndex + 1 <
-        _dataLoaderManager.episodes.length) {
-      debugPrint(
-        '🎬 Next episode part: ${_dataLoaderManager.episodes[_dataLoaderManager.currentEpisodeIndex + 1].partNumber}',
-      );
-    }
-
-    if (mounted &&
-        _dataLoaderManager.currentEpisodeIndex <
-            _dataLoaderManager.episodes.length - 1) {
-      // Check if next episode is premium and user doesn't have subscription
-      final nextEpisodeIndex = _dataLoaderManager.currentEpisodeIndex + 1;
-      final nextEpisode = _dataLoaderManager.episodes[nextEpisodeIndex];
-
-      // Don't autoplay to premium episode if user is not subscribed
-      if (nextEpisode.isPremium && !_isPremiumUser) {
-        debugPrint('🎬 Next episode is premium. Stopping autoplay for free user.');
+      try {
+        _kitab = videoKitabList.firstWhere((vk) => vk.id == widget.kitabId);
+      } catch (e) {
+        debugPrint('VideoKitab not found: $e');
+        setState(() => _isLoading = false);
         return;
       }
 
+      // Load episodes
+      if (_kitab?.hasVideos == true) {
+        _episodes = await kitabProvider.loadKitabVideos(widget.kitabId);
+        _episodes.sort((a, b) => a.partNumber.compareTo(b.partNumber));
+
+        // Find current episode
+        if (widget.episodeId != null) {
+          final episodeIndex =
+              _episodes.indexWhere((ep) => ep.id == widget.episodeId);
+          if (episodeIndex != -1) {
+            _currentEpisodeIndex = episodeIndex;
+            _currentEpisode = _episodes[episodeIndex];
+          } else {
+            _currentEpisode = _episodes.isNotEmpty ? _episodes.first : null;
+            _currentEpisodeIndex = 0;
+          }
+        } else {
+          _currentEpisode = _episodes.isNotEmpty ? _episodes.first : null;
+          _currentEpisodeIndex = 0;
+        }
+
+        // Initialize video player for current episode
+        if (_currentEpisode != null) {
+          _initializePlayer(_currentEpisode!);
+        }
+      }
+
+      setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('Error loading data: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _initializePlayer(VideoEpisode episode) {
+    final videoId = episode.youtubeVideoId;
+
+    if (videoId.isEmpty) {
+      return;
+    }
+
+    // Dispose old controller
+    _videoController?.dispose();
+
+    _videoController = YoutubePlayerController(
+      initialVideoId: videoId,
+      flags: const YoutubePlayerFlags(
+        autoPlay: false,
+        mute: false,
+        enableCaption: true,
+        controlsVisibleAtStart: false,
+        hideControls: true,
+        disableDragSeek: true,
+        loop: false,
+        useHybridComposition: true,
+      ),
+    );
+
+    _videoController!.addListener(_onPlayerStateChange);
+
+    // Restore saved position
+    final savedPosition = VideoProgressService.getVideoPosition(episode.id);
+    if (savedPosition > 10) {
       Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          debugPrint('🎬 Switching to next episode...');
-          _dataLoaderManager.switchToEpisode(nextEpisodeIndex);
-          _favoritesManager.checkSaveStatus(
-            _dataLoaderManager.currentEpisode,
-            _dataLoaderManager.kitab?.id,
-          );
+        if (_videoController != null && mounted) {
+          _videoController!.seekTo(Duration(seconds: savedPosition));
         }
       });
     }
   }
 
-  void _onVideoReady() {
-    if (mounted) {
-      setState(() {});
-      if (_dataLoaderManager.videoController?.value.isPlaying == true &&
-          _videoControlsManager.showControls) {
-        _videoControlsManager.startControlsTimer();
+  void _onPlayerStateChange() {
+    if (!mounted) return;
+
+    if (_videoController != null && _videoController!.value.isReady && _currentEpisode != null) {
+      final position = _videoController!.value.position.inSeconds;
+      final duration = _videoController!.metadata.duration.inSeconds;
+
+      VideoProgressService.saveVideoPosition(_currentEpisode!.id, position);
+
+      // Check if video ended
+      if (position > 0 && duration > 0 && (duration - position) < 2) {
+        _onVideoEnded();
       }
     }
   }
 
-  Future<void> _toggleSaved() async {
-    final success = await _favoritesManager.toggleSaved(
-      _dataLoaderManager.currentEpisode,
-      _dataLoaderManager.kitab?.id,
-    );
-
-    if (mounted) {
-      if (success) {
-        NotificationHelper.showSaveVideoSuccess(
-          context,
-          _favoritesManager.isSaved,
-        );
-      } else {
-        NotificationHelper.showSaveVideoError(context);
+  void _onVideoEnded() {
+    // Auto play next episode if available
+    if (_currentEpisodeIndex + 1 < _episodes.length) {
+      final nextEpisode = _episodes[_currentEpisodeIndex + 1];
+      // Check if next episode is premium
+      if (!nextEpisode.isPremium || _isPremiumUser) {
+        _switchToEpisode(_currentEpisodeIndex + 1);
       }
     }
+  }
+
+  // Toggle fullscreen by changing orientation
+  // OrientationBuilder will detect and switch layouts automatically
+  Future<void> _toggleFullscreen() async {
+    if (_videoController == null || !mounted) return;
+
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+      // Always show controls when entering/exiting fullscreen
+      _showControls = true;
+    });
+
+    // Cancel any auto-hide timer
+    _controlsTimer?.cancel();
+
+    if (_isFullscreen) {
+      // Enter fullscreen - hide UI and force landscape
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
+      // Start auto-hide timer for fullscreen
+      _startControlsTimer();
+    } else {
+      // Exit fullscreen - show UI and allow portrait
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+  }
+
+
+  void _startControlsTimer() {
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _showControls = false;
+        });
+      }
+    });
+  }
+
+  void _showSkipFeedback(bool isBackward, int seconds, bool isLeftSide) {
+    setState(() {
+      _showSkipAnimation = true;
+      _isSkipForward = !isBackward;
+      _isSkipOnLeftSide = isLeftSide;
+    });
+
+    _skipAnimationTimer?.cancel();
+    _skipAnimationTimer = Timer(const Duration(milliseconds: 800), () {
+      if (mounted) {
+        setState(() {
+          _showSkipAnimation = false;
+        });
+      }
+    });
+  }
+
+  void _handleDoubleTap(TapDownDetails details) {
+    if (_videoController == null) return;
+
+    final size = MediaQuery.of(context).size;
+    final position = details.localPosition;
+    final isLeftSide = position.dx < size.width / 2;
+    final skipSeconds = isLeftSide ? -10 : 10;
+
+    try {
+      final currentPosition = _videoController!.value.position.inSeconds;
+      final videoDuration = _videoController!.metadata.duration.inSeconds;
+      final newPosition = (currentPosition + skipSeconds).clamp(0, videoDuration);
+
+      _videoController!.seekTo(Duration(seconds: newPosition.toInt()));
+      _showSkipFeedback(isLeftSide, skipSeconds.abs(), isLeftSide);
+
+      if (_videoController!.value.isPlaying) {
+        _startControlsTimer();
+      }
+    } catch (e) {
+      debugPrint('Error in double tap seek: $e');
+    }
+  }
+
+  void _switchToEpisode(int index) {
+    if (index < 0 || index >= _episodes.length) return;
+
+    setState(() {
+      _currentEpisodeIndex = index;
+      _currentEpisode = _episodes[index];
+    });
+
+    _initializePlayer(_currentEpisode!);
   }
 
   @override
   void dispose() {
-    _videoControlsManager.dispose();
-    _dataLoaderManager.dispose();
-    _lifecycleManager.dispose(_dataLoaderManager.videoController);
-    _animationManager.dispose();
-    _tabController.dispose();
+    _controlsTimer?.cancel();
+    _skipAnimationTimer?.cancel();
+    _videoController?.dispose();
+
+    // Reset to portrait and restore system UI
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+
     super.dispose();
   }
 
   @override
-  void deactivate() {
-    _lifecycleManager.deactivate(_dataLoaderManager.videoController);
-    super.deactivate();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Show loading screen while data is loading
-    if (_dataLoaderManager.isDataLoading) {
-      return LoadingErrorScreens.buildLoadingScreen(context);
-    }
-
-    // Show error if kitab not found
-    if (_dataLoaderManager.kitab == null) {
-      return LoadingErrorScreens.buildKitabNotFoundScreen(
-        context,
-        _buildAppBar(),
-      );
-    }
-
-    // Build main content with YouTube player
-    if (_dataLoaderManager.videoController == null) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _buildAppBar(),
-        body: PopScope(
-          onPopInvokedWithResult: (didPop, result) async {
-            if (didPop) {
-              await _lifecycleManager.onWillPop(
-                context,
-                _dataLoaderManager.videoController,
-              );
+    return YoutubePlayerBuilder(
+      player: YoutubePlayer(
+        controller: _videoController ?? YoutubePlayerController(
+          initialVideoId: 'dQw4w9WgXcQ', // Dummy - won't be used
+          flags: const YoutubePlayerFlags(autoPlay: false),
+        ),
+        showVideoProgressIndicator: false,
+        onReady: () {
+          if (mounted) setState(() {});
+        },
+      ),
+      builder: (context, player) {
+        // OrientationBuilder to switch between fullscreen and normal layouts
+        // SAME player widget used in both layouts - NO REBUILD!
+        return OrientationBuilder(
+          builder: (context, orientation) {
+            // Choose layout based on FULLSCREEN STATE (not orientation)
+            // _isFullscreen is the source of truth, controlled by _toggleFullscreen()
+            if (_isFullscreen) {
+              return _buildLandscapeFullscreen(player);
+            } else {
+              return _buildPortraitNormal(player);
             }
           },
-          child: _buildNormalView(null),
-        ),
-      );
-    }
-
-    return YoutubePlayerConfigWidget(
-      controller: _dataLoaderManager.videoController!,
-      onReady: _onVideoReady,
-      onEnded: _onVideoEnded,
-      builder: (context, player) {
-        // Use our custom fullscreen state (not YouTube's native)
-        return ContentPlayerScaffoldWidget(
-          isFullscreen: _videoControlsManager.isFullscreen,
-          appBar: _buildAppBar(),
-          normalView: _buildNormalView(player),
-          player: player,
-          videoController: _dataLoaderManager.videoController,
-          showControls: _videoControlsManager.showControls,
-          showSkipAnimation: _videoControlsManager.showSkipAnimation,
-          isSkipForward: _videoControlsManager.isSkipForward,
-          isSkipOnLeftSide: _videoControlsManager.isSkipOnLeftSide,
-          onToggleControls: _videoControlsManager.toggleControls,
-          onStartControlsTimer: _videoControlsManager.startControlsTimer,
-          onShowSkipFeedback: _videoControlsManager.showSkipFeedback,
-          onToggleFullscreen: _videoControlsManager.toggleFullscreen,
-          onWillPop: () => _lifecycleManager.onWillPop(
-            context,
-            _dataLoaderManager.videoController,
-          ),
         );
       },
+    );
+  }
+
+  // Landscape fullscreen layout
+  Widget _buildLandscapeFullscreen(Widget player) {
+    return PopScope(
+      canPop: !_isFullscreen,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (!didPop && _isFullscreen) {
+          // Exit fullscreen instead of popping route
+          await _toggleFullscreen();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: _videoController == null
+            ? const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              )
+            : _buildFullscreenPlayerLayout(player),
+      ),
+    );
+  }
+
+  // Portrait normal view layout
+  Widget _buildPortraitNormal(Widget player) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: _buildAppBar(),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            )
+          : _kitab == null
+              ? _buildErrorView()
+              : _buildContent(player),
     );
   }
 
   PreferredSizeWidget _buildAppBar() {
-    return ContentPlayerAppBar(
-      kitab: _dataLoaderManager.kitab,
-      isSaved: _favoritesManager.isSaved,
-      isSaveLoading: _favoritesManager.isSaveLoading,
-      onToggleSaved: _toggleSaved,
+    return AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: PhosphorIcon(
+          PhosphorIcons.arrowLeft(),
+          color: AppTheme.textPrimaryColor,
+        ),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      title: Text(
+        _kitab?.title ?? 'Kitab',
+        style: const TextStyle(
+          color: AppTheme.textPrimaryColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
-  Widget _buildNormalView(Widget? player) {
-    return NormalViewLayoutWidget(
-      player: player,
-      hidePlayer: _lifecycleManager.hidePlayer,
-      videoController: _dataLoaderManager.videoController,
-      isVideoLoading: _dataLoaderManager.isVideoLoading,
-      currentEpisode: _dataLoaderManager.currentEpisode,
-      tabController: _tabController,
-      showControls: _videoControlsManager.showControls,
-      showSkipAnimation: _videoControlsManager.showSkipAnimation,
-      isSkipForward: _videoControlsManager.isSkipForward,
-      isSkipOnLeftSide: _videoControlsManager.isSkipOnLeftSide,
-      isFullscreen: _videoControlsManager.isFullscreen,
-      onToggleControls: _videoControlsManager.toggleControls,
-      onStartControlsTimer: _videoControlsManager.startControlsTimer,
-      onShowSkipFeedback: _videoControlsManager.showSkipFeedback,
-      buildResumeBanner: _buildResumeBanner,
-      onToggleFullscreen: _videoControlsManager.toggleFullscreen,
-      fadeAnimation: _animationManager.fadeAnimation,
-      slideAnimation: _animationManager.slideAnimation,
-      videoTabContent: _buildVideoTabContent(),
-      pdfTabContent: _buildPdfTabWidget(),
+  Widget _buildErrorView() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          PhosphorIcon(
+            PhosphorIcons.warning(),
+            size: 48,
+            color: AppTheme.textSecondaryColor,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Kitab tidak dijumpai',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildVideoTabContent() {
-    return VideoTabContentWidget(
-      isDataLoading: _dataLoaderManager.isDataLoading,
-      kitab: _dataLoaderManager.kitab,
-      currentEpisode: _dataLoaderManager.currentEpisode,
-      episodes: _dataLoaderManager.episodes,
-      currentEpisodeIndex: _dataLoaderManager.currentEpisodeIndex,
-      isPremiumUser: _isPremiumUser,
-      isVideoPlaying: (index) =>
-          index == _dataLoaderManager.currentEpisodeIndex &&
-          (_dataLoaderManager.videoController?.value.isPlaying ?? false),
-      onEpisodeTap: (index) {
-        // Check if tapping on a premium episode while being a free user
-        if (index < _dataLoaderManager.episodes.length) {
-          final tappedEpisode = _dataLoaderManager.episodes[index];
+  Widget _buildContent(Widget player) {
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Video Player Section (like YouTube)
+          if (_videoController != null && _currentEpisode != null)
+            _buildVideoPlayerLayout(player),
 
-          if (tappedEpisode.isPremium && !_isPremiumUser) {
-            // Show premium dialog instead of switching
-            PremiumDialogHelper.showPremiumDialog(context);
-            return;
-          }
-        }
+          // Content Section (scrollable)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title and Description
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        _currentEpisode?.title ?? _kitab?.title ?? 'Kitab',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                      ),
 
-        // Safe to switch - either free episode or user has subscription
-        _dataLoaderManager.switchToEpisode(index);
-        _favoritesManager.checkSaveStatus(
-          _dataLoaderManager.currentEpisode,
-          _dataLoaderManager.kitab?.id,
-        );
-      },
+                      // Author
+                      if (_kitab?.author != null) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            PhosphorIcon(
+                              PhosphorIcons.user(),
+                              size: 16,
+                              color: AppTheme.primaryColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              _kitab?.author ?? 'Unknown Author',
+                              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: AppTheme.primaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      // Description
+                      if (_kitab?.description?.isNotEmpty == true) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          'Tentang',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _kitab?.description ?? 'No description available',
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.textSecondaryColor,
+                                height: 1.5,
+                              ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Episodes Playlist
+                if (_episodes.isNotEmpty) _buildEpisodesSection(),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildPdfTabWidget() {
-    return PdfTabWidget(
-      kitab: _dataLoaderManager.kitab,
-      pdfController: _dataLoaderManager.pdfController,
-      currentPdfPage: _currentPdfPage,
-      totalPdfPages: _totalPdfPages,
-      cachedPdfPath: _pdfManager.cachedPdfPath,
-      isPdfDownloading: _pdfManager.isPdfDownloading,
-      downloadProgress: _pdfManager.downloadProgress,
-      onDownloadPdf: () =>
-          _pdfManager.downloadPdfIfNeeded(context, _dataLoaderManager.kitab),
-      onSetCachedPath: _pdfManager.setCachedPath,
-      onPageChanged: (pageNumber) {
-        setState(() {
-          _currentPdfPage = pageNumber;
-        });
-      },
-      onDocumentLoaded: (pageCount) {
-        setState(() {
-          _totalPdfPages = pageCount;
-        });
-      },
+  // Fullscreen player layout (landscape)
+  Widget _buildFullscreenPlayerLayout(Widget player) {
+    return SizedBox.expand(
+      child: Stack(
+        children: [
+          // Player fills entire screen
+          Positioned.fill(child: player),
+
+          // Skip animation feedback
+          if (_showSkipAnimation)
+            Positioned(
+              left: _isSkipOnLeftSide ? 40 : null,
+              right: !_isSkipOnLeftSide ? 40 : null,
+              top: MediaQuery.of(context).size.height / 2 - 50,
+              child: AnimatedOpacity(
+                opacity: _showSkipAnimation ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(
+                        _isSkipForward
+                            ? PhosphorIcons.fastForward(PhosphorIconsStyle.fill)
+                            : PhosphorIcons.rewind(PhosphorIconsStyle.fill),
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '10s',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Controls overlay with gesture detection
+          _buildControlsOverlay(),
+
+          // Gesture detector for showing controls when hidden
+          // Place AFTER controls so it doesn't block control buttons
+          if (!_showControls)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() {
+                    _showControls = true;
+                  });
+                  _startControlsTimer();
+                },
+                onDoubleTap: () {},
+                onDoubleTapDown: _handleDoubleTap,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+        ],
+      ),
     );
+  }
+
+  // Normal view player layout (portrait) - 16:9 aspect ratio
+  Widget _buildVideoPlayerLayout(Widget player) {
+    if (_videoController == null) {
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: Colors.black,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                PhosphorIcon(
+                  PhosphorIcons.videoCamera(),
+                  size: 48,
+                  color: Colors.white70,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Video tidak tersedia',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return AspectRatio(
+      aspectRatio: 16 / 9,
+      child: Stack(
+        children: [
+          // Player
+          Positioned.fill(child: player),
+
+          // Skip animation feedback
+          if (_showSkipAnimation)
+            Positioned(
+              left: _isSkipOnLeftSide ? 40 : null,
+              right: !_isSkipOnLeftSide ? 40 : null,
+              top: MediaQuery.of(context).size.height / 2 - 200,
+              child: AnimatedOpacity(
+                opacity: _showSkipAnimation ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 300),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(
+                        _isSkipForward
+                            ? PhosphorIcons.fastForward(PhosphorIconsStyle.fill)
+                            : PhosphorIcons.rewind(PhosphorIconsStyle.fill),
+                        color: Colors.white,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 8),
+                      const Text(
+                        '10s',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+          // Controls overlay with gesture detection
+          _buildControlsOverlay(),
+
+          // Gesture detector for showing controls when hidden
+          if (!_showControls)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () {
+                  setState(() {
+                    _showControls = true;
+                  });
+                  _startControlsTimer();
+                },
+                onDoubleTap: () {},
+                onDoubleTapDown: _handleDoubleTap,
+                child: Container(color: Colors.transparent),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildControlsOverlay() {
+    return Stack(
+      children: [
+        // Controls overlay
+        if (_showControls)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.3),
+              child: Stack(
+                children: [
+                  // Tap to hide controls (background layer)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: () {
+                        // Tap on overlay area (not on buttons) hides controls
+                        setState(() {
+                          _showControls = false;
+                          _controlsTimer?.cancel();
+                        });
+                      },
+                      child: Container(color: Colors.transparent),
+                    ),
+                  ),
+
+                  // Center Play/Pause (on top of gesture detector)
+                  Center(
+                    child: StreamBuilder<Duration>(
+                      stream: Stream.periodic(
+                        const Duration(milliseconds: 100),
+                        (_) => _videoController?.value.position ?? Duration.zero,
+                      ),
+                      builder: (context, snapshot) {
+                        final isPlaying = _videoController?.value.isPlaying ?? false;
+                        return GestureDetector(
+                          onTap: () {
+                            if (_videoController != null) {
+                              if (_videoController!.value.isPlaying) {
+                                _videoController!.pause();
+                              } else {
+                                _videoController!.play();
+                                _startControlsTimer();
+                              }
+                            }
+                          },
+                          child: Container(
+                            width: 64,
+                            height: 64,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isPlaying ? PhosphorIcons.pause() : PhosphorIcons.play(),
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+
+                  // Bottom Controls
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () {
+                        // Prevent tap from hiding controls when interacting with bottom controls
+                      },
+                      child: _buildBottomControls(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // Skip Animation
+        if (_showSkipAnimation)
+          Positioned(
+            left: _isSkipOnLeftSide ? 40 : null,
+            right: !_isSkipOnLeftSide ? 40 : null,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  shape: BoxShape.circle,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _isSkipForward ? Icons.fast_forward : Icons.fast_rewind,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      '10s',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildBottomControls() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.7),
+          ],
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Progress Bar
+          StreamBuilder<Duration>(
+            stream: Stream.periodic(
+              const Duration(milliseconds: 100),
+              (_) => _videoController?.value.position ?? Duration.zero,
+            ),
+            builder: (context, snapshot) {
+              final position = _videoController?.value.position ?? Duration.zero;
+              final duration = _videoController?.metadata.duration ?? Duration.zero;
+              final value = duration.inSeconds > 0 ? position.inSeconds / duration.inSeconds : 0.0;
+
+              return Column(
+                children: [
+                  SliderTheme(
+                    data: SliderThemeData(
+                      trackHeight: 3,
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                      overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                      activeTrackColor: AppTheme.primaryColor,
+                      inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
+                      thumbColor: AppTheme.primaryColor,
+                      overlayColor: AppTheme.primaryColor.withValues(alpha: 0.3),
+                    ),
+                    child: Slider(
+                      value: value.clamp(0.0, 1.0),
+                      onChanged: (newValue) {
+                        if (_videoController != null) {
+                          final newPosition = Duration(
+                            seconds: (newValue * duration.inSeconds).toInt(),
+                          );
+                          _videoController!.seekTo(newPosition);
+                        }
+                      },
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _formatDuration(position),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          _formatDuration(duration),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+
+          const SizedBox(height: 8),
+
+          // Fullscreen Button (toggles orientation)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              IconButton(
+                icon: PhosphorIcon(
+                  _isFullscreen
+                      ? PhosphorIcons.arrowsIn(PhosphorIconsStyle.bold)
+                      : PhosphorIcons.arrowsOut(PhosphorIconsStyle.bold),
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: _toggleFullscreen,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes.remainder(60);
+    final seconds = duration.inSeconds.remainder(60);
+
+    if (hours > 0) {
+      return '$hours:${twoDigits(minutes)}:${twoDigits(seconds)}';
+    }
+    return '${twoDigits(minutes)}:${twoDigits(seconds)}';
+  }
+
+  Widget _buildEpisodesSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              PhosphorIcon(
+                PhosphorIcons.listNumbers(),
+                size: 20,
+                color: AppTheme.primaryColor,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Senarai Episode',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${_episodes.length} episod',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ..._episodes.asMap().entries.map(
+                (entry) => _buildEpisodeCard(entry.value, entry.key),
+              ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeCard(VideoEpisode episode, int index) {
+    final isCurrentEpisode = index == _currentEpisodeIndex;
+    final isPlaying = isCurrentEpisode && (_videoController?.value.isPlaying ?? false);
+    final isPremium = episode.isPremium == true;
+    final isBlocked = isPremium && !_isPremiumUser;
+
+    return EpisodeCardWidget(
+      episode: episode,
+      index: index,
+      isCurrentEpisode: isCurrentEpisode,
+      isPlaying: isPlaying,
+      isPremium: isPremium,
+      isBlocked: isBlocked,
+      onEpisodeTap: () => _onEpisodeTap(index, episode),
+    );
+  }
+
+  void _onEpisodeTap(int index, VideoEpisode episode) {
+    if (episode.isPremium && !_isPremiumUser) {
+      PremiumDialogHelper.showPremiumDialog(context);
+      return;
+    }
+
+    // Switch to selected episode (player stays embedded)
+    _switchToEpisode(index);
   }
 }

@@ -6,9 +6,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/saved_items_provider.dart';
-import '../../../core/providers/bookmark_provider.dart';
 import '../../../core/models/kitab.dart';
-import '../../../core/services/local_saved_items_service.dart';
 
 class SavedItemsScreen extends StatefulWidget {
   const SavedItemsScreen({super.key});
@@ -65,15 +63,8 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        // Load real saved items from Supabase
         context.read<SavedItemsProvider>().loadSavedItems();
-        // Also load bookmarks so the Video tab (sourced from bookmarks) has data
-        final bm = context.read<BookmarkProvider>();
-        if (!bm.isLoading && bm.bookmarks.isEmpty) {
-          bm.loadBookmarks();
-        }
-
-        // Add test data for demonstration
-        _addTestData();
 
         // Start animations with delay
         Future.delayed(const Duration(milliseconds: 100), () {
@@ -92,51 +83,6 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
     _fadeAnimationController.dispose();
     _slideAnimationController.dispose();
     super.dispose();
-  }
-
-  void _addTestData() async {
-    try {
-      final provider = context.read<SavedItemsProvider>();
-
-      // Add sample kitab data untuk test
-      final sampleKitab = Kitab(
-        id: 'test_kitab_1',
-        title: 'Kitab Test Simpanan',
-        author: 'Penulis Test',
-        description: 'Ini adalah kitab test untuk local storage',
-        thumbnailUrl: '',
-        categoryId: 'test_category',
-        isActive: true,
-        isPremium: false,
-        sortOrder: 1,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      await provider.addKitabToLocal(sampleKitab);
-
-      // Add sample video data untuk test
-      await LocalSavedItemsService.saveVideo({
-        'kitabId': 'test_kitab_1',
-        'episodeId': 'test_episode_1',
-        'title': 'Video Test Simpanan',
-        'description': 'Video test untuk local storage',
-        'createdAt': DateTime.now().toIso8601String(),
-      });
-
-      debugPrint('Test data added successfully');
-    } catch (e) {
-      debugPrint('Error adding test data: $e');
-    }
-  }
-
-  Future<List<Map<String, dynamic>>> _loadLocalVideos() async {
-    try {
-      return await LocalSavedItemsService.getSavedVideos();
-    } catch (e) {
-      debugPrint('Error loading local videos: $e');
-      return [];
-    }
   }
 
   @override
@@ -228,73 +174,6 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
   }
 
   Widget _buildKitabAndVideoTab() {
-    return Consumer2<SavedItemsProvider, BookmarkProvider>(
-      builder: (context, savedItemsProvider, bookmarkProvider, child) {
-        final isLoading =
-            savedItemsProvider.isLoading || bookmarkProvider.isLoading;
-
-        if (isLoading) {
-          return Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-            ),
-          );
-        }
-
-        final savedKitabs = savedItemsProvider.savedKitab;
-        final videoBookmarks = bookmarkProvider.getBookmarksByType('video');
-
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: _loadLocalVideos(),
-          builder: (context, snapshot) {
-            final localVideos = snapshot.data ?? [];
-            final allVideos = [...videoBookmarks, ...localVideos];
-
-            final hasItems = savedKitabs.isNotEmpty || allVideos.isNotEmpty;
-
-            if (!hasItems) {
-              return _buildEmptyState(
-                'Tiada simpanan',
-                'Simpan kitab dan video kegemaran anda untuk akses mudah',
-              );
-            }
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (savedKitabs.isNotEmpty) ...[
-                    Text(
-                      'Kitab',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...savedKitabs.map((kitab) => _buildKitabCard(kitab)),
-                    const SizedBox(height: 16),
-                  ],
-                  if (allVideos.isNotEmpty) ...[
-                    Text(
-                      'Video',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    ...allVideos.map((video) => _buildVideoCard(video)),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildKitabTab() {
     return Consumer<SavedItemsProvider>(
       builder: (context, savedItemsProvider, child) {
         if (savedItemsProvider.isLoading) {
@@ -305,279 +184,46 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
           );
         }
 
-        if (savedItemsProvider.error != null) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444).withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: const Color(0xFFEF4444).withValues(alpha: 0.2),
-                        width: 2,
-                      ),
-                    ),
-                    child: const Center(
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedAlert02,
-                        color: Color(0xFFEF4444),
-                        size: 32,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    'Ralat memuatkan simpanan',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: AppTheme.textPrimaryColor,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    savedItemsProvider.error!,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                      height: 1.5,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 24),
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ElevatedButton.icon(
-                      onPressed: () => savedItemsProvider.loadSavedItems(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: PhosphorIcon(
-                        PhosphorIcons.arrowClockwise(PhosphorIconsStyle.fill),
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      label: const Text(
-                        'Cuba Lagi',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
+        final savedKitabs = savedItemsProvider.savedKitab;
+        final savedEpisodes = savedItemsProvider.savedEpisodes;
 
-        if (savedItemsProvider.savedKitab.isEmpty) {
+        final hasItems = savedKitabs.isNotEmpty || savedEpisodes.isNotEmpty;
+
+        if (!hasItems) {
           return _buildEmptyState(
-            'Tiada kitab disimpan',
-            'Simpan kitab kegemaran anda untuk akses mudah',
+            'Tiada simpanan',
+            'Simpan kitab dan video kegemaran anda untuk akses mudah',
           );
         }
 
-        return ListView.builder(
+        return SingleChildScrollView(
           padding: const EdgeInsets.all(16),
-          itemCount: savedItemsProvider.savedKitab.length,
-          itemBuilder: (context, index) {
-            return _buildKitabCard(savedItemsProvider.savedKitab[index]);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildVideoTab() {
-    return Consumer<BookmarkProvider>(
-      builder: (context, bmProvider, child) {
-        if (bmProvider.isLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (bmProvider.error != null) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: AppTheme.textSecondaryColor,
-                ),
-                const SizedBox(height: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (savedKitabs.isNotEmpty) ...[
                 Text(
-                  'Ralat memuatkan video disimpan',
+                  'Kitab',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.textPrimaryColor,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  bmProvider.error!,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+                ...savedKitabs.map((kitab) => _buildKitabCard(kitab)),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () => bmProvider.loadBookmarks(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: AppTheme.textLightColor,
-                  ),
-                  child: const Text('Cuba Lagi'),
-                ),
               ],
-            ),
-          );
-        }
-
-        final videos = bmProvider.getBookmarksByType('video');
-        if (videos.isEmpty) {
-          return _buildEmptyState(
-            'Tiada video disimpan',
-            'Simpan video kegemaran anda untuk tontonan kemudian',
-          );
-        }
-
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: videos.length,
-          itemBuilder: (context, index) {
-            final v = videos[index];
-            final title = v.title.isNotEmpty ? v.title : 'Tanpa Tajuk';
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppTheme.borderColor),
-              ),
-              child: InkWell(
-                onTap: () {
-                  // Open the content player for this kitab and show the video tab
-                  context.push('/player/${v.kitabId}');
-                },
-                borderRadius: BorderRadius.circular(12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.play_circle_fill,
-                          color: Colors.red,
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              style: Theme.of(context).textTheme.bodyLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: AppTheme.textPrimaryColor,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Kitab: ${v.kitabId}',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          if (value == 'remove') {
-                            final ok = await context
-                                .read<BookmarkProvider>()
-                                .removeBookmark(v.kitabId);
-                            if (ok && mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Video dibuang dari simpanan'),
-                                ),
-                              );
-                            }
-                          } else if (value == 'share') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Pautan "$title" dikongsi'),
-                              ),
-                            );
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(
-                            value: 'remove',
-                            child: Row(
-                              children: [
-                                Icon(Icons.bookmark_remove),
-                                SizedBox(width: 8),
-                                Text('Buang'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem(
-                            value: 'share',
-                            child: Row(
-                              children: [
-                                Icon(Icons.share),
-                                SizedBox(width: 8),
-                                Text('Kongsi'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+              if (savedEpisodes.isNotEmpty) ...[
+                Text(
+                  'Video',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            );
-          },
+                const SizedBox(height: 8),
+                ...savedEpisodes.map((episode) => _buildEpisodeCard(episode)),
+              ],
+            ],
+          ),
         );
       },
     );
@@ -786,18 +432,254 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
   }
 
   Widget _buildEbookTab() {
-    // For now, show placeholder for e-book saved items
-    // This will need to be connected to actual e-book saved items provider
-    return _buildEmptyState(
-      'Tiada e-book disimpan',
-      'Simpan e-book kegemaran anda untuk akses mudah',
+    return Consumer<SavedItemsProvider>(
+      builder: (context, savedItemsProvider, child) {
+        if (savedItemsProvider.isLoading) {
+          return Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+            ),
+          );
+        }
+
+        final savedEbooks = savedItemsProvider.savedEbooks;
+
+        if (savedEbooks.isEmpty) {
+          return _buildEmptyState(
+            'Tiada e-book disimpan',
+            'Simpan e-book kegemaran anda untuk akses mudah',
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: savedEbooks.map((ebook) => _buildEbookCard(ebook)).toList(),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildVideoCard(dynamic bookmark) {
-    final title = bookmark is Map
-        ? (bookmark['title'] ?? 'Video')
-        : (bookmark.title ?? 'Video');
+  Widget _buildEbookCard(dynamic ebook) {
+    final title = ebook is Map
+        ? (ebook['title'] ?? 'E-book')
+        : (ebook.title ?? 'E-book');
+    final author = ebook is Map
+        ? (ebook['author'] ?? 'Unknown Author')
+        : (ebook.author ?? 'Unknown Author');
+    final isPremium = ebook is Map
+        ? (ebook['is_premium'] ?? false)
+        : (ebook.isPremium ?? false);
+
+    return TweenAnimationBuilder<double>(
+      duration: const Duration(milliseconds: 300),
+      tween: Tween(begin: 0.0, end: 1.0),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: 0.95 + (0.05 * value),
+          child: Opacity(
+            opacity: value.clamp(0.0, 1.0),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppTheme.surfaceColor,
+                borderRadius: BorderRadius.circular(20),
+                border: isPremium
+                    ? Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3), width: 2)
+                    : Border.all(color: AppTheme.borderColor),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                    spreadRadius: 0,
+                  ),
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    // Navigate to ebook detail
+                    final ebookId = ebook is Map ? ebook['id'] : ebook.id;
+                    context.push('/ebook/$ebookId');
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            gradient: isPremium
+                                ? const LinearGradient(
+                                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                  )
+                                : LinearGradient(
+                                    colors: [
+                                      const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                                      const Color(0xFF8B5CF6).withValues(alpha: 0.05)
+                                    ],
+                                  ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: isPremium
+                                  ? Colors.transparent
+                                  : const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                            ),
+                            boxShadow: isPremium ? [
+                              BoxShadow(
+                                color: Colors.orange.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ] : null,
+                          ),
+                          child: Center(
+                            child: PhosphorIcon(
+                              PhosphorIcons.bookOpen(PhosphorIconsStyle.fill),
+                              color: isPremium ? Colors.white : const Color(0xFF8B5CF6),
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      title,
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        color: AppTheme.textPrimaryColor,
+                                        fontSize: 16,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isPremium)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'PREMIUM',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                author,
+                                style: TextStyle(
+                                  color: AppTheme.textSecondaryColor,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Row(
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedBookOpen01,
+                                    color: const Color(0xFF8B5CF6),
+                                    size: 14,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'E-book tersimpan',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondaryColor,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        PopupMenuButton<String>(
+                          onSelected: (value) => _handleEbookAction(value, ebook),
+                          icon: HugeIcon(
+                            icon: HugeIcons.strokeRoundedMoreVertical,
+                            color: AppTheme.textSecondaryColor,
+                            size: 20,
+                          ),
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'remove',
+                              child: Row(
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedDelete02,
+                                    color: const Color(0xFFEF4444),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Buang'),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'share',
+                              child: Row(
+                                children: [
+                                  HugeIcon(
+                                    icon: HugeIcons.strokeRoundedShare01,
+                                    color: AppTheme.primaryColor,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Kongsi'),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEpisodeCard(dynamic episode) {
+    final title = episode is Map
+        ? (episode['title'] ?? 'Video')
+        : (episode.title ?? 'Video');
 
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 300),
@@ -834,12 +716,12 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                 child: InkWell(
                   onTap: () {
                     // Navigate to video player
-                    final kitabId = bookmark is Map
-                        ? bookmark['kitabId']
-                        : bookmark.kitabId;
-                    final episodeId = bookmark is Map
-                        ? bookmark['episodeId']
-                        : bookmark.episodeId;
+                    final kitabId = episode is Map
+                        ? episode['video_kitab_id']
+                        : episode.videoKitabId;
+                    final episodeId = episode is Map
+                        ? episode['id']
+                        : episode.id;
                     context.push('/player/$kitabId?episode=$episodeId');
                   },
                   borderRadius: BorderRadius.circular(20),
@@ -909,7 +791,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                         ),
                         const SizedBox(width: 8),
                         PopupMenuButton<String>(
-                          onSelected: (value) => _handleVideoAction(value, bookmark),
+                          onSelected: (value) => _handleEpisodeAction(value, episode),
                           icon: HugeIcon(
                             icon: HugeIcons.strokeRoundedMoreVertical,
                             color: AppTheme.textSecondaryColor,
@@ -1072,23 +954,34 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
     }
   }
 
-  void _handleVideoAction(String action, dynamic bookmark) {
+  void _handleEbookAction(String action, dynamic ebook) {
     switch (action) {
       case 'remove':
-        _removeVideoBookmark(bookmark);
+        _removeEbook(ebook);
         break;
       case 'share':
-        _shareVideoContent(bookmark);
+        _shareEbookContent(ebook);
         break;
     }
   }
 
-  void _removeVideoBookmark(dynamic bookmark) {
+  void _handleEpisodeAction(String action, dynamic episode) {
+    switch (action) {
+      case 'remove':
+        _removeEpisode(episode);
+        break;
+      case 'share':
+        _shareEpisodeContent(episode);
+        break;
+    }
+  }
+
+  void _removeEpisode(dynamic episode) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Buang dari Simpanan'),
-        content: Text(
+        content: const Text(
           'Adakah anda pasti ingin membuang video ini dari simpanan?',
         ),
         actions: [
@@ -1099,12 +992,12 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final kitabId = bookmark is Map
-                  ? bookmark['kitabId']
-                  : bookmark.kitabId;
+              final episodeId = episode is Map
+                  ? episode['id']
+                  : episode.id;
               final success = await context
-                  .read<BookmarkProvider>()
-                  .removeBookmark(kitabId);
+                  .read<SavedItemsProvider>()
+                  .removeVideoFromSaved(episodeId);
               if (success && mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -1125,10 +1018,65 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
     );
   }
 
-  void _shareVideoContent(dynamic bookmark) {
+  void _shareEpisodeContent(dynamic episode) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Pautan video dikongsi'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _removeEbook(dynamic ebook) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Buang dari Simpanan'),
+        content: const Text(
+          'Adakah anda pasti ingin membuang e-book ini dari simpanan?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final ebookId = ebook is Map ? ebook['id'] : ebook.id;
+
+              // Get the ebook object from saved list
+              final provider = context.read<SavedItemsProvider>();
+              final ebookToRemove = provider.savedEbooks.firstWhere(
+                (e) => e.id == ebookId,
+                orElse: () => throw Exception('Ebook not found'),
+              );
+
+              final success = await provider.toggleEbookSaved(ebookToRemove);
+              if (success && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('E-book dibuang dari simpanan'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Buang'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _shareEbookContent(dynamic ebook) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Pautan e-book dikongsi'),
         duration: Duration(seconds: 2),
       ),
     );

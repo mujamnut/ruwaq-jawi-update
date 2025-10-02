@@ -14,9 +14,12 @@ class EbookDataManager {
 
   Future<void> loadEbookData(BuildContext context, String ebookId) async {
     try {
-      isLoading = true;
-      error = null;
-      onStateChanged();
+      // Only call setState once at start if state actually changed
+      if (!isLoading) {
+        isLoading = true;
+        error = null;
+        onStateChanged();
+      }
 
       final kitabProvider = context.read<KitabProvider>();
 
@@ -42,10 +45,12 @@ class EbookDataManager {
 
       ebook = loadedEbook;
       isLoading = false;
+      // Only rebuild once at end with final state
       onStateChanged();
     } catch (e) {
       error = 'Ralat memuatkan e-book: ${e.toString()}';
       isLoading = false;
+      // Only rebuild once on error
       onStateChanged();
       debugPrint('Error loading ebook data: $e');
     }

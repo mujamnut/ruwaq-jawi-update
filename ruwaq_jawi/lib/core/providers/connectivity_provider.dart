@@ -93,6 +93,85 @@ class ConnectivityProvider with ChangeNotifier {
     }
   }
 
+  /// Execute a callback when connection is restored
+  ///
+  /// Usage:
+  /// ```dart
+  /// connectivity.onConnectionRestored(() {
+  ///   // Retry failed operations
+  /// });
+  /// ```
+  void onConnectionRestored(VoidCallback callback) {
+    if (_isOnline) {
+      callback();
+      return;
+    }
+
+    late VoidCallback listener;
+    listener = () {
+      if (_isOnline) {
+        callback();
+        removeListener(listener);
+      }
+    };
+    addListener(listener);
+  }
+
+  /// Wait for connection to be available
+  ///
+  /// Returns immediately if already online
+  /// Otherwise waits until connection is restored or timeout
+  Future<bool> waitForConnection({Duration? timeout}) async {
+    if (_isOnline) return true;
+
+    final completer = Completer<bool>();
+    late VoidCallback listener;
+
+    listener = () {
+      if (_isOnline && !completer.isCompleted) {
+        completer.complete(true);
+        removeListener(listener);
+      }
+    };
+
+    addListener(listener);
+
+    try {
+      if (timeout != null) {
+        return await completer.future.timeout(
+          timeout,
+          onTimeout: () {
+            removeListener(listener);
+            return false;
+          },
+        );
+      }
+      return await completer.future;
+    } catch (e) {
+      removeListener(listener);
+      return false;
+    }
+  }
+
+  /// Execute an operation only when online
+  ///
+  /// Returns null if offline, otherwise returns operation result
+  Future<T?> executeWhenOnline<T>(Future<T> Function() operation) async {
+    if (isOffline) {
+      debugPrint('⚠️ Cannot execute operation: Device is offline');
+      return null;
+    }
+
+    try {
+      return await operation();
+    } catch (e) {
+      debugPrint('❌ Operation failed: $e');
+      // Refresh connectivity in case we went offline
+      await refreshConnectivity();
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
     _connectivitySubscription?.cancel();

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_profile.dart';
 import '../services/supabase_service.dart';
 import '../services/enhanced_notification_service.dart';
+import '../services/local_favorites_service.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -576,6 +577,9 @@ class AuthProvider extends ChangeNotifier {
           await checkActiveSubscription();
         }
 
+        // Migrate local favorites to Supabase (background, non-blocking)
+        _migrateFavoritesToSupabase();
+
         if (kDebugMode) {
           print('DEBUG: Sign in completed successfully');
         }
@@ -763,5 +767,21 @@ class AuthProvider extends ChangeNotifier {
       }
       return false;
     }
+  }
+
+  // ==================== FAVORITES MIGRATION ====================
+
+  /// Migrate local favorites to Supabase (background operation)
+  void _migrateFavoritesToSupabase() {
+    // Run in background, don't block sign in
+    Future.delayed(const Duration(seconds: 2), () async {
+      try {
+        await LocalFavoritesService.migrateToSupabase();
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ Favorites migration failed (non-critical): $e');
+        }
+      }
+    });
   }
 }

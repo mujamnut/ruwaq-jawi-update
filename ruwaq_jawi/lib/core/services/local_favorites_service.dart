@@ -1,11 +1,14 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/foundation.dart';
+import 'supabase_favorites_service.dart';
 
 class LocalFavoritesService {
   static const String _boxName = 'favorites';
   static const String _videoKitabFavoritesKey = 'video_kitab_favorites';
   static const String _ebookFavoritesKey = 'ebook_favorites';
   static const String _videoEpisodeFavoritesKey = 'video_episode_favorites';
-  
+  static const String _migrationCompleteKey = 'migration_to_supabase_complete';
+
   static Box<dynamic>? _box;
 
   /// Initialize the favorites service
@@ -36,17 +39,25 @@ class LocalFavoritesService {
     }
   }
 
-  /// Add video kitab to favorites
+  /// Add video kitab to favorites (dual-write: local + Supabase)
   static Future<bool> addVideoKitabToFavorites(String videoKitabId) async {
     try {
+      // Write to local Hive first (fast)
       final favorites = _favoritesBox.get(_videoKitabFavoritesKey, defaultValue: <String>[]) as List;
       final updatedFavorites = List<String>.from(favorites);
-      
+
       if (!updatedFavorites.contains(videoKitabId)) {
         updatedFavorites.add(videoKitabId);
         await _favoritesBox.put(_videoKitabFavoritesKey, updatedFavorites);
       }
-      
+
+      // Then sync to Supabase (background)
+      SupabaseFavoritesService.saveVideoKitab(videoKitabId).catchError((e) {
+        if (kDebugMode) {
+          print('Supabase sync failed (video kitab save): $e');
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error adding video kitab to favorites: $e');
@@ -54,17 +65,25 @@ class LocalFavoritesService {
     }
   }
 
-  /// Remove video kitab from favorites
+  /// Remove video kitab from favorites (dual-write: local + Supabase)
   static Future<bool> removeVideoKitabFromFavorites(String videoKitabId) async {
     try {
+      // Remove from local Hive first (fast)
       final favorites = _favoritesBox.get(_videoKitabFavoritesKey, defaultValue: <String>[]) as List;
       final updatedFavorites = List<String>.from(favorites);
-      
+
       if (updatedFavorites.contains(videoKitabId)) {
         updatedFavorites.remove(videoKitabId);
         await _favoritesBox.put(_videoKitabFavoritesKey, updatedFavorites);
       }
-      
+
+      // Then sync to Supabase (background)
+      SupabaseFavoritesService.unsaveVideoKitab(videoKitabId).catchError((e) {
+        if (kDebugMode) {
+          print('Supabase sync failed (video kitab unsave): $e');
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error removing video kitab from favorites: $e');
@@ -94,17 +113,24 @@ class LocalFavoritesService {
     }
   }
 
-  /// Add ebook to favorites
+  /// Add ebook to favorites (dual-write: local + Supabase)
   static Future<bool> addEbookToFavorites(String ebookId) async {
     try {
       final favorites = _favoritesBox.get(_ebookFavoritesKey, defaultValue: <String>[]) as List;
       final updatedFavorites = List<String>.from(favorites);
-      
+
       if (!updatedFavorites.contains(ebookId)) {
         updatedFavorites.add(ebookId);
         await _favoritesBox.put(_ebookFavoritesKey, updatedFavorites);
       }
-      
+
+      // Sync to Supabase (background)
+      SupabaseFavoritesService.saveEbook(ebookId).catchError((e) {
+        if (kDebugMode) {
+          print('Supabase sync failed (ebook save): $e');
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error adding ebook to favorites: $e');
@@ -112,17 +138,24 @@ class LocalFavoritesService {
     }
   }
 
-  /// Remove ebook from favorites
+  /// Remove ebook from favorites (dual-write: local + Supabase)
   static Future<bool> removeEbookFromFavorites(String ebookId) async {
     try {
       final favorites = _favoritesBox.get(_ebookFavoritesKey, defaultValue: <String>[]) as List;
       final updatedFavorites = List<String>.from(favorites);
-      
+
       if (updatedFavorites.contains(ebookId)) {
         updatedFavorites.remove(ebookId);
         await _favoritesBox.put(_ebookFavoritesKey, updatedFavorites);
       }
-      
+
+      // Sync to Supabase (background)
+      SupabaseFavoritesService.unsaveEbook(ebookId).catchError((e) {
+        if (kDebugMode) {
+          print('Supabase sync failed (ebook unsave): $e');
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error removing ebook from favorites: $e');
@@ -152,17 +185,24 @@ class LocalFavoritesService {
     }
   }
 
-  /// Add video episode to favorites
+  /// Add video episode to favorites (dual-write: local + Supabase)
   static Future<bool> addVideoEpisodeToFavorites(String episodeId) async {
     try {
       final favorites = _favoritesBox.get(_videoEpisodeFavoritesKey, defaultValue: <String>[]) as List;
       final updatedFavorites = List<String>.from(favorites);
-      
+
       if (!updatedFavorites.contains(episodeId)) {
         updatedFavorites.add(episodeId);
         await _favoritesBox.put(_videoEpisodeFavoritesKey, updatedFavorites);
       }
-      
+
+      // Sync to Supabase (background)
+      SupabaseFavoritesService.saveVideoEpisode(episodeId).catchError((e) {
+        if (kDebugMode) {
+          print('Supabase sync failed (episode save): $e');
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error adding video episode to favorites: $e');
@@ -170,17 +210,24 @@ class LocalFavoritesService {
     }
   }
 
-  /// Remove video episode from favorites
+  /// Remove video episode from favorites (dual-write: local + Supabase)
   static Future<bool> removeVideoEpisodeFromFavorites(String episodeId) async {
     try {
       final favorites = _favoritesBox.get(_videoEpisodeFavoritesKey, defaultValue: <String>[]) as List;
       final updatedFavorites = List<String>.from(favorites);
-      
+
       if (updatedFavorites.contains(episodeId)) {
         updatedFavorites.remove(episodeId);
         await _favoritesBox.put(_videoEpisodeFavoritesKey, updatedFavorites);
       }
-      
+
+      // Sync to Supabase (background)
+      SupabaseFavoritesService.unsaveVideoEpisode(episodeId).catchError((e) {
+        if (kDebugMode) {
+          print('Supabase sync failed (episode unsave): $e');
+        }
+      });
+
       return true;
     } catch (e) {
       print('Error removing video episode from favorites: $e');
@@ -217,6 +264,91 @@ class LocalFavoritesService {
       _box = null;
     } catch (e) {
       print('Error closing LocalFavoritesService: $e');
+    }
+  }
+
+  // ==================== MIGRATION LOGIC ====================
+
+  /// Check if migration to Supabase is complete
+  static bool isMigrationComplete() {
+    try {
+      return _favoritesBox.get(_migrationCompleteKey, defaultValue: false) as bool;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Migrate all local favorites to Supabase (one-time operation)
+  static Future<bool> migrateToSupabase() async {
+    try {
+      if (isMigrationComplete()) {
+        if (kDebugMode) {
+          print('✅ Migration already completed, skipping');
+        }
+        return true;
+      }
+
+      if (kDebugMode) {
+        print('🔄 Starting migration of local favorites to Supabase...');
+      }
+
+      // Get all local favorites
+      final videoKitabs = getFavoriteVideoKitabIds();
+      final ebooks = getFavoriteEbookIds();
+      final episodes = getFavoriteVideoEpisodeIds();
+
+      if (kDebugMode) {
+        print('📦 Found: ${videoKitabs.length} kitabs, ${ebooks.length} ebooks, ${episodes.length} episodes');
+      }
+
+      // Batch upload to Supabase
+      bool success = true;
+
+      if (videoKitabs.isNotEmpty) {
+        final kitabSuccess = await SupabaseFavoritesService.batchSaveVideoKitabs(videoKitabs);
+        success = success && kitabSuccess;
+      }
+
+      if (ebooks.isNotEmpty) {
+        final ebookSuccess = await SupabaseFavoritesService.batchSaveEbooks(ebooks);
+        success = success && ebookSuccess;
+      }
+
+      if (episodes.isNotEmpty) {
+        final episodeSuccess = await SupabaseFavoritesService.batchSaveVideoEpisodes(episodes);
+        success = success && episodeSuccess;
+      }
+
+      if (success) {
+        // Mark migration as complete
+        await _favoritesBox.put(_migrationCompleteKey, true);
+        if (kDebugMode) {
+          print('✅ Migration completed successfully!');
+        }
+      } else {
+        if (kDebugMode) {
+          print('⚠️ Migration completed with some errors');
+        }
+      }
+
+      return success;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Migration failed: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Reset migration flag (for testing)
+  static Future<void> resetMigrationFlag() async {
+    try {
+      await _favoritesBox.delete(_migrationCompleteKey);
+      if (kDebugMode) {
+        print('🔄 Migration flag reset');
+      }
+    } catch (e) {
+      print('Error resetting migration flag: $e');
     }
   }
 }

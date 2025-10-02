@@ -12,9 +12,12 @@ class EbookFavoritesManager {
   Future<void> checkSavedStatus(BuildContext context, Ebook? ebook) async {
     if (ebook != null) {
       final savedItemsProvider = context.read<SavedItemsProvider>();
-      final saved = await savedItemsProvider.isEbookSaved(ebook.id);
-      isSaved = saved;
-      onStateChanged();
+      final saved = savedItemsProvider.isEbookSaved(ebook.id);
+      // Only rebuild if status changed
+      if (isSaved != saved) {
+        isSaved = saved;
+        onStateChanged();
+      }
     }
   }
 
@@ -23,13 +26,7 @@ class EbookFavoritesManager {
 
     try {
       final savedItemsProvider = context.read<SavedItemsProvider>();
-      bool success;
-
-      if (isSaved) {
-        success = await savedItemsProvider.removeEbookFromLocal(ebook.id);
-      } else {
-        success = await savedItemsProvider.addEbookToLocal(ebook);
-      }
+      final success = await savedItemsProvider.toggleEbookSaved(ebook);
 
       if (success) {
         isSaved = !isSaved;

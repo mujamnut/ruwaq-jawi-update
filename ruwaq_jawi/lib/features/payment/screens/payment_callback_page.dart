@@ -105,13 +105,16 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
 
               // 0. Insert payment success notification to database using enhanced system
               try {
+                // Format amount with 2 decimal places
+                final formattedAmount = widget.amount.toStringAsFixed(2);
+
                 // Get current user ID
                 final currentUser = EnhancedNotificationService.currentUserId;
                 if (currentUser != null) {
                   final notificationSuccess = await EnhancedNotificationService.createPersonalNotification(
                     userId: currentUser,
                     title: 'Pembayaran Berjaya! 🎉',
-                    message: 'Terima kasih! Pembayaran RM${widget.amount} untuk langganan ${widget.planId} telah berjaya. Langganan anda kini aktif.',
+                    message: 'Terima kasih! Pembayaran RM$formattedAmount untuk langganan ${widget.planId} telah berjaya. Langganan anda kini aktif.',
                     metadata: {
                       'type': 'payment_success',
                       'sub_type': 'payment_success',
@@ -119,7 +122,7 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
                       'priority': 'high',
                       'bill_id': widget.billId,
                       'plan_id': widget.planId,
-                      'amount': widget.amount.toString(),
+                      'amount': formattedAmount,
                       'payment_date': DateTime.now().toIso8601String(),
                       'action_url': '/subscription',
                       'source': 'payment_callback_page',

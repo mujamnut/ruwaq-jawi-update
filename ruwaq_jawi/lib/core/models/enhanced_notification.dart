@@ -232,18 +232,33 @@ class EnhancedNotification {
 
   /// Convert to UserNotificationItem format for backward compatibility
   UserNotificationItem toLegacyUserNotificationItem() {
+    // For global notifications, need to build read_by array
+    final metadataWithReadStatus = <String, dynamic>{
+      'title': title,
+      'body': message,
+      'type': type,
+      'source': source,
+      'read_at': readAt?.toIso8601String(),
+      ...metadata,
+    };
+
+    // If this is a global notification and user has read it, add to read_by array
+    if (isGlobal && isRead) {
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      if (currentUserId != null) {
+        final existingReadBy = List<String>.from(metadataWithReadStatus['read_by'] ?? []);
+        if (!existingReadBy.contains(currentUserId)) {
+          existingReadBy.add(currentUserId);
+        }
+        metadataWithReadStatus['read_by'] = existingReadBy;
+      }
+    }
+
     return UserNotificationItem(
       id: id,
       userId: isPersonal ? targetCriteria['user_id'] : null,
       message: '$title\n$message',
-      metadata: {
-        'title': title,
-        'body': message,
-        'type': type,
-        'source': source,
-        'read_at': readAt?.toIso8601String(),
-        ...metadata,
-      },
+      metadata: metadataWithReadStatus,
       deliveredAt: createdAt,
       targetCriteria: targetCriteria,
       readAt: readAt,

@@ -123,7 +123,9 @@ class _EbookScreenState extends State<EbookScreen>
         opacity: _fadeAnimationController,
         child: CustomScrollView(
           controller: _scrollController,
-          physics: const BouncingScrollPhysics(),
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
           slivers: [
             // Header with spacing
             SliverToBoxAdapter(
@@ -184,7 +186,9 @@ class _EbookScreenState extends State<EbookScreen>
     return FadeTransition(
       opacity: _fadeAnimationController,
       child: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const BouncingScrollPhysics(
+          parent: AlwaysScrollableScrollPhysics(),
+        ),
         slivers: [
           // Header with spacing
           SliverToBoxAdapter(

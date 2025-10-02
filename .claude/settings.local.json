@@ -66,7 +66,11 @@
       "Bash(python:*)",
       "Bash(python3:*)",
       "Bash(powershell.exe:*)",
-      "Bash(del lib/features/student/screens/search_screen_old.dart)"
+      "Bash(del lib/features/student/screens/search_screen_old.dart)",
+      "Bash(del \"lib\\features\\student\\screens\\content_player_screen\\managers\\video_controls_manager.dart\")",
+      "Bash(del \"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\ruwaq_jawi\\lib\\features\\student\\screens\\fullscreen_video_player_page.dart\")",
+      "Bash(del \"c:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\ruwaq_jawi\\lib\\core\\widgets\\network_banner.dart\")",
+      "Bash(npx supabase db remote:*)"
     ],
     "deny": [],
     "ask": []

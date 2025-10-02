@@ -260,66 +260,73 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
           child: SlideTransition(
             position: _animationManager.slideAnimation,
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
               padding: const EdgeInsets.all(24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Cover
-                  EbookCoverWidget(
-                    ebook: _dataManager.ebook!,
-                    readingProgress: _readingProgress,
-                    scaleValue: _animationManager.scaleAnimation.value,
+                  // Cover with RepaintBoundary
+                  RepaintBoundary(
+                    child: EbookCoverWidget(
+                      ebook: _dataManager.ebook!,
+                      readingProgress: _readingProgress,
+                      scaleValue: _animationManager.scaleAnimation.value,
+                    ),
                   ),
                   const SizedBox(height: 32),
 
-                  // Title
-                  TweenAnimationBuilder<double>(
-                    duration: const Duration(milliseconds: 600),
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    curve: Curves.easeOut,
-                    builder: (context, value, child) {
-                      return Opacity(
-                        opacity: value.clamp(0.0, 1.0),
-                        child: Text(
-                          _dataManager.ebook!.title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(
-                                color: AppTheme.textPrimaryColor,
-                                fontWeight: FontWeight.bold,
-                                height: 1.3,
-                              ),
-                          textAlign: TextAlign.center,
-                        ),
-                      );
-                    },
+                  // Title - optimized animation
+                  RepaintBoundary(
+                    child: Opacity(
+                      opacity: _animationManager.fadeAnimation.value.clamp(0.0, 1.0),
+                      child: Text(
+                        _dataManager.ebook!.title,
+                        style: Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              color: AppTheme.textPrimaryColor,
+                              fontWeight: FontWeight.bold,
+                              height: 1.3,
+                            ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
 
                   // Author info
-                  EbookAuthorInfoWidget(
-                    ebook: _dataManager.ebook!,
-                    rating: _rating,
-                    reviewsCount: _reviewsCount,
+                  RepaintBoundary(
+                    child: EbookAuthorInfoWidget(
+                      ebook: _dataManager.ebook!,
+                      rating: _rating,
+                      reviewsCount: _reviewsCount,
+                    ),
                   ),
                   const SizedBox(height: 32),
 
                   // Statistics
-                  EbookStatisticsRowWidget(ebook: _dataManager.ebook!),
+                  RepaintBoundary(
+                    child: EbookStatisticsRowWidget(ebook: _dataManager.ebook!),
+                  ),
                   const SizedBox(height: 32),
 
                   // Description
-                  EbookDescriptionWidget(ebook: _dataManager.ebook!),
+                  RepaintBoundary(
+                    child: EbookDescriptionWidget(ebook: _dataManager.ebook!),
+                  ),
                   const SizedBox(height: 40),
 
                   // Action button
-                  EbookActionButtonsWidget(
-                    ebook: _dataManager.ebook!,
-                    isPremiumLocked: _dataManager.ebook!.isPremium &&
-                        !EbookPremiumService.hasActiveSubscription(context),
-                    onReadingOptions: _showReadingOptions,
+                  RepaintBoundary(
+                    child: EbookActionButtonsWidget(
+                      ebook: _dataManager.ebook!,
+                      isPremiumLocked: _dataManager.ebook!.isPremium &&
+                          !EbookPremiumService.hasActiveSubscription(context),
+                      onReadingOptions: _showReadingOptions,
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],

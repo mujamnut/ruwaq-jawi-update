@@ -1417,9 +1417,9 @@ class _KitabListScreenState extends State<KitabListScreen>
     final isSaved = await _isVideoKitabSaved(kitab.id);
 
     if (isSaved) {
-      // Remove from saved
+      // Remove from saved (Supabase)
       final savedItemsProvider = context.read<SavedItemsProvider>();
-      await savedItemsProvider.removeKitabFromLocal(kitab.id);
+      await savedItemsProvider.removeFromSaved(kitab.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1445,31 +1445,9 @@ class _KitabListScreenState extends State<KitabListScreen>
         );
       }
     } else {
-      // Add to saved
+      // Add to saved (Supabase)
       final savedItemsProvider = context.read<SavedItemsProvider>();
-      // Convert VideoKitab to Kitab for the provider
-      final kitabToSave = Kitab(
-        id: kitab.id,
-        title: kitab.title,
-        author: kitab.author,
-        description: kitab.description,
-        categoryId: kitab.categoryId,
-        pdfUrl: kitab.pdfUrl,
-        thumbnailUrl: kitab.thumbnailUrl,
-        totalPages: kitab.totalPages,
-        isPremium: kitab.isPremium,
-        isActive: kitab.isActive,
-        createdAt: kitab.createdAt,
-        updatedAt: kitab.updatedAt,
-        youtubeVideoId: null,
-        youtubeVideoUrl: null,
-        hasMultipleVideos: kitab.hasVideos,
-        totalVideos: kitab.totalVideos,
-        totalDurationMinutes: kitab.totalDurationMinutes,
-        sortOrder: 0, // Default sort order
-        isEbookAvailable: kitab.hasPdf,
-      );
-      await savedItemsProvider.addKitabToLocal(kitabToSave);
+      await savedItemsProvider.addToSaved(kitab.id);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
