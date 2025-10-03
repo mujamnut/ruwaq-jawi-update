@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ConnectivityProvider with ChangeNotifier {
@@ -64,10 +65,15 @@ class ConnectivityProvider with ChangeNotifier {
     debugPrint('🌐 Connectivity changed: ${_isOnline ? 'Online' : 'Offline'} ($_connectionType)');
 
     // Only notify if status actually changed
-    // Use scheduleMicrotask to defer notification and avoid setState during build
+    // ALWAYS defer notification to next frame to avoid setState during build
     if (wasOnline != _isOnline) {
-      scheduleMicrotask(() {
-        notifyListeners();
+      // Use SchedulerBinding.instance.addPostFrameCallback to safely defer notification
+      // This ensures notifyListeners is called AFTER the current build phase completes
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        // Double-check if still mounted and status still different
+        if (wasOnline != _isOnline) {
+          notifyListeners();
+        }
       });
     }
   }

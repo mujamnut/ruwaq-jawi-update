@@ -226,7 +226,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen> {
 
   void _startControlsTimer() {
     _controlsTimer?.cancel();
-    _controlsTimer = Timer(const Duration(seconds: 3), () {
+    // Increase timer to 5 seconds for better UX - gives user more time to interact
+    _controlsTimer = Timer(const Duration(seconds: 5), () {
       if (mounted) {
         setState(() {
           _showControls = false;
@@ -556,14 +557,26 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
-                  setState(() {
-                    _showControls = true;
-                  });
-                  _startControlsTimer();
+                  if (mounted) {
+                    setState(() {
+                      _showControls = true;
+                    });
+                    _startControlsTimer();
+                  }
                 },
                 onDoubleTap: () {},
                 onDoubleTapDown: _handleDoubleTap,
-                child: Container(color: Colors.transparent),
+                child: Container(
+                  color: Colors.transparent,
+                  // Add visual feedback hint
+                  child: Center(
+                    child: Icon(
+                      Icons.touch_app_outlined,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      size: 48,
+                    ),
+                  ),
+                ),
               ),
             ),
         ],
@@ -658,14 +671,26 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen> {
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: () {
-                  setState(() {
-                    _showControls = true;
-                  });
-                  _startControlsTimer();
+                  if (mounted) {
+                    setState(() {
+                      _showControls = true;
+                    });
+                    _startControlsTimer();
+                  }
                 },
                 onDoubleTap: () {},
                 onDoubleTapDown: _handleDoubleTap,
-                child: Container(color: Colors.transparent),
+                child: Container(
+                  color: Colors.transparent,
+                  // Add visual feedback hint
+                  child: Center(
+                    child: Icon(
+                      Icons.touch_app_outlined,
+                      color: Colors.white.withValues(alpha: 0.3),
+                      size: 48,
+                    ),
+                  ),
+                ),
               ),
             ),
         ],
@@ -878,15 +903,23 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              IconButton(
-                icon: PhosphorIcon(
-                  _isFullscreen
-                      ? PhosphorIcons.arrowsIn(PhosphorIconsStyle.bold)
-                      : PhosphorIcons.arrowsOut(PhosphorIconsStyle.bold),
-                  color: Colors.white,
-                  size: 20,
+              // Larger fullscreen button for better visibility
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: _toggleFullscreen,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    child: PhosphorIcon(
+                      _isFullscreen
+                          ? PhosphorIcons.arrowsIn(PhosphorIconsStyle.bold)
+                          : PhosphorIcons.arrowsOut(PhosphorIconsStyle.bold),
+                      color: Colors.white,
+                      size: 24, // Increased from 20 to 24
+                    ),
+                  ),
                 ),
-                onPressed: _toggleFullscreen,
               ),
             ],
           ),

@@ -89,88 +89,90 @@ class MaktabahApp extends StatelessWidget {
 
     // Initialize deep link service
     DeepLinkService.initialize(router);
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) {
-            final authProvider = AuthProvider();
-            // Reset to initial state to prevent stuck loading
-            authProvider.resetToInitial();
-            return authProvider;
-          },
-        ),
-        ChangeNotifierProvider(create: (_) => KitabProvider()),
-        ChangeNotifierProvider(create: (_) => SavedItemsProvider()),
-        ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
-        ChangeNotifierProvider(create: (_) => SettingsProvider()),
-        ChangeNotifierProvider(create: (_) => NotificationsProvider()),
-        ChangeNotifierProvider(create: (_) => BookmarkProvider()),
-        ChangeNotifierProxyProvider<AuthProvider, PaymentProvider>(
-          create: (context) {
-            final authProvider = Provider.of<AuthProvider>(
-              context,
-              listen: false,
-            );
-            final paymentProvider = PaymentProvider(
-              ToyyibpayService(
-                secretKey: PaymentConfig.userSecretKey,
-                categoryCode: PaymentConfig.categoryCode,
-                isProduction: PaymentConfig.isProduction,
-              ),
-              SubscriptionService(SupabaseService.supabase),
-            );
-            // Connect auth provider to payment provider
-            paymentProvider.setAuthProvider(authProvider);
-            return paymentProvider;
-          },
-          update: (context, authProvider, paymentProvider) {
-            paymentProvider?.setAuthProvider(authProvider);
-            return paymentProvider!;
-          },
-        ),
-        // 🆕 NEW: SubscriptionProvider for payment verification
-        ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
-        // 🆕 NEW: ConnectivityProvider for internet monitoring
-        ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
-        ChangeNotifierProvider(
-          create: (context) {
-            final auth = context.read<AuthProvider>();
-            return ContentProvider(
-              ContentService(
-                SupabaseService.supabase,
-                auth.currentUserId ?? '',
-              ),
-            );
-          },
-        ),
-      ],
-      child: BackgroundPaymentWrapper(
-        child: OfflineBanner(
-          child: ErrorBoundary(
-            onRetry: () {
-              // Will be handled by the error boundary widget
+
+    // ErrorBoundary must be outermost to catch all errors including setState during build
+    return ErrorBoundary(
+      onRetry: () {
+        // Restart app by navigating to home
+      },
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) {
+              final authProvider = AuthProvider();
+              // Reset to initial state to prevent stuck loading
+              authProvider.resetToInitial();
+              return authProvider;
             },
+          ),
+          ChangeNotifierProvider(create: (_) => KitabProvider()),
+          ChangeNotifierProvider(create: (_) => SavedItemsProvider()),
+          ChangeNotifierProvider(create: (_) => AnalyticsProvider()),
+          ChangeNotifierProvider(create: (_) => SettingsProvider()),
+          ChangeNotifierProvider(create: (_) => NotificationsProvider()),
+          ChangeNotifierProvider(create: (_) => BookmarkProvider()),
+          ChangeNotifierProxyProvider<AuthProvider, PaymentProvider>(
+            create: (context) {
+              final authProvider = Provider.of<AuthProvider>(
+                context,
+                listen: false,
+              );
+              final paymentProvider = PaymentProvider(
+                ToyyibpayService(
+                  secretKey: PaymentConfig.userSecretKey,
+                  categoryCode: PaymentConfig.categoryCode,
+                  isProduction: PaymentConfig.isProduction,
+                ),
+                SubscriptionService(SupabaseService.supabase),
+              );
+              // Connect auth provider to payment provider
+              paymentProvider.setAuthProvider(authProvider);
+              return paymentProvider;
+            },
+            update: (context, authProvider, paymentProvider) {
+              paymentProvider?.setAuthProvider(authProvider);
+              return paymentProvider!;
+            },
+          ),
+          // 🆕 NEW: SubscriptionProvider for payment verification
+          ChangeNotifierProvider(create: (_) => SubscriptionProvider()),
+          // 🆕 NEW: ConnectivityProvider for internet monitoring
+          ChangeNotifierProvider(create: (_) => ConnectivityProvider()),
+          ChangeNotifierProvider(
+            create: (context) {
+              final auth = context.read<AuthProvider>();
+              return ContentProvider(
+                ContentService(
+                  SupabaseService.supabase,
+                  auth.currentUserId ?? '',
+                ),
+              );
+            },
+          ),
+        ],
+        child: BackgroundPaymentWrapper(
+          child: OfflineBanner(
             child: MaterialApp.router(
-            title: AppConfig.appName,
-            debugShowCheckedModeBanner: false,
+              title: AppConfig.appName,
+              debugShowCheckedModeBanner: false,
 
-            // Theme Configuration
-            theme: AppTheme.lightTheme,
+              // Theme Configuration
+              theme: AppTheme.lightTheme,
 
-            // Router Configuration
-            routerConfig: router,
+              // Router Configuration
+              routerConfig: router,
 
-            // Localization (can be added later)
-            // localizationsDelegates: const [
-            //   GlobalMaterialLocalizations.delegate,
-            //   GlobalWidgetsLocalizations.delegate,
-            //   GlobalCupertinoLocalizations.delegate,
-            // ],
-            // supportedLocales: const [
-            //   Locale('en', 'US'),
-            //   Locale('ms', 'MY'),
-            //   Locale('ar', 'SA'),
-            // ],
+              // Localization (can be added later)
+              // localizationsDelegates: const [
+              //   GlobalMaterialLocalizations.delegate,
+              //   GlobalWidgetsLocalizations.delegate,
+              //   GlobalCupertinoLocalizations.delegate,
+              // ],
+              // supportedLocales: const [
+              //   Locale('en', 'US'),
+              //   Locale('ms', 'MY'),
+              //   Locale('ar', 'SA'),
+              // ],
             ),
           ),
         ),
