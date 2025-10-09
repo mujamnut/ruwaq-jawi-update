@@ -14,7 +14,6 @@ import 'profile_screen/managers/subscription_manager.dart';
 
 // Import services
 import 'profile_screen/services/password_change_service.dart';
-import 'profile_screen/services/profile_notification_helper.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -63,13 +62,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     _dataManager.dispose();
     _animationManager.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleUpdateName() async {
-    final success = await _dataManager.updateName(context);
-    if (success && mounted) {
-      ProfileNotificationHelper.showNameUpdateSuccess(context);
-    }
   }
 
   Future<void> _handleSignOut() async {
@@ -159,20 +151,37 @@ class _ProfileScreenState extends State<ProfileScreen>
                   position: _animationManager.slideAnimation,
                   child: SingleChildScrollView(
                     physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Column(
                       children: [
-                        const SizedBox(height: 32),
-                        _buildAvatar(userProfile),
-                        const SizedBox(height: 16),
-                        _buildProfileInfo(authProvider, userProfile),
-                        const SizedBox(height: 32),
-                        _buildSavedItemsSection(),
-                        const SizedBox(height: 20),
-                        _buildSubscriptionSection(userProfile),
-                        const SizedBox(height: 20),
-                        _buildSettingsSection(),
-                        const SizedBox(height: 40),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            _buildGradientHeader(userProfile),
+                            // Premium card overlapping the gradient header
+                            Positioned(
+                              left: 20,
+                              right: 20,
+                              bottom: -160, // Overlap by 60px
+                              child: _buildPremiumCard(),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 210,
+                        ), // Space for overlapping card
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Column(
+                            children: [
+                              _buildProfileMenuSection(),
+                              const SizedBox(height: 24),
+                              _buildNotificationsSection(),
+                              const SizedBox(height: 24),
+                              _buildSettingsSection(),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -188,7 +197,137 @@ class _ProfileScreenState extends State<ProfileScreen>
   // Import the widget build methods from backup file for now
   // In production, these would be extracted to separate widget files
 
-  Widget _buildAvatar(userProfile) {
+  Widget _buildGradientHeader(userProfile) {
+    final isPremium = _subscriptionManager.currentSubscription != null;
+    final createdAt = userProfile.createdAt;
+    final joinedDate = createdAt != null
+        ? '${_getMonthName(createdAt.month)} ${createdAt.year}'
+        : 'Recently';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primaryColor,
+            AppTheme.primaryColor.withValues(alpha: 0.8),
+          ],
+        ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          child: Column(
+            children: [
+              // Premium Member badge (always show in header)
+              if (isPremium)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                        color: Colors.white,
+                        size: 16,
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Premium Member',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              SizedBox(height: isPremium ? 20 : 0),
+
+              // Avatar with verification badge
+              _buildAvatarWithBadge(userProfile),
+
+              const SizedBox(height: 16),
+
+              // Name
+              Text(
+                userProfile.fullName ?? 'Pengguna',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 8),
+
+              // Email
+              Text(
+                userProfile.email ?? '',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 15,
+                ),
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 8),
+
+              // Joined date
+              Text(
+                'Joined $joinedDate',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return months[month - 1];
+  }
+
+  Widget _buildAvatarWithBadge(userProfile) {
     final isPremium = _subscriptionManager.currentSubscription != null;
 
     return TweenAnimationBuilder<double>(
@@ -232,21 +371,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                 height: isPremium ? 102 : 100,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primaryColor,
-                      AppTheme.primaryColor.withValues(alpha: 0.7),
-                    ],
+                  color: Colors.white,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    width: 3,
                   ),
-                  border: !isPremium
-                      ? Border.all(color: AppTheme.borderColor, width: 3)
-                      : null,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 16,
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
                   ],
@@ -254,45 +387,39 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Center(
                   child: Text(
                     (userProfile.fullName ?? 'U')[0].toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.primaryColor,
                       fontSize: 42,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              // Premium crown badge
-              if (isPremium)
-                Positioned(
-                  bottom: -2,
-                  right: -2,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+              // Verification checkmark badge (bottom right)
+              Positioned(
+                bottom: 2,
+                right: 2,
+                child: Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF2196F3),
+                    border: Border.all(color: Colors.white, width: 3),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF2196F3).withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        spreadRadius: 1,
                       ),
-                      border: Border.all(
-                        color: AppTheme.backgroundColor,
-                        width: 3,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFFD700).withValues(alpha: 0.4),
-                          blurRadius: 8,
-                          spreadRadius: 1,
-                        ),
-                      ],
-                    ),
-                    child: PhosphorIcon(
-                      PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                      color: Colors.white,
-                      size: 16,
-                    ),
+                    ],
+                  ),
+                  child: PhosphorIcon(
+                    PhosphorIcons.check(PhosphorIconsStyle.bold),
+                    color: Colors.white,
+                    size: 14,
                   ),
                 ),
+              ),
             ],
           ),
         );
@@ -300,269 +427,552 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildProfileInfo(AuthProvider authProvider, userProfile) {
+  Widget _buildPremiumCard() {
     final isPremium = _subscriptionManager.currentSubscription != null;
 
-    return Column(
-      children: [
-        // Name
-        Text(
-          userProfile.fullName ?? 'Pengguna',
-          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimaryColor,
-            fontSize: 24,
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Email
-        Text(
-          userProfile.email ?? '',
-          style: TextStyle(color: AppTheme.textSecondaryColor, fontSize: 15),
-        ),
-        const SizedBox(height: 16),
-        // Edit Profile button
-        OutlinedButton.icon(
-          onPressed: () => context.push('/edit-profile'),
-          icon: HugeIcon(
-            icon: HugeIcons.strokeRoundedPencilEdit01,
-            color: AppTheme.primaryColor,
-            size: 18,
-          ),
-          label: Text(
-            'Edit Profile',
-            style: TextStyle(
-              color: AppTheme.primaryColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+    if (!isPremium) {
+      // Show free/basic plan card
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppTheme.surfaceColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: BorderSide(color: AppTheme.primaryColor),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          ),
+          ],
         ),
-        // Premium badge or member since
-        if (isPremium) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-              ),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+        child: Column(
+          children: [
+            // Basic Plan header
+            Row(
               children: [
-                PhosphorIcon(
-                  PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                  color: Colors.white,
-                  size: 16,
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedBook02,
+                      color: AppTheme.primaryColor,
+                      size: 28,
+                    ),
+                  ),
                 ),
-                const SizedBox(width: 6),
-                const Text(
-                  'Premium Member',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Basic Plan',
+                        style: TextStyle(
+                          color: AppTheme.textPrimaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Free access to kitab',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Text(
+                    'Active',
+                    style: TextStyle(
+                      color: const Color(0xFF4CAF50),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ] else ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.borderColor),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+
+            const SizedBox(height: 20),
+
+            // Divider
+            Container(height: 1, color: AppTheme.borderColor),
+
+            const SizedBox(height: 20),
+
+            // Free plan benefits - 3 columns with dividers
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                HugeIcon(
-                  icon: HugeIcons.strokeRoundedUserCircle,
-                  color: AppTheme.textSecondaryColor,
-                  size: 16,
+                // 5 Books Access
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        '5',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Books Access',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  'Free Member',
-                  style: TextStyle(
-                    color: AppTheme.textSecondaryColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                // Divider
+                Container(width: 1, height: 40, color: AppTheme.borderColor),
+                // Basic Support
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        'Basic',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Support',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                // Divider
+                Container(width: 1, height: 40, color: AppTheme.borderColor),
+                // SD Quality
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        'SD',
+                        style: TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Quality',
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 12,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ],
-    );
-  }
+          ],
+        ),
+      );
+    }
 
-  Widget _buildSavedItemsSection() {
-    return _buildEnhancedMenuItem(
-      icon: PhosphorIcons.bookmarkSimple(),
-      iconColor: AppTheme.primaryColor,
-      title: 'Item yang Disimpan',
-      subtitle: 'Lihat video dan e-book yang disimpan',
-      onTap: () => context.push('/saved'),
-    );
-  }
-
-  Widget _buildSubscriptionSection(userProfile) {
-    return _buildSection(
-      title: 'Langganan',
-      child: _subscriptionManager.isLoadingSubscription
-          ? Container(
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: AppTheme.surfaceColor,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.primaryColor,
-                  ),
-                ),
-              ),
-            )
-          : _subscriptionManager.currentSubscription != null
-          ? _buildActiveSubscriptionCard()
-          : _buildInactiveSubscriptionCard(),
-    );
-  }
-
-  Widget _buildActiveSubscriptionCard() {
+    // Show active premium card with stats
     final sub = _subscriptionManager.currentSubscription!;
-    final plan = sub['subscription_plans'];
     final endDate = DateTime.parse(sub['end_date']);
-    final daysLeft = endDate.difference(DateTime.now()).inDays;
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-        ),
+        color: AppTheme.surfaceColor,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Premium Plan header
           Row(
             children: [
-              PhosphorIcon(
-                PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                color: Colors.white,
-                size: 32,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  plan['name'] ?? 'Premium',
-                  style: const TextStyle(
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Center(
+                  child: PhosphorIcon(
+                    PhosphorIcons.crown(PhosphorIconsStyle.fill),
                     color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                    size: 28,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Premium Plan',
+                      style: TextStyle(
+                        color: AppTheme.textPrimaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Active until ${endDate.day} ${_getMonthName(endDate.month)} ${endDate.year}',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  'Active',
+                  style: TextStyle(
+                    color: const Color(0xFF4CAF50),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Aktif sehingga ${endDate.day}/${endDate.month}/${endDate.year}',
-            style: const TextStyle(color: Colors.white70),
-          ),
-          Text(
-            '$daysLeft hari lagi',
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
-            ),
+
+          const SizedBox(height: 20),
+
+          // Divider
+          Container(height: 1, color: AppTheme.borderColor),
+
+          const SizedBox(height: 20),
+
+          // Benefits row - 3 columns with dividers
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // Books Access with infinity icon
+              Expanded(
+                child: Column(
+                  children: [
+                    HugeIcon(
+                      icon: HugeIcons.strokeRoundedInfinity01,
+                      color: AppTheme.primaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Books Access',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              // Divider
+              Container(width: 1, height: 40, color: AppTheme.borderColor),
+              // 24/7 Support
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      '24/7',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Support',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+              // Divider
+              Container(width: 1, height: 40, color: AppTheme.borderColor),
+              // HD Quality
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'HD',
+                      style: TextStyle(
+                        color: AppTheme.primaryColor,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Quality',
+                      style: TextStyle(
+                        color: AppTheme.textSecondaryColor,
+                        fontSize: 12,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInactiveSubscriptionCard() {
-    return _buildEnhancedMenuItem(
-      icon: PhosphorIcons.crown(),
-      iconColor: const Color(0xFFFFD700),
-      title: 'Langgan Premium',
-      subtitle: 'Akses tanpa had ke semua kandungan',
-      onTap: () => context.push('/subscription'),
-      isPremium: true,
-    );
-  }
-
-  Widget _buildSettingsSection() {
-    return _buildSection(
-      title: 'Tetapan',
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.borderColor),
-        ),
-        child: Column(
-          children: [
-            _buildSettingItem(
-              icon: PhosphorIcons.lock(),
-              iconColor: AppTheme.primaryColor,
-              title: 'Tukar Kata Laluan',
-              onTap: _handleChangePassword,
-              isFirst: true,
-            ),
-            Divider(height: 1, color: AppTheme.borderColor),
-            _buildSettingItem(
-              icon: PhosphorIcons.signOut(),
-              iconColor: AppTheme.errorColor,
-              title: 'Log Keluar',
-              onTap: _handleSignOut,
-              isLast: true,
-              isDestructive: true,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSection({required String title, required Widget child}) {
+  Widget _buildProfileMenuSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: AppTheme.textPrimaryColor,
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.borderColor),
+          ),
+          child: Column(
+            children: [
+              _buildMenuItem(
+                icon: HugeIcons.strokeRoundedFavourite,
+                iconColor: AppTheme.primaryColor,
+                title: 'Saved Items',
+                subtitle: '12 items saved',
+                onTap: () => context.push('/saved'),
+                isFirst: true,
+              ),
+              Divider(height: 1, color: AppTheme.borderColor),
+              _buildMenuItem(
+                icon: PhosphorIcons.clockCounterClockwise(),
+                iconColor: const Color(0xFF00BCD4),
+                title: 'History',
+                subtitle: 'Recent Records',
+                onTap: _handleHistory,
+              ),
+
+              Divider(height: 1, color: AppTheme.borderColor),
+              _buildMenuItem(
+                icon: PhosphorIcons.downloadSimple(),
+                iconColor: const Color(0xFF9C27B0),
+                title: 'Downloads',
+                subtitle: 'Offline reading',
+                onTap: _handleDownloads,
+                isLast: true,
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 12),
-        child,
       ],
     );
   }
 
-  Widget _buildSettingItem({
+  Widget _buildNotificationsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            'NOTIFICATIONS',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondaryColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.borderColor),
+          ),
+          child: _buildMenuItem(
+            icon: PhosphorIcons.bell(),
+            iconColor: const Color(0xFFFF9800),
+            title: 'Notifications',
+            subtitle: null,
+            onTap: _handleNotifications,
+            isFirst: true,
+            isLast: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _handleHistory() {
+    // TODO: Navigate to history screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('History feature coming soon')),
+    );
+  }
+
+  void _handleDownloads() {
+    // TODO: Navigate to downloads screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Downloads feature coming soon')),
+    );
+  }
+
+  void _handleNotifications() {
+    // TODO: Navigate to notifications settings
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Notification settings coming soon')),
+    );
+  }
+
+  void _handlePrivacySecurity() {
+    // TODO: Navigate to privacy & security screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Privacy & Security feature coming soon')),
+    );
+  }
+
+  void _handleHelpSupport() {
+    // TODO: Navigate to help & support screen
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Help & Support feature coming soon')),
+    );
+  }
+
+  Widget _buildSettingsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            'SETTINGS',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.textSecondaryColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppTheme.borderColor),
+          ),
+          child: Column(
+            children: [
+              _buildMenuItem(
+                icon: PhosphorIcons.lock(),
+                iconColor: AppTheme.primaryColor,
+                title: 'Change Password',
+                subtitle: null,
+                onTap: _handleChangePassword,
+                isFirst: true,
+              ),
+              Divider(height: 1, color: AppTheme.borderColor),
+              _buildMenuItem(
+                icon: PhosphorIcons.shieldCheck(),
+                iconColor: const Color(0xFF00BCD4),
+                title: 'Privacy & Security',
+                subtitle: null,
+                onTap: _handlePrivacySecurity,
+              ),
+              Divider(height: 1, color: AppTheme.borderColor),
+              _buildMenuItem(
+                icon: PhosphorIcons.chatsCircle(),
+                iconColor: const Color(0xFF4CAF50),
+                title: 'Help & Support',
+                subtitle: null,
+                onTap: _handleHelpSupport,
+              ),
+              Divider(height: 1, color: AppTheme.borderColor),
+              _buildMenuItem(
+                icon: PhosphorIcons.signOut(),
+                iconColor: AppTheme.errorColor,
+                title: 'Logout',
+                subtitle: null,
+                onTap: _handleSignOut,
+                isLast: true,
+                isDestructive: true,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuItem({
     required dynamic icon,
     required Color iconColor,
     required String title,
+    String? subtitle,
     required VoidCallback onTap,
     bool isFirst = false,
     bool isLast = false,
@@ -577,7 +987,10 @@ class _ProfileScreenState extends State<ProfileScreen>
           bottomLeft: Radius.circular(isLast ? 20 : 0),
           bottomRight: Radius.circular(isLast ? 20 : 0),
         ),
-        onTap: onTap,
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
@@ -596,15 +1009,30 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: isDestructive
-                        ? iconColor
-                        : AppTheme.textPrimaryColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        color: isDestructive
+                            ? iconColor
+                            : AppTheme.textPrimaryColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
+                    ),
+                    if (subtitle != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: AppTheme.textSecondaryColor,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
               HugeIcon(
@@ -613,104 +1041,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                 size: 20,
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEnhancedMenuItem({
-    required dynamic icon,
-    required Color iconColor,
-    required String title,
-    String? subtitle,
-    required VoidCallback onTap,
-    bool isPremium = false,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: isPremium
-            ? Border.all(
-                color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-                width: 2,
-              )
-            : Border.all(color: AppTheme.borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: isPremium
-                        ? const LinearGradient(
-                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                          )
-                        : LinearGradient(
-                            colors: [
-                              iconColor.withValues(alpha: 0.1),
-                              iconColor.withValues(alpha: 0.05),
-                            ],
-                          ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: PhosphorIcon(
-                      icon,
-                      color: isPremium ? Colors.white : iconColor,
-                      size: 28,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                HugeIcon(
-                  icon: HugeIcons.strokeRoundedArrowRight01,
-                  color: AppTheme.textSecondaryColor,
-                  size: 20,
-                ),
-              ],
-            ),
           ),
         ),
       ),

@@ -1,9 +1,9 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/payment_provider.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/models/payment_models.dart';
@@ -33,7 +33,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   late AnimationController _scaleAnimationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  late Animation<double> _scaleAnimation;
 
   @override
   void initState() {
@@ -65,13 +64,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           ),
         );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(
-        parent: _scaleAnimationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-
     // Start animation after a brief delay
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) _animationController.forward();
@@ -98,15 +90,22 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       );
       await paymentProvider.loadSubscriptionPlans();
 
-      // Set initial plan selection after loading plans
+      // Set initial plan selection after loading plans - default to 6 months (Best Value)
       final plans = paymentProvider.subscriptionPlans;
       print(
         '📋 SubscriptionScreen: Received ${plans.length} plans from PaymentProvider',
       );
 
       if (plans.isNotEmpty && _selectedPlanId == null) {
-        _selectedPlanId = plans.first.id;
-        print('✅ SubscriptionScreen: Selected initial plan: $_selectedPlanId');
+        // Default to 6 months plan (monthly_premium)
+        final recommendedPlan = plans.firstWhere(
+          (plan) => plan.id == 'monthly_premium',
+          orElse: () => plans.first,
+        );
+        _selectedPlanId = recommendedPlan.id;
+        print(
+          '✅ SubscriptionScreen: Selected initial plan (6 months): $_selectedPlanId',
+        );
       } else if (plans.isEmpty) {
         print('⚠️ SubscriptionScreen: No plans available');
       }
@@ -414,7 +413,9 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           decoration: BoxDecoration(
             color: AppTheme.primaryColor.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+            border: Border.all(
+              color: AppTheme.primaryColor.withValues(alpha: 0.1),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -586,7 +587,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
                 offset: Offset(0, (1 - value) * 30),
                 child: Opacity(
                   opacity: value,
-                  child: _buildPlanCard(entry.value, entry.key),
+                  child: _buildPlanCard(entry.value, entry.key, sortedPlans),
                 ),
               );
             },
@@ -596,18 +597,24 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
     );
   }
 
-  Widget _buildPlanCard(SubscriptionPlan plan, int index) {
+  Widget _buildPlanCard(
+    SubscriptionPlan plan,
+    int index,
+    List<SubscriptionPlan> allPlans,
+  ) {
     final isSelected = _selectedPlanId == plan.id;
-    final isRecommended = plan.id == 'semiannual_pr'; // 6 months recommended
+    final isRecommended = plan.id == 'monthly_premium'; // 6 months recommended
+    final savingsPercentage = _getSavingsPercentage(plan, allPlans);
+    final hasSavings = savingsPercentage > 0;
+    final originalPrice = hasSavings ? _getOriginalPrice(plan, allPlans) : 0.0;
+    final monthlyRate = _getMonthlyPrice(plan);
 
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedPlanId = plan.id;
         });
-        // Add haptic feedback for better UX
         HapticFeedback.lightImpact();
-        // Scale animation on tap
         _scaleAnimationController.forward().then((_) {
           _scaleAnimationController.reverse();
         });
@@ -615,239 +622,142 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
-        margin: const EdgeInsets.only(bottom: 20),
-        padding: const EdgeInsets.all(24),
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: AppTheme.surfaceColor,
           border: Border.all(
             color: isSelected ? AppTheme.primaryColor : AppTheme.borderColor,
             width: isSelected ? 2 : 1,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: isSelected
-                  ? AppTheme.primaryColor.withValues(alpha: 0.15)
-                  : Colors.black.withValues(alpha: 0.05),
-              spreadRadius: isSelected ? 2 : 0,
-              blurRadius: isSelected ? 20 : 8,
-              offset: Offset(0, isSelected ? 8 : 2),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Column(
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                                      : AppTheme.neutralGray,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? AppTheme.primaryColor.withValues(alpha: 0.3)
-                                        : AppTheme.borderColor,
-                                  ),
-                                ),
-                                child: PhosphorIcon(
-                                  PhosphorIcons.calendar(),
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : AppTheme.textSecondaryColor,
-                                  size: 16,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Text(
-                                _getPlanDisplayName(plan),
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.textPrimaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Text(
-                                'RM${_getMonthlyPrice(plan).toStringAsFixed(2)}',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.textSecondaryColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              Text(
-                                ' sebulan',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppTheme.textSecondaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? AppTheme.primaryColor
-                              : AppTheme.borderColor,
-                          width: 2,
-                        ),
-                        color: isSelected
-                            ? AppTheme.primaryColor
-                            : Colors.transparent,
-                      ),
-                      child: isSelected
-                          ? PhosphorIcon(
-                              PhosphorIcons.check(PhosphorIconsStyle.bold),
-                              color: Colors.white,
-                              size: 16,
-                            )
-                          : null,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppTheme.primaryColor.withValues(alpha: 0.05)
-                        : AppTheme.neutralGray,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isSelected
-                          ? AppTheme.primaryColor.withValues(alpha: 0.2)
-                          : AppTheme.borderColor,
-                    ),
-                  ),
-                  child: Row(
+                // Left side - Title and subtitle
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Jumlah Bayaran',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppTheme.textSecondaryColor,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            RichText(
-                              text: TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'RM${plan.price.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: isSelected
-                                          ? AppTheme.primaryColor
-                                          : AppTheme.textPrimaryColor,
-                                    ),
-                                  ),
-                                  TextSpan(
-                                    text:
-                                        ' setiap ${_getPlanDisplayName(plan).toLowerCase()}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: AppTheme.textSecondaryColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                      Text(
+                        _getPlanDisplayName(plan),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.textPrimaryColor,
                         ),
                       ),
-                      if (isSelected)
+                      const SizedBox(height: 4),
+                      Text(
+                        _getPlanSubtitle(plan),
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondaryColor,
+                        ),
+                      ),
+                      if (hasSavings) ...[
+                        const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor,
-                            borderRadius: BorderRadius.circular(12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
                           ),
-                          child: PhosphorIcon(
-                            PhosphorIcons.sparkle(PhosphorIconsStyle.fill),
-                            color: Colors.white,
-                            size: 20,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'Save $savingsPercentage%',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: AppTheme.primaryColor,
+                            ),
                           ),
                         ),
+                      ],
                     ],
                   ),
                 ),
+
+                const SizedBox(width: 12),
+
+                // Right side - Pricing only
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'RM ${plan.price.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                    if (hasSavings) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'RM ${originalPrice.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.textSecondaryColor,
+                          decoration: TextDecoration.lineThrough,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 4),
+                    Text(
+                      'RM ${monthlyRate.toStringAsFixed(2)}/month',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.primaryColor,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
-            // Recommended badge
+
+            // Best Value badge - overflow keluar dari card, kiri atas
             if (isRecommended)
               Positioned(
-                top: -12,
-                right: 12,
+                top: -30,
+                left: 0,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 6,
+                    horizontal: 12,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        AppTheme.primaryColor,
-                        AppTheme.primaryLightColor,
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
+                    color: AppTheme.secondaryColor,
+                    borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                        spreadRadius: 1,
+                        color: AppTheme.secondaryColor.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 3),
                       ),
                     ],
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      PhosphorIcon(
-                        PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                      const SizedBox(width: 4),
-                      const Text(
-                        'POPULAR',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    'Best Value',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ),
@@ -880,134 +790,71 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
       ),
       child: Column(
         children: [
-          // Trial info card
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
-            ),
-            child: Row(
+          // Terms text with clickable links
+          RichText(
+            textAlign: TextAlign.center,
+            text: TextSpan(
+              style: TextStyle(
+                fontSize: 12,
+                color: AppTheme.textSecondaryColor,
+                height: 1.5,
+              ),
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
+                TextSpan(text: 'By subscribing, you agree to our '),
+                TextSpan(
+                  text: 'Terms of Service',
+                  style: TextStyle(
                     color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(12),
+                    decoration: TextDecoration.underline,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: PhosphorIcon(
-                    PhosphorIcons.gift(PhosphorIconsStyle.fill),
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = _showTermsOfService,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Percubaan 7 hari PERCUMA',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimaryColor,
-                        ),
-                      ),
-                      Text(
-                        'Kemudian RM${selectedPlan.price.toStringAsFixed(2)} setiap ${_getPlanDisplayName(selectedPlan).toLowerCase()}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.textSecondaryColor,
-                        ),
-                      ),
-                    ],
+                TextSpan(text: ' and '),
+                TextSpan(
+                  text: 'Privacy Policy',
+                  style: TextStyle(
+                    color: AppTheme.primaryColor,
+                    decoration: TextDecoration.underline,
+                    fontWeight: FontWeight.w500,
                   ),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = _showPrivacyPolicy,
                 ),
+                TextSpan(text: '. Cancel anytime from your account settings.'),
               ],
             ),
           ),
 
           const SizedBox(height: 20),
 
-          // Subscribe button
+          // Subscribe button (simplified - no icon)
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => _handleSubscribe(selectedPlan),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _handleSubscribe(selectedPlan);
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                elevation: 3,
+                elevation: 2,
                 shadowColor: AppTheme.primaryColor.withValues(alpha: 0.3),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  PhosphorIcon(
-                    PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Mulakan Percubaan PERCUMA',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Start Premium Subscription',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
               ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Terms and conditions
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppTheme.neutralGray,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIcons.info(),
-                      color: AppTheme.textSecondaryColor,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Maklumat Penting',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppTheme.textPrimaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Dengan melanggan, anda bersetuju dengan Terma Perkhidmatan dan Dasar Privasi kami. Langganan akan diperbaharui secara automatik.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textSecondaryColor,
-                    height: 1.4,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
@@ -1018,21 +865,212 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
   String _getPlanDisplayName(SubscriptionPlan plan) {
     switch (plan.id) {
       case 'monthly_basic': // ← FIXED: Actual 1 month plan ID
-        return '1 month';
+        return '1 Month';
       case 'quarterly_pr':
-        return '3 months';
+        return '3 Months';
       case 'monthly_premium': // ← FIXED: This is actually 6 month plan in database
-        return '6 months';
+        return '6 Months';
       case 'yearly_premium': // ← FIXED: Use correct yearly plan ID
-        return '12 months';
+        return '12 Months';
       default:
-        return '${plan.durationDays ~/ 30} months';
+        return '${plan.durationDays ~/ 30} Months';
     }
+  }
+
+  String _getPlanSubtitle(SubscriptionPlan plan) {
+    final months = plan.durationDays ~/ 30;
+    if (months == 1) return 'Monthly subscription';
+    return '$months months subscription';
   }
 
   double _getMonthlyPrice(SubscriptionPlan plan) {
     final months = plan.durationDays / 30;
     return plan.price / months;
+  }
+
+  // Calculate savings percentage compared to monthly rate
+  int _getSavingsPercentage(
+    SubscriptionPlan plan,
+    List<SubscriptionPlan> allPlans,
+  ) {
+    // Find monthly plan
+    final monthlyPlan = allPlans.firstWhere(
+      (p) => p.id == 'monthly_basic',
+      orElse: () => plan,
+    );
+
+    if (plan.id == monthlyPlan.id) return 0; // No savings for monthly
+
+    final months = plan.durationDays / 30;
+    final monthlyRate = monthlyPlan.price;
+    final fullPrice = monthlyRate * months;
+    final savings = ((fullPrice - plan.price) / fullPrice * 100).round();
+
+    return savings > 0 ? savings : 0;
+  }
+
+  // Calculate original price before discount
+  double _getOriginalPrice(
+    SubscriptionPlan plan,
+    List<SubscriptionPlan> allPlans,
+  ) {
+    final monthlyPlan = allPlans.firstWhere(
+      (p) => p.id == 'monthly_basic',
+      orElse: () => plan,
+    );
+
+    final months = plan.durationDays / 30;
+    return monthlyPlan.price * months;
+  }
+
+  // Show Terms of Service dialog
+  void _showTermsOfService() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Terms of Service',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimaryColor,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            '''Welcome to Maktabah Ruwaq Jawi. By using our service, you agree to these terms:
+
+1. Account Registration
+You must provide accurate information when creating an account.
+
+2. Subscription Plans
+- Monthly, quarterly, semi-annual, and annual plans available
+- 7-day free trial for new subscribers
+- Auto-renewal unless cancelled
+
+3. Payment Terms
+- Payments processed through ToyyibPay
+- Subscriptions renew automatically
+- Cancel anytime from account settings
+
+4. Content Usage
+- Content is for personal, non-commercial use only
+- Downloading for offline viewing is permitted
+- Sharing account credentials is prohibited
+
+5. Intellectual Property
+All content is protected by copyright and owned by respective creators.
+
+6. Termination
+We reserve the right to terminate accounts that violate these terms.
+
+7. Changes to Terms
+We may update these terms. Continued use means acceptance of new terms.
+
+For questions, contact us at support@ruwaqjawi.com''',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textPrimaryColor,
+              height: 1.6,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show Privacy Policy dialog
+  void _showPrivacyPolicy() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Privacy Policy',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textPrimaryColor,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            '''This Privacy Policy describes how Maktabah Ruwaq Jawi collects, uses, and protects your information.
+
+1. Information We Collect
+- Account information (name, email, phone)
+- Payment information (processed by ToyyibPay)
+- Usage data (viewing history, preferences)
+- Device information (IP address, browser type)
+
+2. How We Use Your Information
+- Provide and improve our services
+- Process payments and subscriptions
+- Send notifications about content and updates
+- Personalize your experience
+- Analyze usage patterns
+
+3. Information Sharing
+We do not sell your personal information. We share data only with:
+- Payment processors (ToyyibPay)
+- Service providers (hosting, analytics)
+- Legal authorities when required by law
+
+4. Data Security
+We implement security measures to protect your information, including:
+- Encrypted data transmission
+- Secure server storage
+- Regular security audits
+
+5. Your Rights
+You have the right to:
+- Access your personal data
+- Correct inaccurate information
+- Delete your account and data
+- Opt-out of marketing communications
+
+6. Cookies
+We use cookies to enhance user experience and analyze usage.
+
+7. Children's Privacy
+Our service is not intended for users under 13 years old.
+
+8. Changes to Policy
+We may update this policy. We will notify users of significant changes.
+
+Contact us at privacy@ruwaqjawi.com for privacy-related questions.
+
+Last updated: January 2025''',
+            style: TextStyle(
+              fontSize: 14,
+              color: AppTheme.textPrimaryColor,
+              height: 1.6,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Close',
+              style: TextStyle(
+                color: AppTheme.primaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleSubscribe(SubscriptionPlan selectedPlan) async {

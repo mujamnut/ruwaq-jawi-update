@@ -13,6 +13,8 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/student/screens/student_home_screen.dart';
 import '../../features/student/screens/kitab_list_screen.dart';
 import '../../features/student/screens/kitab_detail_screen.dart';
+import '../../features/student/screens/category_list_screen.dart';
+import '../../features/student/screens/category_detail_screen.dart';
 import '../../features/student/screens/saved_items_screen.dart';
 import '../../features/student/screens/subscription_screen.dart';
 import '../../features/student/screens/subscription_detail_screen.dart';
@@ -197,10 +199,7 @@ class AppRouter {
             final message = state.uri.queryParameters['message'];
             return CustomTransitionPage(
               key: state.pageKey,
-              child: EmailVerificationScreen(
-                email: email,
-                message: message,
-              ),
+              child: EmailVerificationScreen(email: email, message: message),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                     return SlideTransition(
@@ -289,6 +288,19 @@ class AppRouter {
           },
         ),
         GoRoute(
+          path: '/categories',
+          name: 'categories',
+          builder: (context, state) => const CategoryListScreen(),
+        ),
+        GoRoute(
+          path: '/category/:id',
+          name: 'category-detail',
+          builder: (context, state) {
+            final categoryId = state.pathParameters['id']!;
+            return CategoryDetailScreen(categoryId: categoryId);
+          },
+        ),
+        GoRoute(
           path: '/player/:id',
           name: 'content-player',
           builder: (context, state) {
@@ -314,7 +326,10 @@ class AppRouter {
           builder: (context, state) {
             final kitabId = state.pathParameters['id']!;
             final videoId = state.uri.queryParameters['video'];
-            return PreviewVideoPlayerScreen(videoKitabId: kitabId, videoId: videoId);
+            return PreviewVideoPlayerScreen(
+              videoKitabId: kitabId,
+              videoId: videoId,
+            );
           },
         ),
         GoRoute(
@@ -325,10 +340,39 @@ class AppRouter {
         GoRoute(
           path: '/ebook/:id',
           name: 'ebook-detail',
-          builder: (context, state) {
-            final ebookId = state.pathParameters['id']!;
-            return EbookDetailScreen(ebookId: ebookId);
-          },
+          pageBuilder: (context, state) => CustomTransitionPage(
+            key: state.pageKey,
+            child: EbookDetailScreen(ebookId: state.pathParameters['id']!),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: FadeTransition(
+                      opacity: animation.drive(
+                        Tween(
+                          begin: 0.0,
+                          end: 1.0,
+                        ).chain(CurveTween(curve: Curves.easeInOut)),
+                      ),
+                      child: ScaleTransition(
+                        scale: animation.drive(
+                          Tween(
+                            begin: 0.95,
+                            end: 1.0,
+                          ).chain(CurveTween(curve: Curves.easeOutBack)),
+                        ),
+                        child: child,
+                      ),
+                    ),
+                  );
+                },
+            transitionDuration: const Duration(milliseconds: 350),
+          ),
         ),
         GoRoute(
           path: '/ebook/reader/:id',
@@ -365,16 +409,16 @@ class AppRouter {
             child: const NotificationScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: animation.drive(
-                  Tween(
-                    begin: const Offset(1.0, 0.0),
-                    end: Offset.zero,
-                  ).chain(CurveTween(curve: Curves.easeInOutCubic)),
-                ),
-                child: child,
-              );
-            },
+                  return SlideTransition(
+                    position: animation.drive(
+                      Tween(
+                        begin: const Offset(1.0, 0.0),
+                        end: Offset.zero,
+                      ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+                    ),
+                    child: child,
+                  );
+                },
             transitionDuration: const Duration(milliseconds: 300),
           ),
         ),
@@ -675,9 +719,7 @@ class AppRouter {
             context.go('/');
           });
           return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
+            body: Center(child: CircularProgressIndicator()),
           );
         }
         return const NotFoundScreen();

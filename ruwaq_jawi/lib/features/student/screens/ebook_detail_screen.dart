@@ -56,8 +56,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
     _dataManager = EbookDataManager(onStateChanged: () => setState(() {}));
     _animationManager = EbookAnimationManager();
     _animationManager.initialize(this);
-    _favoritesManager =
-        EbookFavoritesManager(onStateChanged: () => setState(() {}));
+    _favoritesManager = EbookFavoritesManager(
+      onStateChanged: () => setState(() {}),
+    );
 
     // Load data
     _loadEbookData();
@@ -89,28 +90,32 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
   }
 
   Future<void> _loadEbookData() async {
-    await _dataManager.loadEbookData(context, widget.ebookId);
+    // Load data in parallel for better performance
+    await Future.wait([_dataManager.loadEbookData(context, widget.ebookId)]);
 
     if (mounted) {
+      // Check saved status after main data is loaded
       await _favoritesManager.checkSavedStatus(context, _dataManager.ebook);
 
-      // Start animations after data loaded
-      Future.delayed(const Duration(milliseconds: 100), () {
-        if (mounted) {
-          _animationManager.startAnimations();
-        }
-      });
+      // Start animations immediately after data loaded
+      if (mounted) {
+        _animationManager.startAnimations();
+      }
     }
   }
 
   Future<void> _toggleSaved() async {
-    final success =
-        await _favoritesManager.toggleSaved(context, _dataManager.ebook);
+    final success = await _favoritesManager.toggleSaved(
+      context,
+      _dataManager.ebook,
+    );
 
     if (mounted) {
       if (success) {
         EbookNotificationHelper.showSaveSuccess(
-            context, _favoritesManager.isSaved);
+          context,
+          _favoritesManager.isSaved,
+        );
       } else {
         EbookNotificationHelper.showError(
           context,
@@ -144,9 +149,22 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
     if (_dataManager.ebook?.pdfUrl == null ||
         _dataManager.ebook!.pdfUrl.trim().isEmpty) {
       EbookNotificationHelper.showError(
-          context, 'URL PDF tidak tersedia untuk e-book ini');
+        context,
+        'URL PDF tidak tersedia untuk e-book ini',
+      );
       return;
     }
+
+    // Validate URL format
+    final pdfUrl = _dataManager.ebook!.pdfUrl.trim();
+    if (!pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
+      debugPrint('❌ Invalid PDF URL format: $pdfUrl');
+      EbookNotificationHelper.showError(context, 'Format URL PDF tidak sah');
+      return;
+    }
+
+    debugPrint('📖 Opening PDF viewer for: ${_dataManager.ebook!.title}');
+    debugPrint('🔗 PDF URL: $pdfUrl');
 
     PDFViewerDialogWidget.show(context, _dataManager.ebook!);
   }
@@ -203,8 +221,10 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context,
-      {bool showSaveButton = false}) {
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context, {
+    bool showSaveButton = false,
+  }) {
     return AppBar(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -223,9 +243,9 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
       title: Text(
         'Detail E-Book',
         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryColor,
-            ),
+          fontWeight: FontWeight.w600,
+          color: AppTheme.textPrimaryColor,
+        ),
       ),
       centerTitle: true,
       actions: showSaveButton
@@ -280,12 +300,13 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
                   // Title - optimized animation
                   RepaintBoundary(
                     child: Opacity(
-                      opacity: _animationManager.fadeAnimation.value.clamp(0.0, 1.0),
+                      opacity: _animationManager.fadeAnimation.value.clamp(
+                        0.0,
+                        1.0,
+                      ),
                       child: Text(
                         _dataManager.ebook!.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .headlineSmall
+                        style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(
                               color: AppTheme.textPrimaryColor,
                               fontWeight: FontWeight.bold,
@@ -323,7 +344,8 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
                   RepaintBoundary(
                     child: EbookActionButtonsWidget(
                       ebook: _dataManager.ebook!,
-                      isPremiumLocked: _dataManager.ebook!.isPremium &&
+                      isPremiumLocked:
+                          _dataManager.ebook!.isPremium &&
                           !EbookPremiumService.hasActiveSubscription(context),
                       onReadingOptions: _showReadingOptions,
                     ),

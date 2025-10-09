@@ -7,10 +7,16 @@ import 'supabase_service.dart';
 class PopupService {
   static const String _subscriptionPromoType = 'subscription_promo';
 
+  // Track if popup was shown in current app session
+  static bool _shownInCurrentSession = false;
+
   /// Check if subscription promo popup should be shown
   /// Returns true if should show, false otherwise
   static Future<bool> shouldShowSubscriptionPromo() async {
     try {
+      // Check if already shown in current session
+      if (_shownInCurrentSession) return false;
+
       // Check if user is authenticated
       final user = SupabaseService.currentUser;
       if (user == null) return false;
@@ -29,7 +35,7 @@ class PopupService {
       if (popupData['dismissed_permanently'] == true) return false;
 
       // Get frequency based on environment
-      final daysBetweenShows = AppConfig.isDevelopment ? 0 : 3; // 0 = every time for dev, 3 days for prod
+      final daysBetweenShows = AppConfig.isDevelopment ? 0 : 7; // 0 = every time for dev, 7 days for prod
 
       if (daysBetweenShows == 0) {
         return true; // Show every time in development
@@ -52,6 +58,9 @@ class PopupService {
   /// Show subscription promo popup
   static Future<void> showSubscriptionPromo(BuildContext context) async {
     try {
+      // Mark as shown in current session
+      _shownInCurrentSession = true;
+
       // Record that popup was shown
       await _recordPopupShown(_subscriptionPromoType);
 
@@ -157,6 +166,14 @@ class PopupService {
     }
   }
 
+  /// Reset session flag (call on logout or app restart)
+  static void resetSessionFlag() {
+    _shownInCurrentSession = false;
+    if (kDebugMode) {
+      print('Popup session flag reset');
+    }
+  }
+
   /// Reset popup tracking for testing purposes (development only)
   static Future<void> resetPopupTracking() async {
     if (!AppConfig.isDevelopment) return;
@@ -166,6 +183,7 @@ class PopupService {
       if (user == null) return;
 
       await SupabaseService.resetPopupTracking(userId: user.id);
+      _shownInCurrentSession = false; // Also reset session flag
 
       if (kDebugMode) {
         print('Popup tracking reset for testing');

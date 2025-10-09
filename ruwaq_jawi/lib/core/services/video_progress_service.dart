@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class VideoProgressService {
@@ -5,24 +6,35 @@ class VideoProgressService {
   static const String _videoProgressKey = 'video_positions';
 
   static Box<dynamic>? _box;
+  static bool _isInitialized = false;
 
   /// Initialize the video progress service
   static Future<void> initialize() async {
+    if (_isInitialized && _box != null && _box!.isOpen) {
+      return; // Already initialized
+    }
+
     try {
       _box = await Hive.openBox(_boxName);
+      _isInitialized = true;
     } catch (e) {
-      print('Error initializing VideoProgressService: $e');
+      debugPrint('Error initializing VideoProgressService: $e');
+      _isInitialized = false;
+      // Don't throw - allow app to continue without video progress tracking
     }
   }
 
-  /// Get the progress box
-  static Box<dynamic> get _progressBox {
+  /// Get the progress box with safe initialization
+  static Box<dynamic>? get _progressBox {
     if (_box == null || !_box!.isOpen) {
-      throw Exception(
-        'VideoProgressService not initialized. Call initialize() first.',
+      debugPrint(
+        'VideoProgressService not initialized. Attempting to initialize...',
       );
+      // Try to initialize on demand
+      initialize().then((_) {});
+      return null;
     }
-    return _box!;
+    return _box;
   }
 
   /// Save video progress position
@@ -31,9 +43,16 @@ class VideoProgressService {
     int positionSeconds,
   ) async {
     try {
+      final box = _progressBox;
+      if (box == null) {
+        debugPrint('Cannot save video position: box not initialized');
+        return false;
+      }
+
       final allProgress =
-          _progressBox.get(_videoProgressKey, defaultValue: <String, dynamic>{})
-              as Map;
+          box.get(_videoProgressKey, defaultValue: <String, dynamic>{})
+              as Map? ??
+          <String, dynamic>{};
       final updatedProgress = Map<String, dynamic>.from(allProgress);
 
       updatedProgress[videoId] = {
@@ -41,10 +60,10 @@ class VideoProgressService {
         'last_watched': DateTime.now().toIso8601String(),
       };
 
-      await _progressBox.put(_videoProgressKey, updatedProgress);
+      await box.put(_videoProgressKey, updatedProgress);
       return true;
     } catch (e) {
-      print('Error saving video position: $e');
+      debugPrint('Error saving video position: $e');
       return false;
     }
   }
@@ -52,18 +71,30 @@ class VideoProgressService {
   /// Get saved video position
   static int getVideoPosition(String videoId) {
     try {
+      final box = _progressBox;
+      if (box == null) {
+        debugPrint('Cannot get video position: box not initialized');
+        return 0;
+      }
+
       final allProgress =
-          _progressBox.get(_videoProgressKey, defaultValue: <String, dynamic>{})
-              as Map;
+          box.get(_videoProgressKey, defaultValue: <String, dynamic>{})
+              as Map? ??
+          <String, dynamic>{};
       final videoProgress = allProgress[videoId] as Map<String, dynamic>?;
 
       if (videoProgress != null && videoProgress['position_seconds'] != null) {
-        return videoProgress['position_seconds'] as int;
+        final position = videoProgress['position_seconds'];
+        if (position is int) {
+          return position;
+        } else if (position is double) {
+          return position.toInt();
+        }
       }
 
       return 0; // Start from beginning if no progress saved
     } catch (e) {
-      print('Error getting video position: $e');
+      debugPrint('Error getting video position for $videoId: $e');
       return 0;
     }
   }
@@ -71,9 +102,14 @@ class VideoProgressService {
   /// Get last watched timestamp for a video
   static DateTime? getLastWatchedTime(String videoId) {
     try {
+      final box = _progressBox;
+      if (box == null) {
+        debugPrint('Cannot get last watched time: box not initialized');
+        return null;
+      }
+
       final allProgress =
-          _progressBox.get(_videoProgressKey, defaultValue: <String, dynamic>{})
-              as Map;
+          box.get(_videoProgressKey, defaultValue: <String, dynamic>{}) as Map;
       final videoProgress = allProgress[videoId] as Map<String, dynamic>?;
 
       if (videoProgress != null && videoProgress['last_watched'] != null) {
@@ -82,7 +118,7 @@ class VideoProgressService {
 
       return null;
     } catch (e) {
-      print('Error getting last watched time: $e');
+      debugPrint('Error getting last watched time: $e');
       return null;
     }
   }
@@ -93,7 +129,7 @@ class VideoProgressService {
       final position = getVideoPosition(videoId);
       return position > 10; // Consider watched if more than 10 seconds
     } catch (e) {
-      print('Error checking watch progress: $e');
+      debugPrint('Error checking watch progress: $e');
       return false;
     }
   }
@@ -101,12 +137,19 @@ class VideoProgressService {
   /// Get all videos with progress (for recently watched list)
   static Map<String, Map<String, dynamic>> getAllVideoProgress() {
     try {
+      final box = _progressBox;
+      if (box == null) {
+        debugPrint('Cannot get all video progress: box not initialized');
+        return {};
+      }
+
       final allProgress =
-          _progressBox.get(_videoProgressKey, defaultValue: <String, dynamic>{})
-              as Map;
+          box.get(_videoProgressKey, defaultValue: <String, dynamic>{})
+              as Map? ??
+          <String, dynamic>{};
       return Map<String, Map<String, dynamic>>.from(allProgress);
     } catch (e) {
-      print('Error getting all video progress: $e');
+      debugPrint('Error getting all video progress: $e');
       return {};
     }
   }
@@ -127,7 +170,7 @@ class VideoProgressService {
 
       return sortedEntries.take(limit).map((entry) => entry.key).toList();
     } catch (e) {
-      print('Error getting recently watched videos: $e');
+      debugPrint('Error getting recently watched videos: $e');
       return [];
     }
   }
@@ -135,17 +178,22 @@ class VideoProgressService {
   /// Remove progress for a specific video
   static Future<bool> removeVideoProgress(String videoId) async {
     try {
+      final box = _progressBox;
+      if (box == null) {
+        debugPrint('Cannot remove video progress: box not initialized');
+        return false;
+      }
+
       final allProgress =
-          _progressBox.get(_videoProgressKey, defaultValue: <String, dynamic>{})
-              as Map;
+          box.get(_videoProgressKey, defaultValue: <String, dynamic>{}) as Map;
       final updatedProgress = Map<String, dynamic>.from(allProgress);
 
       updatedProgress.remove(videoId);
-      await _progressBox.put(_videoProgressKey, updatedProgress);
+      await box.put(_videoProgressKey, updatedProgress);
 
       return true;
     } catch (e) {
-      print('Error removing video progress: $e');
+      debugPrint('Error removing video progress: $e');
       return false;
     }
   }
@@ -153,9 +201,12 @@ class VideoProgressService {
   /// Clear all video progress (for reset/cleanup)
   static Future<void> clearAllProgress() async {
     try {
-      await _progressBox.delete(_videoProgressKey);
+      final box = _progressBox;
+      if (box != null) {
+        await box.delete(_videoProgressKey);
+      }
     } catch (e) {
-      print('Error clearing all video progress: $e');
+      debugPrint('Error clearing all video progress: $e');
     }
   }
 
@@ -188,8 +239,9 @@ class VideoProgressService {
     try {
       await _box?.close();
       _box = null;
+      _isInitialized = false;
     } catch (e) {
-      print('Error closing VideoProgressService: $e');
+      debugPrint('Error closing VideoProgressService: $e');
     }
   }
 }

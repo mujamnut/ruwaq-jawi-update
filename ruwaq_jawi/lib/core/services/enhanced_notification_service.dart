@@ -259,14 +259,36 @@ class EnhancedNotificationService {
     }
   }
 
-  /// Delete notification - supports both systems
+  /// Delete notification - soft delete using notification_reads.deleted_at
   static Future<bool> deleteNotification(String notificationId, {String? source}) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return false;
 
-      // Enhanced system doesn't support deletion, only mark as read
-      return await markAsRead(notificationId, source: 'new_system');
+      // Use new delete_notification RPC function for soft delete
+      try {
+        final response = await _supabase.rpc('delete_notification', params: {
+          'p_notification_id': notificationId,
+          'p_user_id': user.id,
+        });
+
+        if (response == true) {
+          if (kDebugMode) {
+            print('✅ Soft deleted notification: $notificationId');
+          }
+          return true;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Failed to delete notification: $e');
+        }
+        return false;
+      }
+
+      if (kDebugMode) {
+        print('❌ Delete notification failed - response was false');
+      }
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error deleting notification: $e');

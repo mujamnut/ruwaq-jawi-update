@@ -95,7 +95,7 @@ class SearchManager {
       // Search in video kitab if filter allows
       if (filterSemua || filterPengajian) {
         final filteredVideoKitab = videoKitabList.where((vk) {
-          final title = vk.title?.toLowerCase().trim() ?? '';
+          final title = vk.title.toLowerCase().trim();
           final author = vk.author?.toLowerCase().trim() ?? '';
           final description = vk.description?.toLowerCase().trim() ?? '';
 
@@ -118,7 +118,7 @@ class SearchManager {
 
           return {
             'id': vk.id,
-            'title': vk.title ?? 'Tidak Berjudul',
+            'title': vk.title,
             'author': vk.author?.trim().isNotEmpty == true ? vk.author : null,
             'type': 'kitab',
             'category': categoryName,
@@ -138,7 +138,7 @@ class SearchManager {
       // Search in ebooks if filter allows
       if (filterSemua || filterEbook) {
         final filteredEbooks = ebookList.where((eb) {
-          final title = eb.title?.toLowerCase().trim() ?? '';
+          final title = eb.title.toLowerCase().trim();
           final author = eb.author?.toLowerCase().trim() ?? '';
           final description = eb.description?.toLowerCase().trim() ?? '';
 
@@ -161,7 +161,7 @@ class SearchManager {
 
           return {
             'id': eb.id,
-            'title': eb.title ?? 'Tidak Berjudul',
+            'title': eb.title,
             'author': eb.author?.trim().isNotEmpty == true ? eb.author : null,
             'type': 'ebook',
             'category': categoryName,

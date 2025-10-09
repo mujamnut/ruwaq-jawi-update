@@ -10,7 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/connectivity_provider.dart';
-import '../../../core/services/local_favorites_service.dart';
+import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/services/network_service.dart';
 import '../../../core/models/video_kitab.dart';
 import '../../../core/models/video_episode.dart';
@@ -89,6 +89,23 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
 
     _loadKitabData();
     _checkIfSaved();
+
+    // Listen to SavedItemsProvider changes for auto-sync
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SavedItemsProvider>().addListener(_updateSavedStatus);
+    });
+  }
+
+  void _updateSavedStatus() {
+    if (_kitab != null && mounted) {
+      final savedItemsProvider = context.read<SavedItemsProvider>();
+      final newSavedStatus = savedItemsProvider.isKitabSaved(_kitab!.id);
+      if (_isSaved != newSavedStatus) {
+        setState(() {
+          _isSaved = newSavedStatus;
+        });
+      }
+    }
   }
 
   void _loadKitabData() {
@@ -195,6 +212,12 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
 
   @override
   void dispose() {
+    // Remove listener from SavedItemsProvider
+    try {
+      context.read<SavedItemsProvider>().removeListener(_updateSavedStatus);
+    } catch (e) {
+      // Provider might already be disposed
+    }
     _fadeAnimationController.dispose();
     _slideAnimationController.dispose();
     _headerCarouselController.dispose();
@@ -203,8 +226,9 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
 
   void _checkIfSaved() {
     if (_kitab != null) {
+      final savedItemsProvider = context.read<SavedItemsProvider>();
       setState(() {
-        _isSaved = LocalFavoritesService.isVideoKitabFavorite(_kitab!.id);
+        _isSaved = savedItemsProvider.isKitabSaved(_kitab!.id);
       });
     }
   }
@@ -1320,47 +1344,93 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
     if (_kitab == null) return;
 
     try {
-      bool success;
+      HapticFeedback.lightImpact();
+      final savedItemsProvider = context.read<SavedItemsProvider>();
 
       if (_isSaved) {
-        // Remove from local favorites
-        success = await LocalFavoritesService.removeVideoKitabFromFavorites(
-          _kitab!.id,
-        );
-      } else {
-        // Add to local favorites
-        success = await LocalFavoritesService.addVideoKitabToFavorites(
-          _kitab!.id,
-        );
-      }
+        // Remove from saved (Supabase)
+        await savedItemsProvider.removeFromSaved(_kitab!.id);
 
-      if (success && mounted) {
-        setState(() {
-          _isSaved = !_isSaved;
-        });
+        if (mounted) {
+          setState(() {
+            _isSaved = false;
+          });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isSaved
-                  ? 'Kitab added to favorites'
-                  : 'Kitab removed from favorites',
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIcons.heartBreak(PhosphorIconsStyle.fill),
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Dibuang dari simpanan'),
+                ],
+              ),
+              backgroundColor: AppTheme.primaryColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+              duration: const Duration(seconds: 2),
             ),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: _isSaved ? Colors.green : Colors.orange,
-            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+          );
+        }
+      } else {
+        // Add to saved (Supabase)
+        await savedItemsProvider.addToSaved(_kitab!.id);
+
+        if (mounted) {
+          setState(() {
+            _isSaved = true;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  PhosphorIcon(
+                    PhosphorIcons.heart(PhosphorIconsStyle.fill),
+                    color: Colors.white,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Disimpan ke koleksi anda'),
+                ],
+              ),
+              backgroundColor: AppTheme.primaryColor,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
+              duration: const Duration(seconds: 2),
+              action: SnackBarAction(
+                label: 'Lihat',
+                textColor: Colors.white,
+                onPressed: () {
+                  context.push('/saved');
+                },
+              ),
+            ),
+          );
+        }
       }
     } catch (e) {
       debugPrint('Error toggling saved status: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error occurred. Please try again.'),
+          SnackBar(
+            content: const Text('Ralat berlaku. Sila cuba lagi.'),
             behavior: SnackBarBehavior.floating,
-            backgroundColor: Colors.red,
+            backgroundColor: AppTheme.errorColor,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
           ),
         );
       }
@@ -1371,7 +1441,8 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
     // Use centralized network check
     final hasInternet = await NetworkService.requiresInternet(
       context,
-      message: 'Video memerlukan sambungan internet. Sila periksa sambungan anda.',
+      message:
+          'Video memerlukan sambungan internet. Sila periksa sambungan anda.',
     );
 
     if (!hasInternet) return;
@@ -1414,7 +1485,8 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
     // Use centralized network check
     final hasInternet = await NetworkService.requiresInternet(
       context,
-      message: 'Video memerlukan sambungan internet. Sila periksa sambungan anda.',
+      message:
+          'Video memerlukan sambungan internet. Sila periksa sambungan anda.',
     );
 
     if (!hasInternet) return;
@@ -1660,6 +1732,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
   bool _isOnline = false;
   bool _showControls = false;
   bool _isPlaying = false;
+  bool _isFullscreen = false;
   Timer? _hideControlsTimer;
 
   @override
@@ -1783,8 +1856,50 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
     }
   }
 
+  Future<void> _toggleFullscreen() async {
+    if (_controller == null || !mounted) return;
+
+    setState(() {
+      _isFullscreen = !_isFullscreen;
+      // Always show controls when entering/exiting fullscreen
+      _showControls = true;
+    });
+
+    // Cancel any auto-hide timer
+    _hideControlsTimer?.cancel();
+
+    if (_isFullscreen) {
+      // Enter fullscreen - hide UI and force landscape
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+
+      // Start auto-hide timer for fullscreen
+      _showControlsTemporarily();
+    } else {
+      // Exit fullscreen - show UI and allow portrait
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
+  }
+
   @override
   void dispose() {
+    // Reset orientation when disposing
+    if (_isFullscreen) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    }
     try {
       _hideControlsTimer?.cancel();
       _controller?.dispose();
@@ -1799,228 +1914,271 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
   Widget build(BuildContext context) {
     // Show loading state
     if (!_isInitialized) {
-      return Container(
-        width: double.infinity,
-        height: double.infinity,
-        color: Colors.black,
-        child: Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryColor),
+      // Fullscreen mode: fill entire screen
+      if (_isFullscreen) {
+        return SizedBox.expand(
+          child: Container(
+            color: Colors.black,
+            child: Center(
+              child: CircularProgressIndicator(color: AppTheme.primaryColor),
+            ),
+          ),
+        );
+      }
+      // Portrait mode: maintain 16:9 aspect ratio
+      return AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Container(
+          color: Colors.black,
+          child: Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryColor),
+          ),
         ),
       );
     }
 
     // Show error/offline state with fallback thumbnail
     if (_hasError || !_isOnline || _controller == null) {
-      return SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: Stack(
-          children: [
-            // Fallback thumbnail
-            if (widget.episode.thumbnailUrl != null)
-              Positioned.fill(
-                child: Image.network(
-                  widget.episode.thumbnailUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return _buildOfflinePlaceholder();
-                  },
-                ),
-              )
-            else
-              Positioned.fill(child: _buildOfflinePlaceholder()),
-
-            // Offline/Error overlay
+      final errorContent = Stack(
+        children: [
+          // Fallback thumbnail
+          if (widget.episode.thumbnailUrl != null)
             Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.6),
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      HugeIcon(
-                        icon: _isOnline
-                            ? HugeIcons.strokeRoundedAlert01
-                            : HugeIcons.strokeRoundedWifiDisconnected01,
-                        color: Colors.white,
-                        size: 48,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _isOnline ? 'Video Error' : 'Offline',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _isOnline
-                            ? 'Cannot load video'
-                            : 'Connect to internet\nto watch preview',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              child: Image.network(
+                widget.episode.thumbnailUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildOfflinePlaceholder();
+                },
               ),
             ),
+          if (widget.episode.thumbnailUrl == null)
+            Positioned.fill(child: _buildOfflinePlaceholder()),
 
-            // Preview badge overlay
-            Positioned(
-              top: 16,
-              left: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _isOnline ? AppTheme.primaryColor : Colors.grey,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
+          // Offline/Error overlay
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.6),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    HugeIcon(
+                      icon: _isOnline
+                          ? HugeIcons.strokeRoundedAlert01
+                          : HugeIcons.strokeRoundedWifiDisconnected01,
+                      color: Colors.white,
+                      size: 48,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      _isOnline ? 'Video Error' : 'Offline',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isOnline
+                          ? 'Cannot load video'
+                          : 'Connect to internet\nto watch preview',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
-                child: const Text(
-                  'PREVIEW',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
               ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Show working video player
-    return SizedBox(
-      width: double.infinity,
-      height: double.infinity,
-      child: Stack(
-        children: [
-          // Video Player takes full space - no tap gestures to prevent seek conflicts
-          Positioned.fill(
-            child: YoutubePlayer(
-              controller: _controller!,
-              showVideoProgressIndicator: false, // Hide default progress
-              onReady: () {
-                print('✅ YouTube player ready');
-              },
-              onEnded: (metaData) {
-                print('📺 Video ended');
-              },
             ),
           ),
 
-          // Tap overlay to show controls (invisible when controls hidden)
-          if (!_showControls)
-            Positioned.fill(
-              child: GestureDetector(
-                onTap: _showControlsTemporarily,
-                child: Container(color: Colors.transparent),
+          // Preview badge overlay
+          Positioned(
+            top: 16,
+            left: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _isOnline ? AppTheme.primaryColor : Colors.grey,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ),
-
-          // Custom Controls Overlay (only show when _showControls is true)
-          if (_showControls)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.3),
-                child: Stack(
-                  children: [
-                    // Center Play/Pause Button
-                    Center(
-                      child: GestureDetector(
-                        onTap: _togglePlayPause,
-                        child: Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.7),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 16,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Icon(
-                            _isPlaying
-                                ? PhosphorIcons.pause()
-                                : PhosphorIcons.play(),
-                            color: Colors.white,
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    // Bottom Progress Bar (Read-Only)
-                    Positioned(
-                      bottom: 20,
-                      left: 20,
-                      right: 20,
-                      child: Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: StreamBuilder<Duration>(
-                          stream: _controller?.value.position != null
-                              ? Stream.periodic(
-                                  const Duration(milliseconds: 100),
-                                  (_) => _controller!.value.position,
-                                )
-                              : Stream.empty(),
-                          builder: (context, snapshot) {
-                            final position = snapshot.data ?? Duration.zero;
-                            final duration =
-                                _controller?.metadata.duration ?? Duration.zero;
-                            final progress = duration.inMilliseconds > 0
-                                ? position.inMilliseconds /
-                                      duration.inMilliseconds
-                                : 0.0;
-
-                            return FractionallySizedBox(
-                              alignment: Alignment.centerLeft,
-                              widthFactor: progress.clamp(0.0, 1.0),
-                              child: Container(
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                  ],
+              child: const Text(
+                'PREVIEW',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
                 ),
               ),
             ),
+          ),
         ],
-      ),
+      );
+
+      // Fullscreen mode: fill entire screen
+      if (_isFullscreen) {
+        return SizedBox.expand(child: errorContent);
+      }
+      // Portrait mode: maintain 16:9 aspect ratio
+      return AspectRatio(aspectRatio: 16 / 9, child: errorContent);
+    }
+
+    // Show working video player
+    final videoPlayerContent = Stack(
+      children: [
+        // Video Player takes full space - no tap gestures to prevent seek conflicts
+        Positioned.fill(
+          child: YoutubePlayer(
+            controller: _controller!,
+            showVideoProgressIndicator: false, // Hide default progress
+            onReady: () {
+              print('✅ YouTube player ready');
+            },
+            onEnded: (metaData) {
+              print('📺 Video ended');
+            },
+          ),
+        ),
+
+        // Tap overlay to show controls (invisible when controls hidden)
+        if (!_showControls)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _showControlsTemporarily,
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+
+        // Custom Controls Overlay (only show when _showControls is true)
+        if (_showControls)
+          Positioned.fill(
+            child: Container(
+              color: Colors.black.withValues(alpha: 0.3),
+              child: Stack(
+                children: [
+                  // Center Play/Pause Button
+                  Center(
+                    child: GestureDetector(
+                      onTap: _togglePlayPause,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          _isPlaying
+                              ? PhosphorIcons.pause()
+                              : PhosphorIcons.play(),
+                          color: Colors.white,
+                          size: 36,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Bottom Progress Bar (Read-Only)
+                  Positioned(
+                    bottom: 20,
+                    left: 20,
+                    right: 80,
+                    child: Container(
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                      child: StreamBuilder<Duration>(
+                        stream: _controller?.value.position != null
+                            ? Stream.periodic(
+                                const Duration(milliseconds: 100),
+                                (_) => _controller!.value.position,
+                              )
+                            : Stream.empty(),
+                        builder: (context, snapshot) {
+                          final position = snapshot.data ?? Duration.zero;
+                          final duration =
+                              _controller?.metadata.duration ?? Duration.zero;
+                          final progress = duration.inMilliseconds > 0
+                              ? position.inMilliseconds /
+                                    duration.inMilliseconds
+                              : 0.0;
+
+                          return FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: progress.clamp(0.0, 1.0),
+                            child: Container(
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                borderRadius: BorderRadius.circular(2),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+
+                  // Fullscreen Button (Bottom Right)
+                  Positioned(
+                    bottom: 8,
+                    right: 12,
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _toggleFullscreen,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          child: PhosphorIcon(
+                            _isFullscreen
+                                ? PhosphorIcons.arrowsIn(
+                                    PhosphorIconsStyle.bold,
+                                  )
+                                : PhosphorIcons.arrowsOut(
+                                    PhosphorIconsStyle.bold,
+                                  ),
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
+
+    // Fullscreen mode: fill entire screen
+    if (_isFullscreen) {
+      return SizedBox.expand(child: videoPlayerContent);
+    }
+    // Portrait mode: maintain 16:9 aspect ratio
+    return AspectRatio(aspectRatio: 16 / 9, child: videoPlayerContent);
   }
 
   Widget _buildOfflinePlaceholder() {

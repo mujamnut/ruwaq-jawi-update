@@ -8,7 +8,6 @@ import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/saved_items_provider.dart';
 import '../../../core/models/video_kitab.dart';
-import '../../../core/models/kitab.dart';
 import '../../../core/utils/youtube_utils.dart';
 import '../../../core/utils/thumbnail_utils.dart';
 import '../widgets/student_bottom_nav.dart';
@@ -1221,8 +1220,8 @@ class _KitabListScreenState extends State<KitabListScreen>
                           final isSaved = snapshot.data ?? false;
                           return _buildBottomSheetOption(
                             icon: isSaved
-                                ? HugeIcons.strokeRoundedBookmark02
-                                : HugeIcons.strokeRoundedBookmarkAdd01,
+                                ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
+                                : PhosphorIcons.heart(),
                             title: isSaved ? 'Buang dari Simpanan' : 'Simpan ke Koleksi',
                             subtitle: isSaved
                                 ? 'Alih keluar dari senarai simpanan'
@@ -1275,7 +1274,7 @@ class _KitabListScreenState extends State<KitabListScreen>
 
   /// Build individual option in bottom sheet
   Widget _buildBottomSheetOption({
-    required IconData icon,
+    required dynamic icon,
     required String title,
     required String subtitle,
     required Color iconColor,
@@ -1309,11 +1308,19 @@ class _KitabListScreenState extends State<KitabListScreen>
                   ),
                 ),
                 child: Center(
-                  child: HugeIcon(
-                    icon: icon,
-                    color: iconColor,
-                    size: 20,
-                  ),
+                  child: icon is IconData
+                      ? HugeIcon(
+                          icon: icon,
+                          color: iconColor,
+                          size: 20,
+                        )
+                      : icon is PhosphorIconData
+                          ? PhosphorIcon(
+                              icon,
+                              color: iconColor,
+                              size: 20,
+                            )
+                          : icon,
                 ),
               ),
               const SizedBox(width: 16),
@@ -1426,8 +1433,8 @@ class _KitabListScreenState extends State<KitabListScreen>
           SnackBar(
             content: Row(
               children: [
-                HugeIcon(
-                  icon: HugeIcons.strokeRoundedBookmarkRemove01,
+                PhosphorIcon(
+                  PhosphorIcons.heartBreak(PhosphorIconsStyle.fill),
                   color: Colors.white,
                   size: 18,
                 ),
@@ -1454,8 +1461,8 @@ class _KitabListScreenState extends State<KitabListScreen>
           SnackBar(
             content: Row(
               children: [
-                HugeIcon(
-                  icon: HugeIcons.strokeRoundedBookmarkAdd01,
+                PhosphorIcon(
+                  PhosphorIcons.heart(PhosphorIconsStyle.fill),
                   color: Colors.white,
                   size: 18,
                 ),

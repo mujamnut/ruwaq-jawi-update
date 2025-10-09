@@ -338,24 +338,30 @@ class SupabaseService {
     required String userId,
     required String popupType,
   }) async {
-    await from('user_popup_tracking').upsert({
-      'user_id': userId,
-      'popup_type': popupType,
-      'last_shown_at': DateTime.now().toIso8601String(),
-      'show_count': 1, // This will be incremented by database trigger if record exists
-    });
+    await from('user_popup_tracking').upsert(
+      {
+        'user_id': userId,
+        'popup_type': popupType,
+        'last_shown_at': DateTime.now().toIso8601String(),
+        'show_count': 1, // This will be incremented by database trigger if record exists
+      },
+      onConflict: 'user_id,popup_type', // Specify the unique constraint columns
+    );
   }
 
   static Future<void> dismissPopupPermanently({
     required String userId,
     required String popupType,
   }) async {
-    await from('user_popup_tracking').upsert({
-      'user_id': userId,
-      'popup_type': popupType,
-      'dismissed_permanently': true,
-      'last_shown_at': DateTime.now().toIso8601String(),
-    });
+    await from('user_popup_tracking').upsert(
+      {
+        'user_id': userId,
+        'popup_type': popupType,
+        'dismissed_permanently': true,
+        'last_shown_at': DateTime.now().toIso8601String(),
+      },
+      onConflict: 'user_id,popup_type', // Specify the unique constraint columns
+    );
   }
 
   static Future<void> resetPopupTracking({required String userId}) async {
