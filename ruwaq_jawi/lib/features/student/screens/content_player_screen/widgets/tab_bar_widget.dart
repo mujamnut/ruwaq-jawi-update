@@ -16,83 +16,31 @@ class TabBarWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppTheme.borderColor.withValues(alpha: 0.5)),
-      ),
-      child: TabBar(
-        controller: controller,
-        indicator: BoxDecoration(
+    return TabBar(
+      controller: controller,
+      indicator: UnderlineTabIndicator(
+        borderSide: const BorderSide(
           color: AppTheme.primaryColor,
-          borderRadius: BorderRadius.circular(14),
+          width: 3,
         ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: Colors.white,
-        unselectedLabelColor: AppTheme.textSecondaryColor,
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-        ),
-        unselectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
-        ),
-        padding: const EdgeInsets.all(4),
-        tabs: [
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(
-                  PhosphorIcons.listNumbers(),
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                const Text('Episod'),
-                if (episodesCount > 0) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: currentTabIndex == 0
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : AppTheme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$episodesCount',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: currentTabIndex == 0
-                            ? Colors.white
-                            : AppTheme.primaryColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          Tab(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                PhosphorIcon(
-                  PhosphorIcons.filePdf(),
-                  size: 18,
-                ),
-                const SizedBox(width: 8),
-                const Text('PDF'),
-              ],
-            ),
-          ),
-        ],
+        insets: const EdgeInsets.symmetric(horizontal: 0),
       ),
+      indicatorSize: TabBarIndicatorSize.tab,
+      dividerColor: AppTheme.borderColor.withValues(alpha: 0.3),
+      labelColor: AppTheme.textPrimaryColor,
+      unselectedLabelColor: AppTheme.textSecondaryColor,
+      labelStyle: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 16,
+      ),
+      unselectedLabelStyle: const TextStyle(
+        fontWeight: FontWeight.w500,
+        fontSize: 16,
+      ),
+      tabs: const [
+        Tab(text: 'Episodes'),
+        Tab(text: 'PDF View'),
+      ],
     );
   }
 }

@@ -55,6 +55,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   VideoKitab? _kitab;
   List<VideoEpisode> _episodes = [];
   bool _isLoading = true;
+  bool _isTransitioning = false;
   int _currentEpisodeIndex = 0;
 
   // Managers
@@ -280,6 +281,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
     setState(() {
       _currentEpisodeIndex = index;
+      _isTransitioning = true;
     });
 
     // Scroll to top
@@ -321,6 +323,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
     // Initialize new player
     _videoManager.initializePlayer(newEpisode);
+
+    // Clear transitioning flag after a short delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _isTransitioning = false;
+        });
+      }
+    });
   }
 
   void _onEpisodeTap(int index, VideoEpisode episode) {
@@ -382,7 +393,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   @override
   Widget build(BuildContext context) {
     // If no controller is available, show loading or error state
-    if (_videoManager.controller == null && !_isLoading) {
+    // BUT don't show error screen during transitioning between videos
+    if (_videoManager.controller == null && !_isLoading && !_isTransitioning) {
       return _buildNoVideoState();
     }
 
@@ -483,11 +495,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: Colors.transparent,
+      backgroundColor: Colors.white,
       elevation: 0,
       leading: IconButton(
         icon: PhosphorIcon(
-          PhosphorIcons.arrowLeft(),
+          PhosphorIcons.arrowLeft(PhosphorIconsStyle.bold),
           color: AppTheme.textPrimaryColor,
         ),
         onPressed: () => Navigator.of(context).pop(),
@@ -497,8 +509,20 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         style: const TextStyle(
           color: AppTheme.textPrimaryColor,
           fontWeight: FontWeight.w600,
+          fontSize: 18,
         ),
       ),
+      actions: [
+        IconButton(
+          icon: PhosphorIcon(
+            PhosphorIcons.dotsThreeVertical(PhosphorIconsStyle.bold),
+            color: AppTheme.textPrimaryColor,
+          ),
+          onPressed: () {
+            // TODO: Show menu options
+          },
+        ),
+      ],
     );
   }
 
@@ -580,7 +604,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   Widget _buildContent(Widget player) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Video Player (Fixed)
         if (_videoManager.controller != null &&
@@ -617,103 +640,76 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             },
           ),
 
-        // Title and Description (Fixed)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-          child: _buildTitleAndDescription(),
+        // Tab Bar (Pinned below video)
+        TabBarWidget(
+          controller: _tabController,
+          currentTabIndex: _currentTabIndex,
+          episodesCount: _episodes.length,
         ),
 
-        const SizedBox(height: 16),
-
-        // Tab Bar (Fixed)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: TabBarWidget(
-            controller: _tabController,
-            currentTabIndex: _currentTabIndex,
-            episodesCount: _episodes.length,
-          ),
-        ),
-
-        const SizedBox(height: 16),
-
-        // Tab Content (Scrollable)
+        // Scrollable Content (Title + Tab Content)
         Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _currentTabIndex == 0
-                ? EpisodesTabWidget(
-                    episodes: _episodes,
-                    currentEpisodeIndex: _currentEpisodeIndex,
-                    isPlaying: _videoManager.isPlaying,
-                    isPremiumUser: _isPremiumUser,
-                    onEpisodeTap: _onEpisodeTap,
-                  )
-                : PdfTabWidget(
-                    kitab: _kitab,
-                    isPremiumUser: _isPremiumUser,
-                    onOpenPdf: _onOpenPdf,
+          child: _currentTabIndex == 0
+              ? SingleChildScrollView(
+                  controller: _scrollController,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title and Description
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                        child: _buildTitleAndDescription(),
+                      ),
+
+                      // Episodes Tab Content
+                      EpisodesTabWidget(
+                        episodes: _episodes,
+                        currentEpisodeIndex: _currentEpisodeIndex,
+                        isPlaying: _videoManager.isPlaying,
+                        isPremiumUser: _isPremiumUser,
+                        onEpisodeTap: _onEpisodeTap,
+                      ),
+                    ],
                   ),
-          ),
+                )
+              : PdfTabWidget(
+                  kitab: _kitab,
+                  isPremiumUser: _isPremiumUser,
+                  onOpenPdf: _onOpenPdf,
+                ),
         ),
       ],
     );
   }
 
   Widget _buildTitleAndDescription() {
+    final currentEpisode = _videoManager.currentEpisode;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Title
+        // Arabic/Main Title
         Text(
-          _videoManager.currentEpisode?.title ?? _kitab?.title ?? 'Kitab',
+          currentEpisode?.title ?? _kitab?.title ?? 'Kitab',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.bold,
             color: AppTheme.textPrimaryColor,
+            fontSize: 20,
           ),
         ),
 
-        // Author
-        if (_kitab?.author != null) ...[
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              PhosphorIcon(
-                PhosphorIcons.user(),
-                size: 16,
-                color: AppTheme.primaryColor,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                _kitab?.author ?? 'Unknown Author',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ],
+        const SizedBox(height: 8),
 
-        // Description
-        if (_kitab?.description?.isNotEmpty == true) ...[
-          const SizedBox(height: 16),
+        // Subtitle (Description as subtitle)
+        if (_kitab?.description?.isNotEmpty == true)
           Text(
-            'Tentang',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textPrimaryColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _kitab?.description ?? 'No description available',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            _kitab!.description!,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: AppTheme.textSecondaryColor,
-              height: 1.5,
+              fontSize: 15,
+              height: 1.4,
             ),
           ),
-        ],
       ],
     );
   }

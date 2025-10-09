@@ -117,41 +117,6 @@ class VideoPlayerWidget extends StatelessWidget {
                 child: Container(color: Colors.transparent),
               ),
             ),
-
-          // Persistent fullscreen button in portrait mode (render last = on top)
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IgnorePointer(
-              ignoring: false,
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    debugPrint('🎬 Fullscreen button tapped!');
-                    onToggleFullscreen();
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.7),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: PhosphorIcon(
-                      PhosphorIcons.arrowsOut(PhosphorIconsStyle.bold),
-                      color: Colors.white,
-                      size: 22,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

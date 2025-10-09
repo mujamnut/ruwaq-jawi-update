@@ -17,8 +17,8 @@ class ControlsManager {
   void startControlsTimer({required bool isFullscreen, required bool isPlaying}) {
     _controlsTimer?.cancel();
 
-    // Only auto-hide in fullscreen and when video is playing
-    if (isFullscreen && isPlaying) {
+    // Auto-hide controls after 5 seconds when video is playing (both fullscreen and portrait)
+    if (isPlaying) {
       _controlsTimer = Timer(const Duration(seconds: 5), () {
         showControls = false;
         onStateChanged();

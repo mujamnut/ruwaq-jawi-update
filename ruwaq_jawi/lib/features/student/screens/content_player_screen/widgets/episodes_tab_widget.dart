@@ -49,6 +49,8 @@ class EpisodesTabWidget extends StatelessWidget {
     }
 
     return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.only(left: 20, right: 20, bottom: 20),
       itemCount: episodes.length,
       itemBuilder: (context, index) {

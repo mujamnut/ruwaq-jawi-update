@@ -57,21 +57,12 @@ class VideoControlsOverlayWidget extends StatelessWidget {
                     color: Colors.black.withValues(alpha: 0.7),
                     shape: BoxShape.circle,
                   ),
-                  child: StreamBuilder<bool>(
-                    stream: Stream.periodic(
-                      const Duration(milliseconds: 500),
-                      (_) => controller?.value.isPlaying ?? false,
-                    ),
-                    builder: (context, snapshot) {
-                      final isPlaying = snapshot.data ?? false;
-                      return Icon(
-                        isPlaying
-                            ? PhosphorIcons.pause()
-                            : PhosphorIcons.play(),
-                        color: Colors.white,
-                        size: 28,
-                      );
-                    },
+                  child: PhosphorIcon(
+                    (controller?.value.isPlaying ?? false)
+                        ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
+                        : PhosphorIcons.play(PhosphorIconsStyle.fill),
+                    color: Colors.white,
+                    size: 28,
                   ),
                 ),
               ),
