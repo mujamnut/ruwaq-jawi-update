@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 
 class YouTubeSyncService {
   static final _supabase = Supabase.instance.client;
@@ -36,7 +37,7 @@ class YouTubeSyncService {
     int limit = 50,
   }) async {
     try {
-      var query = _supabase
+      final query = _supabase
           .from('youtube_sync_logs')
           .select('''
             *,
@@ -45,18 +46,19 @@ class YouTubeSyncService {
               title,
               youtube_playlist_id
             )
-          ''')
+          ''');
+
+      final PostgrestFilterBuilder filteredQuery = kitabId != null
+          ? query.eq('video_kitab_id', kitabId)
+          : query;
+
+      final response = await filteredQuery
           .order('created_at', ascending: false)
           .limit(limit);
 
-      if (kitabId != null) {
-        query = query.eq('video_kitab_id', kitabId);
-      }
-
-      final response = await query;
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error fetching sync logs: $e');
+      debugPrint('Error fetching sync logs: $e');
       return [];
     }
   }
@@ -74,7 +76,7 @@ class YouTubeSyncService {
       }
       return settings;
     } catch (e) {
-      print('Error fetching sync settings: $e');
+      debugPrint('Error fetching sync settings: $e');
       return {};
     }
   }
@@ -91,7 +93,7 @@ class YouTubeSyncService {
           .eq('setting_key', key);
       return true;
     } catch (e) {
-      print('Error updating sync setting: $e');
+      debugPrint('Error updating sync setting: $e');
       return false;
     }
   }
@@ -112,7 +114,7 @@ class YouTubeSyncService {
       final response = await _supabase.rpc('get_playlists_for_sync');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('Error fetching playlists for sync: $e');
+      debugPrint('Error fetching playlists for sync: $e');
       return [];
     }
   }

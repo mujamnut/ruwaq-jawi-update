@@ -9,10 +9,12 @@ class VideoPlayerManager {
 
   YoutubePlayerController? controller;
   VideoEpisode? currentEpisode;
+  bool isInitializing = false;
 
   VideoPlayerManager({required this.onStateChanged});
 
   Timer? _initializationTimer;
+  Timer? _positionRestoreTimer;
   bool _isDisposing = false;
 
   void initializePlayer(VideoEpisode episode) {
@@ -26,6 +28,7 @@ class VideoPlayerManager {
       debugPrint('❌ Empty video ID, cannot initialize player');
       currentEpisode = null;
       controller = null;
+      isInitializing = false;
       onStateChanged();
       return;
     }
@@ -35,27 +38,37 @@ class VideoPlayerManager {
       debugPrint('❌ Invalid YouTube video ID format: $videoId');
       currentEpisode = null;
       controller = null;
+      isInitializing = false;
       onStateChanged();
       return;
     }
 
-    // Cancel any pending initialization
+    // Cancel any pending timers to prevent memory leaks
     _initializationTimer?.cancel();
+    _positionRestoreTimer?.cancel();
     _isDisposing = false;
 
     // Properly dispose old controller
     final oldController = controller;
     if (oldController != null) {
       try {
+        // IMPORTANT: Remove listener first to prevent memory leak
         oldController.removeListener(_onPlayerStateChange);
-        oldController.pause();
-        oldController.dispose();
       } catch (e) {
-        debugPrint('⚠️ Error disposing old controller: $e');
+        debugPrint('⚠️ Error removing listener: $e');
+      } finally {
+        // Always dispose controller even if removeListener fails
+        try {
+          oldController.pause();
+          oldController.dispose();
+        } catch (e) {
+          debugPrint('⚠️ Error disposing old controller: $e');
+        }
       }
     }
 
-    // Set to null first to trigger rebuild
+    // Set initialization flag and null controller
+    isInitializing = true;
     controller = null;
     currentEpisode = episode;
     onStateChanged();
@@ -64,6 +77,7 @@ class VideoPlayerManager {
     _initializationTimer = Timer(const Duration(milliseconds: 150), () {
       if (_isDisposing) {
         debugPrint('⚠️ Initialization cancelled - disposing');
+        isInitializing = false;
         return;
       }
 
@@ -75,8 +89,8 @@ class VideoPlayerManager {
             mute: false,
             enableCaption: true,
             controlsVisibleAtStart: false,
-            hideControls: true,
-            disableDragSeek: true,
+            hideControls: true, // Hide YouTube's controls, use our custom
+            disableDragSeek: false, // Allow our custom seekbar
             loop: false,
             useHybridComposition: true,
           ),
@@ -85,6 +99,7 @@ class VideoPlayerManager {
         newController.addListener(_onPlayerStateChange);
 
         controller = newController;
+        isInitializing = false;
         onStateChanged();
 
         debugPrint('✅ Player initialized successfully for: ${episode.title}');
@@ -95,7 +110,9 @@ class VideoPlayerManager {
             episode.id,
           );
           if (savedPosition > 10) {
-            Timer(const Duration(milliseconds: 800), () {
+            // FIXED: Store timer reference to prevent memory leak
+            _positionRestoreTimer?.cancel();
+            _positionRestoreTimer = Timer(const Duration(milliseconds: 800), () {
               if (controller == newController && !_isDisposing) {
                 controller?.seekTo(Duration(seconds: savedPosition));
               }
@@ -108,6 +125,7 @@ class VideoPlayerManager {
         debugPrint('❌ Error creating controller: $e');
         currentEpisode = null;
         controller = null;
+        isInitializing = false;
         onStateChanged();
       }
     });
@@ -187,17 +205,28 @@ class VideoPlayerManager {
 
   void dispose() {
     _isDisposing = true;
+
+    // Cancel all timers to prevent memory leaks
     _initializationTimer?.cancel();
+    _positionRestoreTimer?.cancel();
 
     try {
+      // Remove listener first to break reference loop
       controller?.removeListener(_onPlayerStateChange);
-      controller?.pause();
-      controller?.dispose();
     } catch (e) {
-      debugPrint('⚠️ Error during dispose: $e');
-    }
+      debugPrint('⚠️ Error removing listener during dispose: $e');
+    } finally {
+      // Always dispose controller and clear references
+      try {
+        controller?.pause();
+        controller?.dispose();
+      } catch (e) {
+        debugPrint('⚠️ Error during controller dispose: $e');
+      }
 
-    controller = null;
-    currentEpisode = null;
+      controller = null;
+      currentEpisode = null;
+      isInitializing = false;
+    }
   }
 }

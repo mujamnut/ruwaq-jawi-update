@@ -15,6 +15,8 @@ class Ebook {
   final bool isActive;
   final int viewsCount;
   final int downloadsCount;
+  final double averageRating;
+  final int totalRatings;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -35,6 +37,8 @@ class Ebook {
     this.isActive = true,
     this.viewsCount = 0,
     this.downloadsCount = 0,
+    this.averageRating = 0.0,
+    this.totalRatings = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -58,6 +62,8 @@ class Ebook {
       isActive: json['is_active'] as bool? ?? true,
       viewsCount: json['views_count'] as int? ?? 0,
       downloadsCount: json['downloads_count'] as int? ?? 0,
+      averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
+      totalRatings: json['total_ratings'] as int? ?? 0,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -80,6 +86,8 @@ class Ebook {
       'is_active': isActive,
       'views_count': viewsCount,
       'downloads_count': downloadsCount,
+      'average_rating': averageRating,
+      'total_ratings': totalRatings,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -100,6 +108,8 @@ class Ebook {
     bool? isActive,
     int? viewsCount,
     int? downloadsCount,
+    double? averageRating,
+    int? totalRatings,
   }) {
     return Ebook(
       id: id,
@@ -117,6 +127,8 @@ class Ebook {
       isActive: isActive ?? this.isActive,
       viewsCount: viewsCount ?? this.viewsCount,
       downloadsCount: downloadsCount ?? this.downloadsCount,
+      averageRating: averageRating ?? this.averageRating,
+      totalRatings: totalRatings ?? this.totalRatings,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -128,11 +140,20 @@ class Ebook {
   String get displayPages => totalPages != null ? '$totalPages muka surat' : '';
   String get premiumBadge => isPremium ? 'Premium' : 'Percuma';
   String get statusBadge => isActive ? 'Aktif' : 'Tidak Aktif';
-  
+
+  // Rating helpers
+  String get displayRating => averageRating > 0 ? averageRating.toStringAsFixed(1) : 'Belum ada rating';
+  String get displayRatingCount {
+    if (totalRatings == 0) return 'Belum ada rating';
+    if (totalRatings == 1) return '1 rating';
+    return '$totalRatings rating';
+  }
+  bool get hasRating => totalRatings > 0;
+
   // File size formatting
   String get formattedFileSize {
     if (pdfFileSize == null) return '';
-    
+
     final bytes = pdfFileSize!;
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';

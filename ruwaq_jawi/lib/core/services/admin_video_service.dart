@@ -426,7 +426,6 @@ class AdminVideoService {
           partNumber: 1,
           youtubeVideoUrl: kitab['youtube_video_url'],
           durationMinutes: kitab['duration_minutes'],
-          isPreview: false,
           isActive: true,
         );
 

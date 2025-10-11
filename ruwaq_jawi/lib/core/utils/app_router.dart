@@ -23,27 +23,40 @@ import '../../features/student/screens/content_player_screen.dart';
 import '../../features/student/screens/ebook_screen.dart';
 import '../../features/student/screens/ebook_detail_screen.dart';
 import '../../features/student/screens/preview_video_player_screen.dart';
-import '../../features/admin/screens/admin_dashboard_screen.dart';
-import '../../features/admin/screens/admin_video_list_screen.dart';
-import '../../features/admin/screens/admin_search_screen.dart';
-import '../../features/admin/screens/admin_users_screen.dart';
-import '../../features/admin/screens/admin_user_detail_screen.dart';
-import '../../features/admin/screens/admin_video_kitab_form_screen.dart';
-import '../../features/admin/screens/admin_analytics_real_screen.dart';
-import '../../features/admin/screens/admin_payments_screen.dart';
-import '../../features/admin/screens/admin_subscriptions_screen.dart';
-import '../../features/admin/screens/admin_profile_screen.dart';
-import '../../features/admin/screens/pdf_viewer_screen.dart';
+// Admin - Dashboard
+import '../../features/admin/screens/dashboard/dashboard_screen.dart';
+// Admin - Videos
+import '../../features/admin/screens/videos/list_screen.dart' as admin_video;
+import '../../features/admin/screens/videos/form_screen.dart' as admin_video_form;
+// Admin - Ebooks
+import '../../features/admin/screens/ebooks/list_screen.dart' as admin_ebook;
+// Admin - Users
+import '../../features/admin/screens/users/list_screen.dart' as admin_user;
+import '../../features/admin/screens/users/detail_screen.dart' as admin_user_detail;
+// Admin - Analytics
+import '../../features/admin/screens/analytics/main_screen.dart' as admin_analytics;
+// Admin - Categories
+import '../../features/admin/screens/categories/list_screen.dart' as admin_category;
+import '../../features/admin/screens/categories/form_screen.dart' as admin_category_form;
+// Admin - Notifications
+import '../../features/admin/screens/notifications/notification_list_screen.dart' as admin_notification;
+// Admin - Subscriptions
+import '../../features/admin/screens/subscriptions/subscription_list_screen.dart' as admin_subscription;
+// Admin - Shared
+import '../../features/admin/shared/profile_screen.dart';
+import '../../features/admin/shared/settings_screen.dart';
+import '../../features/admin/shared/pdf_viewer_screen.dart';
+// Admin - Search, Payments, Reports, Kitab
+import '../../features/admin/screens/search/search_screen.dart' as admin_search;
+import '../../features/admin/screens/payments/payments_screen.dart' as admin_payments;
+import '../../features/admin/screens/reports/reports_screen.dart' as admin_reports_main;
+// Admin - Video Kitab
+import '../../features/admin/screens/videos/kitab_detail_screen.dart' as admin_kitab;
+import '../../features/admin/screens/videos/kitab_form_screen.dart' as admin_kitab_form;
+// Student Payment
 import '../../features/student/screens/payment_screen.dart';
 import '../../features/student/screens/toyyibpay_payment_screen.dart';
 import '../models/payment_models.dart';
-import '../../features/admin/screens/admin_settings_screen.dart';
-import '../../features/admin/screens/admin_ebook_list_screen.dart';
-import '../../features/admin/screens/kitab_detail_screen.dart' as admin_kitab;
-import '../../features/admin/screens/admin_categories_screen.dart';
-import '../../features/admin/screens/admin_add_category_screen.dart';
-import '../../features/admin/screens/admin_reports_screen.dart';
-import '../../features/admin/screens/admin_notifications_screen.dart';
 import '../../features/payment/screens/payment_callback_page.dart';
 
 class AppRouter {
@@ -442,17 +455,17 @@ class AppRouter {
         GoRoute(
           path: '/admin/content',
           name: 'admin-content',
-          builder: (context, state) => const AdminVideoListScreen(),
+          builder: (context, state) => const admin_video.AdminVideoListScreen(),
         ),
         GoRoute(
           path: '/admin/search',
           name: 'admin-search',
-          builder: (context, state) => const AdminSearchScreen(),
+          builder: (context, state) => const admin_search.AdminSearchScreen(),
         ),
         GoRoute(
           path: '/admin/content/create',
           name: 'admin-content-create',
-          builder: (context, state) => const AdminVideoKitabFormScreen(
+          builder: (context, state) => const admin_video_form.AdminVideoKitabFormScreen(
             // videoKitabId: null untuk tambah baru
             // videoKitab: null untuk tambah baru
           ),
@@ -462,7 +475,7 @@ class AppRouter {
           name: 'admin-content-edit',
           builder: (context, state) {
             final videoKitab = state.extra as dynamic;
-            return AdminVideoKitabFormScreen(
+            return admin_video_form.AdminVideoKitabFormScreen(
               videoKitabId: videoKitab.id,
               videoKitab: videoKitab,
             );
@@ -471,35 +484,35 @@ class AppRouter {
         GoRoute(
           path: '/admin/users',
           name: 'admin-users',
-          builder: (context, state) => const AdminUsersScreen(),
+          builder: (context, state) => const admin_user.AdminUsersScreen(),
         ),
         GoRoute(
           path: '/admin/users/:userId',
           name: 'admin-user-detail',
           builder: (context, state) {
             final userId = state.pathParameters['userId']!;
-            return AdminUserDetailScreen(userId: userId);
+            return admin_user_detail.AdminUserDetailScreen(userId: userId);
           },
         ),
         GoRoute(
           path: '/admin/analytics',
           name: 'admin-analytics',
-          builder: (context, state) => const AdminAnalyticsRealScreen(),
+          builder: (context, state) => const admin_analytics.AdminAnalyticsRealScreen(),
         ),
         GoRoute(
           path: '/admin/analytics-real',
           name: 'admin-analytics-real',
-          builder: (context, state) => const AdminAnalyticsRealScreen(),
+          builder: (context, state) => const admin_analytics.AdminAnalyticsRealScreen(),
         ),
         GoRoute(
           path: '/admin/payments',
           name: 'admin-payments',
-          builder: (context, state) => const AdminPaymentsScreen(),
+          builder: (context, state) => const admin_payments.AdminPaymentsScreen(),
         ),
         GoRoute(
           path: '/admin/subscriptions',
           name: 'admin-subscriptions',
-          builder: (context, state) => const AdminSubscriptionsScreen(),
+          builder: (context, state) => const admin_subscription.AdminSubscriptionsScreen(),
         ),
         GoRoute(
           path: '/admin/profile',
@@ -514,49 +527,49 @@ class AppRouter {
         GoRoute(
           path: '/admin/ebooks',
           name: 'admin-ebooks',
-          builder: (context, state) => const AdminEbookListScreen(),
+          builder: (context, state) => const admin_ebook.AdminEbookListScreen(),
         ),
         // Admin Categories Routes
         GoRoute(
           path: '/admin/categories',
           name: 'admin-categories',
-          builder: (context, state) => const AdminCategoriesScreen(),
+          builder: (context, state) => const admin_category.AdminCategoriesScreen(),
         ),
         GoRoute(
           path: '/admin/categories/add',
           name: 'admin-categories-add',
-          builder: (context, state) => const AdminAddCategoryScreen(),
+          builder: (context, state) => const admin_category_form.AdminAddCategoryScreen(),
         ),
         GoRoute(
           path: '/admin/categories/edit/:id',
           name: 'admin-categories-edit',
           builder: (context, state) {
             final categoryId = state.pathParameters['id']!;
-            return AdminAddCategoryScreen(categoryId: categoryId);
+            return admin_category_form.AdminAddCategoryScreen(categoryId: categoryId);
           },
         ),
         // Admin Reports Route
         GoRoute(
           path: '/admin/reports',
           name: 'admin-reports',
-          builder: (context, state) => const AdminReportsScreen(),
+          builder: (context, state) => const admin_reports_main.AdminReportsScreen(),
         ),
         // Admin Notifications Routes
         GoRoute(
           path: '/admin/notifications',
           name: 'admin-notifications',
-          builder: (context, state) => const AdminNotificationsScreen(),
+          builder: (context, state) => const admin_notification.AdminNotificationsScreen(),
         ),
         GoRoute(
           path: '/admin/notifications/send',
           name: 'admin-notifications-send',
-          builder: (context, state) => const AdminNotificationsScreen(),
+          builder: (context, state) => const admin_notification.AdminNotificationsScreen(),
         ),
         // Admin Kitabs Routes
         GoRoute(
           path: '/admin/kitabs/add',
           name: 'admin-kitabs-add',
-          builder: (context, state) => const AdminVideoKitabFormScreen(),
+          builder: (context, state) => const admin_video_form.AdminVideoKitabFormScreen(),
         ),
         GoRoute(
           path: '/admin/kitab/:id',

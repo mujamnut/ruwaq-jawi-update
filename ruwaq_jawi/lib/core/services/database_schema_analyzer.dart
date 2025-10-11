@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart';
 import 'supabase_service.dart';
 
 /// Database field information
@@ -209,7 +210,7 @@ class DatabaseSchemaAnalyzer {
         AND t.table_name = '$tableName'
       ''';
 
-      final tableInfo = await _client.rpc('execute_sql', {'query': tableInfoQuery}) as List<dynamic>;
+      final tableInfo = await _client.rpc('execute_sql', params: {'query': tableInfoQuery}) as List<dynamic>;
 
       if (tableInfo.isEmpty) {
         throw Exception('Table $tableName not found');
@@ -296,7 +297,7 @@ class DatabaseSchemaAnalyzer {
       ORDER BY c.ordinal_position
     ''';
 
-    final columnsData = await _client.rpc('execute_sql', {
+    final columnsData = await _client.rpc('execute_sql', params: {
       'query': columnsQuery
     }) as List<dynamic>;
 
@@ -333,7 +334,7 @@ class DatabaseSchemaAnalyzer {
       ORDER BY kcu.ordinal_position
     ''';
 
-    final pkData = await _client.rpc('execute_sql', {
+    final pkData = await _client.rpc('execute_sql', params: {
       'query': pkQuery
     }) as List<dynamic>;
 
@@ -350,7 +351,7 @@ class DatabaseSchemaAnalyzer {
       ORDER BY table_name
     ''';
 
-    final tablesData = await _client.rpc('execute_sql', {
+    final tablesData = await _client.rpc('execute_sql', params: {
       'query': tablesQuery
     }) as List<dynamic>;
 
@@ -381,7 +382,7 @@ class DatabaseSchemaAnalyzer {
 
         return List<Map<String, dynamic>>.from(data);
       } catch (e2) {
-        print('Error fetching foreign key data: $e2');
+        debugPrint('Error fetching foreign key data: $e2');
         return [];
       }
     }

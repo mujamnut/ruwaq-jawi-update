@@ -45,8 +45,6 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
 
   // UI state
   final double _readingProgress = 0.0;
-  final double _rating = 4.8;
-  final int _reviewsCount = 2847;
 
   @override
   void initState() {
@@ -322,8 +320,8 @@ class _EbookDetailScreenState extends State<EbookDetailScreen>
                   RepaintBoundary(
                     child: EbookAuthorInfoWidget(
                       ebook: _dataManager.ebook!,
-                      rating: _rating,
-                      reviewsCount: _reviewsCount,
+                      rating: _dataManager.ebook!.averageRating,
+                      reviewsCount: _dataManager.ebook!.totalRatings,
                     ),
                   ),
                   const SizedBox(height: 32),

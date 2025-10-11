@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../core/theme/app_theme.dart';
@@ -107,22 +109,26 @@ class AdminBottomNav extends StatelessWidget {
   void _onNavTap(BuildContext context, int index) {
     if (index == currentIndex) return;
 
-    switch (index) {
-      case 0:
-        context.go('/admin/dashboard');
-        break;
-      case 1:
-        context.go('/admin/content');
-        break;
-      case 2:
-        context.go('/admin/ebooks');
-        break;
-      case 3:
-        context.go('/admin/users');
-        break;
-      case 4:
-        context.go('/admin/analytics-real');
-        break;
-    }
+    final router = GoRouter.of(context);
+
+    Future.microtask(() {
+      switch (index) {
+        case 0:
+          router.go('/admin/dashboard');
+          break;
+        case 1:
+          router.go('/admin/content');
+          break;
+        case 2:
+          router.go('/admin/ebooks');
+          break;
+        case 3:
+          router.go('/admin/users');
+          break;
+        case 4:
+          router.go('/admin/analytics-real');
+          break;
+      }
+    });
   }
 }

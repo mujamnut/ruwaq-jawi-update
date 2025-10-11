@@ -73,7 +73,12 @@
       "Bash(npx supabase db remote:*)",
       "Bash(npx supabase functions deploy:*)",
       "Bash(del:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "WebSearch",
+      "Bash(awk:*)",
+      "Bash(while read file)",
+      "Bash(do echo \"=== $file ===\")",
+      "Bash(done)"
     ],
     "deny": [],
     "ask": []

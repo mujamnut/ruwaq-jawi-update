@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'video_controls_overlay_widget.dart';
 import 'skip_animation_widget.dart';
+import 'video_controls_overlay_widget.dart';
 
+/// Fullscreen player with custom controls
 class FullscreenPlayerWidget extends StatelessWidget {
   final Widget player;
   final YoutubePlayerController? controller;
@@ -13,9 +14,7 @@ class FullscreenPlayerWidget extends StatelessWidget {
   final VoidCallback onToggleFullscreen;
   final VoidCallback onShowControls;
   final VoidCallback onHideControls;
-  final VoidCallback onTogglePlayPause;
   final Function(TapDownDetails) onDoubleTap;
-  final Function(bool isFullscreen, bool isPlaying) onStartControlsTimer;
 
   const FullscreenPlayerWidget({
     super.key,
@@ -28,9 +27,7 @@ class FullscreenPlayerWidget extends StatelessWidget {
     required this.onToggleFullscreen,
     required this.onShowControls,
     required this.onHideControls,
-    required this.onTogglePlayPause,
     required this.onDoubleTap,
-    required this.onStartControlsTimer,
   });
 
   @override
@@ -39,7 +36,7 @@ class FullscreenPlayerWidget extends StatelessWidget {
       child: SizedBox.expand(
         child: Stack(
           children: [
-            // Player fills entire screen
+            // YouTube Player fills entire screen
             Positioned.fill(child: player),
 
             // Skip animation feedback
@@ -50,24 +47,24 @@ class FullscreenPlayerWidget extends StatelessWidget {
               isFullscreen: true,
             ),
 
-            // Controls overlay
+            // Custom controls overlay with back button
             VideoControlsOverlayWidget(
               controller: controller,
-              showControls: showControls,
               isFullscreen: true,
               onToggleFullscreen: onToggleFullscreen,
+              showControls: showControls,
+              onShowControls: onShowControls,
               onHideControls: onHideControls,
-              onTogglePlayPause: onTogglePlayPause,
-              onStartControlsTimer: onStartControlsTimer,
+              onBack: onToggleFullscreen, // Exit fullscreen on back
             ),
 
             // Gesture detector for showing controls when hidden
             if (!showControls)
               Positioned.fill(
                 child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
+                  behavior: HitTestBehavior.translucent,
                   onTap: onShowControls,
-                  onDoubleTap: () {},
+                  onDoubleTap: () {}, // Empty to avoid conflict
                   onDoubleTapDown: onDoubleTap,
                   child: Container(color: Colors.transparent),
                 ),

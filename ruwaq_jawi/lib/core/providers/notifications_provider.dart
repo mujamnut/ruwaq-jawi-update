@@ -15,7 +15,8 @@ class NotificationsProvider with ChangeNotifier {
   bool get isLoading => _loading;
   String? get error => _error;
   List<UserNotificationItem> get inbox => List.unmodifiable(_inbox);
-  List<EnhancedNotification> get enhancedInbox => List.unmodifiable(_enhancedInbox);
+  List<EnhancedNotification> get enhancedInbox =>
+      List.unmodifiable(_enhancedInbox);
 
   int get unreadCount {
     final user = _supabase.auth.currentUser;
@@ -29,20 +30,35 @@ class NotificationsProvider with ChangeNotifier {
   }
 
   // Enhanced getters for different notification types - enhanced system
-  List<EnhancedNotification> get paymentNotifications =>
-      _enhancedInbox.where((n) => n.type == 'personal' &&
-          (n.metadata['type'] == 'payment_success' || n.metadata['sub_type'] == 'payment_success')).toList();
+  List<EnhancedNotification> get paymentNotifications => _enhancedInbox
+      .where(
+        (n) =>
+            n.type == 'personal' &&
+            (n.metadata['type'] == 'payment_success' ||
+                n.metadata['sub_type'] == 'payment_success'),
+      )
+      .toList();
 
-  List<EnhancedNotification> get contentNotifications =>
-      _enhancedInbox.where((n) => n.type == 'broadcast' &&
-          (n.metadata['type'] == 'content_published' || n.contentType != null)).toList();
+  List<EnhancedNotification> get contentNotifications => _enhancedInbox
+      .where(
+        (n) =>
+            n.type == 'broadcast' &&
+            (n.metadata['type'] == 'content_published' ||
+                n.contentType != null),
+      )
+      .toList();
 
-  List<EnhancedNotification> get adminAnnouncements =>
-      _enhancedInbox.where((n) => n.metadata['type'] == 'admin_announcement').toList();
+  List<EnhancedNotification> get adminAnnouncements => _enhancedInbox
+      .where((n) => n.metadata['type'] == 'admin_announcement')
+      .toList();
 
-  List<EnhancedNotification> get subscriptionNotifications =>
-      _enhancedInbox.where((n) => n.metadata['type'] == 'subscription_expiring' ||
-          n.metadata['sub_type'] == 'subscription').toList();
+  List<EnhancedNotification> get subscriptionNotifications => _enhancedInbox
+      .where(
+        (n) =>
+            n.metadata['type'] == 'subscription_expiring' ||
+            n.metadata['sub_type'] == 'subscription',
+      )
+      .toList();
 
   List<EnhancedNotification> get highPriorityNotifications =>
       _enhancedInbox.where((n) => n.isHighPriority).toList();
@@ -54,7 +70,9 @@ class NotificationsProvider with ChangeNotifier {
     if (_enhancedInbox.isNotEmpty) {
       return _enhancedInbox.where((n) => !n.isRead && n.isHighPriority).length;
     }
-    return _inbox.where((n) => !n.isReadByUser(user.id) && n.isHighPriority).length;
+    return _inbox
+        .where((n) => !n.isReadByUser(user.id) && n.isHighPriority)
+        .length;
   }
 
   // Legacy getters for backward compatibility
@@ -80,7 +98,8 @@ class NotificationsProvider with ChangeNotifier {
 
       // Try enhanced system first
       try {
-        final enhancedNotifications = await EnhancedNotificationService.getNotifications(limit: 50);
+        final enhancedNotifications =
+            await EnhancedNotificationService.getNotifications(limit: 50);
 
         if (enhancedNotifications.isNotEmpty) {
           _enhancedInbox
@@ -97,20 +116,28 @@ class NotificationsProvider with ChangeNotifier {
             ..addAll(legacyNotifications);
 
           if (kDebugMode) {
-            print('✅ Loaded ${enhancedNotifications.length} notifications using enhanced system');
-            print('📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
-                  '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast');
+            print(
+              '✅ Loaded ${enhancedNotifications.length} notifications using enhanced system',
+            );
+            print(
+              '📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
+              '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast',
+            );
 
             // Debug: Check read status conversion
             for (var i = 0; i < enhancedNotifications.length && i < 3; i++) {
               final enhanced = enhancedNotifications[i];
               final legacy = legacyNotifications[i];
               print('🔍 [$i] ${enhanced.title.substring(0, 20)}...');
-              print('   Enhanced: isRead=${enhanced.isRead}, readAt=${enhanced.readAt}');
-              print('   Legacy: readAt=${legacy.readAt}, isGlobal=${legacy.isGlobal}');
-              if (user != null) {
-                print('   isReadByUser(${user.id})=${legacy.isReadByUser(user.id)}');
-              }
+              print(
+                '   Enhanced: isRead=${enhanced.isRead}, readAt=${enhanced.readAt}',
+              );
+              print(
+                '   Legacy: readAt=${legacy.readAt}, isGlobal=${legacy.isGlobal}',
+              );
+              print(
+                '   isReadByUser(${user.id})=${legacy.isReadByUser(user.id)}',
+              );
             }
           }
 
@@ -130,7 +157,6 @@ class NotificationsProvider with ChangeNotifier {
       }
       _loading = false;
       notifyListeners();
-
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error loading notifications: $e');
@@ -141,25 +167,28 @@ class NotificationsProvider with ChangeNotifier {
     }
   }
 
-
   Future<void> markAsRead(String userNotificationId) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
 
       // Find the notification to check if it's from enhanced or legacy system
-      final notificationIndex = _inbox.indexWhere((n) => n.id == userNotificationId);
+      final notificationIndex = _inbox.indexWhere(
+        (n) => n.id == userNotificationId,
+      );
       if (notificationIndex == -1) return;
 
       final notification = _inbox[notificationIndex];
 
       // Try enhanced notification service first
-      final enhancedIndex = _enhancedInbox.indexWhere((n) => n.id == userNotificationId);
+      final enhancedIndex = _enhancedInbox.indexWhere(
+        (n) => n.id == userNotificationId,
+      );
       if (enhancedIndex != -1) {
         final enhancedNotification = _enhancedInbox[enhancedIndex];
         final success = await EnhancedNotificationService.markAsRead(
           userNotificationId,
-          source: enhancedNotification.source
+          source: enhancedNotification.source,
         );
 
         if (success) {
@@ -172,10 +201,14 @@ class NotificationsProvider with ChangeNotifier {
           // Update corresponding legacy item if exists
           if (notificationIndex != -1) {
             final item = _inbox[notificationIndex];
-            final updatedMetadata = Map<String, dynamic>.from(item.metadata ?? {});
+            final updatedMetadata = Map<String, dynamic>.from(
+              item.metadata ?? {},
+            );
 
             if (notification.isGlobal) {
-              final readBy = List<String>.from(updatedMetadata['read_by'] ?? []);
+              final readBy = List<String>.from(
+                updatedMetadata['read_by'] ?? [],
+              );
               if (!readBy.contains(user.id)) {
                 readBy.add(user.id);
                 updatedMetadata['read_by'] = readBy;
@@ -201,7 +234,9 @@ class NotificationsProvider with ChangeNotifier {
 
           notifyListeners();
           if (kDebugMode) {
-            print('✅ Marked notification as read using enhanced system: $userNotificationId');
+            print(
+              '✅ Marked notification as read using enhanced system: $userNotificationId',
+            );
           }
           return;
         }
@@ -212,7 +247,6 @@ class NotificationsProvider with ChangeNotifier {
         print('❌ Enhanced system mark as read failed, no fallback available');
       }
       return;
-
     } catch (e) {
       if (kDebugMode) {
         print('❌ markAsRead error: $e');
@@ -226,12 +260,14 @@ class NotificationsProvider with ChangeNotifier {
       if (user == null) return;
 
       // Check if this is from enhanced system first
-      final enhancedIndex = _enhancedInbox.indexWhere((n) => n.id == userNotificationId);
+      final enhancedIndex = _enhancedInbox.indexWhere(
+        (n) => n.id == userNotificationId,
+      );
       if (enhancedIndex != -1) {
         final enhancedNotification = _enhancedInbox[enhancedIndex];
         final success = await EnhancedNotificationService.deleteNotification(
           userNotificationId,
-          source: enhancedNotification.source
+          source: enhancedNotification.source,
         );
 
         if (success) {
@@ -241,7 +277,9 @@ class NotificationsProvider with ChangeNotifier {
           notifyListeners();
 
           if (kDebugMode) {
-            print('🗑️ Deleted notification using enhanced system: $userNotificationId');
+            print(
+              '🗑️ Deleted notification using enhanced system: $userNotificationId',
+            );
           }
           return;
         }

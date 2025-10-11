@@ -7,6 +7,8 @@ class ConnectivityProvider with ChangeNotifier {
   List<ConnectivityResult> _connectionStatus = [ConnectivityResult.none];
   bool _isOnline = true;
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Timer? _debounceTimer;
+  bool _isDisposed = false;
   
   List<ConnectivityResult> get connectionStatus => _connectionStatus;
   ConnectivityResult get primaryConnectionStatus => _connectionStatus.isNotEmpty ? _connectionStatus.first : ConnectivityResult.none;
@@ -58,21 +60,44 @@ class ConnectivityProvider with ChangeNotifier {
   }
 
   void _updateConnectionStatus(List<ConnectivityResult> result) {
+    // Cancel any pending debounce timer
+    _debounceTimer?.cancel();
+
     _connectionStatus = result;
     final wasOnline = _isOnline;
     _isOnline = result.isNotEmpty && !result.every((status) => status == ConnectivityResult.none);
 
-    debugPrint('🌐 Connectivity changed: ${_isOnline ? 'Online' : 'Offline'} ($_connectionType)');
+    debugPrint('🌐 [CONNECTIVITY] Status changed: ${_isOnline ? 'Online' : 'Offline'} ($_connectionType)');
 
-    // Only notify if status actually changed
-    // ALWAYS defer notification to next frame to avoid setState during build
-    if (wasOnline != _isOnline) {
-      // Use SchedulerBinding.instance.addPostFrameCallback to safely defer notification
-      // This ensures notifyListeners is called AFTER the current build phase completes
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        // Double-check if still mounted and status still different
+    // Only notify if status actually changed AND provider is not disposed
+    if (wasOnline != _isOnline && !_isDisposed) {
+      debugPrint('🔶 [CONNECTIVITY] Status CHANGED - wasOnline:$wasOnline, isOnline:$_isOnline, disposed:$_isDisposed');
+      // Debounce rapid changes (e.g., switching between WiFi and mobile)
+      _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+        if (_isDisposed) {
+          debugPrint('⚠️ [CONNECTIVITY] Debounce cancelled - disposed');
+          return;
+        }
+
+        // Double-check status hasn't changed again during debounce
         if (wasOnline != _isOnline) {
-          notifyListeners();
+          debugPrint('🔶 [CONNECTIVITY] Debounce complete - scheduling notifyListeners');
+          // Use SchedulerBinding to ensure we're not in the middle of a build
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!_isDisposed && wasOnline != _isOnline) {
+              try {
+                debugPrint('🔶 [CONNECTIVITY:_updateConnectionStatus] notifyListeners - wasOnline:$wasOnline, isOnline:$_isOnline');
+                notifyListeners();
+                debugPrint('✅ [CONNECTIVITY] notifyListeners COMPLETED');
+              } catch (e) {
+                debugPrint('❌ [CONNECTIVITY] Error notifying listeners: $e');
+              }
+            } else {
+              debugPrint('⚠️ [CONNECTIVITY] PostFrameCallback skipped - disposed:$_isDisposed');
+            }
+          });
+        } else {
+          debugPrint('⚠️ [CONNECTIVITY] Status changed during debounce - skipping notify');
         }
       });
     }
@@ -183,6 +208,8 @@ class ConnectivityProvider with ChangeNotifier {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _debounceTimer?.cancel();
     _connectivitySubscription?.cancel();
     super.dispose();
   }

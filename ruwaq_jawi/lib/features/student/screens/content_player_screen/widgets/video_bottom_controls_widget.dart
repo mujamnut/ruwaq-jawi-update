@@ -131,23 +131,24 @@ class _VideoBottomControlsWidgetState
                   ),
                 ),
 
-                // Exit fullscreen button (only in fullscreen)
-                if (widget.isFullscreen)
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: widget.onToggleFullscreen,
-                      borderRadius: BorderRadius.circular(8),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: PhosphorIcon(
-                          PhosphorIcons.arrowsIn(PhosphorIconsStyle.bold),
-                          color: Colors.white,
-                          size: 22,
-                        ),
+                // Fullscreen toggle button
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: widget.onToggleFullscreen,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: PhosphorIcon(
+                        widget.isFullscreen
+                            ? PhosphorIcons.arrowsIn(PhosphorIconsStyle.bold)
+                            : PhosphorIcons.arrowsOut(PhosphorIconsStyle.bold),
+                        color: Colors.white,
+                        size: 22,
                       ),
                     ),
                   ),
+                ),
               ],
             ),
           ),

@@ -181,14 +181,15 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
     setState(() {
       _isFullscreen = !_isFullscreen;
-      _controlsManager.showControls = true;
     });
 
+    // Show controls temporarily when toggling fullscreen
+    _controlsManager.showControlsTemporarily(isPlaying: _videoManager.isPlaying);
     _controlsManager.cancelTimers();
 
     try {
       if (_isFullscreen) {
-        // Enter fullscreen
+        // Enter fullscreen - hide system UI
         await SystemChrome.setEnabledSystemUIMode(
           SystemUiMode.immersiveSticky,
         ).timeout(const Duration(seconds: 2));
@@ -198,12 +199,10 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           DeviceOrientation.landscapeRight,
         ]).timeout(const Duration(seconds: 2));
 
-        _controlsManager.startControlsTimer(
-          isFullscreen: true,
-          isPlaying: _videoManager.isPlaying,
-        );
+        // Start auto-hide timer
+        _controlsManager.startControlsTimer(isPlaying: _videoManager.isPlaying);
       } else {
-        // Exit fullscreen
+        // Exit fullscreen - restore system UI
         await SystemChrome.setEnabledSystemUIMode(
           SystemUiMode.edgeToEdge,
         ).timeout(const Duration(seconds: 2));
@@ -217,12 +216,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     } catch (e) {
       debugPrint('Error toggling fullscreen: $e');
       // Revert state on error
-      setState(() {
-        _isFullscreen = !_isFullscreen;
-      });
-
-      // Show error message to user
       if (mounted) {
+        setState(() => _isFullscreen = !_isFullscreen);
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Gagal mengubah mode layar penuh'),
@@ -257,13 +253,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
         skipSeconds.abs(),
         isLeftSide,
       );
-
-      if (_videoManager.isPlaying) {
-        _controlsManager.startControlsTimer(
-          isFullscreen: _isFullscreen,
-          isPlaying: true,
-        );
-      }
     } catch (e) {
       debugPrint('Error in double tap seek: $e');
     }
@@ -284,48 +273,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       _isTransitioning = true;
     });
 
-    // Scroll to top
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutCubic,
-      );
-    }
-
-    // Show feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            PhosphorIcon(
-              PhosphorIcons.playCircle(PhosphorIconsStyle.fill),
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Memainkan: ${newEpisode.title}',
-                style: const TextStyle(color: Colors.white),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-
-    // Initialize new player
+    // Initialize new player immediately (no delay)
     _videoManager.initializePlayer(newEpisode);
 
-    // Clear transitioning flag after a short delay
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // Clear transitioning flag quickly
+    Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {
         setState(() {
           _isTransitioning = false;
@@ -393,8 +345,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   @override
   Widget build(BuildContext context) {
     // If no controller is available, show loading or error state
-    // BUT don't show error screen during transitioning between videos
-    if (_videoManager.controller == null && !_isLoading && !_isTransitioning) {
+    // BUT don't show error screen during transitioning between videos OR initializing
+    if (_videoManager.controller == null &&
+        !_isLoading &&
+        !_isTransitioning &&
+        !_videoManager.isInitializing) {
       return _buildNoVideoState();
     }
 
@@ -418,11 +373,31 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
       builder: (context, player) {
         return OrientationBuilder(
           builder: (context, orientation) {
-            if (_isFullscreen) {
-              return _buildFullscreenLayout(player);
-            } else {
-              return _buildPortraitLayout(player);
-            }
+            final isLandscape = orientation == Orientation.landscape;
+
+            // Smooth transition between portrait and fullscreen layouts
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeInOut,
+              switchOutCurve: Curves.easeInOut,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: child,
+                );
+              },
+              // Use unique keys to force proper transitions
+              // If fullscreen requested but still portrait, show portrait layout temporarily
+              child: _isFullscreen && isLandscape
+                  ? KeyedSubtree(
+                      key: const ValueKey('fullscreen'),
+                      child: _buildFullscreenLayout(player),
+                    )
+                  : KeyedSubtree(
+                      key: const ValueKey('portrait'),
+                      child: _buildPortraitLayout(player),
+                    ),
+            );
           },
         );
       },
@@ -453,25 +428,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                 onToggleFullscreen: _toggleFullscreen,
                 onShowControls: () {
                   _controlsManager.showControlsTemporarily(
-                    isFullscreen: _isFullscreen,
                     isPlaying: _videoManager.isPlaying,
                   );
                 },
                 onHideControls: _controlsManager.hideControls,
-                onTogglePlayPause: () {
-                  if (_videoManager.isPlaying) {
-                    _videoManager.pause();
-                  } else {
-                    _videoManager.play();
-                  }
-                },
                 onDoubleTap: _handleDoubleTap,
-                onStartControlsTimer: (isFullscreen, isPlaying) {
-                  _controlsManager.startControlsTimer(
-                    isFullscreen: isFullscreen,
-                    isPlaying: isPlaying,
-                  );
-                },
               ),
       ),
     );
@@ -479,52 +440,20 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
   Widget _buildPortraitLayout(Widget player) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(
+      backgroundColor: Colors.black,
+      body: _isLoading
+          ? Container(
+              color: Colors.white,
+              child: const Center(
                 child: CircularProgressIndicator(color: AppTheme.primaryColor),
-              )
-            : _kitab == null
-            ? _buildErrorView()
-            : _buildContent(player),
-      ),
+              ),
+            )
+          : _kitab == null
+          ? _buildErrorView()
+          : _buildContent(player),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      leading: IconButton(
-        icon: PhosphorIcon(
-          PhosphorIcons.arrowLeft(PhosphorIconsStyle.bold),
-          color: AppTheme.textPrimaryColor,
-        ),
-        onPressed: () => Navigator.of(context).pop(),
-      ),
-      title: Text(
-        _kitab?.title ?? 'Kitab',
-        style: const TextStyle(
-          color: AppTheme.textPrimaryColor,
-          fontWeight: FontWeight.w600,
-          fontSize: 18,
-        ),
-      ),
-      actions: [
-        IconButton(
-          icon: PhosphorIcon(
-            PhosphorIcons.dotsThreeVertical(PhosphorIconsStyle.bold),
-            color: AppTheme.textPrimaryColor,
-          ),
-          onPressed: () {
-            // TODO: Show menu options
-          },
-        ),
-      ],
-    );
-  }
 
   Widget _buildErrorView() {
     return Center(
@@ -552,51 +481,48 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   Widget _buildNoVideoState() {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: _buildAppBar(),
-      body: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              PhosphorIcon(
-                PhosphorIcons.videoCamera(PhosphorIconsStyle.light),
-                size: 64,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            PhosphorIcon(
+              PhosphorIcons.videoCamera(PhosphorIconsStyle.light),
+              size: 64,
+              color: AppTheme.textSecondaryColor,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Video tidak tersedia',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: AppTheme.textPrimaryColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Sila cuba lagi atau hubungi sokongan',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: AppTheme.textSecondaryColor,
               ),
-              const SizedBox(height: 16),
-              Text(
-                'Video tidak tersedia',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: AppTheme.textPrimaryColor,
-                  fontWeight: FontWeight.w600,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(context).pop(),
+              icon: PhosphorIcon(PhosphorIcons.arrowLeft(), size: 20),
+              label: const Text('Kembali'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Sila cuba lagi atau hubungi sokongan',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: PhosphorIcon(PhosphorIcons.arrowLeft(), size: 20),
-                label: const Text('Kembali'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -619,64 +545,61 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
             onToggleFullscreen: _toggleFullscreen,
             onShowControls: () {
               _controlsManager.showControlsTemporarily(
-                isFullscreen: _isFullscreen,
                 isPlaying: _videoManager.isPlaying,
               );
             },
             onHideControls: _controlsManager.hideControls,
-            onTogglePlayPause: () {
-              if (_videoManager.isPlaying) {
-                _videoManager.pause();
-              } else {
-                _videoManager.play();
-              }
-            },
             onDoubleTap: _handleDoubleTap,
-            onStartControlsTimer: (isFullscreen, isPlaying) {
-              _controlsManager.startControlsTimer(
-                isFullscreen: isFullscreen,
-                isPlaying: isPlaying,
-              );
-            },
           ),
 
-        // Tab Bar (Pinned below video)
-        TabBarWidget(
-          controller: _tabController,
-          currentTabIndex: _currentTabIndex,
-          episodesCount: _episodes.length,
-        ),
-
-        // Scrollable Content (Title + Tab Content)
+        // Content area (white background)
         Expanded(
-          child: _currentTabIndex == 0
-              ? SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title and Description
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-                        child: _buildTitleAndDescription(),
-                      ),
-
-                      // Episodes Tab Content
-                      EpisodesTabWidget(
-                        episodes: _episodes,
-                        currentEpisodeIndex: _currentEpisodeIndex,
-                        isPlaying: _videoManager.isPlaying,
-                        isPremiumUser: _isPremiumUser,
-                        onEpisodeTap: _onEpisodeTap,
-                      ),
-                    ],
-                  ),
-                )
-              : PdfTabWidget(
-                  kitab: _kitab,
-                  isPremiumUser: _isPremiumUser,
-                  onOpenPdf: _onOpenPdf,
+          child: Container(
+            color: Colors.white,
+            child: Column(
+              children: [
+                // Tab Bar (Pinned below video)
+                TabBarWidget(
+                  controller: _tabController,
+                  currentTabIndex: _currentTabIndex,
+                  episodesCount: _episodes.length,
                 ),
+
+                // Scrollable Content (Title + Tab Content)
+                Expanded(
+                  child: _currentTabIndex == 0
+                      ? SingleChildScrollView(
+                          key: const PageStorageKey('episodes_scroll'),
+                          controller: _scrollController,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Title and Description
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                                child: _buildTitleAndDescription(),
+                              ),
+
+                              // Episodes Tab Content
+                              EpisodesTabWidget(
+                                episodes: _episodes,
+                                currentEpisodeIndex: _currentEpisodeIndex,
+                                isPlaying: _videoManager.isPlaying,
+                                isPremiumUser: _isPremiumUser,
+                                onEpisodeTap: _onEpisodeTap,
+                              ),
+                            ],
+                          ),
+                        )
+                      : PdfTabWidget(
+                          kitab: _kitab,
+                          isPremiumUser: _isPremiumUser,
+                          onOpenPdf: _onOpenPdf,
+                        ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -700,14 +623,94 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
 
         const SizedBox(height: 8),
 
-        // Subtitle (Description as subtitle)
+        // Expandable Description
         if (_kitab?.description?.isNotEmpty == true)
-          Text(
-            _kitab!.description!,
+          _ExpandableDescription(description: _kitab!.description!),
+      ],
+    );
+  }
+}
+
+/// Expandable description widget with "Lagi..." / "Kurang" functionality
+class _ExpandableDescription extends StatefulWidget {
+  final String description;
+
+  const _ExpandableDescription({required this.description});
+
+  @override
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
+  bool _isExpanded = false;
+  bool _needsExpansion = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkIfNeedsExpansion();
+    });
+  }
+
+  void _checkIfNeedsExpansion() {
+    final span = TextSpan(
+      text: widget.description,
+      style: const TextStyle(
+        fontSize: 15,
+        height: 1.4,
+      ),
+    );
+
+    final tp = TextPainter(
+      text: span,
+      maxLines: 2,
+      textDirection: TextDirection.ltr,
+    );
+
+    tp.layout(maxWidth: MediaQuery.of(context).size.width - 40);
+
+    if (mounted) {
+      setState(() {
+        _needsExpansion = tp.didExceedMaxLines;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: Text(
+            widget.description,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
               color: AppTheme.textSecondaryColor,
               fontSize: 15,
               height: 1.4,
+            ),
+            maxLines: _isExpanded ? null : 2,
+            overflow: _isExpanded ? null : TextOverflow.ellipsis,
+          ),
+        ),
+
+        // "Lagi..." / "Kurang" button
+        if (_needsExpansion)
+          GestureDetector(
+            onTap: () => setState(() => _isExpanded = !_isExpanded),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                _isExpanded ? 'Kurang' : 'Lagi...',
+                style: const TextStyle(
+                  color: AppTheme.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
       ],

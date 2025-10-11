@@ -101,6 +101,9 @@ class AuthProvider extends ChangeNotifier {
       // Update local profile without causing infinite loop
       if (_userProfile != null) {
         _userProfile = _userProfile!.copyWith(subscriptionStatus: status);
+        if (kDebugMode) {
+          debugPrint('🔶 [AUTH_PROVIDER:_updateProfileSubscriptionStatus] notifyListeners - status:$status');
+        }
         notifyListeners();
       }
     } catch (e) {
@@ -112,12 +115,18 @@ class AuthProvider extends ChangeNotifier {
 
   void _setStatus(AuthStatus status) {
     _status = status;
+    if (kDebugMode) {
+      debugPrint('🔶 [AUTH_PROVIDER:_setStatus] notifyListeners - status:$status');
+    }
     notifyListeners();
   }
 
   void resetToInitial() {
     _status = AuthStatus.initial;
     _errorMessage = null;
+    if (kDebugMode) {
+      debugPrint('🔶 [AUTH_PROVIDER:resetToInitial] notifyListeners');
+    }
     notifyListeners();
   }
 
@@ -142,6 +151,9 @@ class AuthProvider extends ChangeNotifier {
     _errorMessage = null;
     // Gunakan _scheduleStatus untuk konsisten
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (kDebugMode) {
+        debugPrint('🔶 [AUTH_PROVIDER:clearError] notifyListeners (PostFrameCallback)');
+      }
       notifyListeners();
     });
   }

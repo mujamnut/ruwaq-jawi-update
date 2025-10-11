@@ -29,8 +29,6 @@ class EbookCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final totalPages = ebook.totalPages ?? 0;
     final categoryColor = _getCategoryColor(ebook.categoryName);
-    // Generate rating between 4.7-5.0 based on index for variety
-    final rating = (4.7 + (index % 4) * 0.1).toStringAsFixed(1);
 
     return Material(
       color: Colors.transparent,
@@ -188,26 +186,48 @@ class EbookCardWidget extends StatelessWidget {
 
                     const SizedBox(height: 4),
 
-                    // Rating
-                    Row(
-                      children: [
-                        PhosphorIcon(
-                          PhosphorIcons.star(PhosphorIconsStyle.fill),
-                          color: const Color(0xFFFFB800),
-                          size: 14,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          rating,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: AppTheme.textPrimaryColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
-                        ),
-                      ],
-                    ),
+                    // Rating - show only if has ratings
+                    if (ebook.hasRating)
+                      Row(
+                        children: [
+                          PhosphorIcon(
+                            PhosphorIcons.star(PhosphorIconsStyle.fill),
+                            color: const Color(0xFFFFB800),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            ebook.averageRating.toStringAsFixed(1),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: AppTheme.textPrimaryColor,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '(${ebook.totalRatings})',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: AppTheme.textSecondaryColor,
+                                  fontWeight: FontWeight.w400,
+                                  fontSize: 10,
+                                ),
+                          ),
+                        ],
+                      )
+                    else
+                      Text(
+                        'Belum ada rating',
+                        style: Theme.of(context).textTheme.bodySmall
+                            ?.copyWith(
+                              color: AppTheme.textSecondaryColor,
+                              fontWeight: FontWeight.w400,
+                              fontSize: 10,
+                              fontStyle: FontStyle.italic,
+                            ),
+                      ),
                   ],
                 ),
               ),

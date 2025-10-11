@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 
+/// Controls manager - manages both custom controls visibility and skip animations
 class ControlsManager {
   final VoidCallback onStateChanged;
 
@@ -14,33 +15,22 @@ class ControlsManager {
 
   ControlsManager({required this.onStateChanged});
 
-  void startControlsTimer({required bool isFullscreen, required bool isPlaying}) {
+  void startControlsTimer({required bool isPlaying}) {
     _controlsTimer?.cancel();
 
-    // Auto-hide controls after 5 seconds when video is playing (both fullscreen and portrait)
+    // Auto-hide controls after 3 seconds when video is playing
     if (isPlaying) {
-      _controlsTimer = Timer(const Duration(seconds: 5), () {
+      _controlsTimer = Timer(const Duration(seconds: 3), () {
         showControls = false;
         onStateChanged();
       });
     }
   }
 
-  void toggleControls({required bool isFullscreen, required bool isPlaying}) {
-    showControls = !showControls;
-    onStateChanged();
-
-    if (showControls) {
-      startControlsTimer(isFullscreen: isFullscreen, isPlaying: isPlaying);
-    } else {
-      _controlsTimer?.cancel();
-    }
-  }
-
-  void showControlsTemporarily({required bool isFullscreen, required bool isPlaying}) {
+  void showControlsTemporarily({required bool isPlaying}) {
     showControls = true;
     onStateChanged();
-    startControlsTimer(isFullscreen: isFullscreen, isPlaying: isPlaying);
+    startControlsTimer(isPlaying: isPlaying);
   }
 
   void hideControls() {
@@ -56,7 +46,7 @@ class ControlsManager {
     onStateChanged();
 
     _skipAnimationTimer?.cancel();
-    _skipAnimationTimer = Timer(const Duration(milliseconds: 800), () {
+    _skipAnimationTimer = Timer(const Duration(milliseconds: 600), () {
       showSkipAnimation = false;
       onStateChanged();
     });

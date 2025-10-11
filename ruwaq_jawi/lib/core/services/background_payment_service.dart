@@ -24,45 +24,47 @@ class BackgroundPaymentService {
     }
 
     if (kDebugMode) {
-      print('🚀 Starting background payment verification...');
-      print('⚠️ NOTE: Background verification disabled - pending_payments table does not exist');
+      debugPrint('🚀 Starting background payment verification...');
+      debugPrint('⚠️ NOTE: Background verification disabled - pending_payments table does not exist');
     }
 
     // Feature temporarily disabled - requires pending_payments table
     // Will be enabled when database schema is updated
     return;
-    
+
+    // Code below will be enabled when pending_payments table is created
+    /*
     _isRunning = true;
     _startTime = DateTime.now();
 
     _timer = Timer.periodic(_checkInterval, (timer) async {
       try {
         // Check if max duration exceeded
-        if (_startTime != null && 
+        if (_startTime != null &&
             DateTime.now().difference(_startTime!).compareTo(_maxRunDuration) > 0) {
-          print('⏰ Background verification max duration reached, stopping...');
+          debugPrint('⏰ Background verification max duration reached, stopping...');
           stopBackgroundVerification();
           return;
         }
 
         // Only run if context is still valid and mounted
         if (!context.mounted) {
-          print('⚠️ Context not mounted, stopping background verification');
+          debugPrint('⚠️ Context not mounted, stopping background verification');
           stopBackgroundVerification();
           return;
         }
 
         final subscriptionProvider = Provider.of<SubscriptionProvider>(
-          context, 
+          context,
           listen: false
         );
 
         // Get pending payments
         final pendingPayments = await subscriptionProvider.getPendingPayments();
-        
+
         if (pendingPayments.isNotEmpty) {
-          print('🔍 Background check: Found ${pendingPayments.length} pending payments');
-          
+          debugPrint('🔍 Background check: Found ${pendingPayments.length} pending payments');
+
           // Verify each pending payment
           bool anySuccess = false;
           for (final payment in pendingPayments) {
@@ -70,7 +72,7 @@ class BackgroundPaymentService {
             final planId = payment['plan_id'];
             final amount = payment['amount']?.toDouble() ?? 0.0;
 
-            print('⏳ Background verifying: $billId');
+            debugPrint('⏳ Background verifying: $billId');
 
             try {
               final success = await subscriptionProvider.verifyPaymentStatus(
@@ -78,37 +80,40 @@ class BackgroundPaymentService {
                 planId: planId,
                 amount: amount,
               );
-              
+
               if (success) {
                 anySuccess = true;
-                print('✅ Background verification successful for: $billId');
-                
+                debugPrint('✅ Background verification successful for: $billId');
+
                 // Show success notification
-                await _showPaymentSuccessNotification(context, payment);
-                
+                if (context.mounted) {
+                  await _showPaymentSuccessNotification(context, payment);
+                }
+
                 // Don't check other payments immediately to avoid spam
                 break;
               }
             } catch (e) {
-              print('❌ Error in background verification for $billId: $e');
+              debugPrint('❌ Error in background verification for $billId: $e');
             }
-            
+
             // Small delay between checks
             await Future.delayed(Duration(seconds: 1));
           }
-          
+
           // If any payment was successful, extend the running time
           if (anySuccess) {
             _startTime = DateTime.now(); // Reset timer
           }
         } else {
-          print('📋 Background check: No pending payments found');
+          debugPrint('📋 Background check: No pending payments found');
         }
-        
+
       } catch (e) {
-        print('❌ Error in background payment verification: $e');
+        debugPrint('❌ Error in background payment verification: $e');
       }
     });
+    */
   }
 
   /// Stop background payment verification
@@ -119,7 +124,7 @@ class BackgroundPaymentService {
     }
     _isRunning = false;
     _startTime = null;
-    print('🛑 Background payment verification stopped');
+    debugPrint('🛑 Background payment verification stopped');
   }
 
   /// Check if background verification is running
@@ -146,7 +151,7 @@ class BackgroundPaymentService {
       // Get current user ID
       final currentUser = EnhancedNotificationService.currentUserId;
       if (currentUser == null) {
-        print('❌ No current user found, cannot insert payment notification');
+        debugPrint('❌ No current user found, cannot insert payment notification');
         return;
       }
 
@@ -169,12 +174,13 @@ class BackgroundPaymentService {
       );
 
       if (success) {
-        print('✅ Payment notification inserted to database');
+        debugPrint('✅ Payment notification inserted to database');
       } else {
-        print('❌ Failed to insert payment notification to database');
+        debugPrint('❌ Failed to insert payment notification to database');
       }
 
       // 2. Show snackbar notification
+      if (!context.mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       messenger.showSnackBar(
         SnackBar(
@@ -208,9 +214,11 @@ class BackgroundPaymentService {
       );
 
       // 3. Also show a dialog for more visibility
-      _showPaymentSuccessDialog(context, payment);
+      if (context.mounted) {
+        _showPaymentSuccessDialog(context, payment);
+      }
     } catch (e) {
-      print('❌ Error showing payment success notification: $e');
+      debugPrint('❌ Error showing payment success notification: $e');
     }
   }
 
@@ -297,17 +305,17 @@ class BackgroundPaymentService {
   /// Manual trigger untuk check pending payments
   static Future<void> checkPendingPaymentsNow(BuildContext context) async {
     try {
-      print('🔍 Manual check for pending payments...');
-      
+      debugPrint('🔍 Manual check for pending payments...');
+
       final subscriptionProvider = Provider.of<SubscriptionProvider>(
-        context, 
+        context,
         listen: false
       );
 
       await subscriptionProvider.verifyAllPendingPayments();
-      print('✅ Manual pending payments check completed');
+      debugPrint('✅ Manual pending payments check completed');
     } catch (e) {
-      print('❌ Error in manual pending payments check: $e');
+      debugPrint('❌ Error in manual pending payments check: $e');
     }
   }
 

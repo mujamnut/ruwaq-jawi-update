@@ -3,88 +3,133 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'video_bottom_controls_widget.dart';
 
-class VideoControlsOverlayWidget extends StatelessWidget {
+/// Custom controls overlay - hybrid approach
+/// Shows minimal controls that work WITH YouTube player
+class VideoControlsOverlayWidget extends StatefulWidget {
   final YoutubePlayerController? controller;
-  final bool showControls;
   final bool isFullscreen;
   final VoidCallback onToggleFullscreen;
+  final VoidCallback? onBack;
+  final bool showControls;
+  final VoidCallback onShowControls;
   final VoidCallback onHideControls;
-  final VoidCallback onTogglePlayPause;
-  final Function(bool isFullscreen, bool isPlaying) onStartControlsTimer;
 
   const VideoControlsOverlayWidget({
     super.key,
     required this.controller,
-    required this.showControls,
     required this.isFullscreen,
     required this.onToggleFullscreen,
+    required this.showControls,
+    required this.onShowControls,
     required this.onHideControls,
-    required this.onTogglePlayPause,
-    required this.onStartControlsTimer,
+    this.onBack,
   });
 
   @override
+  State<VideoControlsOverlayWidget> createState() =>
+      _VideoControlsOverlayWidgetState();
+}
+
+class _VideoControlsOverlayWidgetState
+    extends State<VideoControlsOverlayWidget> {
+  void _togglePlayPause() {
+    if (widget.controller == null) return;
+
+    if (widget.controller!.value.isPlaying) {
+      widget.controller!.pause();
+    } else {
+      widget.controller!.play();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!showControls) return const SizedBox.shrink();
+    if (!widget.showControls) return const SizedBox.shrink();
 
     return Positioned.fill(
-      child: Container(
-        color: Colors.black.withValues(alpha: 0.3),
-        child: Stack(
-          children: [
-            // Tap to hide controls (background layer)
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onHideControls,
-                child: Container(color: Colors.transparent),
-              ),
-            ),
-
-            // Center Play/Pause (on top of gesture detector)
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  onTogglePlayPause();
-                  if (controller != null && controller!.value.isPlaying) {
-                    onStartControlsTimer(isFullscreen, true);
-                  }
-                },
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.7),
-                    shape: BoxShape.circle,
-                  ),
-                  child: PhosphorIcon(
-                    (controller?.value.isPlaying ?? false)
-                        ? PhosphorIcons.pause(PhosphorIconsStyle.fill)
-                        : PhosphorIcons.play(PhosphorIconsStyle.fill),
-                    color: Colors.white,
-                    size: 28,
+      child: GestureDetector(
+        onTap: widget.onHideControls,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          color: Colors.black.withValues(alpha: 0.3),
+          child: Stack(
+            children: [
+              // Center Play/Pause Button
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    _togglePlayPause();
+                    // Don't hide controls immediately after play/pause
+                  },
+                  child: Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      (widget.controller?.value.isPlaying ?? false)
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Bottom Controls
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: GestureDetector(
-                onTap: () {
-                  // Prevent tap from hiding controls when interacting with bottom controls
-                },
-                child: VideoBottomControlsWidget(
-                  controller: controller,
-                  isFullscreen: isFullscreen,
-                  onToggleFullscreen: onToggleFullscreen,
+              // Top bar - Back button only
+              if (widget.onBack != null)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.5),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: widget.onBack,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          child: PhosphorIcon(
+                            PhosphorIcons.arrowLeft(PhosphorIconsStyle.bold),
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Bottom Controls
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: () {}, // Prevent taps from hiding controls
+                  child: VideoBottomControlsWidget(
+                    controller: widget.controller,
+                    isFullscreen: widget.isFullscreen,
+                    onToggleFullscreen: widget.onToggleFullscreen,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

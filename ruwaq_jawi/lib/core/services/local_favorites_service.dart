@@ -16,7 +16,7 @@ class LocalFavoritesService {
     try {
       _box = await Hive.openBox(_boxName);
     } catch (e) {
-      print('Error initializing LocalFavoritesService: $e');
+      debugPrint('Error initializing LocalFavoritesService: $e');
     }
   }
 
@@ -34,7 +34,7 @@ class LocalFavoritesService {
       final favorites = _favoritesBox.get(_videoKitabFavoritesKey, defaultValue: <String>[]) as List;
       return favorites.contains(videoKitabId);
     } catch (e) {
-      print('Error checking video kitab favorite status: $e');
+      debugPrint('Error checking video kitab favorite status: $e');
       return false;
     }
   }
@@ -54,13 +54,14 @@ class LocalFavoritesService {
       // Then sync to Supabase (background)
       SupabaseFavoritesService.saveVideoKitab(videoKitabId).catchError((e) {
         if (kDebugMode) {
-          print('Supabase sync failed (video kitab save): $e');
+          debugPrint('Supabase sync failed (video kitab save): $e');
         }
+        return false;
       });
 
       return true;
     } catch (e) {
-      print('Error adding video kitab to favorites: $e');
+      debugPrint('Error adding video kitab to favorites: $e');
       return false;
     }
   }
@@ -80,13 +81,14 @@ class LocalFavoritesService {
       // Then sync to Supabase (background)
       SupabaseFavoritesService.unsaveVideoKitab(videoKitabId).catchError((e) {
         if (kDebugMode) {
-          print('Supabase sync failed (video kitab unsave): $e');
+          debugPrint('Supabase sync failed (video kitab unsave): $e');
         }
+        return false;
       });
 
       return true;
     } catch (e) {
-      print('Error removing video kitab from favorites: $e');
+      debugPrint('Error removing video kitab from favorites: $e');
       return false;
     }
   }
@@ -97,7 +99,7 @@ class LocalFavoritesService {
       final favorites = _favoritesBox.get(_videoKitabFavoritesKey, defaultValue: <String>[]) as List;
       return List<String>.from(favorites);
     } catch (e) {
-      print('Error getting favorite video kitab IDs: $e');
+      debugPrint('Error getting favorite video kitab IDs: $e');
       return [];
     }
   }
@@ -108,7 +110,7 @@ class LocalFavoritesService {
       final favorites = _favoritesBox.get(_ebookFavoritesKey, defaultValue: <String>[]) as List;
       return favorites.contains(ebookId);
     } catch (e) {
-      print('Error checking ebook favorite status: $e');
+      debugPrint('Error checking ebook favorite status: $e');
       return false;
     }
   }
@@ -127,13 +129,14 @@ class LocalFavoritesService {
       // Sync to Supabase (background)
       SupabaseFavoritesService.saveEbook(ebookId).catchError((e) {
         if (kDebugMode) {
-          print('Supabase sync failed (ebook save): $e');
+          debugPrint('Supabase sync failed (ebook save): $e');
         }
+        return false;
       });
 
       return true;
     } catch (e) {
-      print('Error adding ebook to favorites: $e');
+      debugPrint('Error adding ebook to favorites: $e');
       return false;
     }
   }
@@ -152,13 +155,14 @@ class LocalFavoritesService {
       // Sync to Supabase (background)
       SupabaseFavoritesService.unsaveEbook(ebookId).catchError((e) {
         if (kDebugMode) {
-          print('Supabase sync failed (ebook unsave): $e');
+          debugPrint('Supabase sync failed (ebook unsave): $e');
         }
+        return false;
       });
 
       return true;
     } catch (e) {
-      print('Error removing ebook from favorites: $e');
+      debugPrint('Error removing ebook from favorites: $e');
       return false;
     }
   }
@@ -169,7 +173,7 @@ class LocalFavoritesService {
       final favorites = _favoritesBox.get(_ebookFavoritesKey, defaultValue: <String>[]) as List;
       return List<String>.from(favorites);
     } catch (e) {
-      print('Error getting favorite ebook IDs: $e');
+      debugPrint('Error getting favorite ebook IDs: $e');
       return [];
     }
   }
@@ -180,7 +184,7 @@ class LocalFavoritesService {
       final favorites = _favoritesBox.get(_videoEpisodeFavoritesKey, defaultValue: <String>[]) as List;
       return favorites.contains(episodeId);
     } catch (e) {
-      print('Error checking video episode favorite status: $e');
+      debugPrint('Error checking video episode favorite status: $e');
       return false;
     }
   }
@@ -199,13 +203,14 @@ class LocalFavoritesService {
       // Sync to Supabase (background)
       SupabaseFavoritesService.saveVideoEpisode(episodeId).catchError((e) {
         if (kDebugMode) {
-          print('Supabase sync failed (episode save): $e');
+          debugPrint('Supabase sync failed (episode save): $e');
         }
+        return false;
       });
 
       return true;
     } catch (e) {
-      print('Error adding video episode to favorites: $e');
+      debugPrint('Error adding video episode to favorites: $e');
       return false;
     }
   }
@@ -224,13 +229,14 @@ class LocalFavoritesService {
       // Sync to Supabase (background)
       SupabaseFavoritesService.unsaveVideoEpisode(episodeId).catchError((e) {
         if (kDebugMode) {
-          print('Supabase sync failed (episode unsave): $e');
+          debugPrint('Supabase sync failed (episode unsave): $e');
         }
+        return false;
       });
 
       return true;
     } catch (e) {
-      print('Error removing video episode from favorites: $e');
+      debugPrint('Error removing video episode from favorites: $e');
       return false;
     }
   }
@@ -241,7 +247,7 @@ class LocalFavoritesService {
       final favorites = _favoritesBox.get(_videoEpisodeFavoritesKey, defaultValue: <String>[]) as List;
       return List<String>.from(favorites);
     } catch (e) {
-      print('Error getting favorite video episode IDs: $e');
+      debugPrint('Error getting favorite video episode IDs: $e');
       return [];
     }
   }
@@ -253,7 +259,7 @@ class LocalFavoritesService {
       await _favoritesBox.delete(_ebookFavoritesKey);
       await _favoritesBox.delete(_videoEpisodeFavoritesKey);
     } catch (e) {
-      print('Error clearing all favorites: $e');
+      debugPrint('Error clearing all favorites: $e');
     }
   }
 
@@ -263,7 +269,7 @@ class LocalFavoritesService {
       await _box?.close();
       _box = null;
     } catch (e) {
-      print('Error closing LocalFavoritesService: $e');
+      debugPrint('Error closing LocalFavoritesService: $e');
     }
   }
 
@@ -283,13 +289,13 @@ class LocalFavoritesService {
     try {
       if (isMigrationComplete()) {
         if (kDebugMode) {
-          print('✅ Migration already completed, skipping');
+          debugPrint('✅ Migration already completed, skipping');
         }
         return true;
       }
 
       if (kDebugMode) {
-        print('🔄 Starting migration of local favorites to Supabase...');
+        debugPrint('🔄 Starting migration of local favorites to Supabase...');
       }
 
       // Get all local favorites
@@ -298,7 +304,7 @@ class LocalFavoritesService {
       final episodes = getFavoriteVideoEpisodeIds();
 
       if (kDebugMode) {
-        print('📦 Found: ${videoKitabs.length} kitabs, ${ebooks.length} ebooks, ${episodes.length} episodes');
+        debugPrint('📦 Found: ${videoKitabs.length} kitabs, ${ebooks.length} ebooks, ${episodes.length} episodes');
       }
 
       // Batch upload to Supabase
@@ -323,18 +329,18 @@ class LocalFavoritesService {
         // Mark migration as complete
         await _favoritesBox.put(_migrationCompleteKey, true);
         if (kDebugMode) {
-          print('✅ Migration completed successfully!');
+          debugPrint('✅ Migration completed successfully!');
         }
       } else {
         if (kDebugMode) {
-          print('⚠️ Migration completed with some errors');
+          debugPrint('⚠️ Migration completed with some errors');
         }
       }
 
       return success;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Migration failed: $e');
+        debugPrint('❌ Migration failed: $e');
       }
       return false;
     }
@@ -345,10 +351,10 @@ class LocalFavoritesService {
     try {
       await _favoritesBox.delete(_migrationCompleteKey);
       if (kDebugMode) {
-        print('🔄 Migration flag reset');
+        debugPrint('🔄 Migration flag reset');
       }
     } catch (e) {
-      print('Error resetting migration flag: $e');
+      debugPrint('Error resetting migration flag: $e');
     }
   }
 }

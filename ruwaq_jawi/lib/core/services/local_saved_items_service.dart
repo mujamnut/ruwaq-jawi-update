@@ -1,4 +1,5 @@
 import 'package:hive/hive.dart';
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import '../models/kitab.dart';
 import '../models/saved_item.dart';
@@ -22,7 +23,7 @@ class LocalSavedItemsService {
       _savedVideosBox = await Hive.openBox<String>(_videosBoxName);
       _savedEbooksBox = await Hive.openBox<String>(_ebooksBoxName);
     } catch (e) {
-      print('Error initializing LocalSavedItemsService: $e');
+      debugPrint('Error initializing LocalSavedItemsService: $e');
     }
   }
 
@@ -34,7 +35,7 @@ class LocalSavedItemsService {
       final json = jsonEncode(item.toJson());
       await _savedItemsBox!.put(item.id, json);
     } catch (e) {
-      print('Error saving item: $e');
+      debugPrint('Error saving item: $e');
     }
   }
 
@@ -49,7 +50,7 @@ class LocalSavedItemsService {
       }
       return items;
     } catch (e) {
-      print('Error getting saved items: $e');
+      debugPrint('Error getting saved items: $e');
       return [];
     }
   }
@@ -60,7 +61,7 @@ class LocalSavedItemsService {
     try {
       await _savedItemsBox!.delete(itemId);
     } catch (e) {
-      print('Error removing item: $e');
+      debugPrint('Error removing item: $e');
     }
   }
 
@@ -76,7 +77,7 @@ class LocalSavedItemsService {
       // Also save via LocalFavoritesService (dual-write to Supabase)
       await LocalFavoritesService.addVideoKitabToFavorites(kitab.id);
     } catch (e) {
-      print('Error saving kitab: $e');
+      debugPrint('Error saving kitab: $e');
     }
   }
 
@@ -91,7 +92,7 @@ class LocalSavedItemsService {
       }
       return kitabs;
     } catch (e) {
-      print('Error getting saved kitab: $e');
+      debugPrint('Error getting saved kitab: $e');
       return [];
     }
   }
@@ -106,7 +107,7 @@ class LocalSavedItemsService {
       // Also remove via LocalFavoritesService (sync to Supabase)
       await LocalFavoritesService.removeVideoKitabFromFavorites(kitabId);
     } catch (e) {
-      print('Error removing kitab: $e');
+      debugPrint('Error removing kitab: $e');
     }
   }
 
@@ -124,7 +125,7 @@ class LocalSavedItemsService {
       final key = '${videoData['kitabId']}_${videoData['episodeId']}';
       await _savedVideosBox!.put(key, json);
     } catch (e) {
-      print('Error saving video: $e');
+      debugPrint('Error saving video: $e');
     }
   }
 
@@ -139,7 +140,7 @@ class LocalSavedItemsService {
       }
       return videos;
     } catch (e) {
-      print('Error getting saved videos: $e');
+      debugPrint('Error getting saved videos: $e');
       return [];
     }
   }
@@ -151,7 +152,7 @@ class LocalSavedItemsService {
       final key = '${kitabId}_$episodeId';
       await _savedVideosBox!.delete(key);
     } catch (e) {
-      print('Error removing video: $e');
+      debugPrint('Error removing video: $e');
     }
   }
 
@@ -174,7 +175,7 @@ class LocalSavedItemsService {
       final ebookId = ebookData['id'] as String;
       await LocalFavoritesService.addEbookToFavorites(ebookId);
     } catch (e) {
-      print('Error saving ebook: $e');
+      debugPrint('Error saving ebook: $e');
     }
   }
 
@@ -189,7 +190,7 @@ class LocalSavedItemsService {
       }
       return ebooks;
     } catch (e) {
-      print('Error getting saved ebooks: $e');
+      debugPrint('Error getting saved ebooks: $e');
       return [];
     }
   }
@@ -204,7 +205,7 @@ class LocalSavedItemsService {
       // Also remove via LocalFavoritesService (sync to Supabase)
       await LocalFavoritesService.removeEbookFromFavorites(ebookId);
     } catch (e) {
-      print('Error removing ebook: $e');
+      debugPrint('Error removing ebook: $e');
     }
   }
 
@@ -221,7 +222,7 @@ class LocalSavedItemsService {
       await _savedVideosBox?.clear();
       await _savedEbooksBox?.clear();
     } catch (e) {
-      print('Error clearing saved items: $e');
+      debugPrint('Error clearing saved items: $e');
     }
   }
 
@@ -237,7 +238,7 @@ class LocalSavedItemsService {
                 (_savedEbooksBox?.length ?? 0),
       };
     } catch (e) {
-      print('Error getting statistics: $e');
+      debugPrint('Error getting statistics: $e');
       return {'kitab': 0, 'videos': 0, 'ebooks': 0, 'total': 0};
     }
   }

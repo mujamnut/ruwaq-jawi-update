@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../../../core/theme/app_theme.dart';
 
 class TabBarWidget extends StatelessWidget {
@@ -19,20 +18,14 @@ class TabBarWidget extends StatelessWidget {
     return TabBar(
       controller: controller,
       indicator: UnderlineTabIndicator(
-        borderSide: const BorderSide(
-          color: AppTheme.primaryColor,
-          width: 3,
-        ),
+        borderSide: const BorderSide(color: AppTheme.primaryColor, width: 3),
         insets: const EdgeInsets.symmetric(horizontal: 0),
       ),
       indicatorSize: TabBarIndicatorSize.tab,
       dividerColor: AppTheme.borderColor.withValues(alpha: 0.3),
       labelColor: AppTheme.textPrimaryColor,
       unselectedLabelColor: AppTheme.textSecondaryColor,
-      labelStyle: const TextStyle(
-        fontWeight: FontWeight.w600,
-        fontSize: 16,
-      ),
+      labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
       unselectedLabelStyle: const TextStyle(
         fontWeight: FontWeight.w500,
         fontSize: 16,

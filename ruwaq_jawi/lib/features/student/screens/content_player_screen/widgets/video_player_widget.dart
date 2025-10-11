@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/models/video_episode.dart';
 import 'video_controls_overlay_widget.dart';
 import 'skip_animation_widget.dart';
 
+/// Portrait mode video player with custom controls
 class VideoPlayerWidget extends StatelessWidget {
   final Widget player;
   final YoutubePlayerController? controller;
@@ -17,9 +17,7 @@ class VideoPlayerWidget extends StatelessWidget {
   final VoidCallback onToggleFullscreen;
   final VoidCallback onShowControls;
   final VoidCallback onHideControls;
-  final VoidCallback onTogglePlayPause;
   final Function(TapDownDetails) onDoubleTap;
-  final Function(bool isFullscreen, bool isPlaying) onStartControlsTimer;
 
   const VideoPlayerWidget({
     super.key,
@@ -33,91 +31,108 @@ class VideoPlayerWidget extends StatelessWidget {
     required this.onToggleFullscreen,
     required this.onShowControls,
     required this.onHideControls,
-    required this.onTogglePlayPause,
     required this.onDoubleTap,
-    required this.onStartControlsTimer,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (controller == null) {
-      return AspectRatio(
-        aspectRatio: 16 / 9,
-        child: Container(
-          color: Colors.black,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircularProgressIndicator(
-                  color: AppTheme.primaryColor,
-                  strokeWidth: 3,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  currentEpisode != null
-                      ? 'Memuatkan video...'
-                      : 'Video tidak tersedia',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                if (currentEpisode != null) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    currentEpisode!.title,
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ],
+    final loadingWidget = Container(
+      color: Colors.black,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(
+              color: AppTheme.primaryColor,
+              strokeWidth: 3,
             ),
+            const SizedBox(height: 16),
+            Text(
+              currentEpisode != null
+                  ? 'Memuatkan video...'
+                  : 'Video tidak tersedia',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (currentEpisode != null) ...[
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  currentEpisode!.title,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+
+    if (controller == null) {
+      return Container(
+        color: Colors.black,
+        child: SafeArea(
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: loadingWidget,
           ),
         ),
       );
     }
 
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Stack(
-        children: [
-          // Player
-          Positioned.fill(child: player),
+    return Container(
+      color: Colors.black,
+      child: SafeArea(
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Stack(
+            children: [
+              // YouTube Player
+              Positioned.fill(child: player),
 
-          // Skip animation feedback
-          SkipAnimationWidget(
-            showSkipAnimation: showSkipAnimation,
-            isSkipForward: isSkipForward,
-            isSkipOnLeftSide: isSkipOnLeftSide,
-          ),
-
-          // Controls overlay
-          VideoControlsOverlayWidget(
-            controller: controller,
-            showControls: showControls,
-            isFullscreen: false,
-            onToggleFullscreen: onToggleFullscreen,
-            onHideControls: onHideControls,
-            onTogglePlayPause: onTogglePlayPause,
-            onStartControlsTimer: onStartControlsTimer,
-          ),
-
-          // Gesture detector for showing controls when hidden
-          if (!showControls)
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onShowControls,
-                onDoubleTap: () {},
-                onDoubleTapDown: onDoubleTap,
-                child: Container(color: Colors.transparent),
+              // Skip animation feedback
+              SkipAnimationWidget(
+                showSkipAnimation: showSkipAnimation,
+                isSkipForward: isSkipForward,
+                isSkipOnLeftSide: isSkipOnLeftSide,
+                isFullscreen: false,
               ),
-            ),
-        ],
+
+              // Custom controls overlay with back button
+              VideoControlsOverlayWidget(
+                controller: controller,
+                isFullscreen: false,
+                onToggleFullscreen: onToggleFullscreen,
+                showControls: showControls,
+                onShowControls: onShowControls,
+                onHideControls: onHideControls,
+                onBack: () => Navigator.of(context).pop(),
+              ),
+
+              // Gesture detector for showing controls when hidden
+              if (!showControls)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: onShowControls,
+                    onDoubleTap: () {}, // Empty to avoid conflict
+                    onDoubleTapDown: onDoubleTap,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

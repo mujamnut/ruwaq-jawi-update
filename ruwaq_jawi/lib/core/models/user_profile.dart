@@ -6,7 +6,7 @@ class UserProfile {
   final String subscriptionStatus;
   final String? phoneNumber;
   final String? avatarUrl;
-  final DateTime? subscriptionEndDate;  // ✅ NEW: Add subscription end date
+  final DateTime? subscriptionEndDate;  // ? NEW: Add subscription end date
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,25 +18,48 @@ class UserProfile {
     required this.subscriptionStatus,
     this.phoneNumber,
     this.avatarUrl,
-    this.subscriptionEndDate,           // ✅ NEW: Add subscription end date parameter
+    this.subscriptionEndDate,           // ? NEW: Add subscription end date parameter
     required this.createdAt,
     required this.updatedAt,
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.parse(value);
+      throw FormatException('Invalid date value: $value');
+    }
+
+    DateTime? parseNullableDate(dynamic value) {
+      if (value == null) return null;
+      if (value is DateTime) return value;
+      if (value is String && value.isNotEmpty) {
+        return DateTime.parse(value);
+      }
+      return null;
+    }
+
+    final role = (json['role'] as String?)?.isNotEmpty == true
+        ? json['role'] as String
+        : 'student';
+    final subscriptionStatus =
+        (json['subscription_status'] as String?)?.isNotEmpty == true
+            ? json['subscription_status'] as String
+            : 'inactive';
+
     return UserProfile(
       id: json['id'] as String,
       fullName: json['full_name'] as String?,
       email: json['email'] as String?,
-      role: json['role'] as String,
-      subscriptionStatus: json['subscription_status'] as String,
+      role: role,
+      subscriptionStatus: subscriptionStatus,
       phoneNumber: json['phone_number'] as String?,
       avatarUrl: json['avatar_url'] as String?,
-      subscriptionEndDate: json['subscription_end_date'] != null      // ✅ NEW: Parse subscription end date
-          ? DateTime.parse(json['subscription_end_date'] as String)
-          : null,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      subscriptionEndDate: parseNullableDate(
+        json['subscription_end_date'],
+      ), // ? NEW: Parse subscription end date
+      createdAt: parseDate(json['created_at']),
+      updatedAt: parseDate(json['updated_at']),
     );
   }
 
@@ -49,7 +72,7 @@ class UserProfile {
       'subscription_status': subscriptionStatus,
       'phone_number': phoneNumber,
       'avatar_url': avatarUrl,
-      'subscription_end_date': subscriptionEndDate?.toIso8601String(), // ✅ NEW: Include subscription end date
+      'subscription_end_date': subscriptionEndDate?.toIso8601String(), // ? NEW: Include subscription end date
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -63,7 +86,7 @@ class UserProfile {
     String? subscriptionStatus,
     String? phoneNumber,
     String? avatarUrl,
-    DateTime? subscriptionEndDate,      // ✅ NEW: Add subscription end date parameter
+    DateTime? subscriptionEndDate,      // ? NEW: Add subscription end date parameter
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -75,7 +98,7 @@ class UserProfile {
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
-      subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate, // ✅ NEW: Include subscription end date
+      subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate, // ? NEW: Include subscription end date
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -85,7 +108,7 @@ class UserProfile {
   bool get isStudent => role == 'student';
   bool get hasActiveSubscription => subscriptionStatus == 'active';
   
-  // ✅ NEW: Helper methods for subscription end date
+  // ? NEW: Helper methods for subscription end date
   bool get hasSubscriptionEndDate => subscriptionEndDate != null;
   bool get isSubscriptionExpired => subscriptionEndDate != null && subscriptionEndDate!.isBefore(DateTime.now());
   int get daysUntilExpiration {
