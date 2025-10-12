@@ -3,16 +3,43 @@ import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../../core/providers/subscription_provider.dart';
+import '../../../../../core/providers/auth_provider.dart';
 import '../../../../../core/theme/app_theme.dart';
 
 class EbookPremiumService {
-  /// Check if user has active subscription
+  /// Check if user has active subscription (FIXED - Use AuthProvider)
   static bool hasActiveSubscription(BuildContext context) {
     try {
-      final subscriptionProvider = context.read<SubscriptionProvider>();
-      return subscriptionProvider.hasActiveSubscription;
+      // PRIMARY CHECK: Use AuthProvider (profiles table) - MOST ACCURATE
+      final authProvider = context.read<AuthProvider>();
+
+      debugPrint('🔑 [EbookPremiumService] Checking subscription status:');
+      debugPrint('   AuthProvider.hasActiveSubscription: ${authProvider.hasActiveSubscription}');
+      debugPrint('   AuthProvider.subscriptionStatus: ${authProvider.userProfile?.subscriptionStatus}');
+
+      // Use profile subscription status which is updated by database functions
+      bool isProfileActive = authProvider.hasActiveSubscription;
+
+      // SECONDARY CHECK: Fallback to SubscriptionProvider (for safety)
+      if (!isProfileActive) {
+        try {
+          final subscriptionProvider = context.read<SubscriptionProvider>();
+          bool isSubscriptionActive = subscriptionProvider.hasActiveSubscription;
+          debugPrint('   SubscriptionProvider.hasActiveSubscription (fallback): $isSubscriptionActive');
+
+          // If subscription provider shows active but profile doesn't, refresh the profile
+          if (isSubscriptionActive && authProvider.userProfile != null) {
+            debugPrint('⚠️ [EbookPremiumService] Inconsistency detected! Refreshing subscription status...');
+            authProvider.refreshSubscriptionStatus();
+          }
+        } catch (e) {
+          debugPrint('   SubscriptionProvider fallback error: $e');
+        }
+      }
+
+      return isProfileActive;
     } catch (e) {
-      debugPrint('Error checking subscription status: $e');
+      debugPrint('❌ [EbookPremiumService] Error checking subscription status: $e');
       return false;
     }
   }

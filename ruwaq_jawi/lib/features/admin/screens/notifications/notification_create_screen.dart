@@ -377,7 +377,7 @@ class _AdminNotificationCreateScreenState
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryColor.withOpacity(0.1)
+              ? AppTheme.primaryColor.withValues(alpha: 0.1)
               : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -453,31 +453,110 @@ class _AdminNotificationCreateScreenState
             ),
           ),
           const SizedBox(height: 8),
-          // TODO: Add user selector dropdown
           Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.orange.shade50,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.shade200),
+              border: Border.all(color: AppTheme.borderColor),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const HugeIcon(
-                  icon: HugeIcons.strokeRoundedInformationCircle,
-                  color: Colors.orange,
-                  size: 20,
+                Row(
+                  children: [
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedUser,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _selectedUserId != null ? 'Pengguna Dipilih' : 'Pilih Pengguna',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton.icon(
+                      onPressed: () => _showUserSelector(),
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedSearch01,
+                        size: 16.0,
+                        color: Colors.white,
+                      ),
+                      label: const Text(
+                        'Cari Pengguna',
+                        style: TextStyle(fontSize: 12, color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'User selector akan ditambah dalam versi seterusnya',
-                    style: TextStyle(
-                      color: Colors.orange.shade900,
-                      fontSize: 12,
+                if (_selectedUserId != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const HugeIcon(
+                          icon: HugeIcons.strokeRoundedUserCheck01,
+                          color: AppTheme.primaryColor,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FutureBuilder<String?>(
+                            future: _getUserName(_selectedUserId!),
+                            builder: (context, snapshot) {
+                              return Text(
+                                snapshot.data ?? 'Memuatkan...',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        IconButton(
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedCancel01,
+                            size: 16.0,
+                            color: Colors.red,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _selectedUserId = null;
+                            });
+                          },
+                          constraints: const BoxConstraints(
+                            minWidth: 24,
+                            minHeight: 24,
+                          ),
+                          padding: EdgeInsets.zero,
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -542,7 +621,7 @@ class _AdminNotificationCreateScreenState
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppTheme.primaryColor.withOpacity(0.1)
+              ? AppTheme.primaryColor.withValues(alpha: 0.1)
               : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
@@ -750,7 +829,7 @@ class _AdminNotificationCreateScreenState
               border: Border.all(color: AppTheme.borderColor),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -762,7 +841,7 @@ class _AdminNotificationCreateScreenState
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const HugeIcon(
@@ -899,6 +978,192 @@ class _AdminNotificationCreateScreenState
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  Future<void> _showUserSelector() async {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.8,
+          height: MediaQuery.of(context).size.height * 0.7,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              // Header
+              Row(
+                children: [
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedUser,
+                    color: AppTheme.primaryColor,
+                    size: 24.0,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Pilih Pengguna',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedCancel01,
+                      size: 20.0,
+                      color: Colors.grey,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Search bar
+              TextField(
+                decoration: InputDecoration(
+                  hintText: 'Cari pengguna...',
+                  prefixIcon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedSearch01,
+                    size: 20.0,
+                    color: Colors.grey,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onChanged: (value) {
+                  // Trigger rebuild for search
+                  if (mounted) {
+                    setState(() {});
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // User list
+              Expanded(
+                child: FutureBuilder(
+                  future: _loadUsers(),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    if (!snapshot.hasData || snapshot.hasError) {
+                      return const Center(
+                        child: Text('Gagal memuatkan pengguna'),
+                      );
+                    }
+
+                    final users = snapshot.data as List<Map<String, dynamic>>;
+
+                    return ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        final isSelected = _selectedUserId == user['id'];
+
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isSelected
+                                ? AppTheme.primaryColor
+                                : Colors.grey.shade300,
+                            child: Text(
+                              (user['full_name'] ?? 'U')[0].toUpperCase(),
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            user['full_name'] ?? 'Unknown User',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          subtitle: user['role'] != null
+                              ? Text(
+                                  'Role: ${user['role']}',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                )
+                              : null,
+                          trailing: isSelected
+                              ? const HugeIcon(
+                                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                                  color: AppTheme.primaryColor,
+                                  size: 20.0,
+                                )
+                              : null,
+                          onTap: () {
+                            setState(() {
+                              _selectedUserId = user['id'] as String;
+                            });
+                            Navigator.of(context).pop();
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+
+              // Actions
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Pilih satu pengguna',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadUsers() async {
+    try {
+      final users = await Supabase.instance.client
+          .from('profiles')
+          .select('id, full_name, role')
+          .order('full_name', ascending: true);
+
+      return List<Map<String, dynamic>>.from(users as List);
+    } catch (e) {
+      debugPrint('Error loading users: $e');
+      return [];
+    }
+  }
+
+  Future<String?> _getUserName(String userId) async {
+    try {
+      final result = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .maybeSingle();
+
+      return result?['full_name'] as String?;
+    } catch (e) {
+      debugPrint('Error getting user name: $e');
+      return null;
     }
   }
 }

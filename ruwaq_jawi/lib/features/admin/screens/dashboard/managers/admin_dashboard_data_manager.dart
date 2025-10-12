@@ -91,33 +91,69 @@ class AdminDashboardDataManager {
           .length,
     };
 
-    final activitiesResult = await SupabaseService.client
-        .from('profiles')
-        .select('full_name, created_at')
-        .gte('created_at', DateTime.now().subtract(const Duration(days: 7)).toIso8601String())
-        .order('created_at', ascending: false)
-        .limit(3);
+      // Get recent ebooks from past 24 hours
+    final ebooksResult = await SupabaseService.client
+        .from('ebooks')
+        .select('title, created_at, category_id')
+        .gte('created_at', DateTime.now().subtract(const Duration(days: 1)).toIso8601String())
+        .order('created_at', ascending: false);
 
-    final activities = (activitiesResult as List<dynamic>).map((activity) {
-      final createdAt = DateTime.parse(activity['created_at'] as String);
+    // Get recent videos from past 24 hours
+    final videosResult = await SupabaseService.client
+        .from('video_kitab')
+        .select('title, created_at, category_id')
+        .gte('created_at', DateTime.now().subtract(const Duration(days: 1)).toIso8601String())
+        .order('created_at', ascending: false);
+
+    final List<Map<String, dynamic>> allActivities = [];
+
+    // Process ebooks
+    for (final ebook in ebooksResult as List<dynamic>) {
+      final createdAt = DateTime.parse(ebook['created_at'] as String);
       final difference = DateTime.now().difference(createdAt);
 
       final String timeAgo;
       if (difference.inMinutes < 60) {
         timeAgo = '${difference.inMinutes} minit lalu';
-      } else if (difference.inHours < 24) {
-        timeAgo = '${difference.inHours} jam lalu';
       } else {
-        timeAgo = '${difference.inDays} hari lalu';
+        timeAgo = '${difference.inHours} jam lalu';
       }
 
-      return <String, dynamic>{
-        'title': 'Pengguna Baharu Mendaftar',
-        'description':
-            '${activity['full_name'] ?? 'Pengguna'} telah mendaftar sebagai pengguna baharu',
+      allActivities.add({
+        'title': 'E-book Baharu Ditambah',
+        'description': '${ebook['title'] ?? 'E-book tanpa tajuk'} telah ditambah ke dalam koleksi',
         'time': timeAgo,
-      };
-    }).toList();
+        'created_at': ebook['created_at'],
+        'type': 'ebook',
+      });
+    }
+
+    // Process videos
+    for (final video in videosResult as List<dynamic>) {
+      final createdAt = DateTime.parse(video['created_at'] as String);
+      final difference = DateTime.now().difference(createdAt);
+
+      final String timeAgo;
+      if (difference.inMinutes < 60) {
+        timeAgo = '${difference.inMinutes} minit lalu';
+      } else {
+        timeAgo = '${difference.inHours} jam lalu';
+      }
+
+      allActivities.add({
+        'title': 'Video Kitab Baharu Ditambah',
+        'description': '${video['title'] ?? 'Video tanpa tajuk'} telah ditambah ke dalam koleksi',
+        'time': timeAgo,
+        'created_at': video['created_at'],
+        'type': 'video',
+      });
+    }
+
+    // Sort by created_at descending and take latest 5
+    allActivities.sort((a, b) =>
+        DateTime.parse(b['created_at'] as String).compareTo(DateTime.parse(a['created_at'] as String)));
+
+    final activities = allActivities.take(5).toList();
 
     return AdminDashboardData(
       stats: stats,

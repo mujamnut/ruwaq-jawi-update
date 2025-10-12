@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -8,8 +7,6 @@ import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/offline_banner.dart';
 import '../../widgets/admin_bottom_nav.dart';
-import '../../widgets/shimmer_loading.dart';
-import '../../shared/preview_management_screen.dart';
 import 'managers/admin_dashboard_animation_manager.dart';
 import 'managers/admin_dashboard_data_manager.dart';
 import 'managers/admin_dashboard_scroll_manager.dart';
@@ -163,15 +160,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     }
   }
 
-  void _navigateToPreviewManagement() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AdminPreviewManagementScreen(),
-      ),
-    );
-  }
-
+  
   Future<void> _openNotificationDetail(Map<String, dynamic> notification) async {
     // Mark as read in background
     _markAsRead(notification);
@@ -524,7 +513,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               onReports: () => context.go('/admin/reports'),
               onNotifications: () => context.go('/admin/notifications'),
               onManageCategories: () => context.go('/admin/categories'),
-              onPreviewContent: _navigateToPreviewManagement,
             ),
             const SizedBox(height: 24),
             AdminDashboardRecentActivitySection(recentActivities: _recentActivities),

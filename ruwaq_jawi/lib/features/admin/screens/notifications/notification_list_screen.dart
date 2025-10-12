@@ -129,52 +129,53 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        title: const Text('Urus Notifikasi'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black87,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Urus Notifikasi',
+          style: TextStyle(
+            color: Colors.black87,
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         elevation: 0,
+        centerTitle: true,
+        toolbarHeight: 50,
         leading: IconButton(
           icon: const HugeIcon(
             icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: Colors.white,
-            size: 20.0,
+            color: Colors.black87,
+            size: 30.0,
           ),
           onPressed: () => context.go('/admin'),
         ),
-        actions: [
-          IconButton(
-            icon: const HugeIcon(
-              icon: HugeIcons.strokeRoundedRefresh,
-              color: Colors.white,
-              size: 24.0,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(40),
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppTheme.primaryColor,
+            unselectedLabelColor: Colors.grey.shade600,
+            indicatorColor: AppTheme.primaryColor,
+            indicatorWeight: 2,
+            labelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
             ),
-            onPressed: _loadData,
-            tooltip: 'Muat Semula',
+            unselectedLabelStyle: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            tabs: const [
+              Tab(
+                text: 'Hantar Notifikasi',
+              ),
+              Tab(
+                text: 'Sejarah',
+              ),
+            ],
           ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(
-              icon: HugeIcon(
-                icon: HugeIcons.strokeRoundedNotification03,
-                color: Colors.white,
-                size: 20.0,
-              ),
-              text: 'Hantar Notifikasi',
-            ),
-            Tab(
-              icon: HugeIcon(
-                icon: HugeIcons.strokeRoundedNotificationBlock02,
-                color: Colors.white,
-                size: 20.0,
-              ),
-              text: 'Sejarah',
-            ),
-          ],
         ),
       ),
       body: _buildBody(),
@@ -268,139 +269,136 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  AppTheme.primaryColor.withValues(alpha: 0.1),
-                  AppTheme.primaryColor.withValues(alpha: 0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primaryColor.withValues(alpha: 0.2),
-              ),
-            ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const HugeIcon(
-                    icon: HugeIcons.strokeRoundedNotification03,
-                    color: AppTheme.primaryColor,
-                    size: 24.0,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hantar Notifikasi',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Hantar notifikasi kepada pengguna aplikasi',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
+          const SizedBox(height: 8),
 
           // Quick Actions
           const Text(
-            'Tindakan Pantas',
+            'Quick Actions',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1.8,
-            children: [
-              _buildQuickActionCard(
-                'Notifikasi Global',
-                'Hantar ke semua pengguna',
-                HugeIcons.strokeRoundedGlobal,
-                Colors.blue,
-                () => _showSendNotificationDialog(sendToAll: true),
-              ),
-              _buildQuickActionCard(
-                'Premium Users',
-                'Hantar ke pengguna premium',
-                HugeIcons.strokeRoundedStar,
-                Colors.purple,
-                () => _showSendNotificationDialog(targetType: 'premium'),
-              ),
-              _buildQuickActionCard(
-                'Free Users',
-                'Hantar ke pengguna percuma',
-                HugeIcons.strokeRoundedUser,
-                Colors.green,
-                () => _showSendNotificationDialog(targetType: 'free'),
-              ),
-              _buildQuickActionCard(
-                'Custom Target',
-                'Pilih pengguna tertentu',
-                HugeIcons.strokeRoundedTarget03,
-                Colors.orange,
-                () => _showSendNotificationDialog(targetType: 'custom'),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return Wrap(
+                spacing: 16,
+                runSpacing: 16,
+                children: [
+                  SizedBox(
+                    width: (constraints.maxWidth - 16) / 2,
+                    child: _buildQuickActionCard(
+                      'Global Notify',
+                      'Send to all users',
+                      HugeIcons.strokeRoundedGlobal,
+                      Colors.blue,
+                      () => _showSendNotificationDialog(sendToAll: true),
+                    ),
+                  ),
+                  SizedBox(
+                    width: (constraints.maxWidth - 16) / 2,
+                    child: _buildQuickActionCard(
+                      'Premium Users',
+                      'Send to premium users',
+                      HugeIcons.strokeRoundedStar,
+                      Colors.purple,
+                      () => _showSendNotificationDialog(targetType: 'premium'),
+                    ),
+                  ),
+                  SizedBox(
+                    width: (constraints.maxWidth - 16) / 2,
+                    child: _buildQuickActionCard(
+                      'Free Users',
+                      'Send to free users',
+                      HugeIcons.strokeRoundedUser,
+                      Colors.green,
+                      () => _showSendNotificationDialog(targetType: 'free'),
+                    ),
+                  ),
+                  SizedBox(
+                    width: (constraints.maxWidth - 16) / 2,
+                    child: _buildQuickActionCard(
+                      'Custom Target',
+                      'Select specific users',
+                      HugeIcons.strokeRoundedTarget03,
+                      Colors.orange,
+                      () => _showSendNotificationDialog(targetType: 'custom'),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 24),
 
           // Notification Templates
           const Text(
-            'Template Notifikasi',
+            'Notification Templates',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
 
           _buildTemplateCard(
-            'Kandungan Baharu',
-            'Beritahu pengguna tentang kandungan baharu',
-            'Ada kandungan baharu tersedia di Ruwaq Jawi! 📚',
+            'New Content',
+            'Notify users about new content',
+            'New content available on Ruwaq Jawi! 📚',
             Colors.green,
           ),
           const SizedBox(height: 12),
           _buildTemplateCard(
-            'Peringatan Langganan',
-            'Ingatkan pengguna untuk melanggan premium',
-            'Dapatkan akses penuh dengan langganan premium ⭐',
+            'Subscription',
+            'Remind users to upgrade premium',
+            'Get full access with premium subscription ⭐',
             Colors.purple,
           ),
           const SizedBox(height: 12),
           _buildTemplateCard(
-            'Kemaskini Sistem',
-            'Beritahu pengguna tentang kemaskini',
-            'Sistem telah dikemas kini dengan ciri-ciri baharu! 🚀',
+            'System Update',
+            'Notify users about updates',
+            'System updated with new features! 🚀',
             Colors.blue,
+          ),
+          const SizedBox(height: 12),
+          _buildTemplateCard(
+            'Special Promo',
+            'Announce special offers',
+            'Limited promo for loyal Ruwaq Jawi users! 🎉',
+            Colors.red,
+          ),
+          const SizedBox(height: 12),
+          _buildTemplateCard(
+            'Weekly Quiz',
+            'Invite users to join quiz',
+            'Test your knowledge with our weekly quiz! 🎯',
+            Colors.orange,
+          ),
+          const SizedBox(height: 12),
+          _buildTemplateCard(
+            'Learning Tips',
+            'Share useful tips with users',
+            'Helpful Arabic learning tips for today 💡',
+            Colors.teal,
+          ),
+          const SizedBox(height: 12),
+          _buildTemplateCard(
+            'Live Session',
+            'Remind about classes or live sessions',
+            "Don't miss our live learning session! 📹",
+            Colors.indigo,
+          ),
+          const SizedBox(height: 12),
+          _buildTemplateCard(
+            'Hari Raya',
+            'Send Hari Raya greetings',
+            'Happy Hari Raya Aidilfitri from Ruwaq Jawi! 🌙',
+            Colors.pink,
+          ),
+          const SizedBox(height: 12),
+          _buildTemplateCard(
+            'Maintenance',
+            'Notify about system maintenance',
+            'System maintenance scheduled for this date 🔧',
+            Colors.grey,
           ),
         ],
       ),
@@ -456,6 +454,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     VoidCallback onTap,
   ) {
     return Container(
+      height: 100,
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -477,32 +476,39 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
           splashColor: color.withValues(alpha: 0.1),
           highlightColor: color.withValues(alpha: 0.05),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: HugeIcon(icon: icon, color: color, size: 20.0),
+                  child: HugeIcon(icon: icon, color: color, size: 18.0),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: Colors.grey.shade800,
+                    fontSize: 12,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade600,
+                    fontSize: 9,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
@@ -533,6 +539,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
         ],
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -541,7 +548,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               borderRadius: BorderRadius.circular(8),
             ),
             child: HugeIcon(
-              icon: HugeIcons.strokeRoundedMessage02,
+              icon: _getTemplateIcon(template),
               color: color,
               size: 20.0,
             ),
@@ -553,16 +560,18 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               children: [
                 Text(
                   title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: Colors.grey.shade600),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade600,
+                    fontSize: 12,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -577,24 +586,58 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontStyle: FontStyle.italic,
                       color: Colors.grey.shade700,
+                      fontSize: 11,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
-          IconButton(
-            icon: const HugeIcon(
-              icon: HugeIcons.strokeRoundedSent,
-              size: 20.0,
-              color: Colors.grey,
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            onPressed: () => _showSendNotificationDialog(template: template),
-            tooltip: 'Guna Template',
+            child: IconButton(
+              icon: HugeIcon(
+                icon: HugeIcons.strokeRoundedSent,
+                size: 18.0,
+                color: color,
+              ),
+              onPressed: () => _showSendNotificationDialog(template: template),
+              tooltip: 'Guna Template',
+            ),
           ),
         ],
       ),
     );
+  }
+
+  IconData _getTemplateIcon(String template) {
+    if (template.contains('kandungan baharu')) {
+      return HugeIcons.strokeRoundedBook01;
+    } else if (template.contains('langganan premium')) {
+      return HugeIcons.strokeRoundedStar;
+    } else if (template.contains('dikemas kini')) {
+      return HugeIcons.strokeRoundedRefresh;
+    } else if (template.contains('Promosi terhad')) {
+      return HugeIcons.strokeRoundedTag01;
+    } else if (template.contains('kuiz mingguan')) {
+      return HugeIcons.strokeRoundedGameController02;
+    } else if (template.contains('Tips pembelajaran')) {
+      return HugeIcons.strokeRoundedIdea01;
+    } else if (template.contains('sesi pembelajaran langsung')) {
+      return HugeIcons.strokeRoundedVideo01;
+    } else if (template.contains('Hari Raya Aidilfitri')) {
+      return HugeIcons.strokeRoundedMegaphone01;
+    } else if (template.contains('penyenggaraan')) {
+      return HugeIcons.strokeRoundedWrench01;
+    } else {
+      return HugeIcons.strokeRoundedMessage02;
+    }
   }
 
   Widget _buildNotificationHistoryCard(Map<String, dynamic> notification) {
@@ -737,92 +780,416 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     final messageController = TextEditingController(text: template);
     String selectedTargetType = targetType ?? 'all';
     List<String> selectedUserIds = [];
+    List<Map<String, dynamic>> selectedUsers = [];
 
     if (template != null) {
       // Set title based on template
-      if (template.contains('kandungan baharu')) {
-        titleController.text = 'Kandungan Baharu Tersedia';
-      } else if (template.contains('langganan premium')) {
-        titleController.text = 'Peringatan Langganan';
-      } else if (template.contains('dikemas kini')) {
-        titleController.text = 'Kemaskini Sistem';
+      if (template.contains('New content')) {
+        titleController.text = 'New Content Available';
+      } else if (template.contains('premium subscription')) {
+        titleController.text = 'Subscription Reminder';
+      } else if (template.contains('new features')) {
+        titleController.text = 'System Update';
+      } else if (template.contains('Limited promo')) {
+        titleController.text = 'Special Promotion';
+      } else if (template.contains('weekly quiz')) {
+        titleController.text = 'Weekly Quiz';
+      } else if (template.contains('Arabic learning')) {
+        titleController.text = 'Learning Tips';
+      } else if (template.contains('live learning')) {
+        titleController.text = 'Live Session Reminder';
+      } else if (template.contains('Happy Hari Raya')) {
+        titleController.text = 'Hari Raya Greetings';
+      } else if (template.contains('maintenance scheduled')) {
+        titleController.text = 'System Maintenance';
       }
     }
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hantar Notifikasi'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Tajuk Notifikasi',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: messageController,
-                decoration: const InputDecoration(
-                  labelText: 'Mesej',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: selectedTargetType,
-                decoration: const InputDecoration(
-                  labelText: 'Sasaran',
-                  border: OutlineInputBorder(),
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'all', child: Text('Semua Pengguna')),
-                  DropdownMenuItem(
-                    value: 'premium',
-                    child: Text('Pengguna Premium'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Hantar Notifikasi'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: 'Tajuk Notifikasi',
+                    border: OutlineInputBorder(),
                   ),
-                  DropdownMenuItem(
-                    value: 'free',
-                    child: Text('Pengguna Percuma'),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  decoration: const InputDecoration(
+                    labelText: 'Mesej',
+                    border: OutlineInputBorder(),
                   ),
-                  DropdownMenuItem(
-                    value: 'custom',
-                    child: Text('Pilih Pengguna'),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedTargetType,
+                  decoration: const InputDecoration(
+                    labelText: 'Target',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('All Users')),
+                    DropdownMenuItem(
+                      value: 'premium',
+                      child: Text('Premium Users'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'free',
+                      child: Text('Free Users'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'custom',
+                      child: Text('Select Users'),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedTargetType = value ?? 'all';
+                      if (selectedTargetType != 'custom') {
+                        selectedUsers.clear();
+                        selectedUserIds.clear();
+                      }
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                if (selectedTargetType == 'custom') ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Select Users (${selectedUsers.length} selected)',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => _showUserSelectionDialog(
+                                selectedUsers,
+                                selectedUserIds,
+                                setState,
+                              ),
+                              child: const Text(
+                                'Select',
+                                style: TextStyle(fontSize: 11),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (selectedUsers.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: selectedUsers.map((user) {
+                              return Chip(
+                                label: Text(
+                                  user['full_name'] ?? 'Unknown',
+                                  style: const TextStyle(fontSize: 10),
+                                ),
+                                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                deleteIcon: const Icon(
+                                  HugeIcons.strokeRoundedCancel01,
+                                  size: 12,
+                                  color: Colors.red,
+                                ),
+                                onDeleted: () {
+                                  setState(() {
+                                    selectedUsers.removeWhere((u) => u['id'] == user['id']);
+                                    selectedUserIds.remove(user['id']);
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                 ],
-                onChanged: (value) {
-                  selectedTargetType = value ?? 'all';
-                },
-              ),
-            ],
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                // Validate title and message
+                if (titleController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a title'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (messageController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please enter a message'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                if (selectedTargetType == 'custom' && selectedUsers.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select at least one user'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+                _sendNotification(
+                  title: titleController.text.trim(),
+                  message: messageController.text.trim(),
+                  targetType: selectedTargetType,
+                  userIds: selectedUserIds,
+                );
+                Navigator.of(context).pop();
+              },
+              child: const Text('Send'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              _sendNotification(
-                title: titleController.text,
-                message: messageController.text,
-                targetType: selectedTargetType,
-                userIds: selectedUserIds,
-              );
-              Navigator.of(context).pop();
-            },
-            child: const Text('Hantar'),
-          ),
-        ],
       ),
     );
+  }
+
+  void _showUserSelectionDialog(
+    List<Map<String, dynamic>> selectedUsers,
+    List<String> selectedUserIds,
+    StateSetter setState,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, dialogSetState) => Dialog(
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.8,
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Header
+                Row(
+                  children: [
+                    const HugeIcon(
+                      icon: HugeIcons.strokeRoundedUser,
+                      color: AppTheme.primaryColor,
+                      size: 24.0,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Select Users',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedCancel01,
+                        size: 20.0,
+                        color: Colors.grey,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Search bar
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'Search users...',
+                    prefixIcon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedSearch01,
+                      size: 20.0,
+                      color: Colors.grey,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    dialogSetState(() {});
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                // User list
+                Expanded(
+                  child: FutureBuilder(
+                    future: _loadUsers(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+
+                      if (!snapshot.hasData || snapshot.hasError) {
+                        return const Center(
+                          child: Text('Failed to load users'),
+                        );
+                      }
+
+                      final users = snapshot.data as List<Map<String, dynamic>>;
+
+                      return ListView.builder(
+                        itemCount: users.length,
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          final isSelected = selectedUserIds.contains(user['id']);
+
+                          return CheckboxListTile(
+                            value: isSelected,
+                            onChanged: (bool? value) {
+                              setState(() {
+                                dialogSetState(() {
+                                  if (value == true) {
+                                    selectedUsers.add(user);
+                                    selectedUserIds.add(user['id'] as String);
+                                  } else {
+                                    selectedUsers.removeWhere((u) => u['id'] == user['id']);
+                                    selectedUserIds.remove(user['id'] as String);
+                                  }
+                                });
+                              });
+                            },
+                            title: Text(
+                              user['full_name'] ?? 'Unknown User',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: user['role'] != null
+                                ? Text(
+                                    'Role: ${user['role']}',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                    ),
+                                  )
+                                : null,
+                            secondary: isSelected
+                                ? CircleAvatar(
+                                    backgroundColor: AppTheme.primaryColor,
+                                    child: Text(
+                                      (selectedUserIds.indexOf(user['id'] as String) + 1)
+                                          .toString(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+
+                // Actions
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '${selectedUsers.length} users selected',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              dialogSetState(() {
+                                selectedUsers.clear();
+                                selectedUserIds.clear();
+                              });
+                            });
+                          },
+                          child: const Text(
+                            'Clear',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text(
+                            'Done',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _loadUsers() async {
+    try {
+      final users = await SupabaseService.from('profiles')
+          .select('id, full_name, role')
+          .order('full_name', ascending: true);
+
+      return List<Map<String, dynamic>>.from(users as List);
+    } catch (e) {
+      debugPrint('Error loading users: $e');
+      return [];
+    }
   }
 
   Future<void> _sendNotification({

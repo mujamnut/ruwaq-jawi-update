@@ -10,7 +10,6 @@ class AdminDashboardQuickActions extends StatelessWidget {
     required this.onReports,
     required this.onNotifications,
     required this.onManageCategories,
-    required this.onPreviewContent,
   });
 
   final VoidCallback onAddCategory;
@@ -19,7 +18,6 @@ class AdminDashboardQuickActions extends StatelessWidget {
   final VoidCallback onReports;
   final VoidCallback onNotifications;
   final VoidCallback onManageCategories;
-  final VoidCallback onPreviewContent;
 
   @override
   Widget build(BuildContext context) {
@@ -78,13 +76,7 @@ class AdminDashboardQuickActions extends StatelessWidget {
               color: const Color(0xFF00BF6D),
               onTap: onManageCategories,
             ),
-            _AdminDashboardActionButton(
-              title: 'Preview Content',
-              icon: HugeIcons.strokeRoundedEye,
-              color: const Color(0xFF00BF6D),
-              onTap: onPreviewContent,
-            ),
-          ],
+            ],
         ),
       ],
     );

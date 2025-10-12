@@ -57,7 +57,11 @@ class SubscriptionProvider with ChangeNotifier {
 
   Subscription? get activeSubscription {
     try {
-      return _subscriptions.firstWhere((sub) => sub.isActive);
+      // Find subscription that is actually active (not expired)
+      final now = DateTime.now().toUtc();
+      return _subscriptions.firstWhere((sub) {
+        return sub.isActive && sub.endDate.isAfter(now);
+      });
     } catch (e) {
       return null;
     }

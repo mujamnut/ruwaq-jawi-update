@@ -25,14 +25,56 @@ class AuthProvider extends ChangeNotifier {
   bool get hasActiveSubscription =>
       _userProfile?.hasActiveSubscription ?? false;
 
-  // Check subscription from database and update profile status
+  // Check subscription from database and update profile status using optimized function
   Future<bool> checkActiveSubscription() async {
+    if (_user == null) return false;
+
+    try {
+      if (kDebugMode) {
+        print('AuthProvider: Checking subscription for user: ${_user!.id}');
+      }
+
+      // Use the optimized database function to check and update subscription status
+      final response = await SupabaseService.client.rpc('check_user_subscription_status',
+        params: {'user_uuid': _user!.id}
+      );
+
+      final newStatus = response as String?;
+      if (kDebugMode) {
+        print('AuthProvider: Subscription status from DB function: $newStatus');
+      }
+
+      // Update local profile status
+      if (newStatus != null && _userProfile != null) {
+        if (_userProfile!.subscriptionStatus != newStatus) {
+          if (kDebugMode) {
+            print('AuthProvider: Updating local profile status from ${_userProfile!.subscriptionStatus} to $newStatus');
+          }
+          _userProfile = _userProfile!.copyWith(subscriptionStatus: newStatus);
+          notifyListeners();
+        }
+      }
+
+      final hasActive = newStatus == 'active';
+      return hasActive;
+    } catch (e) {
+      if (kDebugMode) {
+        print('AuthProvider: Error checking subscription with DB function: $e');
+        // Fallback to manual check if function fails
+        return await _fallbackSubscriptionCheck();
+      }
+      return false;
+    }
+  }
+
+  // Fallback method for subscription checking (original logic)
+  Future<bool> _fallbackSubscriptionCheck() async {
     if (_user == null) return false;
 
     try {
       final now = DateTime.now().toUtc();
       if (kDebugMode) {
-        print('AuthProvider: Checking subscription for user: ${_user!.id}');
+        print('AuthProvider: Using fallback subscription check for user: ${_user!.id}');
       }
 
       final response = await SupabaseService.from('user_subscriptions')
@@ -45,7 +87,7 @@ class AuthProvider extends ChangeNotifier {
 
       final hasActive = response != null;
       if (kDebugMode) {
-        print('AuthProvider: Active subscription found: $hasActive');
+        print('AuthProvider: Fallback - Active subscription found: $hasActive');
       }
 
       // Update profile status based on subscription
@@ -53,7 +95,7 @@ class AuthProvider extends ChangeNotifier {
         final currentProfileStatus = _userProfile?.subscriptionStatus;
         if (currentProfileStatus != 'active') {
           if (kDebugMode) {
-            print('AuthProvider: Updating profile status to active');
+            print('AuthProvider: Fallback - Updating profile status to active');
           }
           await _updateProfileSubscriptionStatus('active');
         }
@@ -68,7 +110,7 @@ class AuthProvider extends ChangeNotifier {
         if (expiredSub != null) {
           if (kDebugMode) {
             print(
-              'AuthProvider: Found expired subscription, updating profile status',
+              'AuthProvider: Fallback - Found expired subscription, updating profile status',
             );
           }
           await _updateProfileSubscriptionStatus('expired');
@@ -81,7 +123,7 @@ class AuthProvider extends ChangeNotifier {
       return hasActive;
     } catch (e) {
       if (kDebugMode) {
-        print('AuthProvider: Error checking subscription: $e');
+        print('AuthProvider: Fallback subscription check also failed: $e');
       }
       return false;
     }
@@ -723,9 +765,26 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Force refresh subscription status
+  // Force refresh subscription status (ENHANCED)
   Future<void> refreshSubscriptionStatus() async {
     if (_user != null) {
+      if (kDebugMode) {
+        print('AuthProvider: Force refreshing subscription status for user: ${_user!.id}');
+      }
+
+      // First, run the database function to ensure expired subscriptions are updated
+      try {
+        await SupabaseService.client.rpc('update_expired_subscriptions');
+        if (kDebugMode) {
+          print('AuthProvider: Ran update_expired_subscriptions function');
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('AuthProvider: Error running update_expired_subscriptions: $e');
+        }
+      }
+
+      // Then check the user's specific subscription status
       await checkActiveSubscription();
     }
   }
