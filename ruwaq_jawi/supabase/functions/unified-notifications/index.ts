@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       notificationsCreated += paymentResult.created;
     }
 
-    // 3. Check subscription notifications
+    // 3. Check subscription notifications (always check 7 days ahead, regardless of check_hours)
     if (check_subscriptions) {
       const subscriptionResult = await checkSubscriptionNotifications(supabaseClient, studentCount, subscriptionNotifications);
       notificationsCreated += subscriptionResult.created;
@@ -415,9 +415,9 @@ async function checkPaymentNotifications(supabaseClient, hoursAgo, studentCount,
 async function checkSubscriptionNotifications(supabaseClient, studentCount, subscriptionNotifications) {
   let notificationsCreated = 0;
 
-  console.log('📅 Checking for subscription expiry warnings...');
+  console.log('📅 Checking for subscription expiry warnings (7-day window)...');
 
-  // Check for subscriptions expiring in next 7 days
+  // Always check for subscriptions expiring in next 7 days, regardless of check_hours
   const sevenDaysFromNow = new Date();
   sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
 
