@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,8 +11,9 @@ import '../../../../core/services/video_kitab_service.dart';
 import '../../../../core/models/video_kitab.dart';
 import '../../../../core/models/category.dart' as CategoryModel;
 import '../../widgets/admin_bottom_nav.dart';
-import 'kitab_form_screen.dart';
-import 'youtube_form_screen.dart';
+import '../../widgets/shimmer_loading.dart';
+import 'kitab_manual_form_screen.dart';
+import 'kitab_auto_form_screen.dart';
 
 class AdminVideoListScreen extends StatefulWidget {
   const AdminVideoListScreen({super.key});
@@ -473,37 +475,10 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   }
 
   Widget _buildModernLoadingState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppTheme.primaryColor,
-                ),
-                strokeWidth: 3,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Memuat kandungan...',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: AppTheme.textSecondaryColor,
-            ),
-          ),
-        ],
-      ),
+    return ShimmerList(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+      itemCount: 6,
+      shimmerItem: const VideoKitabShimmerCard(),
     );
   }
 
@@ -1238,28 +1213,20 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
-  void _navigateToQuickSetup() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const AdminYouTubeAutoFormScreen(),
-      ),
-    ).then((result) {
-      if (result != null) {
-        _refreshData();
-      }
-    });
+  void _navigateToQuickSetup() async {
+    // Navigate using GoRouter for consistency
+    final result = await context.push('/admin/kitabs/add-auto');
+    if (result != null) {
+      _refreshData();
+    }
   }
 
-  void _navigateToManualSetup() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const AdminKitabFormScreen()),
-    ).then((result) {
-      if (result != null) {
-        _refreshData();
-      }
-    });
+  void _navigateToManualSetup() async {
+    // Navigate using GoRouter for consistency
+    final result = await context.push('/admin/kitabs/add-manual');
+    if (result != null) {
+      _refreshData();
+    }
   }
 
   void _editKitab(VideoKitab kitab) {

@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/admin_bottom_nav.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'form_screen.dart';
 import 'detail_screen.dart';
 
@@ -455,7 +456,11 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
 
   Widget _buildEbookList() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ShimmerList(
+        padding: const EdgeInsets.all(16),
+        itemCount: 6,
+        shimmerItem: const EbookShimmerCard(),
+      );
     }
 
     if (_error != null) {

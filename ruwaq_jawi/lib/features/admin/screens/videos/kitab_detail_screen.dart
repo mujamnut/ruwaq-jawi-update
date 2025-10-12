@@ -3,10 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/models/kitab.dart';
-import '../../../../core/models/preview_models.dart';
 import '../../../../core/services/video_kitab_service.dart';
 import '../../../../core/services/video_episode_service.dart';
-import '../../../../core/services/preview_service.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class AdminKitabDetailScreen extends StatefulWidget {
@@ -24,8 +22,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   Kitab? _kitab;
   String? _previewVideoId;
   List<Map<String, dynamic>> _episodes = [];
-  final Map<String, bool> _episodePreviewStatus =
-      {}; // Track which episodes have previews
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -35,7 +31,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
 
   // Controllers untuk episodes (dynamic list)
   final List<TextEditingController> _episodeControllers = [];
-  final List<bool> _episodePremiumFlags = [];
 
   @override
   void initState() {
@@ -96,7 +91,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       controller.dispose();
     }
     _episodeControllers.clear();
-    _episodePremiumFlags.clear();
 
     // Create controllers for existing episodes
     for (final episode in _episodes) {
@@ -105,23 +99,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         controller.text = episode['youtube_video_url'];
       }
       _episodeControllers.add(controller);
-
-      // Check preview status using unified preview system
-      final episodeId = episode['id'] as String;
-      try {
-        final hasPreview = await PreviewService.hasPreview(
-          contentType: PreviewContentType.videoEpisode,
-          contentId: episodeId,
-        );
-        _episodePreviewStatus[episodeId] = hasPreview;
-        _episodePremiumFlags.add(
-          !hasPreview,
-        ); // If has preview, it's not premium (accessible)
-      } catch (e) {
-        print('Error checking preview status for episode $episodeId: $e');
-        _episodePreviewStatus[episodeId] = false;
-        _episodePremiumFlags.add(true); // Default to premium if error
-      }
     }
   }
 
@@ -131,7 +108,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   void _addNewEpisode() {
     setState(() {
       _episodeControllers.add(TextEditingController());
-      _episodePremiumFlags.add(true); // Default to premium
     });
   }
 
@@ -139,7 +115,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     setState(() {
       _episodeControllers[index].dispose();
       _episodeControllers.removeAt(index);
-      _episodePremiumFlags.removeAt(index);
     });
   }
 
@@ -179,8 +154,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         if (url.isNotEmpty) {
           final videoId = VideoEpisodeService.extractYouTubeVideoId(url);
           if (videoId != null) {
-            // Create episode without is_preview field
-            final episodeData = await VideoEpisodeService.createEpisode({
+            // Create episode
+            await VideoEpisodeService.createEpisode({
               'video_kitab_id': widget.kitabId,
               'title': '${_kitab!.title} - Episode ${i + 1}',
               'youtube_video_id': videoId,
@@ -189,25 +164,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               'part_number': i + 1,
               'is_active': true,
             });
-
-            // Create preview content if this episode should be free preview
-            if (!_episodePremiumFlags[i]) {
-              try {
-                await PreviewService.createPreview(
-                  PreviewConfig(
-                    contentType: PreviewContentType.videoEpisode,
-                    contentId: episodeData.id,
-                    previewType: PreviewType.freeTrial,
-                    previewDescription: 'Free preview episode',
-                    isActive: true,
-                  ),
-                );
-              } catch (e) {
-                print(
-                  'Error creating preview for episode ${episodeData.id}: $e',
-                );
-              }
-            }
           }
         }
       }
@@ -614,7 +570,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Atur episode dengan status premium/percuma secara individu',
+              'Atur episode untuk kitab ini',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
@@ -658,7 +614,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
 
   Widget _buildEpisodeCard(int index) {
     final controller = _episodeControllers[index];
-    final isPremium = _episodePremiumFlags[index];
     final videoId = VideoEpisodeService.extractYouTubeVideoId(controller.text);
 
     return Container(
@@ -712,34 +667,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             maxLines: 2,
             onChanged: (value) => setState(() {}),
           ),
-          const SizedBox(height: 12),
-
-          // Premium toggle
-          Row(
-            children: [
-              Switch(
-                value: isPremium,
-                onChanged: (value) {
-                  setState(() {
-                    _episodePremiumFlags[index] = value;
-                  });
-                },
-                activeThumbColor: AppTheme.secondaryColor,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  isPremium
-                      ? 'Premium (Perlu langganan)'
-                      : 'Percuma (Semua pengguna)',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: isPremium ? AppTheme.secondaryColor : Colors.green,
-                  ),
-                ),
-              ),
-            ],
-          ),
 
           // Video preview
           if (videoId != null) ...[
@@ -747,14 +674,10 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isPremium
-                    ? AppTheme.secondaryColor.withValues(alpha: 0.1)
-                    : Colors.green.withValues(alpha: 0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: isPremium
-                      ? AppTheme.secondaryColor.withValues(alpha: 0.3)
-                      : Colors.green.withValues(alpha: 0.3),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
@@ -824,17 +747,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                               ?.copyWith(fontWeight: FontWeight.w500),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          isPremium ? 'PREMIUM' : 'PERCUMA',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: isPremium
-                                ? AppTheme.secondaryColor
-                                : Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
                         ),
                       ],
                     ),

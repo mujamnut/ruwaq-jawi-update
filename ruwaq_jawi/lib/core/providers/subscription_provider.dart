@@ -82,22 +82,9 @@ class SubscriptionProvider with ChangeNotifier {
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
 
-      // Convert to Subscription model format
+      // Convert to Subscription model format using fromJson
       _subscriptions = response.map<Subscription>((sub) {
-        return Subscription(
-          id: sub['id'],
-          userId: sub['user_id'],
-          planType: sub['subscription_plan_id'] ?? 'unknown',
-          startDate: DateTime.parse(sub['start_date']),
-          endDate: DateTime.parse(sub['end_date']),
-          status: sub['status'],
-          paymentMethod: 'toyyibpay', // Default since provider field doesn't exist
-          amount: double.parse(sub['amount'].toString()),
-          currency: sub['currency'] ?? 'MYR',
-          autoRenew: false, // Database doesn't have this field
-          createdAt: DateTime.parse(sub['created_at']),
-          updatedAt: DateTime.parse(sub['updated_at']),
-        );
+        return Subscription.fromJson(sub);
       }).toList();
 
       // Load transactions (keep this as is)

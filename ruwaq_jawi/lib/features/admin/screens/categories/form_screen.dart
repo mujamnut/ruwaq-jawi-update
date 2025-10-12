@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -31,17 +34,41 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
   @override
   void initState() {
     super.initState();
+    if (kDebugMode) {
+      print('DEBUG: AdminAddCategoryScreen initState called');
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAdminAccess();
-      if (_isEditing) {
-        _loadCategoryData();
+      if (kDebugMode) {
+        print('DEBUG: Starting postFrameCallback operations');
       }
+      _checkAdminAccess().then((_) {
+        if (_isEditing && mounted) {
+          _loadCategoryData();
+        }
+      }).catchError((e) {
+        if (kDebugMode) {
+          print('DEBUG: Error in postFrameCallback: $e');
+        }
+        if (mounted) {
+          setState(() {
+            _error = 'Error initializing: $e';
+            _isLoadingData = false;
+          });
+        }
+      });
     });
   }
 
   Future<void> _checkAdminAccess() async {
+    if (kDebugMode) {
+      print('DEBUG: Checking admin access...');
+    }
+
     final user = SupabaseService.currentUser;
     if (user == null) {
+      if (kDebugMode) {
+        print('DEBUG: No user found, redirecting to login');
+      }
       if (mounted) {
         context.go('/login');
       }
@@ -49,20 +76,41 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
     }
 
     try {
+      // Add timeout to prevent infinite waiting
       final profile = await SupabaseService.from(
         'profiles',
-      ).select('role').eq('id', user.id).maybeSingle();
+      ).select('role').eq('id', user.id).maybeSingle().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          throw TimeoutException('Admin check timeout');
+        },
+      );
+
+      if (kDebugMode) {
+        print('DEBUG: User profile: $profile');
+      }
 
       if (profile == null || profile['role'] != 'admin') {
+        if (kDebugMode) {
+          print('DEBUG: User is not admin, redirecting to home');
+        }
         if (mounted) {
           context.go('/home');
         }
         return;
       }
+
+      if (kDebugMode) {
+        print('DEBUG: Admin access confirmed');
+      }
     } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: Admin check error: $e');
+      }
       if (mounted) {
         setState(() {
           _error = 'Akses ditolak. Anda tidak mempunyai kebenaran admin.';
+          _isLoadingData = false;
         });
       }
     }
@@ -103,8 +151,19 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
   }
 
   Future<void> _saveCategory() async {
+    if (kDebugMode) {
+      print('DEBUG: _saveCategory called');
+    }
+
     if (!_formKey.currentState!.validate()) {
+      if (kDebugMode) {
+        print('DEBUG: Form validation failed');
+      }
       return;
+    }
+
+    if (kDebugMode) {
+      print('DEBUG: Form validation passed, setting loading state');
     }
 
     setState(() {
@@ -123,11 +182,20 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
+      if (kDebugMode) {
+        print('DEBUG: Saving category data: $data');
+        print('DEBUG: User ID: ${SupabaseService.currentUser?.id}');
+      }
+
       if (_isEditing) {
         // Update existing category
-        await SupabaseService.from(
+        final result = await SupabaseService.from(
           'categories',
         ).update(data).eq('id', widget.categoryId!);
+
+        if (kDebugMode) {
+          print('DEBUG: Update result: $result');
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -141,7 +209,11 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
         }
       } else {
         // Create new category
-        await SupabaseService.from('categories').insert(data);
+        final result = await SupabaseService.from('categories').insert(data);
+
+        if (kDebugMode) {
+          print('DEBUG: Insert result: $result');
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -156,18 +228,32 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
       }
 
       if (mounted) {
+        if (kDebugMode) {
+          print('DEBUG: Save successful, returning to previous screen');
+        }
         context.pop(true); // Return success result
       }
     } catch (e) {
-      setState(() {
-        _error = 'Gagal menyimpan kategori: $e';
-        _isLoading = false;
-      });
+      if (kDebugMode) {
+        print('DEBUG: Error saving category: $e');
+        print('DEBUG: Error type: ${e.runtimeType}');
+      }
+      if (mounted) {
+        setState(() {
+          _error = 'Gagal menyimpan kategori: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (kDebugMode) {
+      print('DEBUG: Building AdminAddCategoryScreen widget');
+      print('DEBUG: _isLoadingData: $_isLoadingData, _error: $_error, _isEditing: $_isEditing');
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -181,7 +267,12 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
             color: Colors.white,
             size: 20.0,
           ),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (kDebugMode) {
+              print('DEBUG: Back button pressed');
+            }
+            context.pop();
+          },
         ),
       ),
       body: _buildBody(),
@@ -189,7 +280,14 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
   }
 
   Widget _buildBody() {
+    if (kDebugMode) {
+      print('DEBUG: Building _buildBody');
+    }
+
     if (_isLoadingData) {
+      if (kDebugMode) {
+        print('DEBUG: Showing loading indicator');
+      }
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -203,6 +301,9 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
     }
 
     if (_error != null && _isEditing) {
+      if (kDebugMode) {
+        print('DEBUG: Showing error screen for editing: $_error');
+      }
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -435,29 +536,72 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
             // Save button
             SizedBox(
               width: double.infinity,
-              child: ShadButton(
-                onPressed: _isLoading ? null : _saveCategory,
-                child: _isLoading
-                    ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
-                              ),
+              child: Builder(
+                builder: (context) {
+                  try {
+                    return ShadButton(
+                      onPressed: _isLoading ? null : _saveCategory,
+                      child: _isLoading
+                          ? const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Menyimpan...'),
+                              ],
+                            )
+                          : Text(
+                              _isEditing ? 'Kemas Kini Kategori' : 'Tambah Kategori',
                             ),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Menyimpan...'),
-                        ],
-                      )
-                    : Text(
-                        _isEditing ? 'Kemas Kini Kategori' : 'Tambah Kategori',
+                    );
+                  } catch (e) {
+                    if (kDebugMode) {
+                      print('DEBUG: Error building ShadButton: $e');
+                    }
+                    // Fallback ElevatedButton
+                    return ElevatedButton(
+                      onPressed: _isLoading ? null : _saveCategory,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      child: _isLoading
+                          ? const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Text('Menyimpan...'),
+                              ],
+                            )
+                          : Text(
+                              _isEditing ? 'Kemas Kini Kategori' : 'Tambah Kategori',
+                            ),
+                    );
+                  }
+                },
               ),
             ),
           ],
@@ -492,39 +636,59 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
-    return TextFormField(
-      controller: controller,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hint,
-        prefixIcon: HugeIcon(
-          icon: icon,
-          size: 20.0,
-          color: Colors.grey.shade600,
+    try {
+      return TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          prefixIcon: HugeIcon(
+            icon: icon,
+            size: 20.0,
+            color: Colors.grey.shade600,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: AppTheme.primaryColor),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+          filled: true,
+          fillColor: Colors.white,
         ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        validator: validator,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: Error building text field for $label: $e');
+      }
+      // Fallback basic text field
+      return TextFormField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.primaryColor),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      validator: validator,
-    );
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        validator: validator,
+      );
+    }
   }
 
   @override

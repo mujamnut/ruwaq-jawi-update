@@ -278,7 +278,7 @@ class AuthProvider extends ChangeNotifier {
           subscriptionStatus: _userProfile!.subscriptionStatus,
           phoneNumber: _userProfile!.phoneNumber,
           avatarUrl: _userProfile!.avatarUrl,
-          subscriptionEndDate: _userProfile!.subscriptionEndDate,
+          lastSeenAt: _userProfile!.lastSeenAt,
           createdAt: _userProfile!.createdAt,
           updatedAt: _userProfile!.updatedAt,
         );

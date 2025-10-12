@@ -8,6 +8,7 @@ import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/offline_banner.dart';
 import '../../widgets/admin_bottom_nav.dart';
+import '../../widgets/shimmer_loading.dart';
 import '../../shared/preview_management_screen.dart';
 import 'managers/admin_dashboard_animation_manager.dart';
 import 'managers/admin_dashboard_data_manager.dart';
@@ -43,37 +44,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) {
-      debugPrint('🔵 [DASHBOARD:initState] START - hashCode: $hashCode');
-    }
     _animationManager = AdminDashboardAnimationManager()..initialize(this);
     _scrollManager = AdminDashboardScrollManager(animationManager: _animationManager);
     _scrollController = ScrollController()..addListener(_onScroll);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (kDebugMode) {
-        debugPrint('🔵 [DASHBOARD:PostFrameCallback] Executing - mounted: $mounted');
-      }
       _checkAdminAccessAndLoad();
     });
-    if (kDebugMode) {
-      debugPrint('🔵 [DASHBOARD:initState] END');
-    }
   }
 
   @override
   void dispose() {
-    if (kDebugMode) {
-      debugPrint('🔴 [DASHBOARD:dispose] START - hashCode: $hashCode');
-    }
     _scrollController
       ..removeListener(_onScroll)
       ..dispose();
     _animationManager.dispose();
     super.dispose();
-    if (kDebugMode) {
-      debugPrint('🔴 [DASHBOARD:dispose] END');
-    }
   }
 
   Future<void> _checkAdminAccessAndLoad() async {
@@ -98,85 +84,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
 
   Future<void> _loadCachedData() async {
-    if (kDebugMode) {
-      debugPrint('📦 [DASHBOARD:_loadCachedData] START');
-    }
     final cachedData = await _dataManager.loadCachedData();
     if (!mounted || cachedData == null) {
-      if (kDebugMode) {
-        debugPrint('📦 [DASHBOARD:_loadCachedData] SKIP - mounted:$mounted, hasData:${cachedData != null}');
-      }
       return;
     }
 
-    if (kDebugMode) {
-      debugPrint('🟢 [DASHBOARD:_loadCachedData] setState BEFORE - mounted:$mounted');
-    }
     setState(() {
       _stats = cachedData.stats;
       _recentActivities = cachedData.recentActivities;
       _isLoading = false;
     });
-    if (kDebugMode) {
-      debugPrint('🟢 [DASHBOARD:_loadCachedData] setState AFTER');
-    }
   }
 
   Future<void> _loadDashboardData() async {
     try {
-      if (kDebugMode) {
-        debugPrint('📊 [DASHBOARD:_loadDashboardData] START');
-      }
       if (mounted) {
-        if (kDebugMode) {
-          debugPrint('🟢 [DASHBOARD:_loadDashboardData] setState(error=null) BEFORE - mounted:$mounted');
-        }
         setState(() {
           _error = null;
         });
-        if (kDebugMode) {
-          debugPrint('🟢 [DASHBOARD:_loadDashboardData] setState(error=null) AFTER');
-        }
       }
 
       final data = await _dataManager.fetchDashboardData();
       await _dataManager.cacheData(data);
 
       if (!mounted) {
-        if (kDebugMode) {
-          debugPrint('⚠️ [DASHBOARD:_loadDashboardData] SKIP setState - NOT MOUNTED');
-        }
         return;
       }
 
-      if (kDebugMode) {
-        debugPrint('🟢 [DASHBOARD:_loadDashboardData] setState(data) BEFORE - mounted:$mounted');
-      }
       setState(() {
         _stats = data.stats;
         _recentActivities = data.recentActivities;
         _isLoading = false;
       });
-      if (kDebugMode) {
-        debugPrint('🟢 [DASHBOARD:_loadDashboardData] setState(data) AFTER');
-      }
     } catch (e) {
       if (!mounted) {
-        if (kDebugMode) {
-          debugPrint('⚠️ [DASHBOARD:_loadDashboardData] ERROR but NOT MOUNTED: $e');
-        }
         return;
-      }
-      if (kDebugMode) {
-        debugPrint('🟢 [DASHBOARD:_loadDashboardData] setState(error) BEFORE - mounted:$mounted, error:$e');
       }
       setState(() {
         _error = 'Gagal memuatkan data dashboard: $e';
         _isLoading = false;
       });
-      if (kDebugMode) {
-        debugPrint('🟢 [DASHBOARD:_loadDashboardData] setState(error) AFTER');
-      }
     }
   }
 
@@ -502,23 +449,55 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             const SizedBox(height: 16),
             Text(
               'Ralat Dashboard',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleLarge
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
               _error!,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.textSecondaryColor,
-                  ),
+              style: TextStyle(color: Colors.grey),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
             ShadButton(
               onPressed: _loadDashboardData,
               child: const Text('Cuba Lagi'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Fallback content if data is empty
+    if (_stats.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedHome02,
+              size: 64.0,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Dashboard Kosong',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tiada data untuk dipaparkan',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ShadButton(
+              onPressed: _loadDashboardData,
+              child: const Text('Muat Semula'),
             ),
           ],
         ),
@@ -557,9 +536,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    if (kDebugMode) {
-      debugPrint('🏗️ [DASHBOARD:build] START - mounted:$mounted, loading:$_isLoading, error:$_error');
-    }
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AdminDashboardAppBar(

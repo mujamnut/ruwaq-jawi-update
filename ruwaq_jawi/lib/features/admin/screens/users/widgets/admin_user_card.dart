@@ -59,7 +59,7 @@ class AdminUserCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          user.fullName ?? 'Tiada Nama',
+                          user.displayName,
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium
@@ -67,13 +67,14 @@ class AdminUserCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        Text(
-                          user.email ?? 'Tiada email',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: AppTheme.textSecondaryColor),
-                        ),
+                        if (user.email != null && user.email!.isNotEmpty)
+                          Text(
+                            user.email!,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(color: AppTheme.textSecondaryColor),
+                          ),
                       ],
                     ),
                   ),

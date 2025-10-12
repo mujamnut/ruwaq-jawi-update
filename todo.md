@@ -137,3 +137,4 @@ Suggested Enhanced Premium Benefits List:
 ✓ Tiada iklan (jika ada ads untuk free users)
 ✓ Sokongan keutamaan & respons pantas
 ✓ Segerak automatik merentas peranti
+Theming Studio (AppTheme): biar admin pilih tema musiman (Ramadan, Aidilfitri, akademik) yang tukar gradient, ikon, malah kad hero dashboard secara automatik.

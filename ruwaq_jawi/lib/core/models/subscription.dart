@@ -1,46 +1,63 @@
 class Subscription {
   final String id;
   final String userId;
-  final String planType;
+  final String userName;
+  final String subscriptionPlanId;
+  final String status;
   final DateTime startDate;
   final DateTime endDate;
-  final String status;
-  final String? paymentMethod;
+  final String? paymentId;
   final double amount;
   final String currency;
-  final bool autoRenew;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? planName;
+  final double? planPrice;
+  final int? planDurationDays;
 
   Subscription({
     required this.id,
     required this.userId,
-    required this.planType,
+    required this.userName,
+    required this.subscriptionPlanId,
+    required this.status,
     required this.startDate,
     required this.endDate,
-    required this.status,
-    this.paymentMethod,
+    this.paymentId,
     required this.amount,
     required this.currency,
-    required this.autoRenew,
     required this.createdAt,
     required this.updatedAt,
+    this.planName,
+    this.planPrice,
+    this.planDurationDays,
   });
 
   factory Subscription.fromJson(Map<String, dynamic> json) {
+    DateTime parseDate(dynamic value) {
+      if (value is DateTime) return value;
+      if (value is String) return DateTime.parse(value);
+      throw FormatException('Invalid date value: $value');
+    }
+
+    final subscriptionPlans = json['subscription_plans'] as Map<String, dynamic>?;
+
     return Subscription(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      planType: json['plan_id'] as String,                    // ✅ CHANGE: plan_type → plan_id
-      startDate: DateTime.parse(json['started_at'] as String), // ✅ CHANGE: start_date → started_at
-      endDate: DateTime.parse(json['current_period_end'] as String), // ✅ CHANGE: end_date → current_period_end
+      userName: json['user_name'] as String? ?? 'Unknown',
+      subscriptionPlanId: json['subscription_plan_id'] as String,
       status: json['status'] as String,
-      paymentMethod: json['provider'] as String?,             // ✅ CHANGE: payment_method → provider
-      amount: double.parse(json['amount'].toString()),
-      currency: json['currency'] as String,
-      autoRenew: json['auto_renew'] as bool? ?? false,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      startDate: parseDate(json['start_date']),
+      endDate: parseDate(json['end_date']),
+      paymentId: json['payment_id'] as String?,
+      amount: double.tryParse(json['amount'].toString()) ?? 0.0,
+      currency: json['currency'] as String? ?? 'MYR',
+      createdAt: parseDate(json['created_at']),
+      updatedAt: parseDate(json['updated_at']),
+      planName: subscriptionPlans?['name'] as String?,
+      planPrice: double.tryParse(subscriptionPlans?['price']?.toString() ?? '0'),
+      planDurationDays: subscriptionPlans?['duration_days'] as int?,
     );
   }
 
@@ -48,14 +65,14 @@ class Subscription {
     return {
       'id': id,
       'user_id': userId,
-      'plan_id': planType,                    // ✅ CHANGE: plan_type → plan_id
-      'started_at': startDate.toIso8601String(), // ✅ CHANGE: start_date → started_at
-      'current_period_end': endDate.toIso8601String(), // ✅ CHANGE: end_date → current_period_end
+      'user_name': userName,
+      'subscription_plan_id': subscriptionPlanId,
       'status': status,
-      'provider': paymentMethod,              // ✅ CHANGE: payment_method → provider
+      'start_date': startDate.toIso8601String(),
+      'end_date': endDate.toIso8601String(),
+      'payment_id': paymentId,
       'amount': amount,
       'currency': currency,
-      'auto_renew': autoRenew,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -64,30 +81,36 @@ class Subscription {
   Subscription copyWith({
     String? id,
     String? userId,
-    String? planType,
+    String? userName,
+    String? subscriptionPlanId,
+    String? status,
     DateTime? startDate,
     DateTime? endDate,
-    String? status,
-    String? paymentMethod,
+    String? paymentId,
     double? amount,
     String? currency,
-    bool? autoRenew,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? planName,
+    double? planPrice,
+    int? planDurationDays,
   }) {
     return Subscription(
       id: id ?? this.id,
       userId: userId ?? this.userId,
-      planType: planType ?? this.planType,
+      userName: userName ?? this.userName,
+      subscriptionPlanId: subscriptionPlanId ?? this.subscriptionPlanId,
+      status: status ?? this.status,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
-      status: status ?? this.status,
-      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paymentId: paymentId ?? this.paymentId,
       amount: amount ?? this.amount,
       currency: currency ?? this.currency,
-      autoRenew: autoRenew ?? this.autoRenew,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      planName: planName ?? this.planName,
+      planPrice: planPrice ?? this.planPrice,
+      planDurationDays: planDurationDays ?? this.planDurationDays,
     );
   }
 
@@ -102,26 +125,7 @@ class Subscription {
   }
 
   String get planDisplayName {
-    switch (planType) {
-      case 'monthly_basic':
-        return '1 Bulan Basic';
-      case 'monthly_premium':
-        return '6 Bulan Premium';
-      case 'quarterly_pr':
-        return '3 Bulan Premium';
-      case 'yearly_premium':
-        return '1 Tahun Premium';
-      case '1month':
-        return '1 Bulan';
-      case '3month':
-        return '3 Bulan';
-      case '6month':
-        return '6 Bulan';
-      case '12month':
-        return '12 Bulan';
-      default:
-        return planType;
-    }
+    return planName ?? subscriptionPlanId;
   }
 
   String get formattedAmount {

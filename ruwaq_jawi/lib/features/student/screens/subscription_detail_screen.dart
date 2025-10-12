@@ -401,14 +401,15 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
         'icon': PhosphorIcons.money(),
         'color': AppTheme.textSecondaryColor,
       },
-      if (subscription.autoRenew) ...[
-        {
-          'label': 'Perpanjangan Auto',
-          'value': 'Aktif',
-          'icon': PhosphorIcons.repeat(),
-          'color': AppTheme.successColor,
-        },
-      ],
+      // Note: autoRenew field tidak wujud dalam database
+      // if (subscription.autoRenew) ...[
+      //   {
+      //     'label': 'Perpanjangan Auto',
+      //     'value': 'Aktif',
+      //     'icon': PhosphorIcons.repeat(),
+      //     'color': AppTheme.successColor,
+      //   },
+      // ],
     ];
 
     return Container(

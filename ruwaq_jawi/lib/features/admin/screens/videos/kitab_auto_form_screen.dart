@@ -3,6 +3,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/connectivity_provider.dart';
@@ -23,6 +24,7 @@ class _AdminYouTubeAutoFormScreenState
     extends State<AdminYouTubeAutoFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _playlistUrlController = TextEditingController();
+  final _authorController = TextEditingController();
 
   String? _selectedCategoryId;
   bool _isPremium = true;
@@ -30,21 +32,14 @@ class _AdminYouTubeAutoFormScreenState
   PlatformFile? _selectedPdfFile;
 
   bool _isLoading = false;
-
-  final List<Map<String, String>> _categories = [
-    {'id': 'e1166e04-4f53-4d1a-87b6-e71af547d896', 'name': 'Quran & Tafsir'},
-    {'id': 'a39016be-df7a-44a0-859e-7caaa32d8732', 'name': 'Fiqh'},
-    {'id': '6e69d652-58b7-4376-b416-a5672f0f7c94', 'name': 'Akidah'},
-    {'id': '25004d73-6445-418e-9726-4e1022ff5309', 'name': 'Hadith'},
-    {'id': '600baa07-f492-4df1-af75-3127ea151d28', 'name': 'Bahasa Arab'},
-    {'id': 'ee66c3d9-74e4-44dd-8761-62ea489b10fb', 'name': 'Akhlak & Tasawuf'},
-    {'id': '49819bc9-abaf-4196-8854-e12147c440de', 'name': 'Sirah'},
-  ];
+  bool _isLoadingCategories = false;
+  List<Map<String, dynamic>> _categories = [];
 
   @override
   void initState() {
     super.initState();
     _checkAdminAccess();
+    _loadCategories();
   }
 
   Future<void> _checkAdminAccess() async {
@@ -76,9 +71,35 @@ class _AdminYouTubeAutoFormScreenState
     }
   }
 
+  Future<void> _loadCategories() async {
+    try {
+      setState(() {
+        _isLoadingCategories = true;
+      });
+
+      final response = await Supabase.instance.client
+          .from('categories')
+          .select('id, name')
+          .eq('is_active', true)
+          .order('sort_order', ascending: true)
+          .order('name', ascending: true);
+
+      setState(() {
+        _categories = List<Map<String, dynamic>>.from(response);
+        _isLoadingCategories = false;
+      });
+    } catch (e) {
+      print('Error loading categories: $e');
+      setState(() {
+        _isLoadingCategories = false;
+      });
+    }
+  }
+
   @override
   void dispose() {
     _playlistUrlController.dispose();
+    _authorController.dispose();
     super.dispose();
   }
 
@@ -203,9 +224,105 @@ class _AdminYouTubeAutoFormScreenState
                 subtitle: 'Select the content category',
               ),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                initialValue: _selectedCategoryId,
+              _isLoadingCategories
+                  ? Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.borderColor),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.primaryColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Loading categories...',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: AppTheme.textSecondaryColor),
+                          ),
+                        ],
+                      ),
+                    )
+                  : DropdownButtonFormField<String>(
+                      value: _selectedCategoryId,
+                      decoration: InputDecoration(
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppTheme.borderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppTheme.borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppTheme.primaryColor),
+                        ),
+                        filled: true,
+                        fillColor: AppTheme.surfaceColor,
+                        prefixIcon: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: PhosphorIcon(
+                            PhosphorIcons.tag(),
+                            color: AppTheme.primaryColor,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      hint: const Text('Select a category'),
+                      items: _categories.map((category) {
+                        return DropdownMenuItem<String>(
+                          value: category['id'].toString(),
+                          child: Text(category['name']?.toString() ?? 'Unknown'),
+                        );
+                      }).toList(),
+                      onChanged: (String? value) {
+                        setState(() {
+                          _selectedCategoryId = value;
+                        });
+                      },
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please select a category';
+                        }
+                        return null;
+                      },
+                    ),
+
+              const SizedBox(height: 24),
+
+              // Author/Penceramah Section
+              _buildSectionHeader(
+                context,
+                icon: PhosphorIcons.user(),
+                title: 'Author / Penceramah',
+                subtitle: 'Edit or confirm the author name',
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _authorController,
                 decoration: InputDecoration(
+                  hintText: 'Will auto-fill from YouTube channel name',
+                  labelText: 'Nama Penceramah',
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: PhosphorIcon(
+                      PhosphorIcons.user(),
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: AppTheme.borderColor),
@@ -220,33 +337,10 @@ class _AdminYouTubeAutoFormScreenState
                   ),
                   filled: true,
                   fillColor: AppTheme.surfaceColor,
-                  prefixIcon: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: PhosphorIcon(
-                      PhosphorIcons.tag(),
-                      color: AppTheme.primaryColor,
-                      size: 20,
-                    ),
-                  ),
+                  helperText: 'Leave empty to use channel name from YouTube',
                 ),
-                hint: const Text('Select a category'),
-                items: _categories.map((category) {
-                  return DropdownMenuItem<String>(
-                    value: category['id'],
-                    child: Text(category['name']!),
-                  );
-                }).toList(),
-                onChanged: (String? value) {
-                  setState(() {
-                    _selectedCategoryId = value;
-                  });
-                },
-                validator: (value) {
-                  if (value == null) {
-                    return 'Please select a category';
-                  }
-                  return null;
-                },
+                maxLines: 1,
+                textCapitalization: TextCapitalization.words,
               ),
 
               const SizedBox(height: 24),
@@ -401,45 +495,100 @@ class _AdminYouTubeAutoFormScreenState
                       style: BorderStyle.solid,
                     ),
                   ),
-                  child: Column(
+                  child: Stack(
                     children: [
-                      PhosphorIcon(
-                        _selectedPdfFile != null
-                            ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
-                            : PhosphorIcons.cloudArrowUp(),
-                        size: 32,
-                        color: _selectedPdfFile != null
-                            ? Colors.green
-                            : AppTheme.textSecondaryColor,
+                      Column(
+                        children: [
+                          PhosphorIcon(
+                            _selectedPdfFile != null
+                                ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
+                                : PhosphorIcons.cloudArrowUp(),
+                            size: 32,
+                            color: _selectedPdfFile != null
+                                ? Colors.green
+                                : AppTheme.textSecondaryColor,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            _selectedPdfFile != null
+                                ? _selectedPdfFile!.name
+                                : 'Tap to upload PDF file',
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: _selectedPdfFile != null
+                                  ? Colors.green
+                                  : AppTheme.textPrimaryColor,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          if (_selectedPdfFile != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Size: ${(_selectedPdfFile!.size / (1024 * 1024)).toStringAsFixed(1)} MB',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppTheme.textSecondaryColor),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'PDF files only • Max 50MB',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: AppTheme.textSecondaryColor),
+                            ),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 12),
-                      Text(
-                        _selectedPdfFile != null
-                            ? _selectedPdfFile!.name
-                            : 'Tap to upload PDF file',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: _selectedPdfFile != null
-                              ? Colors.green
-                              : AppTheme.textPrimaryColor,
+                      if (_selectedPdfFile != null)
+                        Positioned(
+                          top: 0,
+                          right: 0,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  await _previewPdfFile();
+                                },
+                                icon: Icon(
+                                  PhosphorIcons.eye(),
+                                  size: 14,
+                                ),
+                                label: const Text(
+                                  'Pratonton',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedPdfFile = null;
+                                  });
+                                },
+                                icon: Icon(
+                                  PhosphorIcons.x(),
+                                  size: 14,
+                                  color: Colors.red,
+                                ),
+                                label: const Text(
+                                  'Buang',
+                                  style: TextStyle(fontSize: 12, color: Colors.red),
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                      if (_selectedPdfFile != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Size: ${(_selectedPdfFile!.size / (1024 * 1024)).toStringAsFixed(1)} MB',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppTheme.textSecondaryColor),
-                        ),
-                      ] else ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'PDF files only • Max 50MB',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: AppTheme.textSecondaryColor),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -601,6 +750,54 @@ class _AdminYouTubeAutoFormScreenState
     }
   }
 
+  Future<void> _previewPdfFile() async {
+    if (_selectedPdfFile == null) return;
+
+    try {
+      if (_selectedPdfFile!.path != null) {
+        // File is available locally
+        final file = File(_selectedPdfFile!.path!);
+        if (await file.exists()) {
+          if (await canLaunchUrl(Uri.file(file.path))) {
+            await launchUrl(Uri.file(file.path));
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Tidak dapat membuka PDF. Sila gunakan aplikasi PDF viewer.'),
+                  backgroundColor: Colors.orange,
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          }
+        }
+      } else if (_selectedPdfFile!.bytes != null) {
+        // File is in memory, need to save temporarily
+        // For simplicity, show message that they need to check after sync
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PDF akan tersedia selepas sync playlist selesai'),
+              backgroundColor: Colors.blue,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ralat membuka PDF: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   Future<bool> _checkNetworkConnectivity() async {
     try {
       // Use centralized connectivity provider
@@ -667,9 +864,14 @@ class _AdminYouTubeAutoFormScreenState
         );
       }
 
+      // Prepare author name (use channel name if not provided)
+      final authorName = _authorController.text.trim().isEmpty
+          ? null
+          : _authorController.text.trim();
+
       print('Calling edge function: youtube-playlist-sync');
       print(
-        'Request body: ${{'playlist_url': _playlistUrlController.text, 'category_id': _selectedCategoryId, 'is_premium': _isPremium, 'is_active': _isActive}}',
+        'Request body: ${{'playlist_url': _playlistUrlController.text, 'category_id': _selectedCategoryId, 'is_premium': _isPremium, 'is_active': _isActive, 'author': authorName}}',
       );
 
       // Call YouTube sync API
@@ -680,6 +882,7 @@ class _AdminYouTubeAutoFormScreenState
           'category_id': _selectedCategoryId,
           'is_premium': _isPremium,
           'is_active': _isActive,
+          if (authorName != null) 'author': authorName,
         },
       );
 

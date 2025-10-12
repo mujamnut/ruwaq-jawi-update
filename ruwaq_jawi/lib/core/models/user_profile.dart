@@ -6,7 +6,7 @@ class UserProfile {
   final String subscriptionStatus;
   final String? phoneNumber;
   final String? avatarUrl;
-  final DateTime? subscriptionEndDate;  // ? NEW: Add subscription end date
+  final DateTime? lastSeenAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,7 +18,7 @@ class UserProfile {
     required this.subscriptionStatus,
     this.phoneNumber,
     this.avatarUrl,
-    this.subscriptionEndDate,           // ? NEW: Add subscription end date parameter
+    this.lastSeenAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -55,9 +55,7 @@ class UserProfile {
       subscriptionStatus: subscriptionStatus,
       phoneNumber: json['phone_number'] as String?,
       avatarUrl: json['avatar_url'] as String?,
-      subscriptionEndDate: parseNullableDate(
-        json['subscription_end_date'],
-      ), // ? NEW: Parse subscription end date
+      lastSeenAt: parseNullableDate(json['last_seen_at']),
       createdAt: parseDate(json['created_at']),
       updatedAt: parseDate(json['updated_at']),
     );
@@ -72,7 +70,7 @@ class UserProfile {
       'subscription_status': subscriptionStatus,
       'phone_number': phoneNumber,
       'avatar_url': avatarUrl,
-      'subscription_end_date': subscriptionEndDate?.toIso8601String(), // ? NEW: Include subscription end date
+      'last_seen_at': lastSeenAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -86,7 +84,7 @@ class UserProfile {
     String? subscriptionStatus,
     String? phoneNumber,
     String? avatarUrl,
-    DateTime? subscriptionEndDate,      // ? NEW: Add subscription end date parameter
+    DateTime? lastSeenAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -98,7 +96,7 @@ class UserProfile {
       subscriptionStatus: subscriptionStatus ?? this.subscriptionStatus,
       phoneNumber: phoneNumber ?? this.phoneNumber,
       avatarUrl: avatarUrl ?? this.avatarUrl,
-      subscriptionEndDate: subscriptionEndDate ?? this.subscriptionEndDate, // ? NEW: Include subscription end date
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -107,32 +105,40 @@ class UserProfile {
   bool get isAdmin => role == 'admin';
   bool get isStudent => role == 'student';
   bool get hasActiveSubscription => subscriptionStatus == 'active';
-  
-  // ? NEW: Helper methods for subscription end date
-  bool get hasSubscriptionEndDate => subscriptionEndDate != null;
-  bool get isSubscriptionExpired => subscriptionEndDate != null && subscriptionEndDate!.isBefore(DateTime.now());
-  int get daysUntilExpiration {
-    if (subscriptionEndDate == null) return 0;
-    final difference = subscriptionEndDate!.difference(DateTime.now());
-    return difference.inDays.clamp(0, double.infinity).toInt();
-  }
-  
-  String get formattedSubscriptionEndDate {
-    if (subscriptionEndDate == null) return 'Tiada';
+
+  // Helper methods for last seen
+  bool get hasLastSeen => lastSeenAt != null;
+  String get formattedLastSeen {
+    if (lastSeenAt == null) return 'Tidak pernah online';
+
     final now = DateTime.now();
-    final endDate = subscriptionEndDate!;
-    
-    if (endDate.isBefore(now)) {
-      return 'Tamat tempoh';
-    }
-    
-    final difference = endDate.difference(now);
+    final lastSeen = lastSeenAt!;
+    final difference = now.difference(lastSeen);
+
     if (difference.inDays > 0) {
-      return '${difference.inDays} hari lagi';
+      return '${difference.inDays} hari lalu';
     } else if (difference.inHours > 0) {
-      return '${difference.inHours} jam lagi';
+      return '${difference.inHours} jam lalu';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minit lalu';
     } else {
-      return 'Akan tamat hari ini';
+      return 'Baru sahaja';
     }
+  }
+
+  String get displayName {
+    if (fullName != null && fullName!.isNotEmpty) {
+      return fullName!;
+    } else if (email != null && email!.isNotEmpty) {
+      return email!;
+    } else {
+      return 'Unknown User';
+    }
+  }
+
+  bool get isOnline {
+    if (lastSeenAt == null) return false;
+    final difference = DateTime.now().difference(lastSeenAt!);
+    return difference.inMinutes < 5; // Consider online if last seen within 5 minutes
   }
 }

@@ -395,14 +395,15 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
                 '${_subscription!.daysRemaining} hari',
               ),
               _buildDetailRow('Jumlah', _subscription!.formattedAmount),
-              _buildDetailRow(
-                'Pembaharuan Auto',
-                _subscription!.autoRenew ? 'Ya' : 'Tidak',
-              ),
-              _buildDetailRow(
-                'Kaedah Bayar',
-                _subscription!.paymentMethod ?? 'Tiada',
-              ),
+              // Note: autoRenew & paymentMethod fields tidak wujud dalam database
+              // _buildDetailRow(
+              //   'Pembaharuan Auto',
+              //   _subscription!.autoRenew ? 'Ya' : 'Tidak',
+              // ),
+              // _buildDetailRow(
+              //   'Kaedah Bayar',
+              //   _subscription!.paymentMethod ?? 'Tiada',
+              // ),
             ]),
           ] else ...[
             const SizedBox(height: 24),

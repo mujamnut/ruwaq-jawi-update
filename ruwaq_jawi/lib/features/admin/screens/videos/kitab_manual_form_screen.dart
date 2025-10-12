@@ -6,12 +6,12 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:pdfx/pdfx.dart' as pdfx;
 import '../../../../core/services/admin_category_service.dart';
 import '../../../../core/services/video_kitab_service.dart';
 import '../../../../core/services/video_episode_service.dart';
 import '../../../../core/services/supabase_service.dart';
-import '../../../../core/services/preview_service.dart';
-import '../../../../core/models/preview_models.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class AdminKitabFormScreen extends StatefulWidget {
@@ -148,28 +148,8 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         ascending: true,
       );
 
-      // Load preview status for each episode
-      final episodeJsonList = <Map<String, dynamic>>[];
-      for (final episode in episodes) {
-        final episodeJson = episode.toJson();
-
-        // Check if episode has preview in preview_content table
-        try {
-          final hasPreview = await PreviewService.hasPreview(
-            contentType: PreviewContentType.videoEpisode,
-            contentId: episode.id,
-          );
-          episodeJson['has_preview'] = hasPreview;
-        } catch (e) {
-          print('Error checking preview for episode ${episode.id}: $e');
-          episodeJson['has_preview'] = false;
-        }
-
-        episodeJsonList.add(episodeJson);
-      }
-
       setState(() {
-        _episodes = episodeJsonList;
+        _episodes = episodes.map((e) => e.toJson()).toList();
         _isLoadingEpisodes = false;
       });
     } catch (e) {
@@ -248,6 +228,64 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       }
     } catch (e) {
       _showSnackBar('Ralat memilih PDF: ${e.toString()}', isError: true);
+    }
+  }
+
+  Future<void> _previewPdfFile(File pdfFile) async {
+    try {
+      // Show in-app PDF viewer dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => _PdfViewerDialog(
+            file: pdfFile,
+            title: 'Pratonton PDF',
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar('Ralat membuka PDF: ${e.toString()}', isError: true);
+      }
+    }
+  }
+
+  Future<void> _previewPdfUrl(String pdfUrl) async {
+    try {
+      // Show in-app PDF viewer dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => _PdfViewerDialog(
+            url: pdfUrl,
+            title: 'Pratonton PDF',
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar('Ralat membuka PDF: ${e.toString()}', isError: true);
+      }
+    }
+  }
+
+  Future<void> _downloadPdf(String pdfUrl) async {
+    try {
+      final uri = Uri.parse(pdfUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        if (context.mounted) {
+          _showSnackBar('Tidak dapat memuat turun PDF', isError: true);
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        _showSnackBar('Ralat memuat turun PDF: ${e.toString()}', isError: true);
+      }
     }
   }
 
@@ -335,20 +373,65 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 
       // kitabId available in result['id'] if needed for future file uploads
 
-      // File upload functionality - pending implementation
-      // Will be implemented using VideoKitabService or direct Supabase storage
+      // File upload functionality
+      String? finalThumbnailUrl = thumbnailUrl;
+      String? finalPdfUrl = _pdfUrl;
+
+      // Upload thumbnail if selected
       if (_selectedThumbnail != null) {
-        if (kDebugMode) {
-          print('WARNING: File upload not implemented yet');
+        try {
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final thumbnailPath = 'thumbnails/video_kitab_${timestamp}_${_selectedThumbnail!.path.split('/').last}';
+
+          final thumbnailBytes = await _selectedThumbnail!.readAsBytes();
+          await Supabase.instance.client.storage
+              .from('video-kitab-files')
+              .uploadBinary(thumbnailPath, thumbnailBytes);
+
+          finalThumbnailUrl = Supabase.instance.client.storage
+              .from('video-kitab-files')
+              .getPublicUrl(thumbnailPath);
+        } catch (e) {
+          print('Error uploading thumbnail: $e');
+          _showSnackBar('Ralat upload thumbnail: $e', isError: true);
         }
-        _showSnackBar('File upload belum tersedia', isError: true);
       }
 
+      // Upload PDF if selected
       if (_selectedPdf != null) {
-        if (kDebugMode) {
-          print('WARNING: PDF upload not implemented yet');
+        try {
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final pdfPath = 'pdfs/video_kitab_${timestamp}_${_selectedPdf!.path.split('/').last}';
+
+          final pdfBytes = await _selectedPdf!.readAsBytes();
+          await Supabase.instance.client.storage
+              .from('video-kitab-files')
+              .uploadBinary(pdfPath, pdfBytes);
+
+          finalPdfUrl = Supabase.instance.client.storage
+              .from('video-kitab-files')
+              .getPublicUrl(pdfPath);
+
+          final fileSize = await _selectedPdf!.length();
+
+          // Update kitab with PDF info
+          if (_isEditing && widget.kitabId != null) {
+            await VideoKitabService.updateVideoKitabAdmin(widget.kitabId!, {
+              'pdf_url': finalPdfUrl,
+              'pdf_storage_path': pdfPath,
+              'pdf_file_size': fileSize,
+            });
+          } else if (result['id'] != null) {
+            await VideoKitabService.updateVideoKitabAdmin(result['id'], {
+              'pdf_url': finalPdfUrl,
+              'pdf_storage_path': pdfPath,
+              'pdf_file_size': fileSize,
+            });
+          }
+        } catch (e) {
+          print('Error uploading PDF: $e');
+          _showSnackBar('Ralat upload PDF: $e', isError: true);
         }
-        _showSnackBar('PDF upload belum tersedia', isError: true);
       }
 
       print('Navigating back with result: $result');
@@ -788,7 +871,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         GestureDetector(
           onTap: onPickFile,
           child: Container(
-            height: isImage ? 200 : 120,
+            height: isImage ? 160 : 100,
             width: double.infinity,
             decoration: BoxDecoration(
               color: AppTheme.surfaceColor,
@@ -798,6 +881,57 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             child: _buildFileDisplay(currentFile, selectedFile, isImage),
           ),
         ),
+        const SizedBox(height: 8),
+
+        // Action buttons for existing files
+        if (!isImage && (currentFile != null && currentFile.isNotEmpty || selectedFile != null))
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextButton.icon(
+                onPressed: () async {
+                  if (selectedFile != null) {
+                    await _previewPdfFile(selectedFile);
+                  } else if (currentFile != null && currentFile.isNotEmpty) {
+                    await _previewPdfUrl(currentFile);
+                  }
+                },
+                icon: const Icon(
+                  HugeIcons.strokeRoundedEye,
+                  size: 14,
+                ),
+                label: const Text(
+                  'Pratonton',
+                  style: TextStyle(fontSize: 12),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 8),
+              if (currentFile != null && currentFile.isNotEmpty)
+                TextButton.icon(
+                  onPressed: () async {
+                    await _downloadPdf(currentFile);
+                  },
+                  icon: const Icon(
+                    HugeIcons.strokeRoundedDownload01,
+                    size: 14,
+                  ),
+                  label: const Text(
+                    'Muat Turun',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
       ],
     );
   }
@@ -816,22 +950,47 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               borderRadius: BorderRadius.circular(8),
               child: Image.file(
                 selectedFile,
-                height: 120,
-                width: 120,
+                height: 80,
+                width: 80,
                 fit: BoxFit.cover,
               ),
             )
           else
-            const Icon(
-              HugeIcons.strokeRoundedPdf01,
-              size: 48.0,
-              color: Colors.red,
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    HugeIcons.strokeRoundedPdf01,
+                    size: 32.0,
+                    color: Colors.red,
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'PDF Baru',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             selectedFile.path.split('/').last,
             style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       );
@@ -844,27 +1003,53 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
               borderRadius: BorderRadius.circular(8),
               child: Image.network(
                 currentFile,
-                height: 120,
-                width: 120,
+                height: 80,
+                width: 80,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return const Icon(
                     HugeIcons.strokeRoundedImageNotFound01,
-                    size: 48.0,
+                    size: 32.0,
                   );
                 },
               ),
             )
           else
-            const Icon(
-              HugeIcons.strokeRoundedPdf01,
-              size: 48.0,
-              color: Colors.red,
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    HugeIcons.strokeRoundedPdf01,
+                    size: 32.0,
+                    color: Colors.green,
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'PDF Sedia Ada',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             isImage ? 'Thumbnail sedia ada' : 'PDF sedia ada',
             style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       );
@@ -876,13 +1061,14 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             isImage
                 ? HugeIcons.strokeRoundedImage01
                 : HugeIcons.strokeRoundedUpload01,
-            size: 48.0,
+            size: 32.0,
             color: Colors.grey,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
             isImage ? 'Ketuk untuk pilih thumbnail' : 'Ketuk untuk pilih PDF',
-            style: const TextStyle(color: Colors.grey),
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            textAlign: TextAlign.center,
           ),
         ],
       );
@@ -994,66 +1180,39 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                   ),
                   const SizedBox(height: 8),
 
-                  // Status Badges
-                  Wrap(
-                    spacing: 8,
-                    children: [
-                      if (episode['has_preview'] == true)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: Colors.blue.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          child: const Text(
-                            'PREVIEW',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.blue,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color:
-                              (episode['is_active'] == true
-                                      ? Colors.green
-                                      : Colors.grey)
-                                  .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color:
-                                (episode['is_active'] == true
-                                        ? Colors.green
-                                        : Colors.grey)
-                                    .withValues(alpha: 0.3),
-                          ),
-                        ),
-                        child: Text(
-                          episode['is_active'] == true
-                              ? 'AKTIF'
-                              : 'TIDAK AKTIF',
-                          style: TextStyle(
-                            fontSize: 9,
-                            color: episode['is_active'] == true
-                                ? Colors.green
-                                : Colors.grey,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                  // Status Badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          (episode['is_active'] == true
+                                  ? Colors.green
+                                  : Colors.grey)
+                              .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color:
+                            (episode['is_active'] == true
+                                    ? Colors.green
+                                    : Colors.grey)
+                                .withValues(alpha: 0.3),
                       ),
-                    ],
+                    ),
+                    child: Text(
+                      episode['is_active'] == true
+                          ? 'AKTIF'
+                          : 'TIDAK AKTIF',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: episode['is_active'] == true
+                            ? Colors.green
+                            : Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1198,7 +1357,6 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     required String youtubeVideoId,
     required int episodeNumber,
     String? thumbnailUrl,
-    required bool isPreview,
     required bool isActive,
   }) async {
     if (title.isEmpty || youtubeVideoId.isEmpty) {
@@ -1216,11 +1374,9 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       final finalThumbnailUrl =
           thumbnailUrl ?? _defaultThumbnailFor(youtubeVideoId);
 
-      String savedEpisodeId;
-
       if (episodeId == null) {
         // Add new episode
-        final result = await VideoEpisodeService.createEpisode({
+        await VideoEpisodeService.createEpisode({
           'video_kitab_id': widget.kitabId!,
           'title': title,
           'youtube_video_id': youtubeVideoId,
@@ -1229,7 +1385,6 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           'thumbnail_url': finalThumbnailUrl,
           'is_active': isActive,
         });
-        savedEpisodeId = result.id;
         _showSnackBar('Episode berjaya ditambah!');
       } else {
         // Update existing episode
@@ -1241,52 +1396,12 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           'part_number': episodeNumber,
           'is_active': isActive,
         });
-        savedEpisodeId = episodeId;
         _showSnackBar('Episode berjaya dikemaskini!');
       }
-
-      // Handle preview using preview_content table
-      await _handlePreviewChanges(savedEpisodeId, isPreview);
 
       await _loadEpisodes(); // Refresh episodes list
     } catch (e) {
       _showSnackBar('Ralat menyimpan episode: ${e.toString()}', isError: true);
-    }
-  }
-
-  Future<void> _handlePreviewChanges(
-    String episodeId,
-    bool shouldHavePreview,
-  ) async {
-    try {
-      print('🔍 Kitab Form Preview Changes:');
-      print('   Episode ID: $episodeId');
-      print('   Should Have Preview: $shouldHavePreview');
-      final existingPreview = await PreviewService.getPrimaryPreview(
-        contentType: PreviewContentType.videoEpisode,
-        contentId: episodeId,
-      );
-
-      if (shouldHavePreview && existingPreview == null) {
-        // Create new preview
-        final config = PreviewConfig(
-          contentType: PreviewContentType.videoEpisode,
-          contentId: episodeId,
-          previewType: PreviewType.freeTrial,
-          previewDescription: 'Free preview episode',
-        );
-        await PreviewService.createPreview(config);
-      } else if (!shouldHavePreview && existingPreview != null) {
-        // Remove existing preview
-        await PreviewService.deletePreview(existingPreview.id);
-      } else if (shouldHavePreview &&
-          existingPreview != null &&
-          !existingPreview.isActive) {
-        // Reactivate preview
-        await PreviewService.togglePreviewStatus(existingPreview.id);
-      }
-    } catch (e) {
-      print('Error handling preview changes: $e');
     }
   }
 
@@ -1364,6 +1479,352 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
 }
 
 // =====================================================
+// PDF VIEWER DIALOG WIDGET
+// =====================================================
+
+class _PdfViewerDialog extends StatefulWidget {
+  final File? file;
+  final String? url;
+  final String title;
+
+  const _PdfViewerDialog({
+    this.file,
+    this.url,
+    required this.title,
+  });
+
+  @override
+  State<_PdfViewerDialog> createState() => _PdfViewerDialogState();
+}
+
+class _PdfViewerDialogState extends State<_PdfViewerDialog> {
+  pdfx.PdfController? _pdfController;
+  bool _isLoading = true;
+  bool _hasError = false;
+  String? _errorMessage;
+  int _currentPage = 1;
+  int _totalPages = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPdf();
+  }
+
+  Future<void> _loadPdf() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = null;
+      });
+
+      pdfx.PdfController? controller;
+
+      if (widget.file != null) {
+        // Load from local file
+        controller = pdfx.PdfController(
+          document: pdfx.PdfDocument.openFile(widget.file!.path),
+        );
+      } else if (widget.url != null) {
+        // For URL, just show a message and open in browser
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+          _errorMessage = 'URL PDF akan dibuka dalam browser';
+        });
+        return;
+      }
+
+      if (controller != null) {
+        _pdfController = controller;
+
+        // Get total pages
+        final pageCount = await controller.pagesCount;
+        setState(() {
+          _totalPages = pageCount ?? 1;
+          _isLoading = false;
+        });
+      } else {
+        throw Exception('No PDF source provided');
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _hasError = true;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pdfController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openInBrowser() async {
+    String? pdfUrl;
+    if (widget.file != null) {
+      // For local files, we'll show a message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Fail tempatan tidak boleh dibuka di browser. Sila gunakan aplikasi PDF viewer.'),
+          ),
+        );
+      }
+      return;
+    } else if (widget.url != null) {
+      pdfUrl = widget.url;
+    }
+
+    if (pdfUrl != null) {
+      try {
+        final uri = Uri.parse(pdfUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ralat membuka PDF: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.all(16),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        height: MediaQuery.of(context).size.height * 0.85,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const HugeIcon(
+                    icon: HugeIcons.strokeRoundedPdf01,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      widget.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (!_isLoading && !_hasError && _totalPages > 0)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$_currentPage/$_totalPages',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const HugeIcon(
+                      icon: HugeIcons.strokeRoundedCancel01,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Expanded(
+              child: _buildContent(),
+            ),
+
+            // Footer with controls
+            if (!_isLoading && !_hasError && _totalPages > 0)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(16),
+                    bottomRight: Radius.circular(16),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: _currentPage > 1
+                          ? () {
+                              setState(() {
+                                _currentPage--;
+                              });
+                              _pdfController?.jumpToPage(_currentPage - 1);
+                            }
+                          : null,
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowLeft01,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                    ),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          'Halaman $_currentPage dari $_totalPages',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _currentPage < _totalPages
+                          ? () {
+                              setState(() {
+                                _currentPage++;
+                              });
+                              _pdfController?.jumpToPage(_currentPage - 1);
+                            }
+                          : null,
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowRight01,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    IconButton(
+                      onPressed: _openInBrowser,
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedDownload01,
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                      tooltip: 'Buka di Browser',
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Memuatkan PDF...'),
+          ],
+        ),
+      );
+    }
+
+    if (_hasError) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedAlert02,
+              size: 64,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Ralat memuatkan PDF',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _errorMessage ?? 'Ralat tidak diketahui',
+              style: const TextStyle(color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _openInBrowser,
+              icon: const HugeIcon(
+                icon: HugeIcons.strokeRoundedDownload01,
+                color: Colors.white,
+                size: 16,
+              ),
+              label: const Text('Buka di Browser'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_pdfController == null) {
+      return const Center(
+        child: Text('Tiada PDF untuk dipaparkan'),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: pdfx.PdfView(
+        controller: _pdfController!,
+        scrollDirection: Axis.vertical,
+        onPageChanged: (page) {
+          setState(() {
+            _currentPage = page + 1;
+          });
+        },
+      ),
+    );
+  }
+}
+
+// =====================================================
 // EPISODE DIALOG WIDGET
 // =====================================================
 
@@ -1375,7 +1836,6 @@ class _EpisodeDialog extends StatefulWidget {
     required String youtubeVideoId,
     required int episodeNumber,
     String? thumbnailUrl,
-    required bool isPreview,
     required bool isActive,
   })
   onSave;
@@ -1408,7 +1868,6 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
   bool _useCustomThumbnail = false;
   Timer? _urlDebounce;
 
-  late bool _isPreview;
   late bool _isActive;
   late final bool _isEditMode;
   late final int _episodeNumber;
@@ -1421,7 +1880,6 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
     _youtubeUrlController = TextEditingController();
     _thumbnailUrlController = TextEditingController();
 
-    _isPreview = widget.episode?['has_preview'] ?? false;
     _isActive = widget.episode?['is_active'] ?? true;
     _isEditMode = widget.episode != null;
     _episodeNumber = _isEditMode
@@ -1720,12 +2178,6 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
 
               // Settings
               SwitchListTile(
-                title: const Text('Episode Preview'),
-                subtitle: const Text('Boleh ditonton tanpa langganan'),
-                value: _isPreview,
-                onChanged: (value) => setState(() => _isPreview = value),
-              ),
-              SwitchListTile(
                 title: const Text('Episode Aktif'),
                 subtitle: const Text('Boleh dilihat oleh pengguna'),
                 value: _isActive,
@@ -1758,7 +2210,6 @@ class _EpisodeDialogState extends State<_EpisodeDialog> {
                     youtubeVideoId: _youtubeVideoId!,
                     episodeNumber: _episodeNumber,
                     thumbnailUrl: finalThumbnailUrl,
-                    isPreview: _isPreview,
                     isActive: _isActive,
                   );
                   Navigator.pop(context);

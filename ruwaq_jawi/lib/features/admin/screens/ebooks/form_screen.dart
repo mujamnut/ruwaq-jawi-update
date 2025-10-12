@@ -4,6 +4,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/admin_bottom_nav.dart';
@@ -299,6 +300,80 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
     );
   }
 
+  Future<void> _previewSelectedPdf() async {
+    if (_selectedPdfFile == null) return;
+
+    try {
+      // Create temporary file for preview
+      final tempDir = Directory.systemTemp;
+      final tempFile = File(
+        '${tempDir.path}/temp_preview_${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+
+      // Write selected PDF bytes to temporary file
+      if (_selectedPdfFile!.bytes != null) {
+        await tempFile.writeAsBytes(_selectedPdfFile!.bytes!);
+
+        // Open with system PDF viewer
+        if (await canLaunchUrl(Uri.file(tempFile.path))) {
+          await launchUrl(Uri.file(tempFile.path));
+        } else {
+          _showErrorSnackBar('Tidak dapat membuka PDF. Sila gunakan aplikasi PDF viewer.');
+        }
+      } else if (_selectedPdfFile!.path != null) {
+        // File is already on disk
+        final file = File(_selectedPdfFile!.path!);
+        if (await file.exists()) {
+          if (await canLaunchUrl(Uri.file(file.path))) {
+            await launchUrl(Uri.file(file.path));
+          } else {
+            _showErrorSnackBar('Tidak dapat membuka PDF. Sila gunakan aplikasi PDF viewer.');
+          }
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('Ralat membuka PDF: ${e.toString()}');
+    }
+  }
+
+  Future<void> _previewUploadedPdf() async {
+    if (_uploadedPdfUrl == null) return;
+
+    try {
+      final uri = Uri.parse(_uploadedPdfUrl!);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.inAppWebView,
+        );
+      } else {
+        // Fallback to external browser
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      }
+    } catch (e) {
+      _showErrorSnackBar('Ralat membuka PDF: ${e.toString()}');
+    }
+  }
+
+  Future<void> _downloadPdf(String pdfUrl) async {
+    try {
+      final uri = Uri.parse(pdfUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(
+          uri,
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        _showErrorSnackBar('Tidak dapat memuat turun PDF');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Ralat memuat turun PDF: ${e.toString()}');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -519,26 +594,150 @@ class _AdminEbookFormScreenState extends State<AdminEbookFormScreen> {
               const SizedBox(height: 8),
               if (_selectedPdfFile != null)
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
                   ),
-                  child: Text(
-                    'Dipilih: ${_selectedPdfFile!.name}',
-                    style: TextStyle(color: Colors.green),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Dipilih: ${_selectedPdfFile!.name}',
+                              style: TextStyle(
+                                color: Colors.green,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  await _previewSelectedPdf();
+                                },
+                                icon: const HugeIcon(
+                                  icon: HugeIcons.strokeRoundedEye,
+                                  size: 14,
+                                  color: Colors.blue,
+                                ),
+                                label: const Text(
+                                  'Pratonton',
+                                  style: TextStyle(fontSize: 12, color: Colors.blue),
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedPdfFile = null;
+                                  });
+                                },
+                                icon: const HugeIcon(
+                                  icon: HugeIcons.strokeRoundedDelete01,
+                                  size: 14,
+                                  color: Colors.red,
+                                ),
+                                label: const Text(
+                                  'Buang',
+                                  style: TextStyle(fontSize: 12, color: Colors.red),
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Saiz: ${(_selectedPdfFile!.size / (1024 * 1024)).toStringAsFixed(1)} MB',
+                        style: TextStyle(
+                          color: Colors.green.shade700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 )
               else if (_uploadedPdfUrl != null)
                 Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: Colors.blue.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                   ),
-                  child: Text(
-                    'PDF sedia ada telah diupload',
-                    style: TextStyle(color: Colors.blue),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'PDF sedia ada telah diupload',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: () async {
+                              await _previewUploadedPdf();
+                            },
+                            icon: const HugeIcon(
+                              icon: HugeIcons.strokeRoundedEye,
+                              size: 14,
+                              color: Colors.blue,
+                            ),
+                            label: const Text(
+                              'Pratonton',
+                              style: TextStyle(fontSize: 12, color: Colors.blue),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton.icon(
+                            onPressed: () async {
+                              await _downloadPdf(_uploadedPdfUrl!);
+                            },
+                            icon: const HugeIcon(
+                              icon: HugeIcons.strokeRoundedDownload01,
+                              size: 14,
+                              color: Colors.green,
+                            ),
+                            label: const Text(
+                              'Muat Turun',
+                              style: TextStyle(fontSize: 12, color: Colors.green),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               const SizedBox(height: 8),

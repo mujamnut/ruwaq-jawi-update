@@ -7,8 +7,6 @@ import '../../../../config/youtube_api.dart';
 import '../../../../core/models/video_episode.dart';
 import '../../../../core/services/video_episode_service.dart';
 import '../../../../core/services/supabase_service.dart';
-import '../../../../core/services/preview_service.dart';
-import '../../../../core/models/preview_models.dart';
 import '../../../../core/theme/app_theme.dart';
 
 class AdminEpisodeFormScreen extends StatefulWidget {
@@ -37,8 +35,6 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
 
   bool _isLoading = false;
   bool _isActive = true;
-  PreviewContent? _existingPreview;
-  bool _hasPreview = false;
   String? _extractedVideoId;
   String? _thumbnailUrl;
 
@@ -90,9 +86,6 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       _durationController.text = episode.durationMinutes.toString();
       _isActive = episode.isActive;
       _extractedVideoId = episode.youtubeVideoId;
-
-      // Check if preview exists in new system
-      _checkExistingPreview(episode.id);
       _thumbnailUrl = episode.actualThumbnailUrl;
     } else {
       // For new episode, get next part number
@@ -104,22 +97,6 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       } catch (e) {
         _partNumberController.text = '1';
       }
-    }
-  }
-
-  Future<void> _checkExistingPreview(String episodeId) async {
-    try {
-      final preview = await PreviewService.getPrimaryPreview(
-        contentType: PreviewContentType.videoEpisode,
-        contentId: episodeId,
-      );
-
-      setState(() {
-        _existingPreview = preview;
-        _hasPreview = preview != null;
-      });
-    } catch (e) {
-      print('Error checking existing preview: $e');
     }
   }
 
@@ -177,23 +154,16 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
         'is_active': _isActive,
       };
 
-      String episodeId;
-
       if (_isEditing) {
         await VideoEpisodeService.updateEpisode(
           widget.episode!.id,
           episodeData,
         );
-        episodeId = widget.episode!.id;
         _showSnackBar('Episode berjaya dikemaskini!');
       } else {
-        final result = await VideoEpisodeService.createEpisode(episodeData);
-        episodeId = result.id;
+        await VideoEpisodeService.createEpisode(episodeData);
         _showSnackBar('Episode baru berjaya ditambah!');
       }
-
-      // Handle preview creation/update
-      await _handlePreviewChanges(episodeId);
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -204,43 +174,6 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       setState(() {
         _isLoading = false;
       });
-    }
-  }
-
-  Future<void> _handlePreviewChanges(String episodeId) async {
-    try {
-      print('🔍 Debug Preview Changes:');
-      print('   Episode ID: $episodeId');
-      print('   Has Preview: $_hasPreview');
-      print('   Existing Preview: ${_existingPreview?.id}');
-      if (_hasPreview && _existingPreview == null) {
-        // Create new preview
-        final config = PreviewConfig(
-          contentType: PreviewContentType.videoEpisode,
-          contentId: episodeId,
-          previewType: PreviewType.freeTrial,
-          previewDescription: 'Free preview episode',
-        );
-
-        print('📝 Creating new preview with config:');
-        print('   Content Type: ${config.contentType}');
-        print('   Content ID: ${config.contentId}');
-        final result = await PreviewService.createPreview(config);
-        print('✅ Preview creation result: ${result.success}');
-        if (!result.success) {
-          print('❌ Preview creation error: ${result.error}');
-        }
-      } else if (!_hasPreview && _existingPreview != null) {
-        // Remove existing preview
-        await PreviewService.deletePreview(_existingPreview!.id);
-      } else if (_hasPreview && _existingPreview != null) {
-        // Update existing preview (just ensure it's active)
-        if (!_existingPreview!.isActive) {
-          await PreviewService.togglePreviewStatus(_existingPreview!.id);
-        }
-      }
-    } catch (e) {
-      print('Error handling preview changes: $e');
     }
   }
 
@@ -679,65 +612,6 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
                         });
                       },
                       activeThumbColor: AppTheme.primaryColor,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Preview Toggle
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      _hasPreview
-                          ? HugeIcons.strokeRoundedView
-                          : HugeIcons.strokeRoundedLockPassword,
-                      color: _hasPreview
-                          ? Colors.orange
-                          : AppTheme.primaryColor,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Status Preview',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            _hasPreview
-                                ? 'Episode ini boleh ditonton oleh pengguna percuma sebagai preview'
-                                : 'Episode ini hanya untuk pengguna premium',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: AppTheme.textSecondaryColor),
-                          ),
-                          if (_existingPreview != null) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'Preview Type: ${_existingPreview!.previewType.displayName}',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: Colors.green),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Switch(
-                      value: _hasPreview,
-                      onChanged: (value) {
-                        setState(() {
-                          _hasPreview = value;
-                        });
-                      },
-                      activeThumbColor: Colors.orange,
                     ),
                   ],
                 ),

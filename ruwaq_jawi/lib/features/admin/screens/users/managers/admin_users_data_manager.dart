@@ -96,6 +96,7 @@ class AdminUsersDataManager {
         throw const FormatException('Invalid RPC response format');
       }
     } catch (e) {
+      // RPC failed, try to get profiles and join with auth users manually
       final profilesResponse = await SupabaseService.from('profiles')
           .select()
           .order('created_at', ascending: false);
@@ -103,8 +104,8 @@ class AdminUsersDataManager {
       usersResponse = (profilesResponse as List).map((json) {
         final updatedJson =
             Map<String, dynamic>.from(json as Map<String, dynamic>);
-        updatedJson['email'] =
-            '${json['full_name']?.toString().toLowerCase().replaceAll(' ', '')}@domain.com';
+        // Set email as null if not available from RPC
+        updatedJson['email'] = null;
         return updatedJson;
       }).toList();
     }

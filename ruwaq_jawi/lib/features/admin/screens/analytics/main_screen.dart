@@ -201,24 +201,29 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
 
   Future<Map<String, dynamic>> _getContentAnalytics() async {
     try {
-      // Get kitab stats
-      final totalKitab = await SupabaseService.from('kitab')
+      // Get video kitab stats
+      final totalKitab = await SupabaseService.from('video_kitab')
           .select('id')
           .count(CountOption.exact);
 
-      final activeKitab = await SupabaseService.from('kitab')
+      final activeKitab = await SupabaseService.from('video_kitab')
           .select('id')
           .eq('is_active', true)
           .count(CountOption.exact);
 
-      final premiumKitab = await SupabaseService.from('kitab')
+      final premiumKitab = await SupabaseService.from('video_kitab')
           .select('id')
           .eq('is_premium', true)
           .count(CountOption.exact);
 
-      final ebookAvailable = await SupabaseService.from('kitab')
+      // Get ebooks stats
+      final totalEbooks = await SupabaseService.from('ebooks')
           .select('id')
-          .eq('is_ebook_available', true)
+          .count(CountOption.exact);
+
+      final activeEbooks = await SupabaseService.from('ebooks')
+          .select('id')
+          .eq('is_active', true)
           .count(CountOption.exact);
 
       // Get categories
@@ -231,12 +236,12 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
           .eq('is_active', true)
           .count(CountOption.exact);
 
-      // Get videos
-      final totalVideos = await SupabaseService.from('kitab_videos')
+      // Get video episodes
+      final totalVideos = await SupabaseService.from('video_episodes')
           .select('id')
           .count(CountOption.exact);
 
-      final activeVideos = await SupabaseService.from('kitab_videos')
+      final activeVideos = await SupabaseService.from('video_episodes')
           .select('id')
           .eq('is_active', true)
           .count(CountOption.exact);
@@ -245,7 +250,8 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         'totalKitab': totalKitab.count,
         'activeKitab': activeKitab.count,
         'premiumKitab': premiumKitab.count,
-        'ebookAvailable': ebookAvailable.count,
+        'totalEbooks': totalEbooks.count,
+        'activeEbooks': activeEbooks.count,
         'totalCategories': totalCategories.count,
         'activeCategories': activeCategories.count,
         'totalVideos': totalVideos.count,
@@ -256,7 +262,8 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         'totalKitab': 0,
         'activeKitab': 0,
         'premiumKitab': 0,
-        'ebookAvailable': 0,
+        'totalEbooks': 0,
+        'activeEbooks': 0,
         'totalCategories': 0,
         'activeCategories': 0,
         'totalVideos': 0,
@@ -323,14 +330,14 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
 
   Future<Map<String, dynamic>> _getRevenueAnalytics() async {
     try {
-      // Get all successful transactions
-      final transactions = await SupabaseService.from('transactions')
-          .select('amount, created_at')
-          .eq('status', 'completed');
+      // Get all successful payments
+      final payments = await SupabaseService.from('payments')
+          .select('amount_cents, created_at')
+          .eq('status', 'succeeded');
 
       double totalRevenue = 0;
-      for (final transaction in transactions) {
-        totalRevenue += double.tryParse(transaction['amount'].toString()) ?? 0.0;
+      for (final payment in payments) {
+        totalRevenue += (payment['amount_cents'] as int) / 100.0; // Convert cents to dollars
       }
 
       // Get revenue from subscription plans (not individual subscription amounts)
@@ -347,21 +354,21 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
       // Calculate revenue by month (last 6 months)
       final monthlyRevenue = <String, double>{};
       final now = DateTime.now();
-      
+
       for (int i = 5; i >= 0; i--) {
         final month = DateTime(now.year, now.month - i, 1);
         final nextMonth = DateTime(now.year, now.month - i + 1, 1);
-        
-        final monthTransactions = transactions.where((t) {
-          final transactionDate = DateTime.parse(t['created_at']);
-          return transactionDate.isAfter(month) && transactionDate.isBefore(nextMonth);
+
+        final monthPayments = payments.where((p) {
+          final paymentDate = DateTime.parse(p['created_at']);
+          return paymentDate.isAfter(month) && paymentDate.isBefore(nextMonth);
         });
 
         double monthTotal = 0;
-        for (final transaction in monthTransactions) {
-          monthTotal += double.tryParse(transaction['amount'].toString()) ?? 0.0;
+        for (final payment in monthPayments) {
+          monthTotal += (payment['amount_cents'] as int) / 100.0;
         }
-        
+
         final monthKey = '${month.month.toString().padLeft(2, '0')}/${month.year}';
         monthlyRevenue[monthKey] = monthTotal;
       }
@@ -370,7 +377,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         'totalRevenue': totalRevenue,
         'monthlyRecurringRevenue': monthlyRecurringRevenue,
         'monthlyRevenue': monthlyRevenue,
-        'totalTransactions': transactions.length,
+        'totalTransactions': payments.length,
       };
     } catch (e) {
       return {
@@ -449,37 +456,67 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
 
   Future<List<Map<String, dynamic>>> _getPopularContent() async {
     try {
-      // Get most saved kitab
-      final popularKitab = await SupabaseService.from('saved_items')
+      // Get most saved video kitab
+      final popularVideoKitab = await SupabaseService.from('video_kitab_user_interactions')
           .select('''
-            kitab_id,
-            kitab!inner(title)
+            video_kitab_id,
+            video_kitab!inner(title)
           ''')
-          .eq('item_type', 'kitab');
+          .eq('is_saved', true);
 
-      // Count kitab saves
-      final kitabCounts = <String, int>{};
-      final kitabTitles = <String, String>{};
-      
-      for (final item in popularKitab) {
-        final kitabId = item['kitab_id'];
-        final kitabTitle = item['kitab']['title'];
-        kitabCounts[kitabId] = (kitabCounts[kitabId] ?? 0) + 1;
-        kitabTitles[kitabId] = kitabTitle;
+      // Get most saved ebooks
+      final popularEbooks = await SupabaseService.from('ebook_user_interactions')
+          .select('''
+            ebook_id,
+            ebooks!inner(title)
+          ''')
+          .eq('is_saved', true);
+
+      // Count saves for video kitab
+      final videoKitabCounts = <String, int>{};
+      final videoKitabTitles = <String, String>{};
+
+      for (final item in popularVideoKitab) {
+        final kitabId = item['video_kitab_id'];
+        final kitabTitle = item['video_kitab']['title'];
+        videoKitabCounts[kitabId] = (videoKitabCounts[kitabId] ?? 0) + 1;
+        videoKitabTitles[kitabId] = kitabTitle;
+      }
+
+      // Count saves for ebooks
+      final ebookCounts = <String, int>{};
+      final ebookTitles = <String, String>{};
+
+      for (final item in popularEbooks) {
+        final ebookId = item['ebook_id'];
+        final ebookTitle = item['ebooks']['title'];
+        ebookCounts[ebookId] = (ebookCounts[ebookId] ?? 0) + 1;
+        ebookTitles[ebookId] = ebookTitle;
       }
 
       // Convert to list and sort
       final popularList = <Map<String, dynamic>>[];
-      kitabCounts.forEach((id, count) {
+
+      // Add video kitab
+      videoKitabCounts.forEach((id, count) {
         popularList.add({
-          'title': kitabTitles[id] ?? 'Unknown',
+          'title': videoKitabTitles[id] ?? 'Unknown Video Kitab',
           'saves': count,
-          'type': 'kitab',
+          'type': 'video_kitab',
+        });
+      });
+
+      // Add ebooks
+      ebookCounts.forEach((id, count) {
+        popularList.add({
+          'title': ebookTitles[id] ?? 'Unknown Ebook',
+          'saves': count,
+          'type': 'ebook',
         });
       });
 
       popularList.sort((a, b) => (b['saves'] as int).compareTo(a['saves'] as int));
-      
+
       return popularList.take(10).toList();
     } catch (e) {
       return [];
@@ -633,9 +670,9 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
               '${growth['subscriptionGrowth']?.toStringAsFixed(1) ?? '0'}%',
             ),
             _buildOverviewCard(
-              'Jumlah Kitab',
+              'Jumlah Kitab Video',
               content['totalKitab'].toString(),
-              HugeIcons.strokeRoundedBook02,
+              HugeIcons.strokeRoundedVideo01,
               AppTheme.primaryColor,
               '${content['activeKitab']} aktif',
             ),
@@ -758,7 +795,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
 
   Widget _buildContentAnalytics() {
     final content = _analytics['content'] ?? {};
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -805,10 +842,31 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                 ),
                 Expanded(
                   child: _buildStatItem(
-                    'E-Book Tersedia',
-                    content['ebookAvailable'].toString(),
+                    'Total E-Book',
+                    content['totalEbooks'].toString(),
                     HugeIcons.strokeRoundedBook02,
                     Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildStatItem(
+                    'E-Book Aktif',
+                    content['activeEbooks'].toString(),
+                    HugeIcons.strokeRoundedBook02,
+                    Colors.blue,
+                  ),
+                ),
+                Expanded(
+                  child: _buildStatItem(
+                    'Total Kategori',
+                    content['totalCategories'].toString(),
+                    HugeIcons.strokeRoundedGrid,
+                    Colors.orange,
                   ),
                 ),
               ],
@@ -994,7 +1052,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
                     title: Text(content['title']),
                     subtitle: Text('${content['saves']} simpanan'),
                     trailing: HugeIcon(
-                      icon: content['type'] == 'kitab' ? HugeIcons.strokeRoundedBook02 : HugeIcons.strokeRoundedVideo01,
+                      icon: content['type'] == 'video_kitab' ? HugeIcons.strokeRoundedVideo01 : HugeIcons.strokeRoundedBook02,
                       color: Colors.grey,
                     ),
                   );

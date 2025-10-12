@@ -354,7 +354,7 @@ async function checkPaymentNotifications(supabaseClient, hoursAgo, studentCount,
       status,
       plan_type,
       created_at,
-      profiles (email, full_name)
+      profiles (full_name)
     `)
     .eq('status', 'completed')
     .gte('created_at', hoursAgo.toISOString())
@@ -402,7 +402,7 @@ async function checkPaymentNotifications(supabaseClient, hoursAgo, studentCount,
         console.error('Error creating payment notification:', error);
       } else {
         notificationsCreated++;
-        paymentNotifications.push(`Payment: RM${payment.amount} - ${payment.profiles?.full_name || payment.profiles?.email}`);
+        paymentNotifications.push(`Payment: RM${payment.amount} - ${payment.profiles?.full_name || 'User'}`);
         console.log(`✅ Created payment notification for: ${payment.id}`);
       }
     }
@@ -426,15 +426,16 @@ async function checkSubscriptionNotifications(supabaseClient, studentCount, subs
     .select(`
       id,
       user_id,
-      plan_type,
-      expires_at,
+      user_name,
+      subscription_plan_id,
+      end_date,
       status,
-      profiles (email, full_name)
+      subscription_plans (name, duration_days)
     `)
     .eq('status', 'active')
-    .lte('expires_at', sevenDaysFromNow.toISOString())
-    .gte('expires_at', new Date().toISOString())
-    .order('expires_at', { ascending: true });
+    .lte('end_date', sevenDaysFromNow.toISOString())
+    .gte('end_date', new Date().toISOString())
+    .order('end_date', { ascending: true });
 
   if (expiringSubs && expiringSubs.length > 0) {
     console.log(`⏰ Found ${expiringSubs.length} expiring subscriptions`);
@@ -458,24 +459,28 @@ async function checkSubscriptionNotifications(supabaseClient, studentCount, subs
         continue;
       }
 
-      const expiryDate = new Date(subscription.expires_at);
+      const expiryDate = new Date(subscription.end_date);
       const today = new Date();
       const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
+      // Get plan name from joined subscription_plans table
+      const planName = subscription.subscription_plans?.name || subscription.subscription_plan_id;
+
       const notification = {
         type: 'personal',
-        title: '⏰ Pelan Akan Tamat!',
-        message: `Pelan ${subscription.plan_type} anda akan tamat dalam ${daysUntilExpiry} hari. Sila buat pembaharuan untuk terus menikmati perkhidmatan.`,
+        title: '⏰ Langganan Akan Tamat!',
+        message: `Langganan ${planName} anda akan tamat dalam ${daysUntilExpiry} hari. Sila perbaharui langganan untuk terus menikmati kandungan premium.`,
         target_type: 'user',
         target_criteria: { user_id: subscription.user_id },
         metadata: {
           subscription_id: subscription.id,
           notification_type: 'expiring',
-          plan_type: subscription.plan_type,
-          expires_at: subscription.expires_at,
+          subscription_plan_id: subscription.subscription_plan_id,
+          plan_name: planName,
+          end_date: subscription.end_date,
           days_until_expiry: daysUntilExpiry,
           icon: '⏰',
-          action_url: '/profile/subscription',
+          action_url: '/subscription',
           source: 'unified_notifications_cron'
         }
       };
@@ -488,7 +493,7 @@ async function checkSubscriptionNotifications(supabaseClient, studentCount, subs
         console.error('Error creating subscription notification:', error);
       } else {
         notificationsCreated++;
-        subscriptionNotifications.push(`Expiring: ${subscription.plan_type} - ${daysUntilExpiry} days - ${subscription.profiles?.full_name || subscription.profiles?.email}`);
+        subscriptionNotifications.push(`Expiring: ${planName} - ${daysUntilExpiry} days - ${subscription.user_name || 'User'}`);
         console.log(`✅ Created expiry notification for: ${subscription.id} (${daysUntilExpiry} days)`);
       }
     }

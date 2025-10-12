@@ -52,7 +52,9 @@ import '../../features/admin/screens/payments/payments_screen.dart' as admin_pay
 import '../../features/admin/screens/reports/reports_screen.dart' as admin_reports_main;
 // Admin - Video Kitab
 import '../../features/admin/screens/videos/kitab_detail_screen.dart' as admin_kitab;
-import '../../features/admin/screens/videos/kitab_form_screen.dart' as admin_kitab_form;
+import '../../features/admin/screens/videos/kitab_manual_form_screen.dart' as admin_kitab_form;
+import '../../features/admin/screens/videos/mode_selection_screen.dart';
+import '../../features/admin/screens/videos/kitab_auto_form_screen.dart';
 // Student Payment
 import '../../features/student/screens/payment_screen.dart';
 import '../../features/student/screens/toyyibpay_payment_screen.dart';
@@ -566,11 +568,32 @@ class AppRouter {
           builder: (context, state) => const admin_notification.AdminNotificationsScreen(),
         ),
         // Admin Kitabs Routes
+        // Mode Selection (Choose Manual or Auto)
         GoRoute(
           path: '/admin/kitabs/add',
           name: 'admin-kitabs-add',
-          builder: (context, state) => const admin_video_form.AdminVideoKitabFormScreen(),
+          builder: (context, state) => const AdminKitabModeSelectionScreen(),
         ),
+        // Manual Mode - Add/Edit Kitab with episodes one by one
+        GoRoute(
+          path: '/admin/kitabs/add-manual',
+          name: 'admin-kitabs-add-manual',
+          builder: (context, state) {
+            final kitabData = state.extra as Map<String, dynamic>?;
+            final kitabId = state.uri.queryParameters['id'];
+            return admin_kitab_form.AdminKitabFormScreen(
+              kitabId: kitabId,
+              kitabData: kitabData,
+            );
+          },
+        ),
+        // Auto Mode - Sync from YouTube playlist
+        GoRoute(
+          path: '/admin/kitabs/add-auto',
+          name: 'admin-kitabs-add-auto',
+          builder: (context, state) => const AdminYouTubeAutoFormScreen(),
+        ),
+        // Kitab Detail
         GoRoute(
           path: '/admin/kitab/:id',
           name: 'admin-kitab-detail',

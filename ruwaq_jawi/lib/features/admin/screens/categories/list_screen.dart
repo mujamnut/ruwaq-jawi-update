@@ -7,6 +7,7 @@ import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/auto_generated_form.dart';
 import '../../widgets/admin_bottom_nav.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'form_screen.dart';
 
 class AdminCategoriesScreen extends StatefulWidget {
@@ -259,7 +260,10 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return ShimmerList(
+        itemCount: 8,
+        shimmerItem: const CategoryShimmerCard(),
+      );
     }
 
     if (_error != null) {
