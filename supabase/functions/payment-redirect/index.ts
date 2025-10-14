@@ -1,20 +1,58 @@
 // @ts-nocheck
-// Use built-in Deno.serve to avoid std import issues
+// This function handles ToyyibPay redirects without requiring authentication
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
+    console.log(`📥 Payment redirect - Method: ${req.method}`);
+    console.log(`📥 URL: ${req.url}`);
+    console.log(`📥 Headers:`, Object.fromEntries(req.headers.entries()));
+
     const url = new URL(req.url);
     const status = url.searchParams.get('status');
+    const statusId = url.searchParams.get('status_id');
+    const billCode = url.searchParams.get('billcode');
+    const orderId = url.searchParams.get('order_id');
+    const transactionId = url.searchParams.get('transaction_id');
+    const msg = url.searchParams.get('msg');
+
+    console.log('📋 Payment redirect parameters:', {
+      status,
+      statusId,
+      billCode,
+      orderId,
+      transactionId,
+      msg
+    });
+
+    // 🔥 IMPORTANT: This function handles ToyyibPay redirects WITHOUT authentication
+    // The actual subscription activation is handled by the webhook (v20)
+    // This page only shows the appropriate success/failure message to users
+
+    // Check if this is a successful payment
+    const isSuccess = status === 'success' && statusId === '1';
+    console.log(`✅ Payment success determined: ${isSuccess}`);
+
+    // Log the redirect for debugging
+    console.log(`🔄 TOYYIBPAY REDIRECT RECEIVED:`);
+    console.log(`   - Status: ${status} (ID: ${statusId})`);
+    console.log(`   - Bill Code: ${billCode}`);
+    console.log(`   - Transaction ID: ${transactionId}`);
+    console.log(`   - Order ID: ${orderId}`);
+    console.log(`   - Success: ${isSuccess}`);
+    console.log(`   - Message: ${msg || 'none'}`);
+    console.log(`📝 Note: Webhook (v20) handles actual subscription activation`);
+    console.log(`📝 Note: This page only shows user feedback`);
     
     // Create a simple HTML page that will close the WebView
     const html = `
@@ -89,17 +127,31 @@ Deno.serve(async (req) => {
     </head>
     <body>
         <div class="container">
-            <div class="icon">${status === 'success' ? '✅' : '❌'}</div>
-            <h1>${status === 'success' ? 'Pembayaran Berjaya!' : 'Pembayaran Gagal'}</h1>
+            <div class="icon">${isSuccess ? '✅' : '❌'}</div>
+            <h1>${isSuccess ? 'Pembayaran Berjaya!' : 'Pembayaran Gagal'}</h1>
             <p>
-                ${status === 'success' 
-                    ? 'Terima kasih! Subscription anda telah diaktifkan. Anda akan kembali ke aplikasi secara automatik.' 
+                ${isSuccess
+                    ? 'Terima kasih! Pembayaran anda berjaya. Langganan akan diaktifkan secara automatik melalui webhook.'
                     : 'Pembayaran tidak dapat diproses. Sila cuba lagi atau hubungi sokongan pelanggan.'}
             </p>
+            ${isSuccess ? `
+            <div style="background: rgba(76,175,80,0.2); padding: 15px; border-radius: 10px; margin: 20px 0; font-size: 14px;">
+                <p><strong>✅ Status Pembayaran:</strong> Berjaya</p>
+                <p><strong>📱 Langganan:</strong> Akan diaktifkan secara automatik</p>
+                <p><strong>🔄 Proses:</strong> Webhook mengaktifkan langganan anda</p>
+                <p><strong>⏱️ Masa:</strong> Biasanya mengambil masa < 1 minit</p>
+            </div>
+            ` : `
+            <div style="background: rgba(244,67,54,0.2); padding: 15px; border-radius: 10px; margin: 20px 0; font-size: 14px;">
+                <p><strong>❌ Status:</strong> Pembayaran tidak berjaya</p>
+                <p><strong>🔄 Tindakan:</strong> Sila cuba lagi</p>
+                <p><strong>💡 Bantuan:</strong> Hubungi support jika masalah berterusan</p>
+            </div>
+            `}
             <button class="button" onclick="closeWindow()">
-                ${status === 'success' ? 'Kembali ke App' : 'Cuba Lagi'}
+                ${isSuccess ? 'Kembali ke Aplikasi' : 'Cuba Lagi'}
             </button>
-            <div class="loading">Menutup dalam 3 saat...</div>
+            <div class="loading">Auto-redirect dalam 3 saat...</div>
         </div>
 
         <script>
@@ -109,24 +161,30 @@ Deno.serve(async (req) => {
                     window.ReactNativeWebView.postMessage(JSON.stringify({
                         type: 'payment_result',
                         status: '${status}',
-                        success: ${status === 'success'}
+                        statusId: '${statusId}',
+                        billCode: '${billCode}',
+                        transactionId: '${transactionId}',
+                        success: ${isSuccess}
                     }));
                 }
-                
+
                 // For Flutter WebView
                 if (window.flutter_inappwebview) {
                     window.flutter_inappwebview.callHandler('payment_result', {
                         status: '${status}',
-                        success: ${status === 'success'}
+                        statusId: '${statusId}',
+                        billCode: '${billCode}',
+                        transactionId: '${transactionId}',
+                        success: ${isSuccess}
                     });
                 }
-                
+
                 // Fallback - try to close window
                 try {
                     window.close();
                 } catch (e) {
                     // If can't close, redirect to a special URL that the app can detect
-                    window.location.href = 'ruwaqjawi://payment?status=${status}&success=${status === 'success'}';
+                    window.location.href = 'ruwaqjawi://payment?status=${status}&statusId=${statusId}&billCode=${billCode}&success=${isSuccess}';
                 }
             }
 
@@ -152,7 +210,7 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Error in payment redirect:', error);
-    
+
     const errorHtml = `
     <!DOCTYPE html>
     <html>
@@ -160,9 +218,9 @@ Deno.serve(async (req) => {
         <meta charset="UTF-8">
         <title>Error</title>
         <style>
-            body { 
-                font-family: Arial, sans-serif; 
-                text-align: center; 
+            body {
+                font-family: Arial, sans-serif;
+                text-align: center;
                 padding: 50px;
                 background: #f5f5f5;
             }

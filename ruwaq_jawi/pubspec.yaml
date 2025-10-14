@@ -54,6 +54,7 @@ dependencies:
   http: ^1.1.0
   crypto: ^3.0.3
   share_plus: ^7.2.2
+  flutter_dotenv: ^5.1.0
   
   # File Management
   image_picker: ^1.0.4

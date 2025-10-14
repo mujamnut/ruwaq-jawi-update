@@ -99,8 +99,8 @@ class FeaturedCardWidget extends StatelessWidget {
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  Colors.black.withValues(alpha: 0.3),
-                                  Colors.black.withValues(alpha: 0.7),
+                                  Colors.black.withValues(alpha: 0.20),
+                                  Colors.black.withValues(alpha: 0.55),
                                 ],
                               ),
                             ),
@@ -171,7 +171,7 @@ class FeaturedCardWidget extends StatelessWidget {
                                     Shadow(
                                       offset: const Offset(0, 1),
                                       blurRadius: 3,
-                                      color: Colors.black.withValues(alpha: 0.8),
+                                      color: Colors.black.withValues(alpha: 0.5),
                                     ),
                                   ],
                                 ),

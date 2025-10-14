@@ -126,7 +126,7 @@ class _KitabListScreenState extends State<KitabListScreen>
           backgroundColor: AppTheme.backgroundColor,
           appBar: _buildAppBar(),
           body: kitabProvider.isLoading
-              ? _buildLoadingState()
+              ? _buildLoadingState(kitabProvider)
               : kitabProvider.errorMessage != null
               ? _buildErrorState(kitabProvider.errorMessage!)
               : _buildScrollableContent(kitabProvider),
@@ -184,45 +184,46 @@ class _KitabListScreenState extends State<KitabListScreen>
           controller: _scrollController,
           physics: const BouncingScrollPhysics(),
           slivers: [
-          // Search and Filters
-          SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
+            // Search and Filters
+            SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
 
-          // Enhanced List Content with staggered animations
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final kitab = filteredKitab[index];
-                return SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.3),
-                    end: Offset.zero,
-                  ).animate(
-                    CurvedAnimation(
-                      parent: _slideAnimationController,
-                      curve: Interval(
-                        (index * 0.1).clamp(0.0, 1.0),
-                        1.0,
-                        curve: Curves.easeOutBack,
+            // Enhanced List Content with staggered animations
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final kitab = filteredKitab[index];
+                  return SlideTransition(
+                    position:
+                        Tween<Offset>(
+                          begin: const Offset(0, 0.3),
+                          end: Offset.zero,
+                        ).animate(
+                          CurvedAnimation(
+                            parent: _slideAnimationController,
+                            curve: Interval(
+                              (index * 0.1).clamp(0.0, 1.0),
+                              1.0,
+                              curve: Curves.easeOutBack,
+                            ),
+                          ),
+                        ),
+                    child: FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: _fadeAnimationController,
+                        curve: Interval(
+                          (index * 0.1).clamp(0.0, 1.0),
+                          1.0,
+                          curve: Curves.easeOut,
+                        ),
                       ),
+                      child: _buildKitabCard(kitab),
                     ),
-                  ),
-                  child: FadeTransition(
-                    opacity: CurvedAnimation(
-                      parent: _fadeAnimationController,
-                      curve: Interval(
-                        (index * 0.1).clamp(0.0, 1.0),
-                        1.0,
-                        curve: Curves.easeOut,
-                      ),
-                    ),
-                    child: _buildKitabCard(kitab),
-                  ),
-                );
-              }, childCount: filteredKitab.length),
+                  );
+                }, childCount: filteredKitab.length),
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -349,7 +350,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                 final isSelected = selectedCategory == category;
 
                 return Container(
-                  margin: const EdgeInsets.only(right: 12),
+                  margin: const EdgeInsets.only(right: 5),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
@@ -390,31 +391,6 @@ class _KitabListScreenState extends State<KitabListScreen>
                                       : AppTheme.borderColor,
                                   width: 1,
                                 ),
-                                boxShadow: isSelected
-                                    ? [
-                                        BoxShadow(
-                                          color: AppTheme.primaryColor
-                                              .withValues(alpha: 0.25),
-                                          blurRadius: 12,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.06,
-                                          ),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : [
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.04,
-                                          ),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ],
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -911,7 +887,6 @@ class _KitabListScreenState extends State<KitabListScreen>
     );
   }
 
-
   // Fixed app bar with better visibility
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
@@ -936,71 +911,22 @@ class _KitabListScreenState extends State<KitabListScreen>
     );
   }
 
-  // Enhanced loading state
-  Widget _buildLoadingState() {
-    return Container(
-      color: AppTheme.backgroundColor,
-      child: Column(
-        children: [
-          const SizedBox(height: 20),
-          // Shimmer search bar
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 16),
-                PhosphorIcon(
-                  PhosphorIcons.magnifyingGlass(),
-                  color: AppTheme.textSecondaryColor.withValues(alpha: 0.5),
-                  size: 20,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Container(
-                    height: 16,
-                    decoration: BoxDecoration(
-                      color: AppTheme.borderColor.withValues(alpha: 0.3),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-              ],
-            ),
-          ),
-          // Shimmer category filters
-          Container(
-            height: 50,
-            padding: const EdgeInsets.only(left: 20),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: 5,
-              itemBuilder: (context, index) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  width: 80 + (index * 20),
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: AppTheme.borderColor.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 20),
-          // Shimmer cards
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: 6,
-              itemBuilder: (context, index) {
+  // Loading state: keep search + filters visible, skeleton only for list
+  Widget _buildLoadingState(KitabProvider kitabProvider) {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        // Keep real search and filters visible during refresh
+        SliverToBoxAdapter(child: _buildSearchAndFilters(kitabProvider)),
+
+        // Skeleton cards for list content only
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16),
                   padding: const EdgeInsets.all(16),
@@ -1010,6 +936,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                     border: Border.all(color: AppTheme.borderColor),
                   ),
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Container(
                         width: 140,
@@ -1028,9 +955,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                               height: 16,
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                color: AppTheme.borderColor.withValues(
-                                  alpha: 0.3,
-                                ),
+                                color: AppTheme.borderColor.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
@@ -1039,9 +964,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                               height: 14,
                               width: 120,
                               decoration: BoxDecoration(
-                                color: AppTheme.borderColor.withValues(
-                                  alpha: 0.2,
-                                ),
+                                color: AppTheme.borderColor.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
@@ -1052,9 +975,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   height: 12,
                                   width: 60,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.borderColor.withValues(
-                                      alpha: 0.2,
-                                    ),
+                                    color: AppTheme.borderColor.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
@@ -1063,9 +984,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   height: 12,
                                   width: 80,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.borderColor.withValues(
-                                      alpha: 0.2,
-                                    ),
+                                    color: AppTheme.borderColor.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                 ),
@@ -1078,13 +997,13 @@ class _KitabListScreenState extends State<KitabListScreen>
                   ),
                 );
               },
+              childCount: 6,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-
 
   /// Show bottom sheet with kitab options
   void _showKitabOptionsBottomSheet(VideoKitab kitab) {
@@ -1100,10 +1019,7 @@ class _KitabListScreenState extends State<KitabListScreen>
               topLeft: Radius.circular(24),
               topRight: Radius.circular(24),
             ),
-            border: Border.all(
-              color: AppTheme.borderColor,
-              width: 1,
-            ),
+            border: Border.all(color: AppTheme.borderColor, width: 1),
           ),
           child: SafeArea(
             child: Column(
@@ -1141,7 +1057,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   fit: BoxFit.cover,
                                   errorBuilder: (context, error, stackTrace) {
                                     return Container(
-                                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                      color: AppTheme.primaryColor.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       child: Center(
                                         child: PhosphorIcon(
                                           PhosphorIcons.videoCamera(),
@@ -1153,7 +1071,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   },
                                 )
                               : Container(
-                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                  color: AppTheme.primaryColor.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   child: Center(
                                     child: PhosphorIcon(
                                       PhosphorIcons.videoCamera(),
@@ -1222,11 +1142,15 @@ class _KitabListScreenState extends State<KitabListScreen>
                             icon: isSaved
                                 ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
                                 : PhosphorIcons.heart(),
-                            title: isSaved ? 'Buang dari Simpanan' : 'Simpan ke Koleksi',
+                            title: isSaved
+                                ? 'Buang dari Simpanan'
+                                : 'Simpan ke Koleksi',
                             subtitle: isSaved
                                 ? 'Alih keluar dari senarai simpanan'
                                 : 'Simpan untuk tontonnan kemudian',
-                            iconColor: isSaved ? AppTheme.primaryColor : AppTheme.textSecondaryColor,
+                            iconColor: isSaved
+                                ? AppTheme.primaryColor
+                                : AppTheme.textSecondaryColor,
                             onTap: () {
                               Navigator.of(context).pop();
                               _handleMenuAction('save', kitab);
@@ -1309,18 +1233,10 @@ class _KitabListScreenState extends State<KitabListScreen>
                 ),
                 child: Center(
                   child: icon is IconData
-                      ? HugeIcon(
-                          icon: icon,
-                          color: iconColor,
-                          size: 20,
-                        )
+                      ? HugeIcon(icon: icon, color: iconColor, size: 20)
                       : icon is PhosphorIconData
-                          ? PhosphorIcon(
-                              icon,
-                              color: iconColor,
-                              size: 20,
-                            )
-                          : icon,
+                      ? PhosphorIcon(icon, color: iconColor, size: 20)
+                      : icon,
                 ),
               ),
               const SizedBox(width: 16),
@@ -1503,9 +1419,7 @@ class _KitabListScreenState extends State<KitabListScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         backgroundColor: AppTheme.surfaceColor,
         title: Row(
           children: [
@@ -1530,10 +1444,7 @@ class _KitabListScreenState extends State<KitabListScreen>
           children: [
             Text(
               'Kongsi "${kitab.title}" dengan rakan-rakan anda!',
-              style: TextStyle(
-                color: AppTheme.textSecondaryColor,
-                height: 1.4,
-              ),
+              style: TextStyle(color: AppTheme.textSecondaryColor, height: 1.4),
             ),
             const SizedBox(height: 16),
             Container(
@@ -1541,10 +1452,7 @@ class _KitabListScreenState extends State<KitabListScreen>
               decoration: BoxDecoration(
                 color: AppTheme.backgroundColor,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: AppTheme.borderColor,
-                  width: 1,
-                ),
+                border: Border.all(color: AppTheme.borderColor, width: 1),
               ),
               child: Row(
                 children: [

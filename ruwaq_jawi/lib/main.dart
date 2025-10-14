@@ -51,12 +51,39 @@ void main() async {
     // Initialize local saved items service
     await LocalSavedItemsService.initialize();
 
+    // Initialize payment configuration
+    if (kDebugMode) {
+      print('🔧 Starting PaymentConfig initialization...');
+    }
+    await PaymentConfig.initialize();
+    if (kDebugMode) {
+      print('🔧 PaymentConfig initialized successfully');
+    }
+
+    // Verify PaymentConfig is working
+    try {
+      if (kDebugMode) {
+        print('🔍 Verifying PaymentConfig properties:');
+        print('  - UserSecretKey: ${PaymentConfig.userSecretKey.isNotEmpty ? "SET" : "EMPTY"}');
+        print('  - CategoryCode: ${PaymentConfig.categoryCode.isNotEmpty ? "SET" : "EMPTY"}');
+        print('  - IsProduction: ${PaymentConfig.isProduction}');
+        print('  - ProjectUrl: ${PaymentConfig.supabaseProjectUrl}');
+        print('  - IsConfigured: ${PaymentConfig.isConfigured}');
+        print('✅ PaymentConfig verification successful');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ PaymentConfig verification failed: $e');
+      }
+      rethrow;
+    }
+
     // Set environment (default to development)
     EnvironmentConfig.setEnvironment(Environment.development);
     AppConfig.setEnvironment(Environment.development);
 
     // Connection test removed - handled by Supabase initialization
-    
+
     // Initialize Supabase with timeout
     await SupabaseService.initialize().timeout(
       const Duration(seconds: 10),
@@ -117,6 +144,23 @@ class MaktabahApp extends StatelessWidget {
                 context,
                 listen: false,
               );
+
+              // Debug PaymentConfig properties
+              try {
+                if (kDebugMode) {
+                  print('🔍 Creating PaymentProvider with config:');
+                  print('  - UserSecretKey: ${PaymentConfig.userSecretKey.isNotEmpty ? "SET" : "EMPTY"}');
+                  print('  - CategoryCode: ${PaymentConfig.categoryCode.isNotEmpty ? "SET" : "EMPTY"}');
+                  print('  - IsProduction: ${PaymentConfig.isProduction}');
+                  print('  - ProjectUrl: ${PaymentConfig.supabaseProjectUrl}');
+                }
+              } catch (e) {
+                if (kDebugMode) {
+                  print('❌ Error accessing PaymentConfig: $e');
+                }
+                rethrow;
+              }
+
               final paymentProvider = PaymentProvider(
                 ToyyibpayService(
                   secretKey: PaymentConfig.userSecretKey,
@@ -127,6 +171,9 @@ class MaktabahApp extends StatelessWidget {
               );
               // Connect auth provider to payment provider
               paymentProvider.setAuthProvider(authProvider);
+              if (kDebugMode) {
+                print('✅ PaymentProvider created successfully');
+              }
               return paymentProvider;
             },
             update: (context, authProvider, paymentProvider) {
@@ -238,11 +285,15 @@ class _BackgroundPaymentWrapperState extends State<BackgroundPaymentWrapper>
   void _startBackgroundServiceIfNeeded() {
     try {
       if (context.mounted && !BackgroundPaymentService.isRunning) {
-        print('🚀 Starting background payment verification service...');
+        if (kDebugMode) {
+          print('🚀 Starting background payment verification service...');
+        }
         BackgroundPaymentService.startBackgroundVerification(context);
       }
     } catch (e) {
-      print('❌ Error starting background payment service: $e');
+      if (kDebugMode) {
+        print('❌ Error starting background payment service: $e');
+      }
     }
   }
 

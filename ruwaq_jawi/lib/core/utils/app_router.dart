@@ -58,6 +58,10 @@ import '../../features/admin/screens/videos/kitab_auto_form_screen.dart';
 // Student Payment
 import '../../features/student/screens/payment_screen.dart';
 import '../../features/student/screens/toyyibpay_payment_screen.dart';
+import '../../features/student/screens/payment_history_screen.dart';
+import '../../features/student/screens/privacy_security_screen.dart';
+import '../../features/student/screens/help_support_screen.dart';
+import '../../features/student/screens/manual_payment_verification_screen.dart';
 import '../models/payment_models.dart';
 import '../../features/payment/screens/payment_callback_page.dart';
 
@@ -417,6 +421,26 @@ class AppRouter {
           builder: (context, state) => const ProfileScreen(),
         ),
         GoRoute(
+          path: '/payment-history',
+          name: 'payment-history',
+          builder: (context, state) => const PaymentHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/privacy-security',
+          name: 'privacy-security',
+          builder: (context, state) => const PrivacySecurityScreen(),
+        ),
+        GoRoute(
+          path: '/help-support',
+          name: 'help-support',
+          builder: (context, state) => const HelpSupportScreen(),
+        ),
+        GoRoute(
+          path: '/verify-payment',
+          name: 'verify-payment',
+          builder: (context, state) => const ManualPaymentVerificationScreen(),
+        ),
+        GoRoute(
           path: '/notifications',
           name: 'notifications',
           pageBuilder: (context, state) => CustomTransitionPage(
@@ -635,12 +659,53 @@ class AppRouter {
           path: '/payment-callback',
           name: 'payment-callback-direct',
           builder: (context, state) {
-            final billId = state.uri.queryParameters['billId'];
+            // ToyyibPay uses 'billcode' (lowercase) and 'order_id' contains plan info
+            final billId = state.uri.queryParameters['billcode'] ?? state.uri.queryParameters['billId'];
             final planId = state.uri.queryParameters['planId'];
             final amountStr = state.uri.queryParameters['amount'];
+            final status = state.uri.queryParameters['status'];
+            final statusId = state.uri.queryParameters['status_id'];
 
-            if (billId == null || planId == null || amountStr == null) {
-              // Invalid parameters - redirect to subscription
+            // Extract redirect status parameters passed from ToyyibPayPaymentScreen
+            final redirectStatus = state.uri.queryParameters['redirectStatus'];
+            final redirectStatusId = state.uri.queryParameters['redirectStatusId'];
+
+            // Extract plan from order_id if planId not available
+            String? extractedPlanId = planId;
+            if (extractedPlanId == null) {
+              final orderId = state.uri.queryParameters['order_id'];
+              if (orderId != null && orderId.contains('_')) {
+                // order_id format: userId_planId or just planId
+                final parts = orderId.split('_');
+                if (parts.length > 1) {
+                  extractedPlanId = parts[1];
+                } else {
+                  extractedPlanId = parts[0];
+                }
+              }
+            }
+
+            // Debug logging for payment callback
+            print('🔍 Payment callback route - URL: ${state.uri}');
+            print('📋 Parsed parameters: billId=$billId, planId=$extractedPlanId, amount=$amountStr, status=$status, statusId=$statusId');
+
+            // Try to get amount from order_id parsing or use default
+            double amount = 0.0;
+            if (amountStr != null) {
+              amount = double.tryParse(amountStr) ?? 0.0;
+            } else {
+              // Default amount if not provided - will be handled by subscription verification
+              final orderId = state.uri.queryParameters['order_id'];
+              if (orderId != null && orderId.contains('monthly_premi')) {
+                amount = 27.90; // Default for monthly premium
+              } else if (orderId != null && orderId.contains('monthly_basic')) {
+                amount = 15.90; // Default for monthly basic
+              }
+            }
+
+            // More flexible validation - only billId is required
+            if (billId == null) {
+              print('❌ No billId found in redirect URL');
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 context.go('/subscription');
               });
@@ -649,12 +714,14 @@ class AppRouter {
               );
             }
 
-            final amount = double.tryParse(amountStr) ?? 0.0;
+            print('✅ Proceeding with payment callback: billId=$billId, planId=$extractedPlanId, amount=$amount');
 
             return PaymentCallbackPage(
               billId: billId,
-              planId: planId,
+              planId: extractedPlanId ?? 'unknown',
               amount: amount,
+              redirectStatus: redirectStatus ?? status,
+              redirectStatusId: redirectStatusId ?? statusId,
             );
           },
         ),
@@ -719,12 +786,49 @@ class AppRouter {
                   path: 'callback',
                   name: 'payment-callback',
                   builder: (context, state) {
-                    final billId = state.uri.queryParameters['billId'];
+                    // ToyyibPay uses 'billcode' (lowercase) and 'order_id' contains plan info
+                    final billId = state.uri.queryParameters['billcode'] ?? state.uri.queryParameters['billId'];
                     final planId = state.uri.queryParameters['planId'];
                     final amountStr = state.uri.queryParameters['amount'];
+                    final status = state.uri.queryParameters['status'];
+                    final statusId = state.uri.queryParameters['status_id'];
 
-                    if (billId == null || planId == null || amountStr == null) {
-                      // Invalid parameters - redirect to subscription
+                    // Extract redirect status parameters passed from ToyyibPayPaymentScreen
+                    final redirectStatus = state.uri.queryParameters['redirectStatus'];
+                    final redirectStatusId = state.uri.queryParameters['redirectStatusId'];
+
+                    // Extract plan from order_id if planId not available
+                    String? extractedPlanId = planId;
+                    if (extractedPlanId == null) {
+                      final orderId = state.uri.queryParameters['order_id'];
+                      if (orderId != null && orderId.contains('_')) {
+                        // order_id format: userId_planId or just planId
+                        final parts = orderId.split('_');
+                        if (parts.length > 1) {
+                          extractedPlanId = parts[1];
+                        } else {
+                          extractedPlanId = parts[0];
+                        }
+                      }
+                    }
+
+                    // Try to get amount from order_id parsing or use default
+                    double amount = 0.0;
+                    if (amountStr != null) {
+                      amount = double.tryParse(amountStr) ?? 0.0;
+                    } else {
+                      // Default amount if not provided - will be handled by subscription verification
+                      final orderId = state.uri.queryParameters['order_id'];
+                      if (orderId != null && orderId.contains('monthly_premi')) {
+                        amount = 27.90; // Default for monthly premium
+                      } else if (orderId != null && orderId.contains('monthly_basic')) {
+                        amount = 15.90; // Default for monthly basic
+                      }
+                    }
+
+                    // More flexible validation - only billId is required
+                    if (billId == null) {
+                      print('❌ No billId found in redirect URL');
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         context.go('/subscription');
                       });
@@ -733,12 +837,14 @@ class AppRouter {
                       );
                     }
 
-                    final amount = double.tryParse(amountStr) ?? 0.0;
+                    print('✅ Proceeding with payment callback (route 2): billId=$billId, planId=$extractedPlanId, amount=$amount');
 
                     return PaymentCallbackPage(
                       billId: billId,
-                      planId: planId,
+                      planId: extractedPlanId ?? 'unknown',
                       amount: amount,
+                      redirectStatus: redirectStatus ?? status,
+                      redirectStatusId: redirectStatusId ?? statusId,
                     );
                   },
                 ),

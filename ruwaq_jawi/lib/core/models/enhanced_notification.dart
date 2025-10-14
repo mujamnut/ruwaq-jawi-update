@@ -37,9 +37,9 @@ class EnhancedNotification {
       title: json['title'] ?? 'Notification',
       message: json['message'] ?? '',
       metadata: Map<String, dynamic>.from(json['metadata'] ?? {}),
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: DateTime.parse(json['created_at']).toUtc(),
       isRead: json['is_read'] ?? false,
-      readAt: json['read_at'] != null ? DateTime.parse(json['read_at']) : null,
+      readAt: json['read_at'] != null ? DateTime.parse(json['read_at']).toUtc() : null,
       source: json['source'] ?? 'new_system',
       targetType: json['target_type'],
       targetCriteria: Map<String, dynamic>.from(json['target_criteria'] ?? {}),
@@ -57,9 +57,9 @@ class EnhancedNotification {
       title: notification['title'] ?? 'Notification',
       message: notification['message'] ?? '',
       metadata: Map<String, dynamic>.from(notification['metadata'] ?? {}),
-      createdAt: DateTime.parse(notification['created_at']),
+      createdAt: DateTime.parse(notification['created_at']).toUtc(),
       isRead: readRecord?['is_read'] ?? false,
-      readAt: readRecord?['read_at'] != null ? DateTime.parse(readRecord!['read_at']) : null,
+      readAt: readRecord?['read_at'] != null ? DateTime.parse(readRecord!['read_at']).toUtc() : null,
       source: 'new_system',
       targetType: notification['target_type'],
       targetCriteria: Map<String, dynamic>.from(notification['target_criteria'] ?? {}),
@@ -140,7 +140,7 @@ class EnhancedNotification {
 
   /// Get formatted time ago string
   String get timeAgo {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final difference = now.difference(createdAt);
 
     if (difference.inMinutes < 1) {
@@ -165,7 +165,7 @@ class EnhancedNotification {
   /// Get expiry date from metadata
   DateTime? get expiresAt {
     if (metadata['expires_at'] != null) {
-      return DateTime.parse(metadata['expires_at']);
+      return DateTime.parse(metadata['expires_at']).toUtc();
     }
     return null;
   }

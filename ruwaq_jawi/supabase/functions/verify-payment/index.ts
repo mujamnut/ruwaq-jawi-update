@@ -223,21 +223,67 @@ serve(async (req) => {
         console.log('⚠️ Could not get user name:', e)
       }
 
-      // 1. Activate subscription in user_subscriptions table
-      const { error: subscriptionError } = await supabase
+      // 1. Check if payment already processed to prevent duplicates
+      const { data: existingPayment, error: paymentCheckError } = await supabase
         .from('user_subscriptions')
-        .upsert({
-          user_id: userId,
-          user_name: userName,
-          subscription_plan_id: planId,
-          status: 'active',
-          start_date: now,
-          end_date: endDate,
-          payment_id: transaction.billpaymentInvoiceNo || billId,
-          amount: amount,
-          currency: 'MYR',
-          updated_at: now
+        .select('id, status')
+        .eq('payment_id', transaction.billpaymentInvoiceNo || billId)
+        .maybeSingle()
+
+      if (existingPayment) {
+        console.log('⚠️ Payment already processed, skipping duplicate activation')
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: 'Payment already processed and subscription activated',
+            alreadyProcessed: true
+          }),
+          {
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        )
+      }
+
+      // 2. Handle smart subscription logic
+      console.log('🧠 Using smart subscription logic...')
+
+      // Get recommendation for this purchase
+      const { data: recommendation, error: recommendationError } = await supabase
+        .rpc('get_subscription_recommendation', {
+          user_id_param: userId,
+          target_plan_id: planId
         })
+
+      if (recommendationError) {
+        console.error('❌ Error getting recommendation:', recommendationError)
+        // Fallback to old logic if recommendation fails
+        console.log('⚠️ Falling back to simple activation logic')
+      } else {
+        console.log('📋 Subscription recommendation:', recommendation[0])
+        const rec = recommendation[0]
+
+        if (rec.action_type !== 'new') {
+          console.log(`🔄 Handling ${rec.action_type}: ${rec.recommendation}`)
+        }
+      }
+
+      // 3. Use smart subscription handler
+      const { data: subscriptionResult, error: smartSubscriptionError } = await supabase
+        .rpc('handle_smart_subscription_purchase', {
+          user_id: userId,
+          new_plan_id: planId,
+          payment_id: transaction.billpaymentInvoiceNo || billId,
+          payment_amount: amount,
+          payment_data: {
+            transaction: transaction,
+            plan_name: planData.name,
+            user_name: userName,
+            activated_at: now
+          }
+        })
+
+      let subscriptionError = smartSubscriptionError
 
       if (subscriptionError) {
         console.error('❌ Error updating subscription:', subscriptionError)
@@ -308,19 +354,54 @@ serve(async (req) => {
 
       console.log('✅ Subscription activated successfully!')
 
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Payment verified and subscription activated!',
-          transactionData: {
-            transactionId: transaction.billpaymentInvoiceNo,
-            amount: amount,
-            status: paymentStatus,
-            activatedAt: now
+      // Create response with smart logic info
+      const responseData = {
+        success: true,
+        message: 'Payment verified and subscription activated!',
+        transactionData: {
+          transactionId: transaction.billpaymentInvoiceNo,
+          amount: amount,
+          status: paymentStatus,
+          activatedAt: now
+        }
+      }
+
+      // Add smart subscription info if available
+      if (subscriptionResult && subscriptionResult[0]) {
+        const subResult = subscriptionResult[0]
+        responseData.subscriptionInfo = {
+          actionTaken: subResult.action_taken,
+          daysAdded: subResult.days_added,
+          previousSubscriptionId: subResult.previous_subscription_id,
+          newSubscriptionId: subResult.new_subscription_id
+        }
+
+        if (recommendation && recommendation[0]) {
+          const rec = recommendation[0]
+          responseData.recommendation = {
+            actionType: rec.action_type,
+            proratedDays: rec.prorated_days,
+            proratedValue: rec.prorated_value,
+            additionalCost: rec.additional_cost,
+            refundAmount: rec.refund_amount,
+            recommendation: rec.recommendation
           }
-        }),
-        { 
-          status: 200, 
+        }
+
+        // Customize message based on action
+        if (subResult.action_taken === 'extension') {
+          responseData.message = `Subscription extended! ${subResult.days_added} days added (${rec.prorated_days} days prorated)`
+        } else if (subResult.action_taken === 'upgrade') {
+          responseData.message = `Subscription upgraded! ${subResult.days_added} days total (${rec.prorated_days} days credit applied)`
+        } else if (subResult.action_taken === 'downgrade') {
+          responseData.message = `Subscription changed! ${rec.refund_amount > 0 ? `RM${rec.refund_amount} credit applied` : 'Switched to economical plan'}`
+        }
+      }
+
+      return new Response(
+        JSON.stringify(responseData),
+        {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       )

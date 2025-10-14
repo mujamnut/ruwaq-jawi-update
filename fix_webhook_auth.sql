@@ -1,0 +1,3 @@
+-- Fix webhook authentication by disabling JWT verification
+-- This needs to be done via Supabase dashboard or CLI
+-- UPDATE functions SET verify_jwt = false WHERE name = 'toyyibpay-webhook';

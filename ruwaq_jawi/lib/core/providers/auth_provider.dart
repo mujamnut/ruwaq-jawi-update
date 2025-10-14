@@ -212,6 +212,10 @@ class AuthProvider extends ChangeNotifier {
         final AuthChangeEvent event = data.event;
         final Session? session = data.session;
 
+        if (kDebugMode) {
+          print('DEBUG: Auth state changed: $event');
+        }
+
         if (event == AuthChangeEvent.signedIn && session != null) {
           // Check if email is confirmed before allowing sign in
           if (session.user.emailConfirmedAt == null) {
@@ -229,13 +233,17 @@ class AuthProvider extends ChangeNotifier {
           _loadUserProfile().then((_) {
             // Check subscription after profile is loaded
             if (_userProfile != null) {
-              checkActiveSubscription();
+              refreshSubscriptionStatus(); // 🔥 Use refreshSubscriptionStatus() to update expired subscriptions
             }
           });
         } else if (event == AuthChangeEvent.signedOut) {
           _user = null;
           _userProfile = null;
           _scheduleStatus(AuthStatus.unauthenticated);
+        } else if (event == AuthChangeEvent.tokenRefreshed) {
+          if (kDebugMode) {
+            print('DEBUG: Token refreshed successfully');
+          }
         }
       });
 
@@ -260,7 +268,7 @@ class AuthProvider extends ChangeNotifier {
 
         // Check subscription after profile is loaded
         if (_userProfile != null) {
-          await checkActiveSubscription();
+          await refreshSubscriptionStatus(); // 🔥 Use refreshSubscriptionStatus() to update expired subscriptions
         }
       } else {
         _scheduleStatus(AuthStatus.unauthenticated);
@@ -598,6 +606,23 @@ class AuthProvider extends ChangeNotifier {
         print('DEBUG: Starting sign in for $email');
       }
 
+      // Clear any existing expired session first
+      try {
+        final currentUser = SupabaseService.client.auth.currentUser;
+        if (currentUser != null) {
+          if (kDebugMode) {
+            print('DEBUG: Clearing existing session before sign in');
+          }
+          await SupabaseService.signOut();
+          _user = null;
+          _userProfile = null;
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('DEBUG: Error clearing existing session: $e');
+        }
+      }
+
       final response = await SupabaseService.signIn(
         email: email,
         password: password,
@@ -628,7 +653,7 @@ class AuthProvider extends ChangeNotifier {
 
         // Check subscription after profile is loaded
         if (_userProfile != null) {
-          await checkActiveSubscription();
+          await refreshSubscriptionStatus(); // 🔥 Use refreshSubscriptionStatus() to update expired subscriptions
         }
 
         // Migrate local favorites to Supabase (background, non-blocking)
@@ -642,9 +667,24 @@ class AuthProvider extends ChangeNotifier {
         if (kDebugMode) {
           print('DEBUG: Sign in failed - no user returned');
         }
-        _setError('Invalid email or password');
+        _setError('Email atau kata laluan tidak sah. Sila semak dan cuba lagi.');
         return false;
       }
+    } on AuthException catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: AuthException in signIn: ${e.message}');
+      }
+
+      // Handle specific auth errors
+      if (e.message.toLowerCase().contains('invalid credentials') ||
+          e.message.toLowerCase().contains('invalid login credentials')) {
+        _setError('Email atau kata laluan tidak sah. Sila semak dan cuba lagi.');
+      } else if (e.message.toLowerCase().contains('email not confirmed')) {
+        _setError('Sila sahkan email anda terlebih dahulu sebelum log masuk.');
+      } else {
+        _setError('Log masuk gagal: ${e.message}');
+      }
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('DEBUG: Sign in error: $e');

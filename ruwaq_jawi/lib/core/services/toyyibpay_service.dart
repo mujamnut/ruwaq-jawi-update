@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import '../config/payment_config.dart';
+import '../utils/app_logger.dart';
 
 class ToyyibpayService {
   final String secretKey;
@@ -14,16 +15,16 @@ class ToyyibpayService {
     required this.categoryCode,
     required this.isProduction,
   }) {
-    // Print configuration on initialization
-    PaymentConfig.printConfig();
-
-    // Validate configuration
+    // Validate configuration (PaymentConfig should be initialized in main.dart)
     if (secretKey.isEmpty) {
-      throw Exception('ToyyibPay Secret Key is not configured');
+      throw Exception('ToyyibPay Secret Key is not configured. Please check your .env file.');
     }
     if (categoryCode.isEmpty) {
-      throw Exception('ToyyibPay Category Code is not configured');
+      throw Exception('ToyyibPay Category Code is not configured. Please check your .env file.');
     }
+
+    // Log service initialization
+    AppLogger.info('ToyyibpayService initialized successfully', tag: 'ToyyibpayService');
   }
 
   Future<Map<String, dynamic>> createBill({
@@ -58,20 +59,20 @@ class ToyyibpayService {
         'billContentEmail': 'Thank you for subscribing to Ruwaq Jawi!',
       };
 
-      print('Request URL: ${PaymentConfig.createBillUrl}');
-      print('Request Body: $requestBody');
+      AppLogger.info('Request URL: ${PaymentConfig.createBillUrl}', tag: 'ToyyibpayService');
+      AppLogger.info('Creating bill for user: $userId, plan: $planId, amount: $amount', tag: 'ToyyibpayService');
 
       final response = await http.post(
         Uri.parse(PaymentConfig.createBillUrl),
         body: requestBody,
       );
 
-      print('API Response Status Code: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
+      AppLogger.info('API Response Status Code: ${response.statusCode}', tag: 'ToyyibpayService');
+      AppLogger.debug('API Response Body: ${response.body}', tag: 'ToyyibpayService');
 
       if (response.statusCode == 200) {
         final dynamic decodedResponse = json.decode(response.body);
-        print('Decoded Response: $decodedResponse');
+        AppLogger.debug('Decoded Response: $decodedResponse', tag: 'ToyyibpayService');
 
         // Handle both List and Map responses
         Map<String, dynamic> result;
@@ -83,7 +84,7 @@ class ToyyibpayService {
           throw Exception('Unexpected response format: $decodedResponse');
         }
 
-        print('Processed Result: $result');
+        AppLogger.debug('Processed Result: $result', tag: 'ToyyibpayService');
 
         // If we have a BillCode, it's a successful response
         if (result['BillCode'] != null) {
@@ -91,15 +92,15 @@ class ToyyibpayService {
             'billCode': result['BillCode'],
             'billUrl': '${PaymentConfig.baseUrl}/${result['BillCode']}',
           };
-          print('Successful Response: $response');
+          AppLogger.info('Bill created successfully: ${result['BillCode']}', tag: 'ToyyibpayService');
           return response;
         }
 
         // Only check error info if there's no BillCode
         if (result['status'] != null || result['msg'] != null) {
-          print('Error Status: ${result['status']}');
-          print('Error Message: ${result['msg']}');
-          print('Full Error Result: $result');
+          AppLogger.warning('Error Status: ${result['status']}', tag: 'ToyyibpayService');
+          AppLogger.warning('Error Message: ${result['msg']}', tag: 'ToyyibpayService');
+          AppLogger.error('Full Error Result: $result', tag: 'ToyyibpayService');
 
           throw Exception(
             'Failed to create bill: ${result['msg'] ?? 'Unknown error'} (Status: ${result['status']})',

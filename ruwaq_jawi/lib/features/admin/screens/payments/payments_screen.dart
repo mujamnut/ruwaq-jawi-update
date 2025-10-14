@@ -67,8 +67,8 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
         _error = null;
       });
 
-      // Get transactions with user information (correct table name)
-      final paymentsData = await SupabaseService.from('transactions')
+      // Get payments with user information (FIXED: use correct table name)
+      final paymentsData = await SupabaseService.from('payments')
           .select('''
             *,
             profiles!inner(full_name)
@@ -76,7 +76,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
           .order('created_at', ascending: false)
           .limit(100); // Add pagination limit
 
-      // Calculate statistics
+      // Calculate statistics (FIXED: use correct column names and values)
       final totalPayments = paymentsData.length;
       final successfulPayments = paymentsData
           .where((p) => p['status'] == 'completed')
@@ -92,7 +92,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
           .where((p) => p['status'] == 'completed')
           .fold(
             0.0,
-            (sum, p) => sum + (double.tryParse(p['amount'].toString()) ?? 0.0),
+            (sum, p) => sum + ((p['amount_cents'] ?? 0) / 100.0), // FIXED: convert cents to RM
           );
 
       setState(() {
@@ -377,10 +377,10 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Jumlah: RM ${(double.tryParse(payment['amount'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                        'Jumlah: RM ${((payment['amount_cents'] ?? 0) / 100.0).toStringAsFixed(2)}',
                       ),
                       Text('Status: ${_getStatusText(payment['status'])}'),
-                      Text('Kaedah: ${payment['payment_method'] ?? 'N/A'}'),
+                      Text('Kaedah: ${payment['provider'] ?? 'N/A'}'),
                       Text(
                         'Tarikh: ${_formatDate(payment['created_at'])}',
                         style: TextStyle(color: Colors.grey[600], fontSize: 12),
@@ -392,7 +392,7 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        payment['payment_method']?.toString().toUpperCase() ??
+                        payment['provider']?.toString().toUpperCase() ??
                             'MANUAL',
                         style: TextStyle(
                           color: Colors.grey[600],
@@ -400,11 +400,11 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      if (payment['transaction_id'] != null)
+                      if (payment['provider_payment_id'] != null)
                         Text(
-                          payment['transaction_id'].toString().length > 10
-                              ? '${payment['transaction_id'].toString().substring(0, 10)}...'
-                              : payment['transaction_id'],
+                          payment['provider_payment_id'].toString().length > 10
+                              ? '${payment['provider_payment_id'].toString().substring(0, 10)}...'
+                              : payment['provider_payment_id'],
                           style: TextStyle(
                             color: Colors.grey[500],
                             fontSize: 10,
@@ -425,10 +425,18 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
     switch (status?.toLowerCase()) {
       case 'completed':
         return Colors.green;
+      case 'succeeded': // ADDED: handle succeeded status from payments table
+        return Colors.green;
       case 'pending':
         return Colors.orange;
+      case 'processing': // ADDED: handle processing status from payments table
+        return Colors.blue;
       case 'failed':
         return Colors.red;
+      case 'canceled': // ADDED: handle canceled status from payments table
+        return Colors.grey;
+      case 'requires_action': // ADDED: handle requires_action status from payments table
+        return Colors.purple;
       default:
         return Colors.grey;
     }
@@ -438,10 +446,18 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
     switch (status?.toLowerCase()) {
       case 'completed':
         return HugeIcons.strokeRoundedCheckmarkCircle02;
+      case 'succeeded': // ADDED: handle succeeded status from payments table
+        return HugeIcons.strokeRoundedCheckmarkCircle02;
       case 'pending':
         return HugeIcons.strokeRoundedClock01;
+      case 'processing': // ADDED: handle processing status from payments table
+        return HugeIcons.strokeRoundedLoading03;
       case 'failed':
         return HugeIcons.strokeRoundedCancel01;
+      case 'canceled': // ADDED: handle canceled status from payments table
+        return HugeIcons.strokeRoundedCancel01;
+      case 'requires_action': // ADDED: handle requires_action status from payments table
+        return HugeIcons.strokeRoundedAlert02;
       default:
         return HugeIcons.strokeRoundedHelpCircle;
     }
@@ -451,10 +467,18 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
     switch (status?.toLowerCase()) {
       case 'completed':
         return 'Selesai';
+      case 'succeeded': // ADDED: handle succeeded status from payments table
+        return 'Selesai';
       case 'pending':
         return 'Menunggu';
+      case 'processing': // ADDED: handle processing status from payments table
+        return 'Memproses';
       case 'failed':
         return 'Gagal';
+      case 'canceled': // ADDED: handle canceled status from payments table
+        return 'Dibatalkan';
+      case 'requires_action': // ADDED: handle requires_action status from payments table
+        return 'Perlu Tindakan';
       default:
         return status?.toUpperCase() ?? 'TIDAK DIKENALI';
     }
@@ -487,18 +511,22 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
               ),
               _buildDetailRow(
                 'Jumlah',
-                'RM ${(double.tryParse(payment['amount'].toString()) ?? 0.0).toStringAsFixed(2)}',
+                'RM ${((payment['amount_cents'] ?? 0) / 100.0).toStringAsFixed(2)}',
               ),
               _buildDetailRow('Mata Wang', payment['currency'] ?? 'MYR'),
               _buildDetailRow('Status', _getStatusText(payment['status'])),
               _buildDetailRow(
                 'Kaedah Bayar',
-                payment['payment_method']?.toString().toUpperCase() ?? 'MANUAL',
+                payment['provider']?.toString().toUpperCase() ?? 'MANUAL',
               ),
-              if (payment['transaction_id'] != null)
-                _buildDetailRow('ID Transaksi', payment['transaction_id']),
-              if (payment['subscription_id'] != null)
-                _buildDetailRow('ID Langganan', payment['subscription_id']),
+              if (payment['provider_payment_id'] != null)
+                _buildDetailRow('ID Pembayaran', payment['provider_payment_id']),
+              if (payment['plan_id'] != null)
+                _buildDetailRow('ID Plan', payment['plan_id']),
+              if (payment['bill_id'] != null)
+                _buildDetailRow('ID Bil', payment['bill_id']),
+              if (payment['paid_at'] != null)
+                _buildDetailRow('Dibayar Pada', _formatDate(payment['paid_at'])),
               _buildDetailRow(
                 'Tarikh Dicipta',
                 _formatDate(payment['created_at']),

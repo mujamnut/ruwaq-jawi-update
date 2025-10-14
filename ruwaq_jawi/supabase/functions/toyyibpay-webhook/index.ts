@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createHash } from "https://deno.land/std@0.168.0/crypto/mod.ts"
+import { encodeHex } from "https://deno.land/std@0.168.0/encoding/hex.ts"
 
 interface ToyyibPayCallback {
   billcode?: string;
@@ -12,10 +14,60 @@ interface ToyyibPayCallback {
   [key: string]: any;
 }
 
+// 🔒 SECURITY: Rate limiting storage (in production, use Redis or database)
+const rateLimitStore = new Map<string, { count: number; lastReset: number }>()
+const RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10 // Max 10 requests per minute per IP
+
+// 🔒 SECURITY: ToyyibPay webhook secret (use environment variable in production)
+const WEBHOOK_SECRET = Deno.env.get('TOYYIBPAY_WEBHOOK_SECRET') || 'your_webhook_secret_here'
+
+// 🔒 SECURITY: Verify ToyyibPay webhook signature
+function verifyWebhookSignature(body: string, signature: string, secret: string): boolean {
+  try {
+    const expectedSignature = encodeHex(createHash('sha-256', new TextEncoder().encode(body + secret)))
+    const isValid = expectedSignature === signature.toLowerCase()
+
+    if (!isValid) {
+      console.log('🚨 SECURITY: Invalid webhook signature')
+      console.log('🔍 Expected:', expectedSignature)
+      console.log('🔍 Received:', signature.toLowerCase())
+    }
+
+    return isValid
+  } catch (error) {
+    console.error('❌ Error verifying webhook signature:', error)
+    return false
+  }
+}
+
+// 🔒 SECURITY: Rate limiting check
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now()
+  const windowStart = now - RATE_LIMIT_WINDOW
+
+  let clientData = rateLimitStore.get(ip)
+
+  if (!clientData || clientData.lastReset < windowStart) {
+    clientData = { count: 0, lastReset: now }
+    rateLimitStore.set(ip, clientData)
+  }
+
+  if (clientData.count >= RATE_LIMIT_MAX_REQUESTS) {
+    console.log('🚨 SECURITY: Rate limit exceeded for IP:', ip)
+    return false
+  }
+
+  clientData.count++
+  return true
+}
+
+// 🔒 SECURITY: Restricted CORS - Only allow specific origins
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+  'Access-Control-Allow-Origin': 'https://ckgxglvozrsognqqkpkk.supabase.co', // Your Supabase project URL
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-toyyibpay-signature',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400', // 24 hours
 }
 
 serve(async (req) => {
@@ -25,8 +77,28 @@ serve(async (req) => {
   }
 
   try {
-    console.log(`🔄 Processing ToyyibPay callback - Method: ${req.method}`)
+    // 🔒 SECURITY: Rate limiting check
+    const clientIP = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+    if (!checkRateLimit(clientIP)) {
+      return new Response('Rate limit exceeded. Please try again later.', {
+        status: 429,
+        headers: corsHeaders
+      })
+    }
+
+    console.log(`🔄 Processing ToyyibPay callback - Method: ${req.method}, IP: ${clientIP}`)
     console.log(`🔄 Content-Type: ${req.headers.get('content-type')}`)
+
+    // 🔒 SECURITY: Get webhook signature
+    const signature = req.headers.get('x-toyyibpay-signature') || req.headers.get('toyyibpay-signature') || ''
+
+    if (!signature) {
+      console.log('🚨 SECURITY: Missing webhook signature')
+      return new Response('Unauthorized - Missing signature', {
+        status: 401,
+        headers: corsHeaders
+      })
+    }
 
     let callbackData: ToyyibPayCallback = {}
 
@@ -34,58 +106,79 @@ serve(async (req) => {
     const contentType = req.headers.get('content-type') || ''
     
     if (req.method === 'POST') {
+      let body = ''
+
       if (contentType.includes('application/json')) {
         try {
+          body = await req.text()
           callbackData = await req.json()
           console.log('📥 Parsed JSON payload:', callbackData)
         } catch (jsonError) {
           console.log('⚠️ JSON parsing failed, trying form data...')
-          
+
           // Try to parse as form data
           try {
-            const body = await req.text()
+            body = await req.text()
             console.log('📥 Raw body:', body)
-            
+
             const params = new URLSearchParams(body)
             callbackData = Object.fromEntries(params.entries())
             console.log('📥 Parsed form data:', callbackData)
           } catch (formError) {
             console.error('❌ Failed to parse form data:', formError)
-            return new Response('Bad Request - Invalid payload format', { 
-              status: 400, 
-              headers: corsHeaders 
+            return new Response('Bad Request - Invalid payload format', {
+              status: 400,
+              headers: corsHeaders
             })
           }
         }
       } else if (contentType.includes('application/x-www-form-urlencoded')) {
-        const body = await req.text()
+        body = await req.text()
         console.log('📥 Raw form body:', body)
-        
+
         const params = new URLSearchParams(body)
         callbackData = Object.fromEntries(params.entries())
         console.log('📥 Parsed form data:', callbackData)
       } else {
         // Try to parse as text and then as form data
-        const body = await req.text()
+        body = await req.text()
         console.log('📥 Unknown content type, raw body:', body)
-        
+
         try {
           const params = new URLSearchParams(body)
           callbackData = Object.fromEntries(params.entries())
           console.log('📥 Parsed as form data:', callbackData)
         } catch (e) {
           console.error('❌ Could not parse body:', e)
-          return new Response('Bad Request - Could not parse payload', { 
-            status: 400, 
-            headers: corsHeaders 
+          return new Response('Bad Request - Could not parse payload', {
+            status: 400,
+            headers: corsHeaders
           })
         }
       }
+
+      // 🔒 SECURITY: Verify webhook signature
+      if (!verifyWebhookSignature(body, signature, WEBHOOK_SECRET)) {
+        return new Response('Unauthorized - Invalid signature', {
+          status: 401,
+          headers: corsHeaders
+        })
+      }
+
+      console.log('✅ Webhook signature verified successfully')
     } else if (req.method === 'GET') {
       // Parse query parameters for GET requests
       const url = new URL(req.url)
       callbackData = Object.fromEntries(url.searchParams.entries())
       console.log('📥 Parsed GET parameters:', callbackData)
+
+      // 🔒 SECURITY: GET requests don't have body to verify signature
+      console.log('⚠️ WARNING: GET request - signature verification skipped')
+    } else {
+      return new Response('Method not allowed', {
+        status: 405,
+        headers: corsHeaders
+      })
     }
 
     // Extract key fields
@@ -130,16 +223,16 @@ serve(async (req) => {
         status: status,
         status_id: statusId,
         raw_payload: callbackData,
-        received_at: new Date().toISOString()
+        received_at: new Date(Date.now()).toISOString()
       })
 
     if (webhookError) {
       console.error('❌ Error storing webhook event:', webhookError)
     }
 
-    // If payment is successful, activate subscription immediately
+    // If payment is successful, process payment and update both tables
     if (status?.toLowerCase() === 'success' && statusId === '1') {
-      console.log('🎉 Payment successful from callback! Processing...')
+      console.log('🎉 Payment successful from callback! Processing payment...')
 
       try {
         // Find pending payment to get user and plan info
@@ -162,89 +255,80 @@ serve(async (req) => {
         const planId = pendingPayment.plan_id
         const paymentAmount = parseFloat(amount || pendingPayment.amount.toString())
 
-        console.log(`🔍 Found pending payment - User: ${userId}, Plan: ${planId}`)
+        console.log(`🔍 Found pending payment - User: ${userId}, Plan: ${planId}, Amount: ${paymentAmount}`)
 
-        // Get plan details
-        const { data: planData, error: planError } = await supabase
-          .from('subscription_plans')
-          .select('*')
-          .eq('id', planId)
+        // Step 1: Update payments table status to 'completed'
+        const now = new Date(Date.now()).toISOString()
+
+        // Find existing payment record
+        const { data: existingPayment } = await supabase
+          .from('payments')
+          .select('id')
+          .eq('bill_id', billCode)
+          .order('created_at', { ascending: true })
+          .limit(1)
           .single()
 
-        if (planError) {
-          console.error('❌ Error fetching plan:', planError)
-          throw new Error('Plan not found')
+        if (existingPayment) {
+          console.log('📝 Updating existing payment record:', existingPayment.id)
+
+          const { error: updateError } = await supabase
+            .from('payments')
+            .update({
+              status: 'completed',
+              updated_at: now,
+              paid_at: now,
+              provider_payment_id: transactionId || billCode,
+              raw_payload: { ...callbackData, processed_at: now }
+            })
+            .eq('id', existingPayment.id)
+
+          if (updateError) {
+            console.error('❌ Error updating payment record:', updateError)
+            throw new Error('Failed to update payment status')
+          }
+
+          console.log('✅ Payment record updated to completed')
+        } else {
+          console.log('⚠️ No existing payment record found to update')
         }
 
-        const now = new Date().toISOString()
-        const durationDays = planData.duration_days || 30
-        const endDate = new Date(Date.now() + (durationDays * 24 * 60 * 60 * 1000)).toISOString()
+        // Step 2: Process subscription activation
+        console.log('🔄 Activating subscription...')
 
-        // Get user profile for name
-        let userName = null
-        try {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('full_name')
-            .eq('id', userId)
-            .single()
-          userName = profileData?.full_name
-        } catch (e) {
-          console.log('⚠️ Could not get user name:', e)
+        // Call extend-subscription edge function for centralized processing
+        const extendSubscriptionUrl = `${supabaseUrl}/functions/v1/extend-subscription`
+        const extendResponse = await fetch(extendSubscriptionUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: userId,
+            planId: planId,
+            paymentData: {
+              transactionId: transactionId || billCode,
+              amount: paymentAmount,
+              billId: billCode,
+              status: '1',
+              source: 'webhook'
+            }
+          })
+        })
+
+        let extendResult = null
+        if (!extendResponse.ok) {
+          const errorText = await extendResponse.text()
+          console.error('❌ Extend subscription function error:', extendResponse.status, errorText)
+          // Don't throw error yet - still update pending payment status
+          console.log('⚠️ Subscription activation failed, but marking payment as completed')
+        } else {
+          extendResult = await extendResponse.json()
+          console.log('✅ Subscription activation result:', extendResult)
         }
 
-        // 1. Activate subscription
-        const { error: subscriptionError } = await supabase
-          .from('user_subscriptions')
-          .upsert({
-            user_id: userId,
-            user_name: userName,
-            subscription_plan_id: planId,
-            status: 'active',
-            start_date: now,
-            end_date: endDate,
-            payment_id: transactionId || billCode,
-            amount: paymentAmount,
-            currency: 'MYR',
-            updated_at: now
-          })
-
-        if (subscriptionError) {
-          console.error('❌ Error activating subscription:', subscriptionError)
-          throw subscriptionError
-        }
-
-        // 2. Update profile status
-        await supabase
-          .from('profiles')
-          .update({
-            subscription_status: 'active',
-            updated_at: now
-          })
-          .eq('id', userId)
-
-        // 3. Create payment record
-        await supabase
-          .from('payments')
-          .insert({
-            user_id: userId,
-            payment_id: transactionId || billCode,
-            reference_number: `${userId}_${planId}`,
-            amount: paymentAmount,
-            currency: 'MYR',
-            status: 'completed',
-            payment_method: 'toyyibpay',
-            paid_at: now,
-            metadata: {
-              plan_id: planId,
-              plan_name: planData.name,
-              user_name: userName,
-              callback_data: callbackData
-            },
-            created_at: now
-          })
-
-        // 4. Update pending payment status
+        // Step 3: Update pending payment status to completed
         await supabase
           .from('pending_payments')
           .update({
@@ -254,16 +338,102 @@ serve(async (req) => {
           .eq('bill_id', billCode)
           .eq('user_id', userId)
 
-        console.log('✅ Subscription activated successfully from callback!')
+        // Step 4: Create payment success notification
+        try {
+          console.log('🔔 Creating payment success notification...')
 
-        return new Response('Payment processed and subscription activated', {
+          const formattedAmount = paymentAmount.toFixed(2)
+          const notificationData = {
+            type: 'personal',
+            title: 'Pembayaran Berjaya! 🎉',
+            message: `Terima kasih! Pembayaran RM${formattedAmount} untuk langganan ${planId} telah berjaya. Langganan anda kini aktif.`,
+            target_type: 'user',
+            target_criteria: { user_ids: [userId] },
+            metadata: {
+              type: 'payment_success',
+              sub_type: 'payment_success',
+              icon: '🎉',
+              priority: 'high',
+              bill_id: billCode,
+              plan_id: planId,
+              amount: formattedAmount,
+              subscription_id: extendResult?.newSubscriptionId || null,
+              days_added: extendResult?.daysAdded || 0,
+              payment_date: now,
+              action_url: '/subscription',
+              source: 'toyyibpay_webhook',
+            },
+            created_at: now,
+            expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+            is_active: true
+          }
+
+          console.log('📝 Inserting notification with data:', notificationData)
+
+          // FIXED: Get notification ID from insert response instead of searching
+          const { data: newNotification, error: notificationError } = await supabase
+            .from('notifications')
+            .insert(notificationData)
+            .select('id')
+            .single()
+
+          if (notificationError) {
+            console.error('❌ Error creating notification:', notificationError)
+            console.error('❌ Notification error details:', JSON.stringify(notificationError, null, 2))
+          } else if (newNotification) {
+            console.log('✅ Payment success notification created with ID:', newNotification.id)
+
+            // FIXED: Create notification read entry for immediate visibility using the returned ID
+            const readEntryData = {
+              notification_id: newNotification.id,
+              user_id: userId,
+              is_read: false,
+              created_at: now,
+              updated_at: now
+            }
+
+            console.log('📝 Creating notification read entry:', readEntryData)
+
+            const { error: readError } = await supabase
+              .from('notification_reads')
+              .insert(readEntryData)
+
+            if (readError) {
+              console.error('❌ Error creating notification read entry:', readError)
+              console.error('❌ Read entry error details:', JSON.stringify(readError, null, 2))
+            } else {
+              console.log('✅ Notification read entry created successfully for real-time delivery')
+              console.log('🔔 User', userId, 'should receive notification immediately')
+            }
+          } else {
+            console.error('❌ No notification data returned from insert')
+          }
+        } catch (notificationError) {
+          console.error('⚠️ Error creating payment notification:', notificationError)
+          console.error('⚠️ Notification error stack:', notificationError.stack)
+          // Don't fail the payment process for notification errors
+        }
+
+        console.log('✅ Payment processed successfully via webhook!')
+
+        return new Response(JSON.stringify({
+          success: true,
+          message: 'Payment processed and status updated to completed',
+          billCode: billCode,
+          userId: userId,
+          planId: planId,
+          amount: paymentAmount
+        }), {
           status: 200,
-          headers: corsHeaders
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json'
+          }
         })
 
       } catch (error) {
         console.error('❌ Error processing successful payment:', error)
-        
+
         return new Response('Error processing payment', {
           status: 500,
           headers: corsHeaders
@@ -278,7 +448,7 @@ serve(async (req) => {
         .from('pending_payments')
         .update({
           status: 'failed',
-          updated_at: new Date().toISOString()
+          updated_at: new Date(Date.now()).toISOString()
         })
         .eq('bill_id', billCode)
 

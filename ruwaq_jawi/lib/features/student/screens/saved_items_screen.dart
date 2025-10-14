@@ -45,21 +45,20 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
     );
 
     // Create animations
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _fadeAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _fadeAnimationController,
+        curve: Curves.easeOutCubic,
+      ),
+    );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideAnimationController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _slideAnimationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -91,7 +90,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Simpanan',
+          'Saved Items',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -107,50 +106,38 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
             color: AppTheme.textPrimaryColor,
             size: 24,
           ),
-          onPressed: () => context.go('/home'),
+          onPressed: () => context.go('/profile'),
         ),
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.dark,
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
+          preferredSize: const Size.fromHeight(40),
+          child: TabBar(
+            controller: _tabController,
+            indicatorSize: TabBarIndicatorSize.label,
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(
                 color: AppTheme.primaryColor,
-                borderRadius: BorderRadius.circular(12),
+                width: 3,
               ),
-              labelColor: Colors.white,
-              unselectedLabelColor: AppTheme.textSecondaryColor,
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
-              ),
-              unselectedLabelStyle: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 14,
-              ),
-              tabs: const [
-                Tab(text: 'Kitab & Video'),
-                Tab(text: 'E-book'),
-              ],
+              insets: const EdgeInsets.symmetric(horizontal: 4),
             ),
+            labelColor: AppTheme.primaryColor,
+            unselectedLabelColor: AppTheme.textSecondaryColor,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+            tabs: const [
+              Tab(text: 'Videos'),
+              Tab(text: 'E-book'),
+            ],
           ),
         ),
       ),
@@ -245,7 +232,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                 color: AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(20),
                 border: kitab.isPremium
-                    ? Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3), width: 2)
+                    ? Border.all(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                        width: 2,
+                      )
                     : Border.all(color: AppTheme.borderColor),
                 boxShadow: [
                   BoxShadow(
@@ -277,32 +267,47 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                           decoration: BoxDecoration(
                             gradient: kitab.isPremium
                                 ? const LinearGradient(
-                                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                    colors: [
+                                      Color(0xFFFFD700),
+                                      Color(0xFFFFA500),
+                                    ],
                                   )
                                 : LinearGradient(
                                     colors: [
-                                      AppTheme.primaryColor.withValues(alpha: 0.1),
-                                      AppTheme.primaryColor.withValues(alpha: 0.05)
+                                      AppTheme.primaryColor.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      AppTheme.primaryColor.withValues(
+                                        alpha: 0.05,
+                                      ),
                                     ],
                                   ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: kitab.isPremium
                                   ? Colors.transparent
-                                  : AppTheme.primaryColor.withValues(alpha: 0.2),
+                                  : AppTheme.primaryColor.withValues(
+                                      alpha: 0.2,
+                                    ),
                             ),
-                            boxShadow: kitab.isPremium ? [
-                              BoxShadow(
-                                color: Colors.orange.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ] : null,
+                            boxShadow: kitab.isPremium
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Center(
                             child: PhosphorIcon(
                               PhosphorIcons.book(PhosphorIconsStyle.fill),
-                              color: kitab.isPremium ? Colors.white : AppTheme.primaryColor,
+                              color: kitab.isPremium
+                                  ? Colors.white
+                                  : AppTheme.primaryColor,
                               size: 28,
                             ),
                           ),
@@ -328,10 +333,16 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                                   ),
                                   if (kitab.isPremium)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(
-                                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                          colors: [
+                                            Color(0xFFFFD700),
+                                            Color(0xFFFFA500),
+                                          ],
                                         ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -381,43 +392,13 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          onSelected: (value) => _handleKitabAction(value, kitab),
-                          icon: HugeIcon(
+                        GestureDetector(
+                          onTap: () => _showKitabBottomSheet(kitab),
+                          child: HugeIcon(
                             icon: HugeIcons.strokeRoundedMoreVertical,
                             color: AppTheme.textSecondaryColor,
                             size: 20,
                           ),
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'remove',
-                              child: Row(
-                                children: [
-                                  PhosphorIcon(
-                                    PhosphorIcons.bookmarkSimple(PhosphorIconsStyle.fill),
-                                    color: const Color(0xFFEF4444),
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Buang dari simpanan'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'share',
-                              child: Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedShare01,
-                                    color: AppTheme.primaryColor,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Kongsi'),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -448,6 +429,8 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
           return _buildEmptyState(
             'Tiada e-book disimpan',
             'Simpan e-book kegemaran anda untuk akses mudah',
+            buttonText: 'Jelajah E-book',
+            onButtonPressed: () => context.go('/ebook'),
           );
         }
 
@@ -455,7 +438,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: savedEbooks.map((ebook) => _buildEbookCard(ebook)).toList(),
+            children: savedEbooks
+                .map((ebook) => _buildEbookCard(ebook))
+                .toList(),
           ),
         );
       },
@@ -488,7 +473,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                 color: AppTheme.surfaceColor,
                 borderRadius: BorderRadius.circular(20),
                 border: isPremium
-                    ? Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.3), width: 2)
+                    ? Border.all(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                        width: 2,
+                      )
                     : Border.all(color: AppTheme.borderColor),
                 boxShadow: [
                   BoxShadow(
@@ -524,32 +512,47 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                           decoration: BoxDecoration(
                             gradient: isPremium
                                 ? const LinearGradient(
-                                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                    colors: [
+                                      Color(0xFFFFD700),
+                                      Color(0xFFFFA500),
+                                    ],
                                   )
                                 : LinearGradient(
                                     colors: [
-                                      const Color(0xFF8B5CF6).withValues(alpha: 0.1),
-                                      const Color(0xFF8B5CF6).withValues(alpha: 0.05)
+                                      const Color(
+                                        0xFF8B5CF6,
+                                      ).withValues(alpha: 0.1),
+                                      const Color(
+                                        0xFF8B5CF6,
+                                      ).withValues(alpha: 0.05),
                                     ],
                                   ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
                               color: isPremium
                                   ? Colors.transparent
-                                  : const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                                  : const Color(
+                                      0xFF8B5CF6,
+                                    ).withValues(alpha: 0.2),
                             ),
-                            boxShadow: isPremium ? [
-                              BoxShadow(
-                                color: Colors.orange.withValues(alpha: 0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ] : null,
+                            boxShadow: isPremium
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.3,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ]
+                                : null,
                           ),
                           child: Center(
                             child: PhosphorIcon(
                               PhosphorIcons.bookOpen(PhosphorIconsStyle.fill),
-                              color: isPremium ? Colors.white : const Color(0xFF8B5CF6),
+                              color: isPremium
+                                  ? Colors.white
+                                  : const Color(0xFF8B5CF6),
                               size: 28,
                             ),
                           ),
@@ -575,10 +578,16 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                                   ),
                                   if (isPremium)
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
                                         gradient: const LinearGradient(
-                                          colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                          colors: [
+                                            Color(0xFFFFD700),
+                                            Color(0xFFFFA500),
+                                          ],
                                         ),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -626,43 +635,13 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          onSelected: (value) => _handleEbookAction(value, ebook),
-                          icon: HugeIcon(
+                        GestureDetector(
+                          onTap: () => _showEbookBottomSheet(ebook),
+                          child: HugeIcon(
                             icon: HugeIcons.strokeRoundedMoreVertical,
                             color: AppTheme.textSecondaryColor,
                             size: 20,
                           ),
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'remove',
-                              child: Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedDelete02,
-                                    color: const Color(0xFFEF4444),
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Buang'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'share',
-                              child: Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedShare01,
-                                    color: AppTheme.primaryColor,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Kongsi'),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -736,12 +715,14 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                             gradient: LinearGradient(
                               colors: [
                                 const Color(0xFFFF4444).withValues(alpha: 0.1),
-                                const Color(0xFFFF4444).withValues(alpha: 0.05)
+                                const Color(0xFFFF4444).withValues(alpha: 0.05),
                               ],
                             ),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: const Color(0xFFFF4444).withValues(alpha: 0.2),
+                              color: const Color(
+                                0xFFFF4444,
+                              ).withValues(alpha: 0.2),
                             ),
                           ),
                           child: Center(
@@ -790,43 +771,13 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                           ),
                         ),
                         const SizedBox(width: 8),
-                        PopupMenuButton<String>(
-                          onSelected: (value) => _handleEpisodeAction(value, episode),
-                          icon: HugeIcon(
+                        GestureDetector(
+                          onTap: () => _showEpisodeBottomSheet(episode),
+                          child: HugeIcon(
                             icon: HugeIcons.strokeRoundedMoreVertical,
                             color: AppTheme.textSecondaryColor,
                             size: 20,
                           ),
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'remove',
-                              child: Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedDelete02,
-                                    color: const Color(0xFFEF4444),
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Buang'),
-                                ],
-                              ),
-                            ),
-                            PopupMenuItem(
-                              value: 'share',
-                              child: Row(
-                                children: [
-                                  HugeIcon(
-                                    icon: HugeIcons.strokeRoundedShare01,
-                                    color: AppTheme.primaryColor,
-                                    size: 18,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Kongsi'),
-                                ],
-                              ),
-                            ),
-                          ],
                         ),
                       ],
                     ),
@@ -840,7 +791,12 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
     );
   }
 
-  Widget _buildEmptyState(String title, String subtitle) {
+  Widget _buildEmptyState(
+    String title,
+    String subtitle, {
+    String buttonText = 'Jelajah Kitab',
+    VoidCallback? onButtonPressed,
+  }) {
     return TweenAnimationBuilder<double>(
       duration: const Duration(milliseconds: 600),
       tween: Tween(begin: 0.0, end: 1.0),
@@ -878,10 +834,11 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                     const SizedBox(height: 24),
                     Text(
                       title,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: AppTheme.textPrimaryColor,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            color: AppTheme.textPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
@@ -897,7 +854,10 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                     Container(
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
-                          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withValues(alpha: 0.8)],
+                          colors: [
+                            AppTheme.primaryColor,
+                            AppTheme.primaryColor.withValues(alpha: 0.8),
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: [
@@ -909,11 +869,14 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                         ],
                       ),
                       child: ElevatedButton.icon(
-                        onPressed: () => context.go('/kitab'),
+                        onPressed: onButtonPressed ?? () => context.go('/kitab'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 16,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
@@ -923,9 +886,9 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
                           color: Colors.white,
                           size: 20,
                         ),
-                        label: const Text(
-                          'Jelajah Kitab',
-                          style: TextStyle(
+                        label: Text(
+                          buttonText,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                             fontSize: 16,
@@ -941,39 +904,6 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
         );
       },
     );
-  }
-
-  void _handleKitabAction(String action, Kitab kitab) {
-    switch (action) {
-      case 'remove':
-        _removeFromSaved(kitab);
-        break;
-      case 'share':
-        _shareContent(kitab);
-        break;
-    }
-  }
-
-  void _handleEbookAction(String action, dynamic ebook) {
-    switch (action) {
-      case 'remove':
-        _removeEbook(ebook);
-        break;
-      case 'share':
-        _shareEbookContent(ebook);
-        break;
-    }
-  }
-
-  void _handleEpisodeAction(String action, dynamic episode) {
-    switch (action) {
-      case 'remove':
-        _removeEpisode(episode);
-        break;
-      case 'share':
-        _shareEpisodeContent(episode);
-        break;
-    }
   }
 
   void _removeEpisode(dynamic episode) {
@@ -992,9 +922,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
           ElevatedButton(
             onPressed: () async {
               Navigator.of(context).pop();
-              final episodeId = episode is Map
-                  ? episode['id']
-                  : episode.id;
+              final episodeId = episode is Map ? episode['id'] : episode.id;
               final success = await context
                   .read<SavedItemsProvider>()
                   .removeVideoFromSaved(episodeId);
@@ -1126,6 +1054,546 @@ class _SavedItemsScreenState extends State<SavedItemsScreen>
       SnackBar(
         content: Text('Pautan "${kitab.title}" dikongsi'),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _showKitabBottomSheet(Kitab kitab) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            border: Border.all(color: AppTheme.borderColor, width: 1),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header with kitab info
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      // Icon
+                      Container(
+                        width: 60,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: kitab.isPremium
+                              ? const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFD700),
+                                    Color(0xFFFFA500),
+                                  ],
+                                )
+                              : LinearGradient(
+                                  colors: [
+                                    AppTheme.primaryColor.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    AppTheme.primaryColor.withValues(
+                                      alpha: 0.05,
+                                    ),
+                                  ],
+                                ),
+                          border: Border.all(
+                            color: kitab.isPremium
+                                ? Colors.transparent
+                                : AppTheme.primaryColor.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: PhosphorIcon(
+                            PhosphorIcons.book(PhosphorIconsStyle.fill),
+                            color: kitab.isPremium
+                                ? Colors.white
+                                : AppTheme.primaryColor,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Title and author
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              kitab.title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (kitab.author != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                kitab.author!,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.textSecondaryColor,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Divider
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  height: 1,
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
+                ),
+
+                // Options
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    children: [
+                      // Remove option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedDelete02,
+                        title: 'Buang dari Simpanan',
+                        subtitle: 'Alih keluar dari senarai simpanan',
+                        iconColor: const Color(0xFFEF4444),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _removeFromSaved(kitab);
+                        },
+                      ),
+
+                      // Share option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedShare01,
+                        title: 'Kongsi',
+                        subtitle: 'Kongsi dengan rakan dan keluarga',
+                        iconColor: AppTheme.primaryColor,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _shareContent(kitab);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom padding for safe area
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEbookBottomSheet(dynamic ebook) {
+    final title = ebook is Map
+        ? (ebook['title'] ?? 'E-book')
+        : (ebook.title ?? 'E-book');
+    final author = ebook is Map
+        ? (ebook['author'] ?? 'Unknown Author')
+        : (ebook.author ?? 'Unknown Author');
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            border: Border.all(color: AppTheme.borderColor, width: 1),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header with ebook info
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      // Icon
+                      Container(
+                        width: 60,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF8B5CF6).withValues(alpha: 0.1),
+                              const Color(0xFF8B5CF6).withValues(alpha: 0.05),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: const Color(
+                              0xFF8B5CF6,
+                            ).withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: PhosphorIcon(
+                            PhosphorIcons.bookOpen(PhosphorIconsStyle.fill),
+                            color: const Color(0xFF8B5CF6),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Title and author
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              author,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textSecondaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Divider
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  height: 1,
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
+                ),
+
+                // Options
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    children: [
+                      // Remove option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedDelete02,
+                        title: 'Buang',
+                        subtitle: 'Alih keluar dari senarai simpanan',
+                        iconColor: const Color(0xFFEF4444),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _removeEbook(ebook);
+                        },
+                      ),
+
+                      // Share option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedShare01,
+                        title: 'Kongsi',
+                        subtitle: 'Kongsi dengan rakan dan keluarga',
+                        iconColor: AppTheme.primaryColor,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _shareEbookContent(ebook);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom padding for safe area
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEpisodeBottomSheet(dynamic episode) {
+    final title = episode is Map
+        ? (episode['title'] ?? 'Video')
+        : (episode.title ?? 'Video');
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: AppTheme.surfaceColor,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            border: Border.all(color: AppTheme.borderColor, width: 1),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  margin: const EdgeInsets.only(top: 12, bottom: 8),
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.borderColor,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Header with episode info
+                Container(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                  child: Row(
+                    children: [
+                      // Icon
+                      Container(
+                        width: 60,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFFFF4444).withValues(alpha: 0.1),
+                              const Color(0xFFFF4444).withValues(alpha: 0.05),
+                            ],
+                          ),
+                          border: Border.all(
+                            color: const Color(
+                              0xFFFF4444,
+                            ).withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Center(
+                          child: PhosphorIcon(
+                            PhosphorIcons.play(PhosphorIconsStyle.fill),
+                            color: const Color(0xFFFF4444),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+
+                      // Title
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppTheme.textPrimaryColor,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Video tersimpan',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.textSecondaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Divider
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 20),
+                  height: 1,
+                  color: AppTheme.borderColor.withValues(alpha: 0.5),
+                ),
+
+                // Options
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Column(
+                    children: [
+                      // Remove option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedDelete02,
+                        title: 'Buang',
+                        subtitle: 'Alih keluar dari senarai simpanan',
+                        iconColor: const Color(0xFFEF4444),
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _removeEpisode(episode);
+                        },
+                      ),
+
+                      // Share option
+                      _buildBottomSheetOption(
+                        icon: HugeIcons.strokeRoundedShare01,
+                        title: 'Kongsi',
+                        subtitle: 'Kongsi dengan rakan dan keluarga',
+                        iconColor: AppTheme.primaryColor,
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          _shareEpisodeContent(episode);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom padding for safe area
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// Build individual option in bottom sheet
+  Widget _buildBottomSheetOption({
+    required dynamic icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              // Icon container
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor == AppTheme.primaryColor
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                      : AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: iconColor == AppTheme.primaryColor
+                        ? AppTheme.primaryColor.withValues(alpha: 0.2)
+                        : AppTheme.borderColor,
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: icon is IconData
+                      ? PhosphorIcon(icon, color: iconColor, size: 20)
+                      : HugeIcon(icon: icon, color: iconColor, size: 20),
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textPrimaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppTheme.textSecondaryColor,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Arrow
+              PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: AppTheme.textSecondaryColor.withValues(alpha: 0.5),
+                size: 16,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

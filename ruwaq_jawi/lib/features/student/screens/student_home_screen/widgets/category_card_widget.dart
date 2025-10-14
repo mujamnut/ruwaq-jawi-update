@@ -30,7 +30,7 @@ class CategoryCardWidget extends StatelessWidget {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 12,
                 offset: const Offset(0, 4),
                 spreadRadius: 0,
@@ -42,24 +42,41 @@ class CategoryCardWidget extends StatelessWidget {
               // Top section with Arabic text
               Expanded(
                 flex: 2,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        AppTheme.primaryColor.withValues(alpha: 0.12),
-                        AppTheme.primaryColor.withValues(alpha: 0.06),
-                      ],
-                    ),
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
                   ),
-                  child: Center(
-                    child: _buildCategoryArabicDisplay(category.name),
+                  child: Column(
+                    children: [
+                      // Minimal accent bar
+                      Container(
+                        height: 6,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                        ),
+                      ),
+                      // White area with centered Arabic glyph/text
+                      Expanded(
+                        child: Center(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6.0,
+                              vertical: 8.0,
+                            ),
+                            child: FractionallySizedBox(
+                              widthFactor: 0.98,
+                              heightFactor: 0.95,
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: _buildCategoryArabicDisplay(category.name),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -90,23 +107,28 @@ class CategoryCardWidget extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.backgroundColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '$totalCount item',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: AppTheme.borderColor,
+                              shape: BoxShape.circle,
+                            ),
                           ),
-                        ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$totalCount item',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -127,22 +149,22 @@ class CategoryCardWidget extends StatelessWidget {
         padding: const EdgeInsets.all(5.0),
         child: ColorFiltered(
           colorFilter: const ColorFilter.mode(
-            AppTheme.primaryColor,
+            AppTheme.textPrimaryColor,
             BlendMode.srcIn,
           ),
           child: Image.asset(
             imagePath,
             fit: BoxFit.contain,
-            width: double.infinity,
-            height: double.infinity,
+            // Let the parent size control final dimensions, avoid infinity
             errorBuilder: (context, error, stackTrace) {
+              // Fallback to solid dark text if image fails
               return Text(
                 HomeHelpers.getArabicTextForCategory(categoryName),
                 style: const TextStyle(
                   fontFamily: 'ArefRuqaa',
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryColor,
+                  color: AppTheme.textPrimaryColor,
                 ),
                 textAlign: TextAlign.center,
               );
@@ -151,13 +173,14 @@ class CategoryCardWidget extends StatelessWidget {
         ),
       );
     } else {
+      // No image available; render solid dark Arabic text
       return Text(
         HomeHelpers.getArabicTextForCategory(categoryName),
         style: const TextStyle(
           fontFamily: 'ArefRuqaa',
           fontSize: 32,
           fontWeight: FontWeight.bold,
-          color: AppTheme.primaryColor,
+          color: AppTheme.textPrimaryColor,
         ),
         textAlign: TextAlign.center,
       );

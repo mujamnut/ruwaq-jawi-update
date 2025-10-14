@@ -14,7 +14,7 @@ class SubscriptionService {
     String? toyyibPaySecretKey,
   }) : _toyyibPaySecretKey = toyyibPaySecretKey;
 
-  /// Activate subscription - optimized version
+  /// Activate subscription - optimized version for both new and existing users
   Future<void> activateSubscription({
     required String userId,
     required String planId,
@@ -26,13 +26,13 @@ class SubscriptionService {
 
     try {
       if (kDebugMode) {
-        print('🚀 Activating subscription for user: $userId, plan: $planId');
+        print('🚀 Activating subscription for user: $userId, plan: $planId, amount: RM$amount');
       }
 
       // Get plan details
       final plan = await _supabase
           .from('subscription_plans')
-          .select('duration_days, name')
+          .select('duration_days, name, price')
           .eq('id', planId)
           .maybeSingle();
 
@@ -41,7 +41,8 @@ class SubscriptionService {
       }
 
       final durationDays = plan['duration_days'] ?? 30;
-      final endDate = now.add(Duration(days: durationDays));
+      final planName = plan['name'] ?? 'Unknown Plan';
+      final planPrice = double.tryParse(plan['price']?.toString() ?? '0.0') ?? amount;
 
       // Get user profile
       final profile = await _supabase
@@ -52,7 +53,7 @@ class SubscriptionService {
 
       final userName = profile?['full_name'] ?? 'Unknown User';
 
-      // Check existing active subscription
+      // Check existing active subscription - COMPREHENSIVE CHECK
       final existingSubscriptionQuery = await _supabase
           .from('user_subscriptions')
           .select()
@@ -66,53 +67,100 @@ class SubscriptionService {
           ? existingSubscriptionQuery.first
           : null;
 
+      String subscriptionType;
+      DateTime startDate;
+      DateTime endDate;
+
       if (existingSubscription != null) {
         if (kDebugMode) {
-          print('⚠️ User already has active subscription, extending...');
+          print('⚠️ User already has active subscription, EXTENDING...');
+          print('📅 Current end date: ${existingSubscription['end_date']}');
+          print('➕ Adding $durationDays days');
         }
-        // Extend existing subscription
-        final currentEndDate = DateTime.parse(existingSubscription['end_date']);
-        final newEndDate = currentEndDate.add(Duration(days: durationDays));
 
+        // EXTEND existing subscription
+        final currentEndDate = DateTime.parse(existingSubscription['end_date']);
+        startDate = currentEndDate; // New period starts when current ends
+        endDate = currentEndDate.add(Duration(days: durationDays));
+        subscriptionType = 'extension';
+
+        // Update existing subscription
         await _supabase
             .from('user_subscriptions')
             .update({
-              'end_date': newEndDate.toIso8601String(),
+              'end_date': endDate.toIso8601String(),
               'updated_at': now.toIso8601String(),
+              'change_type': 'extension',
+              'upgrade_reason': 'Subscription extension via payment',
             })
             .eq('id', existingSubscription['id']);
+
+        if (kDebugMode) {
+          print('📅 New end date: ${endDate.toIso8601String()}');
+        }
       } else {
-        // Create new subscription
+        if (kDebugMode) {
+          print('🆕 No active subscription found, CREATING NEW...');
+        }
+
+        // CREATE new subscription
+        startDate = now;
+        endDate = now.add(Duration(days: durationDays));
+        subscriptionType = 'new';
+
         await _supabase.from('user_subscriptions').insert({
           'user_id': userId,
           'subscription_plan_id': planId,
           'status': 'active',
-          'start_date': now.toIso8601String(),
+          'start_date': startDate.toIso8601String(),
           'end_date': endDate.toIso8601String(),
+          'amount': planPrice,
+          'currency': 'MYR',
+          'user_name': userName,
+          'change_type': 'new',
           'created_at': now.toIso8601String(),
           'updated_at': now.toIso8601String(),
         });
+
+        if (kDebugMode) {
+          print('📅 Subscription period: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+        }
       }
 
-      // Create transaction record
-      await _supabase.from('transactions').insert({
+      // Create payment record using payments table
+      await _supabase.from('payments').insert({
         'user_id': userId,
-        'subscription_id': planId,
-        'amount': amount,
+        'amount_cents': (amount * 100).round(), // Convert to cents
         'currency': 'MYR',
         'status': 'completed',
-        'payment_method': paymentMethod,
-        'transaction_id': transactionId,
+        'provider': 'toyyibpay',
+        'provider_payment_id': transactionId,
+        'bill_id': transactionId,
+        'plan_id': planId,
+        'user_name': userName,
+        'description': '$subscriptionType: $planName',
+        'paid_at': now.toIso8601String(),
+        'activation_type': 'api',
         'metadata': {
           'user_name': userName,
-          'plan_name': plan['name'],
+          'plan_name': planName,
+          'plan_price': planPrice,
+          'subscription_type': subscriptionType,
           'activated_at': now.toIso8601String(),
+          'subscription_activation': true,
+          'start_date': startDate.toIso8601String(),
+          'end_date': endDate.toIso8601String(),
+          'duration_days': durationDays,
         },
         'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
       });
 
       if (kDebugMode) {
-        print('✅ Subscription activated successfully');
+        print('✅ Subscription $subscriptionType completed successfully');
+        print('💰 Payment recorded: RM${amount.toStringAsFixed(2)}');
+        print('📱 Plan: $planName ($durationDays days)');
+        print('👤 User: $userName');
       }
     } catch (e) {
       if (kDebugMode) {
@@ -231,41 +279,54 @@ class SubscriptionService {
   /// Get all subscription plans
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     try {
+      if (kDebugMode) {
+        print('🔍 SubscriptionService: Fetching subscription plans from database...');
+      }
+
       final result = await _supabase
           .from('subscription_plans')
           .select('*')
           .eq('is_active', true)
           .order('price');
 
+      if (kDebugMode) {
+        print('✅ SubscriptionService: Successfully fetched ${result.length} plans');
+      }
+
       return List<Map<String, dynamic>>.from(result);
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting subscription plans: $e');
+        print('❌ SubscriptionService: Error getting subscription plans: $e');
+        print('📊 Error details: ${e.runtimeType}');
+
+        // Check if it's an authentication error
+        final errorString = e.toString().toLowerCase();
+        if (errorString.contains('authretryablefetchexception') ||
+            errorString.contains('access token is expired') ||
+            errorString.contains('permission denied') ||
+            errorString.contains('unauthorized')) {
+          print('🔐 SubscriptionService: Authentication error detected');
+        } else if (errorString.contains('socketexception') ||
+                   errorString.contains('failed host lookup')) {
+          print('🌐 SubscriptionService: Network connectivity error detected');
+        }
       }
       return [];
     }
   }
 
-  /// Store pending payment
+  /// DEPRECATED: Store pending payment functionality moved to PaymentProcessingService
+  @deprecated
   Future<void> storePendingPayment({
     required String billId,
     required String planId,
     required double amount,
+    required String userId,
   }) async {
-    try {
-      await _supabase.from('pending_payments').insert({
-        'bill_id': billId,
-        'plan_id': planId,
-        'amount': amount,
-        'status': 'pending',
-        'created_at': DateTime.now().toUtc().toIso8601String(),
-      });
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error storing pending payment: $e');
-      }
-      rethrow;
+    if (kDebugMode) {
+      print('⚠️ storePendingPayment is deprecated - use PaymentProcessingService instead');
     }
+    // No-op - payment records are now handled by PaymentProcessingService
   }
 
   /// Verify and activate payment
@@ -296,19 +357,32 @@ class SubscriptionService {
     }
   }
 
-  /// Update pending payment status
+  /// Update pending payment status - FIXED to use payments table
   Future<void> updatePendingPaymentStatus(String billId, String status) async {
     try {
+      final updateData = {
+        'status': status,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      };
+
+      // Add paid_at timestamp if status is completed
+      if (status == 'completed') {
+        updateData['paid_at'] = DateTime.now().toUtc().toIso8601String();
+        updateData['activation_type'] = 'webhook';
+      }
+
       await _supabase
-          .from('pending_payments')
-          .update({
-            'status': status,
-            'updated_at': DateTime.now().toUtc().toIso8601String(),
-          })
-          .eq('bill_id', billId);
+          .from('payments')
+          .update(updateData)
+          .eq('bill_id', billId)
+          .eq('status', 'pending'); // Only update pending payments
+
+      if (kDebugMode) {
+        print('✅ Pending payment status updated: $billId -> $status');
+      }
     } catch (e) {
       if (kDebugMode) {
-        print('Error updating pending payment status: $e');
+        print('❌ Error updating pending payment status: $e');
       }
       rethrow;
     }

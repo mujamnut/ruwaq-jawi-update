@@ -5,18 +5,24 @@ import '../../../core/providers/subscription_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/services/payment_processing_service.dart';
 import '../../../core/services/enhanced_notification_service.dart';
+import '../../../core/models/subscription.dart';
 
 class PaymentCallbackPage extends StatefulWidget {
   final String billId;
   final String planId;
   final double amount;
+  final String? redirectStatus;
+  final String? redirectStatusId;
 
   const PaymentCallbackPage({
     super.key,
     required this.billId,
     required this.planId,
     required this.amount,
+    this.redirectStatus,
+    this.redirectStatusId,
   });
 
   @override
@@ -30,9 +36,120 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
   int _retryCount = 0;
   static const int _maxRetries = 3;
 
+  /// Check if ToyyibPay redirect indicates successful payment
+  bool? _isRedirectSuccessful() {
+    // ToyyibPay success indicators:
+    // status = 'success' AND status_id = '1'  -> Payment successful
+    // status = 'success' AND status_id = '2'  -> Payment pending
+    // status = 'success' AND status_id = '3'  -> Payment failed
+    // status = 'failed' -> Payment failed
+    // status = 'cancel' -> Payment cancelled
+
+    if (widget.redirectStatus?.toLowerCase() == 'success' &&
+        widget.redirectStatusId == '1') {
+      print('🎉 ToyyibPay redirect indicates SUCCESS (status=success, status_id=1)');
+      return true;
+    }
+
+    if (widget.redirectStatus?.toLowerCase() == 'failed') {
+      print('❌ ToyyibPay redirect indicates FAILED (status=failed)');
+      return false;
+    }
+
+    if (widget.redirectStatus?.toLowerCase() == 'cancel' ||
+        widget.redirectStatus?.toLowerCase() == 'cancelled') {
+      print('🚫 ToyyibPay redirect indicates CANCELLED');
+      return false;
+    }
+
+    print('❓ ToyyibPay redirect status unclear: status=${widget.redirectStatus}, status_id=${widget.redirectStatusId}');
+    return null; // Unknown - need API verification
+  }
+
+  /// Centralized payment success handler
+  /// Uses PaymentProcessingService for standardized processing
+  Future<void> handlePaymentSuccess() async {
+    try {
+      print('🎯 Starting centralized payment success processing...');
+
+      // Payment record is now automatically created by PaymentProcessingService
+
+      // Use centralized payment processing service
+      final paymentService = PaymentProcessingService();
+      final result = await paymentService.processPayment(
+        billId: widget.billId,
+        planId: widget.planId,
+        amount: widget.amount,
+        redirectStatus: widget.redirectStatus,
+        redirectStatusId: widget.redirectStatusId,
+        source: PaymentSource.redirect,
+      );
+
+      if (result.success) {
+        print('✅ Payment processed successfully!');
+        print('📋 Subscription ID: ${result.subscriptionId}');
+        print('📋 Days Added: ${result.daysAdded}');
+        print('📋 End Date: ${result.endDate}');
+
+        // Comprehensive app refresh after successful payment
+        await _refreshAllProviders();
+
+      } else {
+        print('❌ Payment processing failed: ${result.message}');
+      }
+
+    } catch (e) {
+      print('❌ Error in centralized payment processing: $e');
+    }
+  }
+
+  /// Refresh all providers after successful payment
+  Future<void> _refreshAllProviders() async {
+    try {
+      print('🔄 Starting comprehensive app refresh...');
+
+      // 1. Refresh AuthProvider (subscription status and profile)
+      if (mounted) {
+        final authProvider = Provider.of<AuthProvider>(
+          context,
+          listen: false,
+        );
+        await authProvider.checkActiveSubscription();
+        print('✅ AuthProvider refreshed - subscription status updated');
+      }
+
+      // 2. Refresh SubscriptionProvider (subscription data)
+      final subscriptionProvider = Provider.of<SubscriptionProvider>(
+        context,
+        listen: false,
+      );
+      await subscriptionProvider.loadUserSubscriptions();
+      print('✅ SubscriptionProvider refreshed - subscription data updated');
+
+      // 3. Refresh KitabProvider (ebook and content data with premium access)
+      if (mounted) {
+        try {
+          final kitabProvider = Provider.of<KitabProvider>(
+            context,
+            listen: false,
+          );
+          await kitabProvider.refresh();
+          print('✅ KitabProvider refreshed - content premium access updated');
+        } catch (e) {
+          print('⚠️ Error refreshing KitabProvider: $e');
+        }
+      }
+
+      print('🎉 All providers refreshed successfully!');
+    } catch (e) {
+      print('⚠️ Error during comprehensive refresh: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    print('🔍 Payment callback - ToyyibPay redirect status: ${widget.redirectStatus}, ID: ${widget.redirectStatusId}');
     _verifyPayment();
   }
 
@@ -43,180 +160,62 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         _message = 'Mengesahkan status pembayaran...';
       });
 
-      final subscriptionProvider = Provider.of<SubscriptionProvider>(
-        context,
-        listen: false,
-      );
-
-      // Store pending payment first jika belum ada
-      try {
-        await subscriptionProvider.storePendingPayment(
-          billId: widget.billId,
-          planId: widget.planId,
-          amount: widget.amount,
-        );
-      } catch (e) {
-        print('! Error storing pending payment (non-critical): $e');
-      }
-
-      print('🔍 Payment callback reached - VERIFYING actual payment status...');
+      print('🔍 Payment callback reached - USING CENTRALIZED PROCESSING...');
       print(
         '📋 Bill ID: ${widget.billId}, Plan: ${widget.planId}, Amount: RM${widget.amount}',
       );
 
-      // CRITICAL: VERIFY PAYMENT STATUS BEFORE ACTIVATION
-      bool success = false; // Default to failed, must verify first
-
-      // MANDATORY: Verify payment with ToyyibPay API first
-      print('🔍 Step 1: Verifying payment status with ToyyibPay API...');
-      final paymentVerified = await subscriptionProvider.verifyPaymentStatus(
+      // Use centralized payment processing service
+      final paymentService = PaymentProcessingService();
+      final result = await paymentService.processPayment(
         billId: widget.billId,
         planId: widget.planId,
         amount: widget.amount,
+        redirectStatus: widget.redirectStatus,
+        redirectStatusId: widget.redirectStatusId,
+        source: PaymentSource.redirect,
       );
 
-      if (paymentVerified) {
-        print('✅ Payment VERIFIED successful via API!');
-        success = true;
+      if (result.success) {
+        print('🎉 Payment processed successfully!');
+        print('📋 Subscription ID: ${result.subscriptionId}');
+        print('📋 Days Added: ${result.daysAdded}');
+        print('📋 End Date: ${result.endDate}');
 
-        // Now proceed with activation
-        try {
-          final user = SupabaseService.currentUser;
-          if (user != null) {
-            print('🎯 Payment verified - proceeding with subscription activation...');
+        // Refresh all providers after successful payment
+        await _refreshAllProviders();
 
-            // Try direct activation only after payment verification
-            final activationResult = await subscriptionProvider
-                .manualDirectActivation(
-                  billId: widget.billId,
-                  planId: widget.planId,
-                  userId: user.id,
-                  amount: widget.amount,
-                  reason:
-                      'Payment VERIFIED successful via ToyyibPay API - Bill: ${widget.billId} - Amount: RM${widget.amount}',
-                );
-
-            if (activationResult) {
-              print('✅ Subscription activated after payment verification!');
-
-              // COMPREHENSIVE REFRESH - Update all providers after successful payment
-              try {
-                print('🔄 Starting comprehensive app refresh after payment verification...');
-
-              // 0. Insert payment success notification to database using enhanced system
-              try {
-                // Format amount with 2 decimal places
-                final formattedAmount = widget.amount.toStringAsFixed(2);
-
-                // Get current user ID
-                final currentUser = EnhancedNotificationService.currentUserId;
-                if (currentUser != null) {
-                  final notificationSuccess = await EnhancedNotificationService.createPersonalNotification(
-                    userId: currentUser,
-                    title: 'Pembayaran Berjaya! 🎉',
-                    message: 'Terima kasih! Pembayaran RM$formattedAmount untuk langganan ${widget.planId} telah berjaya. Langganan anda kini aktif.',
-                    metadata: {
-                      'type': 'payment_success',
-                      'sub_type': 'payment_success',
-                      'icon': '🎉',
-                      'priority': 'high',
-                      'bill_id': widget.billId,
-                      'plan_id': widget.planId,
-                      'amount': formattedAmount,
-                      'payment_date': DateTime.now().toIso8601String(),
-                      'action_url': '/subscription',
-                      'source': 'payment_callback_page',
-                    },
-                  );
-
-                  if (notificationSuccess) {
-                    print('✅ Payment notification created using enhanced notification service');
-                  } else {
-                    print('❌ Failed to create payment notification with enhanced service');
-                  }
-                } else {
-                  print('❌ No current user found, cannot create payment notification');
-                }
-              } catch (e) {
-                print('❌ Error creating payment notification: $e');
-              }
-
-              // 1. Refresh AuthProvider (subscription status and profile)
-              if (mounted) {
-                final authProvider = Provider.of<AuthProvider>(
-                  context,
-                  listen: false,
-                );
-                await authProvider.checkActiveSubscription();
-                print('✅ AuthProvider refreshed - subscription status updated');
-              }
-
-              // 2. Refresh SubscriptionProvider (subscription data)
-              await subscriptionProvider.loadUserSubscriptions();
-              print('✅ SubscriptionProvider refreshed - subscription data updated');
-
-              // 3. Refresh KitabProvider (ebook and content data with premium access)
-              if (mounted) {
-                try {
-                  final kitabProvider = Provider.of<KitabProvider>(
-                    context,
-                    listen: false,
-                  );
-                  await kitabProvider.refresh();
-                  print('✅ KitabProvider refreshed - content premium access updated');
-                } catch (e) {
-                  print('⚠️ Error refreshing KitabProvider: $e');
-                }
-              }
-
-              print('🎉 All providers refreshed successfully!');
-            } catch (e) {
-              print('⚠️ Error during comprehensive refresh: $e');
-            }
-          } else {
-            print('❌ Subscription activation failed after payment verification');
-            success = false; // If activation fails, mark as failed
-          }
-        } else {
-          print('❌ User not authenticated - cannot activate subscription');
-          success = false;
-        }
-      } catch (e) {
-        print('❌ Error during activation: $e');
-        success = false; // If error during activation, mark as failed
-      }
-      } else {
-        print('❌ Payment verification FAILED - payment was not successful');
-        print('💡 This could be a cancelled or failed payment');
-        success = false;
-      }
-
-      if (success) {
-        print('🎉 Payment verified and activated successfully!');
-      } else {
-        print('❌ Payment process failed - no charges applied');
-      }
-
-      setState(() {
-        _isVerifying = false;
-        _paymentSuccess = success;
-
-        if (success) {
+        setState(() {
+          _isVerifying = false;
+          _paymentSuccess = true;
           _message = 'Pembayaran berjaya! Langganan anda telah diaktifkan.';
-        } else {
-          _message =
-              'Pembayaran tidak berjaya atau dibatalkan. Tiada bayaran dikenakan.';
-        }
-      });
+        });
 
-      if (success) {
-        // Auto navigate selepas 3 seconds
+        // Auto navigate after 3 seconds
         await Future.delayed(Duration(seconds: 3));
         if (mounted) {
           context.go('/subscription');
         }
+
+      } else {
+        print('❌ Payment processing failed: ${result.message}');
+
+        setState(() {
+          _isVerifying = false;
+          _paymentSuccess = false;
+
+          // Check if payment was cancelled based on redirect status
+          final redirectSuccess = _isRedirectSuccessful();
+          if (redirectSuccess == false) {
+            _message = 'Pembayaran telah dibatalkan. Tiada bayaran dikenakan.';
+          } else {
+            _message = result.message ?? 'Pembayaran tidak berjaya. Tiada bayaran dikenakan.';
+          }
+        });
       }
+
     } catch (e) {
+      print('❌ Error in payment verification: $e');
       setState(() {
         _isVerifying = false;
         _paymentSuccess = false;
@@ -228,12 +227,21 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
   Future<void> _retryVerification() async {
     if (_retryCount < _maxRetries) {
       _retryCount++;
-      await Future.delayed(Duration(seconds: 2)); // Wait before retry
+
+      setState(() {
+        _isVerifying = true;
+        _message = 'Cuba semula... (${_retryCount + 1}/$_maxRetries)';
+      });
+
+      // Wait before retry with exponential backoff
+      await Future.delayed(Duration(seconds: 2 * _retryCount));
+
+      // Use centralized payment processing service again
       await _verifyPayment();
     } else {
       setState(() {
-        _message =
-            'Tidak dapat mengesahkan pembayaran selepas beberapa cubaan. Sila hubungi support.';
+        _isVerifying = false;
+        _message = 'Tidak dapat mengesahkan pembayaran selepas beberapa cubaan. Sila hubungi support.';
       });
     }
   }

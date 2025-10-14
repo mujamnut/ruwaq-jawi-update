@@ -28,8 +28,9 @@ class EbookCategoryChipsWidget extends StatelessWidget {
     }
 
     return Container(
-      height: 50,
-      margin: const EdgeInsets.only(bottom: 20),
+      height: 35,
+      // Margin handled by parent container for consistency with video list
+      margin: EdgeInsets.zero,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -39,18 +40,19 @@ class EbookCategoryChipsWidget extends StatelessWidget {
           final isSelected = selectedCategory == category;
 
           return Container(
-            margin: const EdgeInsets.only(right: 12),
+            margin: const EdgeInsets.only(right: 5),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(25),
                 onTap: () {
                   HapticFeedback.lightImpact();
                   if (category == 'Semua') {
                     onCategorySelected(null);
                   } else {
-                    final categoryId =
-                        categories.firstWhere((c) => c.name == category).id;
+                    final categoryId = categories
+                        .firstWhere((c) => c.name == category)
+                        .id;
                     onCategorySelected(categoryId);
                   }
                 },
@@ -64,45 +66,42 @@ class EbookCategoryChipsWidget extends StatelessWidget {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 8,
+                          horizontal: 16, // match video chips width
+                          vertical: 2, // thinner top-bottom
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
                               ? AppTheme.primaryColor
                               : AppTheme.surfaceColor,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(25),
                           border: Border.all(
                             color: isSelected
                                 ? AppTheme.primaryColor
                                 : AppTheme.borderColor,
                             width: 1,
                           ),
-                          boxShadow: isSelected
-                              ? [
-                                  BoxShadow(
-                                    color: AppTheme.primaryColor
-                                        .withValues(alpha: 0.25),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: 0.06,
-                                    ),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(
-                                      alpha: 0.04,
-                                    ),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                          // boxShadow: isSelected
+                          //     ? [
+                          //         BoxShadow(
+                          //           color: AppTheme.primaryColor.withValues(
+                          //             alpha: 0.25,
+                          //           ),
+                          //           blurRadius: 12,
+                          //           offset: const Offset(0, 4),
+                          //         ),
+                          //         BoxShadow(
+                          //           color: Colors.black.withValues(alpha: 0.06),
+                          //           blurRadius: 6,
+                          //           offset: const Offset(0, 2),
+                          //         ),
+                          //       ]
+                          //     : [
+                          //         BoxShadow(
+                          //           color: Colors.black.withValues(alpha: 0.04),
+                          //           blurRadius: 8,
+                          //           offset: const Offset(0, 2),
+                          //         ),
+                          //       ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,

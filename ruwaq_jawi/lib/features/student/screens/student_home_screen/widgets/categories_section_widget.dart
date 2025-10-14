@@ -4,7 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/providers/kitab_provider.dart';
 import '../../../../../core/theme/app_theme.dart';
-import 'category_card_widget.dart';
+import 'category_icon_card_widget.dart';
 
 class CategoriesSectionWidget extends StatelessWidget {
   const CategoriesSectionWidget({super.key});
@@ -66,7 +66,7 @@ class CategoriesSectionWidget extends StatelessWidget {
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                childAspectRatio: 1.0,
+                childAspectRatio: 0.86,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
               ),
@@ -81,7 +81,7 @@ class CategoriesSectionWidget extends StatelessWidget {
                     .length;
                 final totalCount = videoKitabCount + ebookCount;
 
-                return CategoryCardWidget(
+                return CategoryIconCardWidget(
                   category: category,
                   totalCount: totalCount,
                 );

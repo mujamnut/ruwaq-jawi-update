@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import '../services/toyyibpay_service.dart';
 import '../services/subscription_service.dart';
+import '../services/supabase_service.dart';
+import '../services/payment_processing_service.dart';
 import '../models/payment_models.dart';
 import 'auth_provider.dart';
 
@@ -80,39 +82,55 @@ class PaymentProvider with ChangeNotifier {
 
       final status = await _paymentService.getBillStatus(billCode);
 
-      // Check if payment is successful
-      if (status['paid'] == true ||
-          status['status'] == 'Success' ||
-          status['status'] == 'success') {
-        // Extract user and plan info from billExternalReferenceNo
+      // 🔥 FIXED: Use centralized PaymentProcessingService instead of direct activation
+      print('PaymentProvider: Using centralized PaymentProcessingService for status check');
+
+      // Determine payment status from ToyyibPay response
+      String? redirectStatus;
+      String? redirectStatusId;
+
+      if (status['paid'] == true || status['status'] == 'Success' || status['status'] == 'success') {
+        redirectStatus = 'success';
+        redirectStatusId = '1'; // Success
+      } else if (status['status'] == 'failed' || status['status'] == 'Failed') {
+        redirectStatus = 'failed';
+        redirectStatusId = '3'; // Failed
+      }
+
+      // Extract user and plan info from billExternalReferenceNo for processing
+      String? userId;
+      String? planId;
+      double amount = 0.0;
+
+      if (status['billExternalReferenceNo'] != null) {
         final referenceNo = status['billExternalReferenceNo'] as String;
         final parts = referenceNo.split('_');
         if (parts.length == 2) {
-          final userId = parts[0];
-          final planId = parts[1];
+          userId = parts[0];
+          planId = parts[1];
+          amount = PaymentAmountHelper.fromCents(int.parse(status['billAmount'].toString())); // 🔥 FIXED: Use helper
+        }
+      }
 
-          print('PaymentProvider: Payment successful, activating subscription...');
-          print('PaymentProvider: User ID: $userId, Plan: ${_getPlanType(planId)}');
-          
-          // Activate subscription
-          await _subscriptionService.activateSubscription(
-            userId: userId,
-            planId: planId,
-            amount:
-                double.parse(status['billAmount']) / 100, // Convert from cents
-            paymentMethod: 'toyyibpay',
-            transactionId: status['billpaymentStatus'],
-          );
-          
-          print('PaymentProvider: Subscription activated, refreshing auth provider...');
-          
-          // Refresh auth provider subscription status
-          if (_authProvider != null) {
-            await _authProvider!.refreshSubscriptionStatus();
-            print('PaymentProvider: Auth provider refreshed');
-          } else {
-            print('PaymentProvider: Warning - Auth provider not available');
-          }
+      // Use centralized payment processing
+      if (userId != null && planId != null) {
+        final paymentService = PaymentProcessingService();
+        final result = await paymentService.processPayment(
+          billId: billCode,
+          planId: planId,
+          amount: amount,
+          redirectStatus: redirectStatus,
+          redirectStatusId: redirectStatusId,
+          source: PaymentSource.redirect,
+        );
+
+        print('PaymentProvider: Centralized processing result: ${result.success}');
+        print('PaymentProvider: Message: ${result.message}');
+
+        // Refresh auth provider if payment was successful
+        if (result.success && _authProvider != null) {
+          await _authProvider!.refreshSubscriptionStatus();
+          print('PaymentProvider: Auth provider refreshed after centralized processing');
         }
       }
 
@@ -127,22 +145,7 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
-  String _getPlanType(String planId) {
-    // Convert plan ID to subscription duration - FIXED to match database structure
-    switch (planId.toLowerCase()) {
-      case 'monthly_basic':
-        return '1month';        // ✅ 1 month plan
-      case 'quarterly_pr':
-        return '3month';        // ✅ 3 months plan
-      case 'monthly_premium':
-        return '6month';        // ✅ FIXED: monthly_premium is actually 6 month plan in database
-      case 'yearly_premium':
-        return '12month';       // ✅ 12 months plan
-      default:
-        return '1month'; // Default to monthly plan
-    }
-  }
-
+  
   void clearError() {
     _error = null;
     _safeNotifyListeners();
@@ -157,8 +160,19 @@ class PaymentProvider with ChangeNotifier {
       _safeNotifyListeners();
 
       print('📡 PaymentProvider: Fetching plans from database...');
-      // Fetch subscription plans from database
-      final plansData = await _subscriptionService.getSubscriptionPlans();
+      // Fetch subscription plans from database with enhanced error handling and retry mechanism
+      final plansData = await SupabaseService.retryOperation<List<Map<String, dynamic>>>(
+        () => _subscriptionService.getSubscriptionPlans().timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            print('⏰ PaymentProvider: Timeout while fetching plans, using fallback...');
+            throw Exception('Masa tamat semasa memuatkan pelan. Sila semak sambungan internet.');
+          },
+        ),
+        maxRetries: 3,
+        delay: const Duration(seconds: 1),
+        operationName: 'Load subscription plans',
+      );
 
       print('📦 PaymentProvider: Received ${plansData.length} plans from database');
       if (plansData.isEmpty) {
@@ -200,7 +214,26 @@ class PaymentProvider with ChangeNotifier {
       _safeNotifyListeners();
     } catch (e) {
       print('❌ PaymentProvider: Error loading subscription plans: $e');
-      _error = 'Gagal memuatkan pelan langganan: ${e.toString()}';
+
+      // Enhanced error handling for different error types
+      String errorMessage = 'Gagal memuatkan pelan langganan: ${e.toString()}';
+      final errorString = e.toString().toLowerCase();
+
+      if (errorString.contains('socketexception') ||
+          errorString.contains('failed host lookup') ||
+          errorString.contains('no address associated with hostname')) {
+        errorMessage = 'Tiada sambungan internet. Sila semak sambungan anda dan cuba lagi.';
+      } else if (errorString.contains('timeout')) {
+        errorMessage = 'Masa tamat. Sila semak sambungan internet dan cuba lagi.';
+      } else if (errorString.contains('authretryablefetchexception') ||
+                 errorString.contains('access token is expired')) {
+        errorMessage = 'Sesi telah tamat. Sila log masuk semula.';
+      } else if (errorString.contains('permission denied') ||
+                 errorString.contains('unauthorized')) {
+        errorMessage = 'Ralat kebenaran. Sila log masuk semula.';
+      }
+
+      _error = errorMessage;
       _safeNotifyListeners();
       // Don't rethrow to prevent ErrorBoundary conflicts
     } finally {
@@ -304,6 +337,10 @@ class PaymentProvider with ChangeNotifier {
         notifyListeners();
         return null;
       }
+
+      // ✅ REMOVED: Payment record creation now handled by PaymentProcessingService
+      // This eliminates duplicate payment records and race conditions
+      print('📝 PaymentProvider: Payment record creation delegated to PaymentProcessingService');
 
       final payment = PaymentResponse(
         id: billCode,

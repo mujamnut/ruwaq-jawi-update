@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:ruwaq_jawi/core/theme/app_theme.dart';
 
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
@@ -86,7 +87,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: _buildAppBar(),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),

@@ -35,6 +35,7 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
   void _initWebView() {
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..loadRequest(Uri.parse(widget.billUrl))
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
@@ -66,8 +67,7 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
             return NavigationDecision.navigate;
           },
         ),
-      )
-      ..loadRequest(Uri.parse(widget.billUrl));
+      );
   }
 
   void _checkForPaymentCompletion(String url) {
@@ -76,6 +76,8 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
 
     bool shouldHandle = false;
     bool isSuccess = false;
+    String? status;
+    String? statusId;
 
     // Check for various ToyyibPay completion patterns
     if (url.contains('payment-redirect') ||
@@ -85,11 +87,20 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
         url.contains('Transaction ID')) {
       shouldHandle = true;
 
-      // Determine success/failure
-      isSuccess =
-          url.contains('status=success') ||
-          url.contains('status=1') ||
-          url.contains('Payment Successful');
+      // Extract URL parameters for precise verification
+      final uri = Uri.tryParse(url);
+      if (uri != null) {
+        status = uri.queryParameters['status'];
+        statusId = uri.queryParameters['status_id'];
+
+        print('🔍 Extracted redirect parameters: status=$status, status_id=$statusId');
+      }
+
+      // Determine success/failure based on parameters
+      isSuccess = (status?.toLowerCase() == 'success' && statusId == '1') ||
+                  url.contains('status=success') ||
+                  url.contains('status=1') ||
+                  url.contains('Payment Successful');
 
       print('🔍 Payment completion detected: URL=$url, Success=$isSuccess');
     }
@@ -100,30 +111,41 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
         setState(() => _isLoading = true);
       }
 
-      _handlePaymentComplete(isSuccess);
+      _handlePaymentComplete(isSuccess, status, statusId);
     }
   }
 
-  void _handlePaymentComplete(bool isSuccess) {
+  void _handlePaymentComplete(bool isSuccess, [String? status, String? statusId]) {
     // Prevent multiple navigation calls
     if (!mounted || _hasNavigated) return;
 
     _hasNavigated = true;
     print('🔄 Payment completed with status: $isSuccess');
     print('📋 Bill Code: ${widget.billCode}');
+    print('📋 Redirect Parameters: status=$status, status_id=$statusId');
 
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
 
       try {
         if (isSuccess && widget.planId != null && widget.amount != null) {
-          // SUCCESS: Navigate to payment verification screen
+          // SUCCESS: Navigate to payment verification screen with redirect parameters
           print('✅ Payment successful - navigating to verification...');
 
+          // Build URL with redirect parameters for reliable verification
+          String callbackUrl = '/payment-callback?billId=${widget.billCode}&planId=${widget.planId}&amount=${widget.amount}';
+
+          if (status != null) {
+            callbackUrl += '&redirectStatus=$status';
+          }
+          if (statusId != null) {
+            callbackUrl += '&redirectStatusId=$statusId';
+          }
+
+          print('📋 Navigating to: $callbackUrl');
+
           // Use go_router instead of Navigator.pushReplacement
-          context.pushReplacement(
-            '/payment-callback?billId=${widget.billCode}&planId=${widget.planId}&amount=${widget.amount}',
-          );
+          context.pushReplacement(callbackUrl);
         } else {
           // FAILED/CANCELLED: Navigate back to subscription with error message
           print(
@@ -155,9 +177,12 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
         try {
           if (isSuccess && widget.planId != null && widget.amount != null) {
             // Try go_router for payment callback
-            context.go(
-              '/payment-callback?billId=${widget.billCode}&planId=${widget.planId}&amount=${widget.amount}',
-            );
+            String fallbackUrl = '/payment-callback?billId=${widget.billCode}&planId=${widget.planId}&amount=${widget.amount}';
+
+            if (status != null) fallbackUrl += '&redirectStatus=$status';
+            if (statusId != null) fallbackUrl += '&redirectStatusId=$statusId';
+
+            context.go(fallbackUrl);
           } else {
             context.go('/subscription');
           }

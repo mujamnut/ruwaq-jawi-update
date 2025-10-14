@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../../../../../core/providers/auth_provider.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../managers/home_data_manager.dart';
 
-class HomeProfileAvatarWidget extends StatelessWidget {
+class HomeProfileAvatarWidget extends StatefulWidget {
   final AuthProvider authProvider;
 
   const HomeProfileAvatarWidget({
@@ -12,11 +13,61 @@ class HomeProfileAvatarWidget extends StatelessWidget {
   });
 
   @override
+  State<HomeProfileAvatarWidget> createState() => _HomeProfileAvatarWidgetState();
+}
+
+class _HomeProfileAvatarWidgetState extends State<HomeProfileAvatarWidget>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _ringController;
+
+  @override
+  void initState() {
+    super.initState();
+    _ringController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    );
+    _updateAnimationState();
+  }
+
+  void _updateAnimationState() {
+    final isPremium = widget.authProvider.hasActiveSubscription;
+    if (isPremium) {
+      _ringController.repeat();
+    } else {
+      _ringController.stop();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeProfileAvatarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.authProvider.hasActiveSubscription !=
+        widget.authProvider.hasActiveSubscription) {
+      _updateAnimationState();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ringController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final authProvider = widget.authProvider;
     final userProfile = authProvider.userProfile;
     final userName = userProfile?.fullName ?? 'User';
     final profileImageUrl = userProfile?.avatarUrl;
     final isPremium = authProvider.hasActiveSubscription;
+
+    // Ensure animation reflects current premium state even if provider updates in place
+    if (isPremium) {
+      if (!_ringController.isAnimating) _ringController.repeat();
+    } else {
+      if (_ringController.isAnimating) _ringController.stop();
+    }
 
     final dataManager = HomeDataManager(onStateChanged: () {});
     final initials = dataManager.getInitials(userName);
@@ -24,66 +75,74 @@ class HomeProfileAvatarWidget extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeInOut,
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: isPremium
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      const Color(0xFFFFD700),
-                      const Color(0xFFFFA500),
-                      const Color(0xFFFFD700),
-                      const Color(0xFFDAA520),
-                    ],
-                    stops: const [0.0, 0.3, 0.7, 1.0],
-                  )
-                : null,
-            border: isPremium ? null : Border.all(color: Colors.white, width: 2),
-          ),
-          padding: EdgeInsets.all(isPremium ? 2 : 1),
-          child: isPremium
-              ? Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
-                  padding: const EdgeInsets.all(2),
-                  child: Container(
-                    decoration: const BoxDecoration(shape: BoxShape.circle),
-                    child: ClipOval(
-                      child: _buildAvatarContent(
-                        profileImageUrl,
-                        userName,
-                        isPremium,
-                        initials,
-                        dataManager,
+        AnimatedBuilder(
+          animation: _ringController,
+          builder: (context, _) {
+            final angle = _ringController.value * 2 * math.pi;
+            return AnimatedContainer(
+              duration: isPremium
+                  ? Duration.zero
+                  : const Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: isPremium
+                    ? SweepGradient(
+                        colors: const [
+                          Color(0xFFFFD700),
+                          Color(0xFFFFA500),
+                          Color(0xFFFFD700),
+                          Color(0xFFDAA520),
+                          Color(0xFFFFD700),
+                        ],
+                        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                        transform: GradientRotation(angle),
+                      )
+                    : null,
+                border:
+                    isPremium ? null : Border.all(color: Colors.white, width: 2),
+              ),
+              padding: EdgeInsets.all(isPremium ? 2 : 1),
+              child: isPremium
+                  ? Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: Container(
+                        decoration: const BoxDecoration(shape: BoxShape.circle),
+                        child: ClipOval(
+                          child: _buildAvatarContent(
+                            profileImageUrl,
+                            userName,
+                            isPremium,
+                            initials,
+                            dataManager,
+                          ),
+                        ),
+                      ),
+                    )
+                  : Container(
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                      child: ClipOval(
+                        child: _buildAvatarContent(
+                          profileImageUrl,
+                          userName,
+                          isPremium,
+                          initials,
+                          dataManager,
+                        ),
                       ),
                     ),
-                  ),
-                )
-              : Container(
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                  ),
-                  child: ClipOval(
-                    child: _buildAvatarContent(
-                      profileImageUrl,
-                      userName,
-                      isPremium,
-                      initials,
-                      dataManager,
-                    ),
-                  ),
-                ),
+            );
+          },
         ),
-        // Premium crown icon
         if (isPremium)
           Positioned(
             right: -1,

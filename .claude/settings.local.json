@@ -1,4 +1,8 @@
 {
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "5b5002f0f50e4f239b77ae070dd1c834.ZSTjt4CYseaxD5cT",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic"
+  },
   "permissions": {
     "allow": [
       "mcp__supabase__list_tables",
@@ -79,7 +83,10 @@
       "Bash(while read file)",
       "Bash(do echo \"=== $file ===\")",
       "Bash(done)",
-      "Bash(move kitab_form_screen.dart kitab_manual_form_screen.dart)"
+      "Bash(move kitab_form_screen.dart kitab_manual_form_screen.dart)",
+      "Bash(npx supabase functions delete:*)",
+      "Bash(npx supabase login:*)",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []
@@ -89,8 +96,5 @@
     "supabase",
     "shadcn",
     "hugeicons"
-  ], "env": {
-    "ANTHROPIC_AUTH_TOKEN" : "5b5002f0f50e4f239b77ae070dd1c834.ZSTjt4CYseaxD5cT",
-    "ANTHROPIC_BASE_URL" : "https://api.z.ai/api/anthropic"
-  }
+  ]
 }

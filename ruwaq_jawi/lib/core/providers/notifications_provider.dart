@@ -6,6 +6,7 @@ import '../services/enhanced_notification_service.dart';
 
 class NotificationsProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
+  RealtimeChannel? _notificationChannel;
 
   bool _loading = false;
   String? _error;
@@ -123,23 +124,10 @@ class NotificationsProvider with ChangeNotifier {
               '📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
               '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast',
             );
-
-            // Debug: Check read status conversion
-            for (var i = 0; i < enhancedNotifications.length && i < 3; i++) {
-              final enhanced = enhancedNotifications[i];
-              final legacy = legacyNotifications[i];
-              print('🔍 [$i] ${enhanced.title.substring(0, 20)}...');
-              print(
-                '   Enhanced: isRead=${enhanced.isRead}, readAt=${enhanced.readAt}',
-              );
-              print(
-                '   Legacy: readAt=${legacy.readAt}, isGlobal=${legacy.isGlobal}',
-              );
-              print(
-                '   isReadByUser(${user.id})=${legacy.isReadByUser(user.id)}',
-              );
-            }
           }
+
+          // Setup real-time subscription after initial load
+          _setupRealtimeSubscription();
 
           _loading = false;
           notifyListeners();
@@ -165,6 +153,158 @@ class NotificationsProvider with ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  /// Setup real-time subscription for new notifications
+  void _setupRealtimeSubscription() {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    // Clean up existing subscription
+    _notificationChannel?.unsubscribe();
+
+    // Subscribe to notification_reads table for user-specific notifications
+    _notificationChannel = _supabase.channel('user_notifications_${user.id}')
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'notification_reads',
+        callback: (PostgresChangePayload payload) async {
+          await _handleRealtimeNotification(payload);
+        },
+      )
+      ..onPostgresChanges(
+        event: PostgresChangeEvent.update,
+        schema: 'public',
+        table: 'notification_reads',
+        callback: (PostgresChangePayload payload) async {
+          await _handleRealtimeNotificationUpdate(payload);
+        },
+      )
+      ..subscribe();
+
+    if (kDebugMode) {
+      print('🔔 Real-time notification subscription enabled for user: ${user.id}');
+    }
+  }
+
+  /// Handle new real-time notification
+  Future<void> _handleRealtimeNotification(PostgresChangePayload payload) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final newReadRecord = payload.newRecord as Map<String, dynamic>;
+
+      if (newReadRecord['user_id'] != user.id) return;
+
+      // Get the full notification details
+      final notificationData = await _supabase
+          .from('notifications')
+          .select('*')
+          .eq('id', newReadRecord['notification_id'])
+          .single();
+
+      if (notificationData != null) {
+        // Create enhanced notification
+        final enhancedNotification = EnhancedNotification.fromNewSystem(
+          notification: notificationData,
+          readRecord: newReadRecord,
+        );
+
+        // Add to the beginning of the list for newest first
+        _enhancedInbox.insert(0, enhancedNotification);
+
+        // Convert to legacy format for backward compatibility
+        final legacyNotification = enhancedNotification.toLegacyUserNotificationItem();
+        _inbox.insert(0, legacyNotification);
+
+        if (kDebugMode) {
+          print('🔔 Real-time notification received: ${enhancedNotification.title}');
+          print('📅 Created at: ${enhancedNotification.createdAt.toIso8601String()}');
+          print('⏰ Time ago: ${enhancedNotification.timeAgo}');
+        }
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error handling real-time notification: $e');
+      }
+    }
+  }
+
+  /// Handle real-time notification updates (mark as read, etc.)
+  Future<void> _handleRealtimeNotificationUpdate(PostgresChangePayload payload) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final updatedRecord = payload.newRecord as Map<String, dynamic>;
+
+      if (updatedRecord['user_id'] != user.id) return;
+
+      final notificationId = updatedRecord['notification_id'];
+      final isRead = updatedRecord['is_read'] ?? false;
+      final readAt = updatedRecord['read_at'];
+
+      // Update enhanced notification in local state
+      final enhancedIndex = _enhancedInbox.indexWhere((n) => n.id == notificationId);
+      if (enhancedIndex != -1) {
+        _enhancedInbox[enhancedIndex] = _enhancedInbox[enhancedIndex].copyWith(
+          isRead: isRead,
+          readAt: readAt != null ? DateTime.parse(readAt).toUtc() : null,
+        );
+      }
+
+      // Update legacy notification in local state
+      final legacyIndex = _inbox.indexWhere((n) => n.id == notificationId);
+      if (legacyIndex != -1) {
+        final item = _inbox[legacyIndex];
+        final updatedMetadata = Map<String, dynamic>.from(item.metadata ?? {});
+
+        if (item.isGlobal) {
+          final readBy = List<String>.from(updatedMetadata['read_by'] ?? []);
+          if (isRead && !readBy.contains(user.id)) {
+            readBy.add(user.id);
+            updatedMetadata['read_by'] = readBy;
+          }
+        } else {
+          updatedMetadata['read_at'] = readAt;
+        }
+
+        _inbox[legacyIndex] = UserNotificationItem(
+          id: item.id,
+          userId: item.userId,
+          message: item.message,
+          metadata: updatedMetadata,
+          deliveredAt: item.deliveredAt,
+          targetCriteria: item.targetCriteria,
+          deliveryStatus: item.deliveryStatus,
+          isFavorite: item.isFavorite,
+          readAt: readAt != null ? DateTime.parse(readAt).toUtc() : null,
+          purchaseId: item.purchaseId,
+          notificationId: item.notificationId,
+        );
+      }
+
+      if (kDebugMode) {
+        print('🔄 Real-time notification update: $notificationId isRead=$isRead');
+      }
+
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error handling real-time notification update: $e');
+      }
+    }
+  }
+
+  /// Clean up real-time subscription
+  @override
+  void dispose() {
+    _notificationChannel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> markAsRead(String userNotificationId) async {

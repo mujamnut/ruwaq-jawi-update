@@ -25,21 +25,33 @@ class SupabaseService {
   static SupabaseClient get supabase => client;
 
   static Future<void> initialize() async {
-    // Load configuration from environment
-    final String supabaseUrl = EnvConfig.supabaseUrl;
-    final String supabaseAnonKey = EnvConfig.supabaseAnonKey;
+    try {
+      // Load configuration from environment
+      final String supabaseUrl = EnvConfig.supabaseUrl;
+      final String supabaseAnonKey = EnvConfig.supabaseAnonKey;
 
-    if (kDebugMode) {
-      EnvConfig.printConfig();
+      if (kDebugMode) {
+        EnvConfig.printConfig();
+        print('🔧 SupabaseService: Initializing Supabase client...');
+      }
+
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+        debug: AppConfig.isDevelopment,
+      );
+
+      _client = Supabase.instance.client;
+
+      if (kDebugMode) {
+        print('✅ SupabaseService: Supabase client initialized successfully');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ SupabaseService: Failed to initialize Supabase: $e');
+      }
+      throw Exception('Gagal menghubungkan ke pangkalan data: ${e.toString()}');
     }
-
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: supabaseAnonKey,
-      debug: AppConfig.isDevelopment,
-    );
-
-    _client = Supabase.instance.client;
   }
 
   // Authentication helpers
@@ -263,13 +275,13 @@ class SupabaseService {
     }
   }
 
-  // Transaction operations
+  // Payment operations (using payments table instead of transactions)
   static Future<List<Transaction>> getUserTransactions() async {
     final user = currentUser;
     if (user == null) throw Exception('User not authenticated');
 
     final response = await from(
-      'transactions',
+      'payments',
     ).select().eq('user_id', user.id).order('created_at', ascending: false);
 
     return (response as List)
@@ -287,14 +299,16 @@ class SupabaseService {
     final user = currentUser;
     if (user == null) throw Exception('User not authenticated');
 
-    final response = await from('transactions')
+    final response = await from('payments')
         .insert({
           'user_id': user.id,
-          'subscription_id': subscriptionId,
-          'amount': amount,
+          'amount_cents': (amount * 100).round(), // Convert to cents
           'currency': currency,
-          'payment_method': paymentMethod,
-          'metadata': metadata,
+          'status': 'pending',
+          'provider': paymentMethod.toLowerCase().contains('toyyib') ? 'toyyibpay' : 'manual',
+          'description': 'Subscription payment',
+          'metadata': metadata ?? {},
+          'plan_id': subscriptionId, // Map subscription_id to plan_id
         })
         .select()
         .single();
@@ -366,5 +380,146 @@ class SupabaseService {
 
   static Future<void> resetPopupTracking({required String userId}) async {
     await from('user_popup_tracking').delete().eq('user_id', userId);
+  }
+
+  // Connectivity and health check methods
+  static Future<bool> testConnection() async {
+    try {
+      if (kDebugMode) {
+        print('🔍 SupabaseService: Testing database connection...');
+      }
+
+      // Check if we have a valid session first
+      final currentSession = client.auth.currentSession;
+      if (currentSession == null) {
+        if (kDebugMode) {
+          print('⚠️ SupabaseService: No active session, skipping authenticated connection test');
+        }
+        // Try unauthenticated connection instead
+        final result = await client
+            .from('app_settings')
+            .select('setting_key')
+            .limit(1)
+            .timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                throw Exception('Connection timeout');
+              },
+            );
+        return true;
+      }
+
+      // Simple query to test connection with current session
+      final result = await from('app_settings')
+          .select('setting_key')
+          .limit(1)
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw Exception('Connection timeout');
+            },
+          );
+
+      if (kDebugMode) {
+        print('✅ SupabaseService: Connection test successful');
+      }
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ SupabaseService: Connection test failed: $e');
+
+        // If JWT expired, try to refresh the session
+        if (e.toString().contains('JWT expired') || e.toString().contains('PGRST303')) {
+          print('🔄 SupabaseService: JWT expired, attempting to refresh session...');
+          try {
+            await client.auth.refreshSession();
+            if (kDebugMode) {
+              print('✅ SupabaseService: Session refreshed successfully');
+            }
+            return true;
+          } catch (refreshError) {
+            if (kDebugMode) {
+              print('❌ SupabaseService: Failed to refresh session: $refreshError');
+            }
+          }
+        }
+      }
+      return false;
+    }
+  }
+
+  static Future<bool> isHealthy() async {
+    try {
+      // Check if we have a valid client
+      if (_client == null) {
+        if (kDebugMode) {
+          print('❌ SupabaseService: Client not initialized');
+        }
+        return false;
+      }
+
+      // Check authentication state
+      final user = currentUser;
+      if (user == null) {
+        if (kDebugMode) {
+          print('⚠️ SupabaseService: No authenticated user');
+        }
+        // This is not necessarily an error - some operations don't require auth
+      }
+
+      // Test basic connectivity
+      return await testConnection();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ SupabaseService: Health check failed: $e');
+      }
+      return false;
+    }
+  }
+
+  static Future<T> retryOperation<T>(
+    Future<T> Function() operation, {
+    int maxRetries = 3,
+    Duration delay = const Duration(seconds: 1),
+    String? operationName,
+  }) async {
+    int attempts = 0;
+    dynamic lastError;
+
+    while (attempts < maxRetries) {
+      try {
+        if (kDebugMode && operationName != null) {
+          print('🔄 SupabaseService: Attempting $operationName (attempt ${attempts + 1}/$maxRetries)');
+        }
+
+        final result = await operation();
+
+        if (kDebugMode && operationName != null) {
+          print('✅ SupabaseService: $operationName successful on attempt ${attempts + 1}');
+        }
+
+        return result;
+      } catch (e) {
+        attempts++;
+        lastError = e;
+
+        if (kDebugMode && operationName != null) {
+          print('❌ SupabaseService: $operationName failed on attempt $attempts: $e');
+        }
+
+        // If this is the last attempt, throw the error
+        if (attempts >= maxRetries) {
+          if (kDebugMode && operationName != null) {
+            print('💥 SupabaseService: $operationName failed after $maxRetries attempts');
+          }
+          rethrow;
+        }
+
+        // Wait before retrying (with exponential backoff)
+        await Future.delayed(delay * attempts);
+      }
+    }
+
+    throw lastError;
   }
 }

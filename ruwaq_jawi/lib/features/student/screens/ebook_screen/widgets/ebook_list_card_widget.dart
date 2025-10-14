@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
+import 'package:provider/provider.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/models/ebook.dart';
+import '../../../../../core/providers/saved_items_provider.dart';
 
 class EbookListCardWidget extends StatelessWidget {
   final Ebook ebook;
   static int _globalIndex = 0;
   final int index;
 
-  EbookListCardWidget({
-    super.key,
-    required this.ebook,
-  }) : index = _globalIndex++ {
+  EbookListCardWidget({super.key, required this.ebook})
+    : index = _globalIndex++ {
     // Reset counter periodically to prevent overflow
     if (_globalIndex > 1000) _globalIndex = 0;
   }
@@ -47,7 +48,7 @@ class EbookListCardWidget extends StatelessWidget {
         },
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 20),
           decoration: BoxDecoration(
             color: AppTheme.surfaceColor,
             borderRadius: BorderRadius.circular(16),
@@ -61,13 +62,14 @@ class EbookListCardWidget extends StatelessWidget {
             ],
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Square thumbnail/icon on left
               Hero(
                 tag: 'ebook-cover-${ebook.id}',
                 child: Container(
-                  width: 70,
-                  height: 70,
+                  width: 90,
+                  height: 100,
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       begin: Alignment.topLeft,
@@ -119,38 +121,38 @@ class EbookListCardWidget extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    // Title
+                    // Title only; action menu moved to trailing of main row
                     Text(
                       ebook.title,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimaryColor,
-                            fontSize: 14,
-                            height: 1.3,
-                          ),
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.textPrimaryColor,
+                        fontSize: 14,
+                        height: 1.3,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 2),
 
                     // Author
                     Text(
                       ebook.author ?? 'Pengarang Tidak Diketahui',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondaryColor,
-                            fontWeight: FontWeight.w400,
-                            fontSize: 11,
-                          ),
+                        color: AppTheme.textSecondaryColor,
+                        fontWeight: FontWeight.w400,
+                        fontSize: 11,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
                     const SizedBox(height: 8),
 
-                    // Bottom row: Category badge & page count
+                    // Bottom row: Category badge & page count (side by side)
                     Row(
                       children: [
                         // Category badge
@@ -174,12 +176,13 @@ class EbookListCardWidget extends StatelessWidget {
                           ),
                         ),
 
-                        const Spacer(),
+                        // Gap between category and pages
+                        const SizedBox(width: 8),
 
-                        // Page count
+                        // Page count next to category
                         if (totalPages > 0)
                           Text(
-                            '$totalPages halaman',
+                            '$totalPages Pages',
                             style: Theme.of(context).textTheme.bodySmall
                                 ?.copyWith(
                                   color: AppTheme.textSecondaryColor,
@@ -225,21 +228,277 @@ class EbookListCardWidget extends StatelessWidget {
                       )
                     else
                       Text(
-                        'Belum ada rating',
-                        style: Theme.of(context).textTheme.bodySmall
-                            ?.copyWith(
-                              color: AppTheme.textSecondaryColor,
-                              fontWeight: FontWeight.w400,
-                              fontSize: 10,
-                              fontStyle: FontStyle.italic,
-                            ),
+                        'No ratings yet',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.textSecondaryColor,
+                          fontWeight: FontWeight.w400,
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                   ],
+                ),
+              ),
+
+              const SizedBox(width: 8),
+
+              // Trailing action menu button flushed to card right
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.borderColor, width: 1),
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      _showEbookOptionsBottomSheet(context, ebook);
+                    },
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedMoreVertical,
+                        color: AppTheme.textSecondaryColor,
+                        size: 25,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _showEbookOptionsBottomSheet(BuildContext rootContext, Ebook ebook) {
+    final savedProvider = rootContext.read<SavedItemsProvider>();
+    final bool isSaved = savedProvider.isEbookSaved(ebook.id);
+
+    showModalBottomSheet(
+      context: rootContext,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                child: Row(
+                  children: [
+                    PhosphorIcon(
+                      PhosphorIcons.books(),
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        ebook.title,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: AppTheme.textPrimaryColor,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                height: 1,
+                color: AppTheme.borderColor.withValues(alpha: 0.5),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    _buildBottomSheetOption(
+                      context: context,
+                      icon: isSaved
+                          ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
+                          : PhosphorIcons.heart(),
+                      title: isSaved
+                          ? 'Buang dari Simpanan'
+                          : 'Simpan ke Koleksi',
+                      subtitle: isSaved
+                          ? 'Alih keluar dari senarai simpanan'
+                          : 'Simpan untuk bacaan kemudian',
+                      iconColor: isSaved
+                          ? AppTheme.primaryColor
+                          : AppTheme.textSecondaryColor,
+                      onTap: () async {
+                        Navigator.of(context).pop();
+                        await savedProvider.toggleEbookSaved(ebook);
+                        final nowSaved = savedProvider.isEbookSaved(ebook.id);
+                        ScaffoldMessenger.of(rootContext).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                PhosphorIcon(
+                                  nowSaved
+                                      ? PhosphorIcons.heart(
+                                          PhosphorIconsStyle.fill,
+                                        )
+                                      : PhosphorIcons.heartBreak(
+                                          PhosphorIconsStyle.fill,
+                                        ),
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  nowSaved
+                                      ? 'Disimpan ke koleksi anda'
+                                      : 'Dibuang dari simpanan',
+                                ),
+                              ],
+                            ),
+                            backgroundColor: AppTheme.primaryColor,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildBottomSheetOption(
+                      context: context,
+                      icon: PhosphorIcons.shareFat(),
+                      title: 'Kongsi',
+                      subtitle: 'Kongsi dengan rakan dan keluarga',
+                      iconColor: AppTheme.textSecondaryColor,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        _showShareDialog(rootContext, ebook);
+                      },
+                    ),
+                    _buildBottomSheetOption(
+                      context: context,
+                      icon: PhosphorIcons.eye(),
+                      title: 'Lihat Detail',
+                      subtitle: 'Buka halaman detail e-book',
+                      iconColor: AppTheme.textSecondaryColor,
+                      onTap: () {
+                        Navigator.of(context).pop();
+                        rootContext.push('/ebook/${ebook.id}');
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildBottomSheetOption({
+    required BuildContext context,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppTheme.backgroundColor,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.borderColor),
+                ),
+                child: Center(
+                  child: PhosphorIcon(icon, color: iconColor, size: 18),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.textPrimaryColor,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppTheme.textSecondaryColor,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PhosphorIcon(
+                PhosphorIcons.caretRight(),
+                color: AppTheme.textSecondaryColor,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showShareDialog(BuildContext context, Ebook ebook) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        backgroundColor: AppTheme.surfaceColor,
+        title: Row(
+          children: [
+            PhosphorIcon(
+              PhosphorIcons.shareFat(),
+              color: AppTheme.primaryColor,
+              size: 22,
+            ),
+            const SizedBox(width: 12),
+            const Text('Kongsi E-book'),
+          ],
+        ),
+        content: Text(
+          'Kongsi pautan e-book ini melalui aplikasi kongsi kegemaran anda.',
+          style: TextStyle(color: AppTheme.textSecondaryColor),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Tutup'),
+          ),
+        ],
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/kitab_provider.dart';
 import '../../../core/theme/app_theme.dart';
 
 // Import managers
@@ -45,6 +46,13 @@ class _ProfileScreenState extends State<ProfileScreen>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _dataManager.initializeNameController(context);
+
+        // Load KitabProvider data for profile statistics
+        final kitabProvider = context.read<KitabProvider>();
+        if (kitabProvider.ebookList.isEmpty || kitabProvider.videoKitabList.isEmpty) {
+          kitabProvider.initialize(); // Load both ebooks and video kitabs
+        }
+
         // Start animations
         Future.delayed(const Duration(milliseconds: 100), () {
           if (mounted) {
@@ -327,6 +335,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return months[month - 1];
   }
 
+  
   Widget _buildAvatarWithBadge(userProfile) {
     final isPremium = _subscriptionManager.currentSubscription != null;
 
@@ -395,31 +404,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
               ),
-              // Verification checkmark badge (bottom right)
-              Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: const Color(0xFF2196F3),
-                    border: Border.all(color: Colors.white, width: 3),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF2196F3).withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                  child: PhosphorIcon(
-                    PhosphorIcons.check(PhosphorIconsStyle.bold),
-                    color: Colors.white,
-                    size: 14,
-                  ),
-                ),
-              ),
             ],
           ),
         );
@@ -432,179 +416,186 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     if (!isPremium) {
       // Show free/basic plan card
-      return Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: AppTheme.surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.borderColor),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // Basic Plan header
-            Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: HugeIcon(
-                      icon: HugeIcons.strokeRoundedBook02,
-                      color: AppTheme.primaryColor,
-                      size: 28,
-                    ),
-                  ),
+      return Consumer<KitabProvider>(
+        builder: (context, kitabProvider, child) {
+          // Get actual free books count from ebooks table
+          final freeBooksCount = kitabProvider.freeEbooks.length;
+
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppTheme.borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Basic Plan',
-                        style: TextStyle(
-                          color: AppTheme.textPrimaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
+              ],
+            ),
+            child: Column(
+              children: [
+                // Basic Plan header
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Center(
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedBook02,
+                          color: AppTheme.primaryColor,
+                          size: 28,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Free access to kitab',
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Basic Plan',
+                            style: TextStyle(
+                              color: AppTheme.textPrimaryColor,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Free access to kitab',
+                            style: TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Text(
+                        'Active',
                         style: TextStyle(
-                          color: AppTheme.textSecondaryColor,
+                          color: const Color(0xFF4CAF50),
                           fontSize: 13,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF4CAF50).withValues(alpha: 0.3),
+
+                const SizedBox(height: 20),
+
+                // Divider
+                Container(height: 1, color: AppTheme.borderColor),
+
+                const SizedBox(height: 20),
+
+                // Free plan benefits - 3 columns with dividers
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    // Actual Free Books Access
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            '$freeBooksCount',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Free Books',
+                            style: TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    'Active',
-                    style: TextStyle(
-                      color: const Color(0xFF4CAF50),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                    // Divider
+                    Container(width: 1, height: 40, color: AppTheme.borderColor),
+                    // Total Videos
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            '${kitabProvider.freeVideoKitab.length}',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Videos',
+                            style: TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    // Divider
+                    Container(width: 1, height: 40, color: AppTheme.borderColor),
+                    // SD Quality
+                    Expanded(
+                      child: Column(
+                        children: [
+                          Text(
+                            'SD',
+                            style: TextStyle(
+                              color: AppTheme.primaryColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Quality',
+                            style: TextStyle(
+                              color: AppTheme.textSecondaryColor,
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-
-            const SizedBox(height: 20),
-
-            // Divider
-            Container(height: 1, color: AppTheme.borderColor),
-
-            const SizedBox(height: 20),
-
-            // Free plan benefits - 3 columns with dividers
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                // 5 Books Access
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        '5',
-                        style: TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Books Access',
-                        style: TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                // Divider
-                Container(width: 1, height: 40, color: AppTheme.borderColor),
-                // Basic Support
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Basic',
-                        style: TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Support',
-                        style: TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                // Divider
-                Container(width: 1, height: 40, color: AppTheme.borderColor),
-                // SD Quality
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        'SD',
-                        style: TextStyle(
-                          color: AppTheme.primaryColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Quality',
-                        style: TextStyle(
-                          color: AppTheme.textSecondaryColor,
-                          fontSize: 12,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
+          );
+        },
       );
     }
 
@@ -869,10 +860,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _handleHistory() {
-    // TODO: Navigate to history screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('History feature coming soon')),
-    );
+    context.push('/payment-history');
   }
 
   void _handleDownloads() {
@@ -890,17 +878,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _handlePrivacySecurity() {
-    // TODO: Navigate to privacy & security screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Privacy & Security feature coming soon')),
-    );
+    context.push('/privacy-security');
   }
 
   void _handleHelpSupport() {
-    // TODO: Navigate to help & support screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Help & Support feature coming soon')),
-    );
+    context.push('/help-support');
   }
 
   Widget _buildSettingsSection() {

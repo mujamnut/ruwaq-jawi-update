@@ -4,7 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../../../../core/providers/kitab_provider.dart';
 import '../../../../../core/theme/app_theme.dart';
-import 'content_card_widget.dart';
+import 'recent_list_item_widget.dart';
 
 class RecentSectionWidget extends StatelessWidget {
   const RecentSectionWidget({super.key});
@@ -19,9 +19,10 @@ class RecentSectionWidget extends StatelessWidget {
         ]..sort(
             (a, b) => (b as dynamic).createdAt.compareTo((a as dynamic).createdAt),
           );
-        final displayContent = recentContent.take(4).toList();
+        // Prepare list items only (no hero card)
+        final listItems = recentContent.take(5).toList();
 
-        if (displayContent.isEmpty) {
+        if (listItems.isEmpty) {
           return const SizedBox.shrink();
         }
 
@@ -69,22 +70,16 @@ class RecentSectionWidget extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 240,
-              child: ListView.builder(
-                padding: const EdgeInsets.only(left: 20.0),
-                scrollDirection: Axis.horizontal,
-                itemCount: displayContent.length,
-                physics: const BouncingScrollPhysics(),
-                itemBuilder: (context, index) {
-                  return Container(
-                    width: 160,
-                    margin: const EdgeInsets.only(right: 12),
-                    child: ContentCardWidget(content: displayContent[index]),
-                  );
-                },
-              ),
+            const SizedBox(height: 16),
+            ListView.separated(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: listItems.length,
+              separatorBuilder: (context, index) => const SizedBox(height: 10),
+              itemBuilder: (context, index) {
+                return RecentListItemWidget(content: listItems[index]);
+              },
             ),
           ],
         );

@@ -205,12 +205,13 @@ serve(async (req) => {
         console.log('❌ Error creating payment record:', paymentError)
       }
 
-      // 4. Update pending payment status
+      // 4. Update payment status in payments table (single source of truth)
       await supabaseClient
-        .from('pending_payments')
+        .from('payments')
         .update({
           status: 'completed',
           updated_at: now,
+          completed_at: now,
         })
         .eq('bill_id', billId)
 
@@ -235,9 +236,9 @@ serve(async (req) => {
     } else if (paymentStatus === '3' || paymentStatus === 3) {
       console.log('❌ Payment failed')
       
-      // Update pending payment status to failed
+      // Update payment status to failed in payments table
       await supabaseClient
-        .from('pending_payments')
+        .from('payments')
         .update({
           status: 'failed',
           updated_at: new Date().toISOString(),

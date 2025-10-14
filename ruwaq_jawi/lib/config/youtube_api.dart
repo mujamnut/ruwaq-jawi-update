@@ -18,7 +18,7 @@ class YouTubeApiConfig {
   static String get apiKey => EnvConfig.youtubeApiKey;
 
   // Enable when valid API key is configured
-  static bool get isEnabled => apiKey != 'your_youtube_api_key_here';
+  static bool get isEnabled => apiKey.isNotEmpty && apiKey != 'your_youtube_api_key_here';
 
   // YouTube Data API endpoints
   static const String baseUrl = 'https://www.googleapis.com/youtube/v3';

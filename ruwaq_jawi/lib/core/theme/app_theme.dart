@@ -7,6 +7,15 @@ class AppTheme {
   static const Color primaryLightColor = Color(0xFF40D68A);
   static const Color primaryDarkColor = Color(0xFF00A85C);
 
+  // Primary gradient (more vibrant, brand-aligned)
+  static const Color gradientStart = Color(0xFF00D182); // brighter green
+  static const Color gradientEnd = Color(0xFF009B5A);   // deeper green
+  static LinearGradient get primaryGradient => const LinearGradient(
+        colors: [Color(0xFF00D182), Color(0xFF009B5A)],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
   // 30% - Secondary colors (for surfaces, cards, secondary elements)
   static const Color secondaryColor = Color(0xFFD4AF37); // Gold
   static const Color secondaryLightColor = Color(0xFFE6C757);

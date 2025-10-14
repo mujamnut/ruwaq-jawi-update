@@ -87,13 +87,169 @@ class _EbookScreenState extends State<EbookScreen>
           backgroundColor: AppTheme.backgroundColor,
           appBar: const EbookAppBarWidget(),
           body: kitabProvider.isLoading
-              ? const EbookLoadingStateWidget()
+              ? _buildLoadingContent(kitabProvider)
               : kitabProvider.errorMessage != null
               ? _buildErrorState(kitabProvider.errorMessage!)
               : _buildContent(kitabProvider),
           bottomNavigationBar: const StudentBottomNav(currentIndex: 2),
         );
       },
+    );
+  }
+
+  // Keep search + filters visible; show skeleton for list only
+  Widget _buildLoadingContent(KitabProvider kitabProvider) {
+    return CustomScrollView(
+      controller: _scrollController,
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
+      slivers: [
+        // Header spacing
+        SliverToBoxAdapter(
+          child: Container(
+            color: AppTheme.backgroundColor,
+            padding: const EdgeInsets.only(top: 20),
+          ),
+        ),
+
+        // Search bar (real)
+        SliverToBoxAdapter(
+          child: Container(
+            color: AppTheme.backgroundColor,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: EbookSearchBarWidget(
+              controller: _searchController,
+              searchQuery: _filterManager.searchQuery,
+              isSearchFocused: _isSearchFocused,
+              animationController: _searchAnimationController,
+              onFocusChanged: (focused) => setState(() => _isSearchFocused = focused),
+              onChanged: (value) => _filterManager.updateSearch(value),
+              onClear: () {
+                _searchController.clear();
+                _filterManager.clearSearch();
+              },
+            ),
+          ),
+        ),
+
+        // Category chips (real)
+        SliverToBoxAdapter(
+          child: Container(
+            color: AppTheme.backgroundColor,
+            padding: const EdgeInsets.only(left: 20, bottom: 16),
+            child: EbookCategoryChipsWidget(
+              categories: kitabProvider.categories,
+              selectedCategoryId: _filterManager.selectedCategoryId,
+              onCategorySelected: (categoryId) {
+                _filterManager.updateCategory(categoryId);
+              },
+            ),
+          ),
+        ),
+
+        // Skeleton list for ebooks
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.surfaceColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppTheme.borderColor),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      // Thumbnail placeholder (match latest size 90x90)
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: AppTheme.borderColor.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Text placeholders
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Title line
+                            Container(
+                              height: 16,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppTheme.borderColor.withValues(alpha: 0.3),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            // Author line
+                            Container(
+                              height: 13,
+                              width: 140,
+                              decoration: BoxDecoration(
+                                color: AppTheme.borderColor.withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            // Badge + pages line
+                            Row(
+                              children: [
+                                Container(
+                                  height: 18,
+                                  width: 90,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.borderColor.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  height: 12,
+                                  width: 80,
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.borderColor.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            // Rating small line
+                            Container(
+                              height: 12,
+                              width: 110,
+                              decoration: BoxDecoration(
+                                color: AppTheme.borderColor.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              childCount: 8,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -135,37 +291,41 @@ class _EbookScreenState extends State<EbookScreen>
               ),
             ),
 
-            // Search and filters
+            // Search only (match video list separation)
             SliverToBoxAdapter(
               child: Container(
                 color: AppTheme.backgroundColor,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    EbookSearchBarWidget(
-                      controller: _searchController,
-                      searchQuery: _filterManager.searchQuery,
-                      isSearchFocused: _isSearchFocused,
-                      animationController: _searchAnimationController,
-                      onFocusChanged: (focused) {
-                        setState(() => _isSearchFocused = focused);
-                      },
-                      onChanged: (value) {
-                        _filterManager.updateSearch(value);
-                      },
-                      onClear: () {
-                        _searchController.clear();
-                        _filterManager.clearSearch();
-                      },
-                    ),
-                    EbookCategoryChipsWidget(
-                      categories: kitabProvider.categories,
-                      selectedCategoryId: _filterManager.selectedCategoryId,
-                      onCategorySelected: (categoryId) {
-                        _filterManager.updateCategory(categoryId);
-                      },
-                    ),
-                  ],
+                child: EbookSearchBarWidget(
+                  controller: _searchController,
+                  searchQuery: _filterManager.searchQuery,
+                  isSearchFocused: _isSearchFocused,
+                  animationController: _searchAnimationController,
+                  onFocusChanged: (focused) {
+                    setState(() => _isSearchFocused = focused);
+                  },
+                  onChanged: (value) {
+                    _filterManager.updateSearch(value);
+                  },
+                  onClear: () {
+                    _searchController.clear();
+                    _filterManager.clearSearch();
+                  },
+                ),
+              ),
+            ),
+
+            // Category chips with left-only padding and bottom spacing (like video list)
+            SliverToBoxAdapter(
+              child: Container(
+                color: AppTheme.backgroundColor,
+                padding: const EdgeInsets.only(left: 20, bottom: 16),
+                child: EbookCategoryChipsWidget(
+                  categories: kitabProvider.categories,
+                  selectedCategoryId: _filterManager.selectedCategoryId,
+                  onCategorySelected: (categoryId) {
+                    _filterManager.updateCategory(categoryId);
+                  },
                 ),
               ),
             ),
@@ -198,37 +358,40 @@ class _EbookScreenState extends State<EbookScreen>
             ),
           ),
 
-          // Search and filters
+          // Search only
           SliverToBoxAdapter(
             child: Container(
               color: AppTheme.backgroundColor,
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                children: [
-                  EbookSearchBarWidget(
-                    controller: _searchController,
-                    searchQuery: _filterManager.searchQuery,
-                    isSearchFocused: _isSearchFocused,
-                    animationController: _searchAnimationController,
-                    onFocusChanged: (focused) {
-                      setState(() => _isSearchFocused = focused);
-                    },
-                    onChanged: (value) {
-                      _filterManager.updateSearch(value);
-                    },
-                    onClear: () {
-                      _searchController.clear();
-                      _filterManager.clearSearch();
-                    },
-                  ),
-                  EbookCategoryChipsWidget(
-                    categories: kitabProvider.categories,
-                    selectedCategoryId: _filterManager.selectedCategoryId,
-                    onCategorySelected: (categoryId) {
-                      _filterManager.updateCategory(categoryId);
-                    },
-                  ),
-                ],
+              child: EbookSearchBarWidget(
+                controller: _searchController,
+                searchQuery: _filterManager.searchQuery,
+                isSearchFocused: _isSearchFocused,
+                animationController: _searchAnimationController,
+                onFocusChanged: (focused) {
+                  setState(() => _isSearchFocused = focused);
+                },
+                onChanged: (value) {
+                  _filterManager.updateSearch(value);
+                },
+                onClear: () {
+                  _searchController.clear();
+                  _filterManager.clearSearch();
+                },
+              ),
+            ),
+          ),
+          // Category chips with left-only padding
+          SliverToBoxAdapter(
+            child: Container(
+              color: AppTheme.backgroundColor,
+              padding: const EdgeInsets.only(left: 20, bottom: 16),
+              child: EbookCategoryChipsWidget(
+                categories: kitabProvider.categories,
+                selectedCategoryId: _filterManager.selectedCategoryId,
+                onCategorySelected: (categoryId) {
+                  _filterManager.updateCategory(categoryId);
+                },
               ),
             ),
           ),

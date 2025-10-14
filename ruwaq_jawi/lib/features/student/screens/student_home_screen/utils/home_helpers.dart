@@ -72,7 +72,7 @@ class HomeHelpers {
 
   /// Format notification time to human-readable format
   static String formatNotificationTime(DateTime dateTime) {
-    final now = DateTime.now();
+    final now = DateTime.now().toUtc();
     final difference = now.difference(dateTime);
 
     if (difference.inMinutes < 1) {

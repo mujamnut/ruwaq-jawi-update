@@ -109,9 +109,9 @@ class EnhancedNotificationService {
       // Determine which system to use based on source or try new system first
       if (source == 'new_system' || source == null) {
         try {
-          final response = await _supabase.rpc('mark_notification_read', params: {
-            'p_notification_id': notificationId,
+          final response = await _supabase.rpc('mark_notification_as_read', params: {
             'p_user_id': user.id,
+            'p_notification_id': notificationId,
           });
 
           if (response == true) {
@@ -164,11 +164,11 @@ class EnhancedNotificationService {
 
       // Try new system first
       try {
-        final response = await _supabase.rpc('create_broadcast_notification', params: {
+        final response = await _supabase.rpc('create_broadcast_notification_v2', params: {
           'p_title': title,
           'p_message': message,
+          'p_type': 'broadcast',
           'p_metadata': metadata ?? {},
-          'p_target_roles': targetRoles,
         });
 
         if (response != null) {
@@ -206,10 +206,11 @@ class EnhancedNotificationService {
     try {
       // Try new system first
       try {
-        final response = await _supabase.rpc('create_personal_notification', params: {
+        final response = await _supabase.rpc('create_personal_notification_v2', params: {
           'p_user_id': userId,
           'p_title': title,
           'p_message': message,
+          'p_type': 'personal',
           'p_metadata': metadata ?? {},
         });
 
@@ -265,11 +266,11 @@ class EnhancedNotificationService {
       final user = _supabase.auth.currentUser;
       if (user == null) return false;
 
-      // Use new delete_notification RPC function for soft delete
+      // Use new delete_user_notification RPC function for soft delete
       try {
-        final response = await _supabase.rpc('delete_notification', params: {
-          'p_notification_id': notificationId,
+        final response = await _supabase.rpc('delete_user_notification_v2', params: {
           'p_user_id': user.id,
+          'p_notification_id': notificationId,
         });
 
         if (response == true) {
