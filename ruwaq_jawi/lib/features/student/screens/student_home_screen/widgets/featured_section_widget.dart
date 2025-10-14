@@ -44,7 +44,7 @@ class FeaturedSectionWidget extends StatelessWidget {
         onTotalCardsChanged(featuredContent.length);
 
         return Container(
-          color: Colors.white,
+          color: Colors.transparent,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -76,6 +76,7 @@ class FeaturedSectionWidget extends StatelessWidget {
                 ),
                 child: PageView.builder(
                   controller: scrollManager.featuredScrollController,
+                  allowImplicitScrolling: true,
                   padEnds: false,
                   clipBehavior: Clip.none,
                   onPageChanged: scrollManager.onPageChanged,
@@ -179,51 +180,74 @@ class FeaturedSectionWidget extends StatelessWidget {
   Widget _buildDotsIndicator(int totalCards) {
     if (totalCards == 0) return const SizedBox.shrink();
 
-    return Center(
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(totalCards, (index) {
-          final isActive = index == (scrollManager.currentCardIndex % totalCards);
+    return AnimatedBuilder(
+      animation: scrollManager.featuredScrollController,
+      builder: (context, _) {
+        final controller = scrollManager.featuredScrollController;
+        final fallbackIndex = scrollManager.currentCardIndex % totalCards;
+        final double page = controller.hasClients
+            ? (controller.page ?? fallbackIndex.toDouble())
+            : fallbackIndex.toDouble();
+        final double logical = totalCards == 0
+            ? 0.0
+            : (page % totalCards);
 
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            child: isActive
-                ? AnimatedBuilder(
-                    animation: progressAnimationController,
-                    builder: (context, child) {
-                      return Container(
-                        width: 24,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppTheme.borderColor,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: scrollManager.userIsScrolling
-                              ? 0
-                              : progressAnimationController.value,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
+        double circularDistance(double a, double b, int n) {
+          final diff = (a - b).abs();
+          return diff <= n / 2 ? diff : n - diff;
+        }
+
+        return Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(totalCards, (index) {
+              final dist = circularDistance(index.toDouble(), logical, totalCards);
+              final t = (1.0 - dist.clamp(0.0, 1.0)); // 0..1 morph: dot->bar
+              final tEased = Curves.easeOut.transform(t);
+
+              // Size morph
+              final double width = 8 + (24 - 8) * tEased;
+              final double height = 8 - (8 - 4) * tEased;
+              final double radius = height / 2;
+
+              // Progress fill: only when settled on this index and not user-scrolling
+              final bool isSettledActive =
+                  (index == (scrollManager.currentCardIndex % totalCards));
+              final bool showProgress = isSettledActive && !scrollManager.userIsScrolling;
+
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  color: AppTheme.borderColor,
+                  borderRadius: BorderRadius.circular(radius),
+                ),
+                child: AnimatedBuilder(
+                  animation: progressAnimationController,
+                  builder: (context, _) {
+                    final double fill = showProgress
+                        ? progressAnimationController.value
+                        : 0.0; // avoid pre-filling during drag for smoothness
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: FractionallySizedBox(
+                        widthFactor: fill,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(radius),
                           ),
                         ),
-                      );
-                    },
-                  )
-                : Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: AppTheme.borderColor,
-                    ),
-                  ),
-          );
-        }),
-      ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
+          ),
+        );
+      },
     );
   }
 }
