@@ -91,7 +91,7 @@ class RecentListItemWidget extends StatelessWidget {
                                       ? '${content.totalPages} halaman'
                                       : 'E-book')
                                   : (content.totalVideos != null && content.totalVideos > 0
-                                      ? '${content.totalVideos} episod'
+                                      ? '${content.totalVideos} ep'
                                       : 'Video'),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

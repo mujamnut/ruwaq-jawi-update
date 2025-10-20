@@ -14,6 +14,7 @@ import '../../widgets/admin_bottom_nav.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'kitab_manual_form_screen.dart';
 import 'kitab_auto_form_screen.dart';
+import 'kitab_detail_screen.dart';
 
 class AdminVideoListScreen extends StatefulWidget {
   const AdminVideoListScreen({super.key});
@@ -223,29 +224,23 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      appBar: _buildModernAppBar(),
-      extendBodyBehindAppBar: false,
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        color: AppTheme.primaryColor,
-        backgroundColor: Colors.white,
-        strokeWidth: 3.0,
-        child: Column(
-          children: [
-            // Modern Search and Filter Section
-            _buildSearchAndFilterSection(),
-
-            // Enhanced Content List
-            Expanded(
-              child: _isLoading
-                  ? _buildModernLoadingState()
-                  : _error != null
-                  ? _buildModernErrorState()
-                  : _filteredKitab.isEmpty
-                  ? _buildModernEmptyState()
-                  : _buildModernContentList(),
-            ),
-          ],
+      body: NestedScrollView(
+        floatHeaderSlivers: true,
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          _buildTitleSliverAppBar(innerBoxIsScrolled),
+        ],
+        body: RefreshIndicator(
+          onRefresh: _refreshData,
+          color: AppTheme.primaryColor,
+          backgroundColor: Colors.white,
+          strokeWidth: 3.0,
+          child: _isLoading
+              ? _buildModernLoadingState()
+              : _error != null
+              ? _buildModernErrorState()
+              : _filteredKitab.isEmpty
+              ? _buildModernEmptyState()
+              : _buildModernContentList(),
         ),
       ),
       floatingActionButton: _buildModernFAB(),
@@ -253,90 +248,66 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
-  PreferredSizeWidget _buildModernAppBar() {
-    return AppBar(
-      title: const Text(
-        'Video Kitab',
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 24,
-          letterSpacing: -0.5,
-        ),
-      ),
-      backgroundColor: AppTheme.primaryColor,
-      foregroundColor: Colors.white,
+  SliverAppBar _buildTitleSliverAppBar(bool innerBoxIsScrolled) {
+    final bool filterActive = _selectedFilter != 'all';
+    return SliverAppBar(
+      backgroundColor: Colors.white,
+      foregroundColor: AppTheme.textPrimaryColor,
       elevation: 0,
-      systemOverlayStyle: SystemUiOverlayStyle.light,
-      flexibleSpace: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppTheme.primaryColor, AppTheme.primaryLightColor],
+      pinned: true,
+      forceElevated: innerBoxIsScrolled,
+      systemOverlayStyle: SystemUiOverlayStyle.dark,
+      titleSpacing: 0,
+      centerTitle: false,
+      title: const Padding(
+        padding: EdgeInsets.only(left: 16),
+        child: Text(
+          'Video Kitab',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            letterSpacing: -0.2,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryColor.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
         ),
       ),
-      actions: const [],
-    );
-  }
-
-  Widget _buildSearchAndFilterSection() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Modern Search Bar
-          Container(
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(56),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+          child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              color: AppTheme.backgroundColor,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(28),
+              color: Colors.transparent,
             ),
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
               decoration: InputDecoration(
                 hintText: 'Cari kitab, pengarang, atau kategori...',
                 hintStyle: TextStyle(
                   color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
-                  fontSize: 16,
+                  fontSize: 15,
+                ),
+                filled: true,
+                fillColor: AppTheme.neutralGray,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
                 ),
                 prefixIcon: Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   child: HugeIcon(
                     icon: HugeIcons.strokeRoundedSearch01,
                     color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
-                    size: 20,
+                    size: 18,
                   ),
                 ),
-                border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
+                  horizontal: 12,
+                  vertical: 10,
                 ),
               ),
               onChanged: (value) {
@@ -346,17 +317,183 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
               },
             ),
           ),
+        ),
+      ),
+      actions: [
+        IconButton(
+          tooltip: 'Tapis',
+          onPressed: _openFilterSheet,
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedSettings04,
+                color: filterActive
+                    ? AppTheme.primaryColor
+                    : AppTheme.textSecondaryColor,
+                size: 22,
+              ),
+              if (filterActive)
+                Positioned(
+                  right: -1,
+                  top: -1,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
 
-          const SizedBox(height: 20),
+  // Nota: Bar carian kini diletakkan pada bahagian bawah SliverAppBar tajuk
+  // supaya ia berada lebih rapat di bahagian atas dan kelihatan lebih kemas.
 
-          // Filter Label
-          Text(
-            'Filter Kandungan',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondaryColor,
-              letterSpacing: 0.5,
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Tapis Kandungan',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                      ),
+                      const Spacer(),
+                      if (_selectedFilter != 'all')
+                        TextButton(
+                          onPressed: () {
+                            setState(() => _selectedFilter = 'all');
+                            setModalState(() {});
+                            Navigator.pop(context);
+                          },
+                          child: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildModernFilterChip(
+                          'all',
+                          'Semua',
+                          HugeIcons.strokeRoundedGridView,
+                          onChanged: () => setModalState(() {}),
+                        ),
+                        _buildModernFilterChip(
+                          'active',
+                          'Aktif',
+                          HugeIcons.strokeRoundedCheckmarkCircle02,
+                          onChanged: () => setModalState(() {}),
+                        ),
+                        _buildModernFilterChip(
+                          'inactive',
+                          'Tidak Aktif',
+                          HugeIcons.strokeRoundedCancel01,
+                          onChanged: () => setModalState(() {}),
+                        ),
+                        _buildModernFilterChip(
+                          'premium',
+                          'Premium',
+                          HugeIcons.strokeRoundedStar,
+                          onChanged: () => setModalState(() {}),
+                        ),
+                        _buildModernFilterChip(
+                          'free',
+                          'Percuma',
+                          HugeIcons.strokeRoundedGift,
+                          onChanged: () => setModalState(() {}),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchAndFilterSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      decoration: const BoxDecoration(color: Colors.white),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Modern Search Bar
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              color: Colors.transparent,
+              border: Border.all(color: AppTheme.borderColor, width: 1),
+            ),
+            child: TextField(
+              controller: _searchController,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              decoration: InputDecoration(
+                hintText: 'Cari kitab, pengarang, atau kategori...',
+                hintStyle: TextStyle(
+                  color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
+                  fontSize: 15,
+                ),
+                filled: true,
+                fillColor: AppTheme.neutralGray,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
+                ),
+                prefixIcon: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  child: HugeIcon(
+                    icon: HugeIcons.strokeRoundedSearch01,
+                    color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
+                    size: 18,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
             ),
           ),
 
@@ -400,7 +537,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
-  Widget _buildModernFilterChip(String value, String label, IconData icon) {
+  Widget _buildModernFilterChip(String value, String label, IconData icon, {VoidCallback? onChanged}) {
     final isSelected = _selectedFilter == value;
 
     return AnimatedContainer(
@@ -415,35 +552,24 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
             setState(() {
               _selectedFilter = isSelected ? 'all' : value;
             });
+            if (onChanged != null) onChanged();
           },
           borderRadius: BorderRadius.circular(24),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primaryColor : Colors.white,
+              color: isSelected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                  : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
                 color: isSelected
                     ? AppTheme.primaryColor
                     : AppTheme.borderColor,
-                width: isSelected ? 0 : 1,
+                width: 1,
               ),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 4,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
+              boxShadow: const [],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -452,7 +578,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                   icon: icon,
                   size: 16,
                   color: isSelected
-                      ? Colors.white
+                      ? AppTheme.primaryColor
                       : AppTheme.textSecondaryColor,
                 ),
                 const SizedBox(width: 6),
@@ -460,10 +586,10 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                   label,
                   style: TextStyle(
                     color: isSelected
-                        ? Colors.white
+                        ? AppTheme.primaryColor
                         : AppTheme.textSecondaryColor,
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -642,7 +768,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
       animation: _listAnimationController,
       builder: (context, child) {
         return ListView.builder(
-          controller: _scrollController,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
           itemCount: _filteredKitab.length,
           itemBuilder: (context, index) {
@@ -685,123 +810,62 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: 0,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-            spreadRadius: 0,
-          ),
-        ],
-      ),
+      // Remove card look (no color/shadow/border)
+      decoration: const BoxDecoration(),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
-            _editKitab(kitab);
+            _openKitabDetail(kitab.id);
           },
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Enhanced Thumbnail Header
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppTheme.primaryColor.withValues(alpha: 0.1),
-                      AppTheme.primaryLightColor.withValues(alpha: 0.05),
-                    ],
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
+              // Thumbnail at top (YouTube style)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
                 ),
                 child: Stack(
                   children: [
-                    if (kitab.thumbnailUrl != null)
-                      Hero(
-                        tag: 'kitab_${kitab.id}',
-                        child: ClipRRect(
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                          ),
-                          child: Image.network(
-                            kitab.thumbnailUrl!,
-                            width: double.infinity,
-                            height: 140,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return _buildEnhancedPlaceholder();
-                            },
-                          ),
-                        ),
-                      )
-                    else
-                      _buildEnhancedPlaceholder(),
-
-                    // Status Badges with Better Styling
-                    Positioned(
-                      top: 12,
-                      right: 12,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (!kitab.isActive)
-                            _buildStatusBadge(
-                              'Tidak Aktif',
-                              AppTheme.errorColor,
-                              HugeIcons.strokeRoundedCancel01,
-                            ),
-                        ],
-                      ),
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: (kitab.thumbnailUrl != null && kitab.thumbnailUrl!.isNotEmpty)
+                          ? Hero(
+                              tag: 'kitab_${kitab.id}',
+                              child: Image.network(
+                                kitab.thumbnailUrl!,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildCardBackgroundPlaceholder();
+                                },
+                              ),
+                            )
+                          : _buildCardBackgroundPlaceholder(),
                     ),
 
-                    // Gradient Overlay
-                    Positioned.fill(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.transparent,
-                              Colors.black.withValues(alpha: 0.05),
-                            ],
-                          ),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                          ),
-                        ),
-                      ),
+                    // (Status icon moved next to author text below)
+
+                    // Total videos (bottom-right)
+                    Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: _buildOverlayBadge('${kitab.totalVideos} video'),
                     ),
                   ],
                 ),
               ),
 
-              // Enhanced Content Info
+              // Text below thumbnail
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Title
                     Text(
                       kitab.title,
                       style: const TextStyle(
@@ -814,8 +878,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
-
-                    // Author
                     Row(
                       children: [
                         HugeIcon(
@@ -824,70 +886,83 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
                           color: AppTheme.textSecondaryColor,
                         ),
                         const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            kitab.author ?? 'Tiada Pengarang',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.textSecondaryColor,
-                              fontWeight: FontWeight.w500,
-                            ),
+                        Flexible(
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  kitab.author ?? 'Tiada Pengarang',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppTheme.textSecondaryColor,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              HugeIcon(
+                                icon: kitab.isActive
+                                    ? HugeIcons.strokeRoundedCheckmarkCircle02
+                                    : HugeIcons.strokeRoundedCancel01,
+                                size: 16,
+                                color: kitab.isActive
+                                    ? AppTheme.successColor
+                                    : AppTheme.errorColor,
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
-
-                    // Category Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          HugeIcon(
-                            icon: HugeIcons.strokeRoundedTag01,
-                            size: 12,
-                            color: AppTheme.primaryColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            category.name,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Status Row
                     Row(
                       children: [
-                        // Active Status
-                        _buildInfoChip(
-                          icon: kitab.isActive
-                              ? HugeIcons.strokeRoundedCheckmarkCircle02
-                              : HugeIcons.strokeRoundedCancel01,
-                          label: kitab.isActive ? 'Aktif' : 'Tidak Aktif',
-                          color: kitab.isActive
-                              ? AppTheme.successColor
-                              : AppTheme.errorColor,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: AppTheme.primaryColor.withValues(alpha: 0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              HugeIcon(
+                                icon: HugeIcons.strokeRoundedTag01,
+                                size: 12,
+                                color: AppTheme.primaryColor,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                category.name,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         const Spacer(),
+                        IconButton(
+                          onPressed: () => _showVideoActionsBottomSheet(kitab),
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedMoreVertical,
+                            size: 20.0,
+                            color: Colors.grey,
+                          ),
+                          tooltip: 'Tindakan',
+                        ),
                       ],
                     ),
                   ],
@@ -934,6 +1009,25 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Small dark badge used over thumbnails (duration, count)
+  Widget _buildOverlayBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -1008,12 +1102,29 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
+  // Full-card background placeholder (used when thumbnail missing or fails)
+  Widget _buildCardBackgroundPlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppTheme.primaryColor.withValues(alpha: 0.10),
+            AppTheme.primaryLightColor.withValues(alpha: 0.06),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildModernFAB() {
     return FloatingActionButton(
       onPressed: () {
         HapticFeedback.lightImpact();
         _showAddOptionsDialog();
       },
+      shape: const CircleBorder(),
       backgroundColor: const Color(0xFF00BF6D),
       foregroundColor: Colors.white,
       elevation: 6,
@@ -1022,116 +1133,269 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   }
 
   void _showAddOptionsDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      barrierDismissible: true,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.85,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.15),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
+        final bottom = MediaQuery.of(context).viewInsets.bottom;
+        return Container(
+          padding: EdgeInsets.only(left: 24, right: 24, top: 12, bottom: bottom + 16),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppTheme.borderColor,
+                  borderRadius: BorderRadius.circular(999),
                 ),
-              ],
+              ),
+              const SizedBox(height: 12),
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedPlusSign,
+                      color: AppTheme.primaryColor,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Tambah Video Kitab',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textPrimaryColor,
+                          ),
+                        ),
+                        Text(
+                          'Pilih kaedah untuk menambah kandungan',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+
+              // Quick Setup Option
+              _buildDialogOption(
+                icon: PhosphorIcons.youtubeLogo(PhosphorIconsStyle.fill),
+                title: 'Quick Setup',
+                subtitle: 'Auto import dari YouTube playlist',
+                color: Colors.red,
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToQuickSetup();
+                },
+              ),
+
+              const SizedBox(height: 16),
+
+              // Manual Setup Option
+              _buildDialogOption(
+                icon: HugeIcons.strokeRoundedEdit01,
+                title: 'Manual Setup',
+                subtitle: 'Buat secara manual dengan form',
+                color: AppTheme.primaryColor,
+                onTap: () {
+                  Navigator.pop(context);
+                  _navigateToManualSetup();
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Cancel Button
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 12,
+                  ),
+                ),
+                child: Text(
+                  'Batal',
+                  style: TextStyle(
+                    color: AppTheme.textSecondaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _openKitabDetail(String kitabId) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AdminKitabDetailScreen(kitabId: kitabId),
+      ),
+    );
+    if (mounted) {
+      _refreshData(); // Refresh list when returning from detail
+    }
+  }
+
+  Future<void> _toggleKitabStatus(String id, bool currentStatus) async {
+    try {
+      await VideoKitabService.toggleVideoKitabStatusAdmin(id, !currentStatus);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!currentStatus ? 'Diaktifkan' : 'Dinonaktifkan'),
+          backgroundColor: !currentStatus ? Colors.green : Colors.orange,
+        ),
+      );
+      _refreshData();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ralat mengubah status: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _deleteKitab(String id, String title) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pengesahan Padam'),
+        content: Text('Padam "$title"? Tindakan ini tidak boleh dibuat asal.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Padam'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await VideoKitabService.deleteVideoKitab(id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Berjaya dipadam'), backgroundColor: Colors.green),
+        );
+        _refreshData();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ralat memadam: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showVideoActionsBottomSheet(VideoKitab kitab) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              12 + MediaQuery.of(context).padding.bottom,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedPlusSign,
-                        color: AppTheme.primaryColor,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Tambah Video Kitab',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textPrimaryColor,
-                            ),
-                          ),
-                          Text(
-                            'Pilih kaedah untuk menambah kandungan',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.textSecondaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-
-                const SizedBox(height: 24),
-
-                // Quick Setup Option
-                _buildDialogOption(
-                  icon: PhosphorIcons.youtubeLogo(PhosphorIconsStyle.fill),
-                  title: 'Quick Setup',
-                  subtitle: 'Auto import dari YouTube playlist',
-                  color: Colors.red,
+                ListTile(
+                  leading: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedEdit01,
+                    size: 20,
+                    color: Colors.blue,
+                  ),
+                  title: const Text('Edit'),
                   onTap: () {
+                    HapticFeedback.lightImpact();
                     Navigator.pop(context);
-                    _navigateToQuickSetup();
+                    _editKitab(kitab);
                   },
                 ),
-
-                const SizedBox(height: 16),
-
-                // Manual Setup Option
-                _buildDialogOption(
-                  icon: HugeIcons.strokeRoundedEdit01,
-                  title: 'Manual Setup',
-                  subtitle: 'Buat secara manual dengan form',
-                  color: AppTheme.primaryColor,
-                  onTap: () {
+                ListTile(
+                  leading: HugeIcon(
+                    icon: kitab.isActive
+                        ? HugeIcons.strokeRoundedViewOff
+                        : HugeIcons.strokeRoundedView,
+                    size: 20,
+                    color: Colors.blue,
+                  ),
+                  title: Text(kitab.isActive ? 'Nyahaktif' : 'Aktifkan'),
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
                     Navigator.pop(context);
-                    _navigateToManualSetup();
+                    await _toggleKitabStatus(kitab.id, kitab.isActive);
                   },
                 ),
-
-                const SizedBox(height: 20),
-
-                // Cancel Button
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
+                ListTile(
+                  leading: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedDelete01,
+                    size: 20,
+                    color: Colors.red,
                   ),
-                  child: Text(
-                    'Batal',
-                    style: TextStyle(
-                      color: AppTheme.textSecondaryColor,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  title: const Text(
+                    'Padam',
+                    style: TextStyle(color: Colors.red),
                   ),
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                    await _deleteKitab(kitab.id, kitab.title);
+                  },
                 ),
               ],
             ),

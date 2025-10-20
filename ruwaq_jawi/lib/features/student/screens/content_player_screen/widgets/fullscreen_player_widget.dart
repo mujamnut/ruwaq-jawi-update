@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'skip_animation_widget.dart';
-import 'video_controls_overlay_widget.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 /// Fullscreen player with custom controls
 class FullscreenPlayerWidget extends StatelessWidget {
@@ -34,43 +33,19 @@ class FullscreenPlayerWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: SizedBox.expand(
-        child: Stack(
-          children: [
-            // YouTube Player fills entire screen
-            Positioned.fill(child: player),
-
-            // Skip animation feedback
-            SkipAnimationWidget(
-              showSkipAnimation: showSkipAnimation,
-              isSkipForward: isSkipForward,
-              isSkipOnLeftSide: isSkipOnLeftSide,
-              isFullscreen: true,
+        child: Stack(children: [
+          // YouTube Player fills entire screen with native controls; topActions carries the back
+          Positioned.fill(child: player),
+          // Double-tap gesture layer for skip (does not block single taps)
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onDoubleTap: () {},
+              onDoubleTapDown: onDoubleTap,
+              child: const SizedBox.expand(),
             ),
-
-            // Custom controls overlay with back button
-            VideoControlsOverlayWidget(
-              controller: controller,
-              isFullscreen: true,
-              onToggleFullscreen: onToggleFullscreen,
-              showControls: showControls,
-              onShowControls: onShowControls,
-              onHideControls: onHideControls,
-              onBack: onToggleFullscreen, // Exit fullscreen on back
-            ),
-
-            // Gesture detector for showing controls when hidden
-            if (!showControls)
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: onShowControls,
-                  onDoubleTap: () {}, // Empty to avoid conflict
-                  onDoubleTapDown: onDoubleTap,
-                  child: Container(color: Colors.transparent),
-                ),
-              ),
-          ],
-        ),
+          ),
+        ]),
       ),
     );
   }

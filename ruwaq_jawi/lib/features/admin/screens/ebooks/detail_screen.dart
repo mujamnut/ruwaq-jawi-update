@@ -73,9 +73,30 @@ class _AdminEbookDetailScreenState extends State<AdminEbookDetailScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(_ebook?['title'] ?? 'Detail E-book'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimaryColor,
+        centerTitle: false,
+        titleSpacing: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
+            size: 22,
+            color: AppTheme.textPrimaryColor,
+          ),
+          tooltip: 'Kembali',
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Text(
+            _ebook?['title'] ?? 'Detail E-book',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
       ),
       body: _buildBody(),
     );

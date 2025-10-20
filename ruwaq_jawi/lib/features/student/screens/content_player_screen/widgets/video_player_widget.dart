@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/models/video_episode.dart';
-import 'video_controls_overlay_widget.dart';
-import 'skip_animation_widget.dart';
 
 /// Portrait mode video player with custom controls
 class VideoPlayerWidget extends StatelessWidget {
@@ -82,6 +81,8 @@ class VideoPlayerWidget extends StatelessWidget {
       return Container(
         color: Colors.black,
         child: SafeArea(
+          top: true,
+          bottom: false,
           child: AspectRatio(
             aspectRatio: 16 / 9,
             child: loadingWidget,
@@ -93,45 +94,23 @@ class VideoPlayerWidget extends StatelessWidget {
     return Container(
       color: Colors.black,
       child: SafeArea(
+        top: true,
+        bottom: false,
         child: AspectRatio(
           aspectRatio: 16 / 9,
-          child: Stack(
-            children: [
-              // YouTube Player
-              Positioned.fill(child: player),
-
-              // Skip animation feedback
-              SkipAnimationWidget(
-                showSkipAnimation: showSkipAnimation,
-                isSkipForward: isSkipForward,
-                isSkipOnLeftSide: isSkipOnLeftSide,
-                isFullscreen: false,
+          child: Stack(children: [
+            // YouTube Player with native controls (topActions contains back)
+            Positioned.fill(child: player),
+            // Double-tap gesture layer for skip (does not block single taps)
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onDoubleTap: () {},
+                onDoubleTapDown: onDoubleTap,
+                child: const SizedBox.expand(),
               ),
-
-              // Custom controls overlay with back button
-              VideoControlsOverlayWidget(
-                controller: controller,
-                isFullscreen: false,
-                onToggleFullscreen: onToggleFullscreen,
-                showControls: showControls,
-                onShowControls: onShowControls,
-                onHideControls: onHideControls,
-                onBack: () => Navigator.of(context).pop(),
-              ),
-
-              // Gesture detector for showing controls when hidden
-              if (!showControls)
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: onShowControls,
-                    onDoubleTap: () {}, // Empty to avoid conflict
-                    onDoubleTapDown: onDoubleTap,
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
-            ],
-          ),
+            ),
+          ]),
         ),
       ),
     );

@@ -34,19 +34,15 @@ class PopupService {
       // Check if user dismissed permanently
       if (popupData['dismissed_permanently'] == true) return false;
 
-      // Get frequency based on environment
-      final daysBetweenShows = AppConfig.isDevelopment ? 0 : 7; // 0 = every time for dev, 7 days for prod
-
-      if (daysBetweenShows == 0) {
-        return true; // Show every time in development
-      }
-
-      // Check if enough time has passed since last show
-      final lastShown = DateTime.parse(popupData['last_shown_at']);
+      // Frequency policy: once per calendar day (both dev and prod)
+      final lastShown = DateTime.parse(popupData['last_shown_at']).toLocal();
       final now = DateTime.now();
-      final daysSinceLastShow = now.difference(lastShown).inDays;
+      final isSameDay = lastShown.year == now.year &&
+          lastShown.month == now.month &&
+          lastShown.day == now.day;
 
-      return daysSinceLastShow >= daysBetweenShows;
+      // If already shown today, do not show again until tomorrow
+      return !isSameDay;
     } catch (e) {
       if (kDebugMode) {
         print('Error checking popup show criteria: $e');

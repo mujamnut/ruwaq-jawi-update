@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 // Import models
@@ -89,6 +90,11 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           if (_videoManager.isVideoEnded) {
             _onVideoEnded();
           }
+
+          // Sync our back-button visibility timer with playback state
+          _controlsManager.startControlsTimer(
+            isPlaying: _videoManager.isPlaying,
+          );
         }
       },
     );
@@ -362,10 +368,30 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               initialVideoId: '', // Empty ID - will show black screen
               flags: const YoutubePlayerFlags(
                 autoPlay: false,
-                hideControls: true,
+                controlsVisibleAtStart: true,
+                hideControls: false,
               ),
             ),
-        showVideoProgressIndicator: false,
+        showVideoProgressIndicator: true,
+        topActions: [
+          const SizedBox(width: 8),
+          IconButton(
+            icon: const HugeIcon(
+              icon: HugeIcons.strokeRoundedArrowLeft01,
+              color: Colors.white,
+              size: 20.0,
+            ),
+            onPressed: () {
+              final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+              if (_isFullscreen || isLandscape) {
+                _toggleFullscreen();
+              } else {
+                Navigator.of(context).pop();
+              }
+            },
+          ),
+          const Spacer(),
+        ],
         onReady: () {
           if (mounted) setState(() {});
         },
@@ -529,6 +555,14 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
   }
 
   Widget _buildContent(Widget player) {
+    // Ensure our back button auto-hides in cadence with controls
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _controlsManager.startControlsTimer(
+        isPlaying: _videoManager.isPlaying,
+      );
+    });
+
     return Column(
       children: [
         // Video Player (Fixed)

@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 class AdminDashboardStatsGrid extends StatelessWidget {
-  const AdminDashboardStatsGrid({
-    super.key,
-    required this.stats,
-  });
+  const AdminDashboardStatsGrid({super.key, required this.stats});
 
   final Map<String, dynamic> stats;
 
@@ -15,9 +12,10 @@ class AdminDashboardStatsGrid extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      childAspectRatio: 1.5,
+      padding: EdgeInsets.zero,
+      crossAxisSpacing: 10,
+      mainAxisSpacing: 10,
+      childAspectRatio: 1.7,
       children: [
         _AdminDashboardStatCard(
           title: 'Jumlah Pengguna',
@@ -94,18 +92,18 @@ class _AdminDashboardStatCard extends StatelessWidget {
               Text(
                 value,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
           Text(
             title,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
           ),
         ],
       ),

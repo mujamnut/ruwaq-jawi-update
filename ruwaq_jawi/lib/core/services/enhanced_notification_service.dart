@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import '../models/enhanced_notification.dart';
+import 'notification_config_service.dart';
 
 /// Enhanced notification service supporting both new 2-table system and legacy system
 /// Provides seamless migration and backward compatibility
@@ -12,17 +13,22 @@ class EnhancedNotificationService {
 
   /// Get all notifications for current user using hybrid approach
   /// Uses enhanced 2-table system (notifications + notification_reads)
+  /// Includes filtering logic for new vs existing users
   static Future<List<EnhancedNotification>> getNotifications({
     bool unreadOnly = false,
     int limit = 50,
+    DateTime? userRegistrationDate,
   }) async {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) return [];
 
       if (kDebugMode) {
-        print('🔄 Loading notifications with hybrid approach...');
+        print('🔄 Loading notifications with hybrid approach and filtering...');
       }
+
+      // Get user registration date if not provided
+      userRegistrationDate ??= await _getUserRegistrationDate(user.id);
 
       // Call hybrid database function that combines both systems
       final response = await _supabase.rpc('get_user_notifications', params: {
@@ -38,21 +44,37 @@ class EnhancedNotificationService {
         return await _fallbackToLegacySystem(unreadOnly: unreadOnly, limit: limit);
       }
 
-      final List<EnhancedNotification> notifications = (response as List)
+      final List<EnhancedNotification> allNotifications = (response as List)
           .map((json) => EnhancedNotification.fromHybridJson(json))
-          .where((notification) {
-            if (unreadOnly) {
-              return !notification.isRead;
-            }
-            return true;
-          })
-          .take(limit)
           .toList();
 
+      // Apply filters asynchronously
+      List<EnhancedNotification> filteredNotifications = [];
+      for (final notification in allNotifications) {
+        // Apply unread filter first
+        if (unreadOnly && notification.isRead) {
+          continue;
+        }
+
+        // Apply user-based filtering
+        final shouldShow = await _shouldShowNotification(notification, userRegistrationDate);
+        if (shouldShow) {
+          filteredNotifications.add(notification);
+        }
+
+        // Stop if we reached the limit
+        if (filteredNotifications.length >= limit) {
+          break;
+        }
+      }
+
+      final List<EnhancedNotification> notifications = filteredNotifications;
+
       if (kDebugMode) {
-        print('✅ Loaded ${notifications.length} notifications using hybrid approach');
+        print('✅ Loaded ${notifications.length} notifications with filtering');
         print('🔍 New system: ${notifications.where((n) => n.source == 'new_system').length}');
         print('🔍 Legacy system: ${notifications.where((n) => n.source == 'legacy_system').length}');
+        print('👤 User registration date: $userRegistrationDate');
       }
 
       return notifications;
@@ -380,6 +402,14 @@ class EnhancedNotificationService {
         health['rpc_functions'] = false;
       }
 
+      // Test notification settings table
+      try {
+        await _supabase.from('notification_settings').select('id').limit(1);
+        health['notification_settings'] = true;
+      } catch (e) {
+        health['notification_settings'] = false;
+      }
+
       if (kDebugMode) {
         print('🔍 System Health Check:');
         health.forEach((key, value) {
@@ -391,6 +421,81 @@ class EnhancedNotificationService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error checking system health: $e');
+      }
+      return {};
+    }
+  }
+
+  /// Get user registration date from profiles table
+  static Future<DateTime?> _getUserRegistrationDate(String userId) async {
+    try {
+      final response = await _supabase
+          .from('profiles')
+          .select('created_at')
+          .eq('id', userId)
+          .single();
+
+      if (response['created_at'] != null) {
+        return DateTime.parse(response['created_at']).toUtc();
+      }
+      return null;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to get user registration date: $e');
+      }
+      return null;
+    }
+  }
+
+  /// Check if a notification should be shown to a user based on filtering rules
+  static Future<bool> _shouldShowNotification(
+    EnhancedNotification notification,
+    DateTime? userRegistrationDate,
+  ) async {
+    // If no user registration date, show notification (fallback)
+    if (userRegistrationDate == null) {
+      return true;
+    }
+
+    try {
+      // Use the config service to determine if this notification should be hidden
+      final shouldHide = await NotificationConfigService.shouldHideNotificationFromUser(
+        notificationDate: notification.createdAt,
+        userRegistrationDate: userRegistrationDate,
+        source: notification.source,
+      );
+
+      return !shouldHide;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error checking notification visibility: $e');
+      }
+      // Fallback: show notification if there's an error
+      return true;
+    }
+  }
+
+  /// Initialize notification configuration (call this during app startup)
+  static Future<void> initializeConfiguration() async {
+    try {
+      await NotificationConfigService.initializeDefaults();
+      if (kDebugMode) {
+        print('✅ Notification configuration initialized');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to initialize notification configuration: $e');
+      }
+    }
+  }
+
+  /// Get notification configuration for debugging
+  static Future<Map<String, dynamic>> getNotificationConfig() async {
+    try {
+      return await NotificationConfigService.getCurrentConfig();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to get notification config: $e');
       }
       return {};
     }

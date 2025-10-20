@@ -313,7 +313,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.delete),
-                onPressed: () => _deleteCategory(category['id']),
+                onPressed: () => _deleteCategory(category),
               ),
             ],
           ),

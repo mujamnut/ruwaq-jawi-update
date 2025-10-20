@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 
@@ -33,10 +34,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   String? _error;
   String _searchQuery = '';
   String _selectedFilter = 'all';
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    _searchController.text = _searchQuery;
     _initialize();
   }
 
@@ -98,6 +101,12 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         _isLoading = false;
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   List<UserProfile> get _filteredUsers {
@@ -241,8 +250,9 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
     if (confirmed == true) {
       try {
-        await SupabaseService.from('profiles')
-            .update({'role': 'admin'}).eq('id', user.id);
+        await SupabaseService.from(
+          'profiles',
+        ).update({'role': 'admin'}).eq('id', user.id);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -372,7 +382,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Sila isi semua maklumat'),
+          content: Text('Jangan tinggalkan kosong'),
           backgroundColor: Colors.red,
         ),
       );
@@ -441,18 +451,94 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Urus Pengguna'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimaryColor,
+        centerTitle: false,
+        titleSpacing: 0,
+        title: const Padding(
+          padding: EdgeInsets.only(left: 16),
+          child: Text(
+            'Urus Pengguna',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Tapis',
+            onPressed: _openFilterSheet,
+            icon: HugeIcon(
+              icon: HugeIcons.strokeRoundedFilterMailCircle,
+              color: AppTheme.textSecondaryColor,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 8),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                color: Colors.transparent,
+              ),
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Cari pengguna mengikut nama, emel atau ID...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
+                    fontSize: 15,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.neutralGray,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedSearch01,
+                      color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
+                      size: 18,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+          ),
+        ),
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddAdminDialog,
+        onPressed: _openAddAdminSheet,
         backgroundColor: AppTheme.primaryColor,
         foregroundColor: AppTheme.textLightColor,
-        tooltip: 'Tambah Admin',
+        tooltip: 'Add Admin',
         child: const HugeIcon(
-          icon: HugeIcons.strokeRoundedUserSettings01,
+          icon: HugeIcons.strokeRoundedUserAdd01,
           color: Colors.white,
         ),
       ),
@@ -460,25 +546,165 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     );
   }
 
+  // Removed multi-action sheet; FAB opens Add Admin sheet directly.
+
+  void _openAddAdminSheet() {
+    final TextEditingController emailController = TextEditingController();
+    final TextEditingController nameController = TextEditingController();
+    final TextEditingController passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 16,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+            ),
+            child: Form(
+              key: formKey,
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Add New Admin',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedCancel01,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: nameController,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedUser,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Jangan tinggalkan kosong';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
+                      prefixIcon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedMail01,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Jangan tinggalkan kosong';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: true,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      border: OutlineInputBorder(),
+                      prefixIcon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedLockPassword,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Jangan tinggalkan kosong';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        if (formKey.currentState?.validate() ?? false) {
+                          _createAdminUser(
+                            nameController.text.trim(),
+                            emailController.text.trim(),
+                            passwordController.text.trim(),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedUserAdd01,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      label: const Text(
+                        'Add Admin',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildBody() {
     if (_isLoading) {
       return Column(
         children: [
-          AdminUsersSearchFilters(
-            searchQuery: _searchQuery,
-            selectedFilter: _selectedFilter,
-            onSearchChanged: _onSearchChanged,
-            onFilterChanged: _onFilterChanged,
-          ),
           AdminUsersStatsBar(
             totalUsers: _filteredUsers.length,
             activeSubscriptions: _filteredUsers
                 .where((user) => _userSubscriptions[user.id] != null)
                 .length,
           ),
-          const Expanded(
-            child: AdminUsersLoadingList(),
-          ),
+          const Expanded(child: AdminUsersLoadingList()),
         ],
       );
     }
@@ -497,12 +723,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
 
     return Column(
       children: [
-        AdminUsersSearchFilters(
-          searchQuery: _searchQuery,
-          selectedFilter: _selectedFilter,
-          onSearchChanged: _onSearchChanged,
-          onFilterChanged: _onFilterChanged,
-        ),
         AdminUsersStatsBar(
           totalUsers: filteredUsers.length,
           activeSubscriptions: filteredUsers
@@ -538,6 +758,165 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 ),
         ),
       ],
+    );
+  }
+
+  void _openFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Tapis Pengguna',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_selectedFilter != 'all')
+                        TextButton(
+                          onPressed: () {
+                            setState(() => _selectedFilter = 'all');
+                            setModalState(() {});
+                          },
+                          child: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          'all',
+                          'Semua',
+                          HugeIcons.strokeRoundedGridView,
+                          () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _selectedFilter = 'all');
+                            setModalState(() {});
+                          },
+                        ),
+                        _buildFilterChip(
+                          'active',
+                          'Aktif',
+                          HugeIcons.strokeRoundedCheckmarkCircle02,
+                          () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _selectedFilter = 'active');
+                            setModalState(() {});
+                          },
+                        ),
+                        _buildFilterChip(
+                          'inactive',
+                          'Tidak Aktif',
+                          HugeIcons.strokeRoundedCancel01,
+                          () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _selectedFilter = 'inactive');
+                            setModalState(() {});
+                          },
+                        ),
+                        _buildFilterChip(
+                          'admin',
+                          'Admin',
+                          HugeIcons.strokeRoundedUserSettings01,
+                          () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _selectedFilter = 'admin');
+                            setModalState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip(
+    String value,
+    String label,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    final isSelected = _selectedFilter == value;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isSelected
+                    ? AppTheme.primaryColor
+                    : AppTheme.borderColor,
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HugeIcon(
+                  icon: icon,
+                  size: 16,
+                  color: isSelected
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondaryColor,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : AppTheme.textSecondaryColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

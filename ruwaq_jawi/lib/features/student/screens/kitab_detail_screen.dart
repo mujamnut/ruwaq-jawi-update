@@ -319,7 +319,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
               border: Border.all(color: AppTheme.borderColor),
             ),
             child: IconButton(
@@ -371,7 +371,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(12),
+              shape: BoxShape.circle,
               border: Border.all(color: AppTheme.borderColor),
             ),
             child: IconButton(
@@ -579,7 +579,7 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                         ? null // No background when collapsed
                         : BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
+                            shape: BoxShape.circle,
                           ),
                     child: IconButton(
                       icon: HugeIcon(
@@ -602,18 +602,18 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                         ? null // No background when collapsed
                         : BoxDecoration(
                             color: Colors.black.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(12),
+                            shape: BoxShape.circle,
                           ),
                     child: IconButton(
                       icon: PhosphorIcon(
                         _isSaved
                             ? PhosphorIcons.heart(PhosphorIconsStyle.fill)
                             : PhosphorIcons.heart(),
-                        color: _isSaved
-                            ? const Color(0xFFE91E63)
-                            : (_collapseRatio > 0.5
-                                  ? AppTheme.textSecondaryColor
-                                  : Colors.white),
+                      color: _isSaved
+                          ? const Color(0xFFE91E63)
+                          : (_collapseRatio > 0.5
+                                ? AppTheme.textSecondaryColor
+                                : Colors.white),
                         size: 24,
                       ),
                       onPressed: _toggleSaved,
@@ -731,6 +731,8 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                   ),
                   // Carousel page number indicator
                   _buildPageNumberIndicator(),
+                  // Episode count badge on header
+                  _buildEpisodeCountBadge(),
                 ],
               ),
             ),
@@ -789,23 +791,8 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
               top: 16,
               bottom: 16,
             ),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  AppTheme.backgroundColor.withValues(alpha: 0.5),
-                  AppTheme.backgroundColor,
-                ],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, -4),
-                  spreadRadius: 0,
-                ),
-              ],
+            decoration: const BoxDecoration(
+              color: AppTheme.backgroundColor,
             ),
             child: SizedBox(
               width: double.infinity,
@@ -880,21 +867,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: AppTheme.textPrimaryColor,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${_kitab!.totalVideos}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppTheme.primaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
                 ),
               ),
             ],
@@ -1707,6 +1679,40 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
             color: Colors.white,
             fontSize: 12,
             fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEpisodeCountBadge() {
+    final totalVideos = _kitab?.totalVideos ?? 0;
+    if (totalVideos <= 1) return const SizedBox.shrink();
+
+    // If header has preview (shows page indicator at bottom-right),
+    // offset the badge upward to avoid overlap; else keep at bottom-right.
+    final hasPreview = (_cachedEpisodes
+                ?.where((episode) => _isEpisodePreview(episode))
+                .toList() ??
+            [])
+        .isNotEmpty;
+
+    return Positioned(
+      bottom: hasPreview ? 56 : 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.3),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          '$totalVideos ep',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
           ),
         ),
       ),

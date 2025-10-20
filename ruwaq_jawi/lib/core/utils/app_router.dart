@@ -62,6 +62,7 @@ import '../../features/student/screens/payment_history_screen.dart';
 import '../../features/student/screens/privacy_security_screen.dart';
 import '../../features/student/screens/help_support_screen.dart';
 import '../../features/student/screens/manual_payment_verification_screen.dart';
+import '../../features/student/screens/reading_history_screen.dart';
 import '../models/payment_models.dart';
 import '../../features/payment/screens/payment_callback_page.dart';
 
@@ -424,6 +425,11 @@ class AppRouter {
           path: '/payment-history',
           name: 'payment-history',
           builder: (context, state) => const PaymentHistoryScreen(),
+        ),
+        GoRoute(
+          path: '/reading-history',
+          name: 'reading-history',
+          builder: (context, state) => const ReadingHistoryScreen(),
         ),
         GoRoute(
           path: '/privacy-security',

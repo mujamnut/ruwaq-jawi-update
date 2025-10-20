@@ -26,7 +26,8 @@ class EpisodeCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final thumbnail = 'https://img.youtube.com/vi/${episode.youtubeVideoId}/mqdefault.jpg';
+    final thumbnail =
+        'https://img.youtube.com/vi/${episode.youtubeVideoId}/mqdefault.jpg';
 
     return TweenAnimationBuilder<double>(
       duration: Duration(milliseconds: 400 + (index * 100)),
@@ -38,7 +39,7 @@ class EpisodeCardWidget extends StatelessWidget {
           child: Opacity(
             opacity: value.clamp(0.0, 1.0),
             child: Container(
-              margin: const EdgeInsets.only(bottom: 16),
+              margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: isCurrentEpisode
                     ? AppTheme.primaryColor.withValues(alpha: 0.08)
@@ -64,7 +65,7 @@ class EpisodeCardWidget extends StatelessWidget {
                   onTap: isBlocked ? null : onEpisodeTap,
                   borderRadius: BorderRadius.circular(20),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(12),
                     child: Row(
                       children: [
                         // Episode thumbnail with overlay
@@ -99,17 +100,13 @@ class EpisodeCardWidget extends StatelessWidget {
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: isBlocked
-                                      ? Colors.black.withValues(alpha: 0.7)
+                                      ? Colors.black.withValues(alpha: 0.35)
                                       : Colors.transparent,
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Center(
                                   child: isBlocked
-                                      ? PhosphorIcon(
-                                          PhosphorIcons.crown(PhosphorIconsStyle.fill),
-                                          color: Colors.amber,
-                                          size: 24,
-                                        )
+                                      ? null
                                       : isCurrentEpisode && isPlaying
                                           ? Container(
                                               width: 32,
@@ -117,29 +114,95 @@ class EpisodeCardWidget extends StatelessWidget {
                                               decoration: BoxDecoration(
                                                 color: AppTheme.primaryColor,
                                                 shape: BoxShape.circle,
-                                              ),
-                                              child: PhosphorIcon(
-                                                PhosphorIcons.pause(PhosphorIconsStyle.fill),
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
-                                            )
-                                          : Container(
-                                              width: 32,
-                                              height: 32,
-                                              decoration: BoxDecoration(
-                                                color: Colors.black.withValues(alpha: 0.6),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: PhosphorIcon(
-                                                PhosphorIcons.play(PhosphorIconsStyle.fill),
-                                                color: Colors.white,
-                                                size: 16,
-                                              ),
+                                          ),
+                                          child: PhosphorIcon(
+                                            PhosphorIcons.pause(
+                                              PhosphorIconsStyle.fill,
                                             ),
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        )
+                                      : Container(
+                                          width: 32,
+                                          height: 32,
+                                          decoration: BoxDecoration(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.6,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: PhosphorIcon(
+                                            PhosphorIcons.play(
+                                              PhosphorIconsStyle.fill,
+                                            ),
+                                            color: Colors.white,
+                                            size: 16,
+                                          ),
+                                        ),
                                 ),
                               ),
                             ),
+                            // Small premium badge (top-left) when blocked
+                            if (isBlocked)
+                              Positioned(
+                                top: 6,
+                                left: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      PhosphorIcon(
+                                        PhosphorIcons.crown(PhosphorIconsStyle.fill),
+                                        color: Colors.amber,
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      const Text(
+                                        'PREMIUM',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.w600,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            if (episode.duration != null)
+                              Positioned(
+                                bottom: 6,
+                                right: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 3,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.85),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    _formatDuration(episode.duration!),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.3,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                         const SizedBox(width: 16),
@@ -148,32 +211,39 @@ class EpisodeCardWidget extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Episode header
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isCurrentEpisode
-                                          ? AppTheme.primaryColor
-                                          : AppTheme.textSecondaryColor.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(6),
-                                    ),
-                                    child: Text(
-                                      'Episod ${episode.partNumber}',
-                                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                        color: isCurrentEpisode
-                                            ? Colors.white
-                                            : AppTheme.textSecondaryColor,
-                                        fontWeight: FontWeight.w600,
+                              // Episode title with prefix "ep n"
+                              RichText(
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                text: TextSpan(
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(
+                                        fontWeight: isCurrentEpisode
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                        color: isBlocked
+                                            ? AppTheme.textSecondaryColor
+                                            : AppTheme.textPrimaryColor,
                                       ),
+                                  children: [
+                                    TextSpan(
+                                      text: 'Ep ${episode.partNumber} • ',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleSmall
+                                          ?.copyWith(
+                                            color: AppTheme.textSecondaryColor,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
-                                  ),
-                                  if (isPremium) ...[
-                                    const SizedBox(width: 8),
+                                    TextSpan(text: episode.title),
+                                  ],
+                                ),
+                              ),
+                              if (isPremium) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 6,
@@ -204,72 +274,13 @@ class EpisodeCardWidget extends StatelessWidget {
                                       ),
                                     ),
                                   ],
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              // Episode title
-                              Text(
-                                episode.title,
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: isCurrentEpisode ? FontWeight.w600 : FontWeight.w500,
-                                  color: isBlocked
-                                      ? AppTheme.textSecondaryColor
-                                      : AppTheme.textPrimaryColor,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              if (episode.description?.isNotEmpty == true) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  episode.description!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
-                              const SizedBox(height: 8),
+                              const SizedBox(height: 6),
                               // Episode metadata
                               Row(
                                 children: [
-                                  if (episode.duration != null) ...[
-                                    HugeIcon(
-                                      icon: HugeIcons.strokeRoundedClock03,
-                                      color: AppTheme.textSecondaryColor,
-                                      size: 12,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      _formatDuration(episode.duration!),
-                                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                        color: AppTheme.textSecondaryColor,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                  if (isCurrentEpisode) ...[
-                                    const Spacer(),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Sedang dimainkan',
-                                        style: TextStyle(
-                                          color: AppTheme.primaryColor,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
+                                  // Simplified; no extra labels
                                 ],
                               ),
                             ],

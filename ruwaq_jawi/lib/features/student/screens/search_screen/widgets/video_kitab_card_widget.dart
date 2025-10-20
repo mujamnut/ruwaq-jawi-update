@@ -123,8 +123,8 @@ class VideoKitabCardWidget extends StatelessWidget {
                       // Episode info
                       Text(
                         totalVideos > 0
-                            ? '$totalVideos episod'
-                            : '1 episod',
+                            ? '$totalVideos ep'
+                            : '1 ep',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppTheme.textSecondaryColor,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -24,6 +25,8 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
   String _searchQuery = '';
   String? _selectedCategoryFilter;
   bool? _premiumFilter;
+  bool? _activeFilter;
+  final _searchController = TextEditingController();
 
   // Local storage keys
   static const String _ebooksKey = 'cached_ebooks';
@@ -33,7 +36,14 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
   @override
   void initState() {
     super.initState();
+    _searchController.text = _searchQuery;
     _loadCachedData();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCachedData() async {
@@ -153,6 +163,13 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
           .toList();
     }
 
+    // Apply active status filter
+    if (_activeFilter != null) {
+      ebooks = ebooks
+          .where((ebook) => (ebook['is_active'] ?? false) == _activeFilter)
+          .toList();
+    }
+
     // Filter by search query
     if (_searchQuery.isNotEmpty) {
       ebooks = ebooks.where((ebook) {
@@ -230,89 +247,195 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
   }
 
   void _showFilterDialog() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Penapis E-book'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Kategori:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+      backgroundColor: Colors.white,
+      isScrollControlled: false,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                16 + MediaQuery.of(context).padding.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text(
+                        'Tapis E-book',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (_selectedCategoryFilter != null ||
+                          _premiumFilter != null)
+                        TextButton(
+                          onPressed: () {
+                            setState(() {
+                              _selectedCategoryFilter = null;
+                              _premiumFilter = null;
+                            });
+                            setModalState(() {});
+                          },
+                          child: const Text('Reset'),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Category chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          label: 'Semua',
+                          icon: HugeIcons.strokeRoundedGridView,
+                          isSelected: _selectedCategoryFilter == null,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _selectedCategoryFilter = null);
+                            setModalState(() {});
+                          },
+                        ),
+                        ..._categories.map((cat) {
+                          final String id = cat['id'];
+                          final String name = cat['name'] ?? 'Kategori';
+                          final bool selected = _selectedCategoryFilter == id;
+                          return _buildFilterChip(
+                            label: name,
+                            icon: HugeIcons.strokeRoundedTag01,
+                            isSelected: selected,
+                            onTap: () {
+                              HapticFeedback.lightImpact();
+                              setState(
+                                () => _selectedCategoryFilter = selected
+                                    ? null
+                                    : id,
+                              );
+                              setModalState(() {});
+                            },
+                          );
+                        }).toList(),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Premium chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _buildFilterChip(
+                          label: 'Semua Jenis',
+                          icon: HugeIcons.strokeRoundedGridView,
+                          isSelected: _premiumFilter == null,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _premiumFilter = null);
+                            setModalState(() {});
+                          },
+                        ),
+                        _buildFilterChip(
+                          label: 'Premium',
+                          icon: HugeIcons.strokeRoundedStar,
+                          isSelected: _premiumFilter == true,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _premiumFilter = true);
+                            setModalState(() {});
+                          },
+                        ),
+                        _buildFilterChip(
+                          label: 'Percuma',
+                          icon: HugeIcons.strokeRoundedGift,
+                          isSelected: _premiumFilter == false,
+                          onTap: () {
+                            HapticFeedback.lightImpact();
+                            setState(() => _premiumFilter = false);
+                            setModalState(() {});
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                  : Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: isSelected
+                    ? AppTheme.primaryColor
+                    : AppTheme.borderColor,
+                width: 1,
+              ),
             ),
-            const SizedBox(height: 8),
-            DropdownButton<String?>(
-              value: _selectedCategoryFilter,
-              hint: const Text('Semua kategori'),
-              isExpanded: true,
-              items: [
-                const DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text('Semua kategori'),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                HugeIcon(
+                  icon: icon,
+                  size: 16,
+                  color: isSelected
+                      ? AppTheme.primaryColor
+                      : AppTheme.textSecondaryColor,
                 ),
-                ..._categories.map(
-                  (cat) => DropdownMenuItem<String?>(
-                    value: cat['id'],
-                    child: Text(cat['name']),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : AppTheme.textSecondaryColor,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    fontSize: 13,
                   ),
                 ),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _selectedCategoryFilter = value;
-                });
-              },
             ),
-            const SizedBox(height: 16),
-            const Text('Jenis:', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            DropdownButton<bool?>(
-              value: _premiumFilter,
-              hint: const Text('Semua jenis'),
-              isExpanded: true,
-              items: const [
-                DropdownMenuItem<bool?>(
-                  value: null,
-                  child: Text('Semua jenis'),
-                ),
-                DropdownMenuItem<bool?>(
-                  value: true,
-                  child: Text('Premium sahaja'),
-                ),
-                DropdownMenuItem<bool?>(
-                  value: false,
-                  child: Text('Percuma sahaja'),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  _premiumFilter = value;
-                });
-              },
-            ),
-          ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _selectedCategoryFilter = null;
-                _premiumFilter = null;
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Reset'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              setState(() {});
-            },
-            child: const Text('Terapkan'),
-          ),
-        ],
       ),
     );
   }
@@ -322,30 +445,91 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Pengurusan E-book',
-          style: TextStyle(color: Colors.white),
-        ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimaryColor,
+        centerTitle: false,
+        titleSpacing: 0,
         automaticallyImplyLeading: false,
+        title: const Padding(
+          padding: EdgeInsets.only(left: 16),
+          child: Text(
+            'Pengurusan E-book',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const HugeIcon(
+            icon: HugeIcon(
               icon: HugeIcons.strokeRoundedFilterMailCircle,
-              color: Colors.white,
+              color: AppTheme.textSecondaryColor,
             ),
             onPressed: _showFilterDialog,
             tooltip: 'Penapis',
           ),
+          const SizedBox(width: 8),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                color: Colors.transparent,
+              ),
+              child: TextField(
+                controller: _searchController,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Cari e-book mengikut tajuk atau pengarang...',
+                  hintStyle: TextStyle(
+                    color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
+                    fontSize: 15,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.neutralGray,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(28),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    child: HugeIcon(
+                      icon: HugeIcons.strokeRoundedSearch01,
+                      color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
+                      size: 18,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+              ),
+            ),
+          ),
+        ),
       ),
       body: RefreshIndicator(
         onRefresh: _refreshData,
         child: Column(
           children: [
-            _buildSearchBar(),
-            _buildStatsCard(),
+            _buildCompactStatsChips(),
             Expanded(child: _buildEbookList()),
           ],
         ),
@@ -361,6 +545,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
         },
         backgroundColor: const Color(0xFF00BF6D),
         foregroundColor: Colors.white,
+        shape: const CircleBorder(),
         child: const HugeIcon(
           icon: HugeIcons.strokeRoundedPlusSign,
           color: Colors.white,
@@ -406,51 +591,189 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
+        border: Border.all(color: AppTheme.borderColor, width: 1),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem(
-            'Jumlah',
-            totalEbooks.toString(),
-            HugeIcons.strokeRoundedBook02,
+          Expanded(
+            child: _buildStatPill(
+              label: 'Jumlah',
+              value: totalEbooks.toString(),
+              icon: HugeIcons.strokeRoundedBook02,
+              selected:
+                  _selectedCategoryFilter == null &&
+                  _premiumFilter == null &&
+                  _activeFilter == null,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _selectedCategoryFilter = null;
+                  _premiumFilter = null;
+                  _activeFilter = null;
+                });
+              },
+            ),
           ),
-          _buildStatItem(
-            'Aktif',
-            activeEbooks.toString(),
-            HugeIcons.strokeRoundedCheckmarkCircle02,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatPill(
+              label: 'Aktif',
+              value: activeEbooks.toString(),
+              icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+              selected: _activeFilter == true,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _activeFilter = _activeFilter == true ? null : true;
+                });
+              },
+            ),
           ),
-          _buildStatItem(
-            'Premium',
-            premiumEbooks.toString(),
-            HugeIcons.strokeRoundedStar,
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildStatPill(
+              label: 'Premium',
+              value: premiumEbooks.toString(),
+              icon: HugeIcons.strokeRoundedStar,
+              selected: _premiumFilter == true,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _premiumFilter = _premiumFilter == true ? null : true;
+                });
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        HugeIcon(icon: icon, color: AppTheme.primaryColor, size: 24.0),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
+  // Compact chips below search: Jumlah, Aktif, Premium
+  Widget _buildCompactStatsChips() {
+    final filteredEbooks = _filteredEbooks;
+    final totalEbooks = filteredEbooks.length;
+    final activeEbooks = filteredEbooks
+        .where((e) => e['is_active'] == true)
+        .length;
+    final premiumEbooks = filteredEbooks
+        .where((e) => e['is_premium'] == true)
+        .length;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      color: Colors.white,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _buildFilterChip(
+              label: 'Jumlah $totalEbooks',
+              icon: HugeIcons.strokeRoundedBook02,
+              isSelected:
+                  _selectedCategoryFilter == null &&
+                  _premiumFilter == null &&
+                  _activeFilter == null,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _selectedCategoryFilter = null;
+                  _premiumFilter = null;
+                  _activeFilter = null;
+                });
+              },
+            ),
+            _buildFilterChip(
+              label: 'Aktif $activeEbooks',
+              icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+              isSelected: _activeFilter == true,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _activeFilter = _activeFilter == true ? null : true;
+                });
+              },
+            ),
+            _buildFilterChip(
+              label: 'Premium $premiumEbooks',
+              icon: HugeIcons.strokeRoundedStar,
+              isSelected: _premiumFilter == true,
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() {
+                  _premiumFilter = _premiumFilter == true ? null : true;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatPill({
+    required String label,
+    required String value,
+    required IconData icon,
+    required VoidCallback onTap,
+    bool selected = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppTheme.primaryColor.withValues(alpha: 0.06)
+                : Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppTheme.primaryColor : AppTheme.borderColor,
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              HugeIcon(
+                icon: icon,
+                color: selected
+                    ? AppTheme.primaryColor
+                    : AppTheme.textSecondaryColor,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.textPrimaryColor,
+                    ),
+                  ),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondaryColor,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(fontSize: 12, color: AppTheme.primaryColor),
-        ),
-      ],
+      ),
     );
   }
 
@@ -562,284 +885,323 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
     final isPremium = ebook['is_premium'] ?? false;
     final category = ebook['categories'];
 
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => AdminEbookDetailScreen(ebookId: ebook['id']),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.grey.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive
-                ? Colors.grey.withValues(alpha: 0.3)
-                : Colors.grey.withValues(alpha: 0.5),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  AdminEbookDetailScreen(ebookId: ebook['id']),
             ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Thumbnail
-              Container(
-                width: 80,
-                height: 100,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey.withValues(alpha: 0.2),
-                ),
-                child: ebook['thumbnail_url'] != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Image.network(
-                          ebook['thumbnail_url'],
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return HugeIcon(
-                              icon: HugeIcons.strokeRoundedBook02,
-                              size: 40.0,
-                              color: Colors.grey.shade400,
-                            );
-                          },
-                        ),
-                      )
-                    : HugeIcon(
-                        icon: HugeIcons.strokeRoundedBook02,
-                        size: 40.0,
-                        color: Colors.grey.shade400,
-                      ),
+          ).then((_) => _refreshData());
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(
+            color: isActive ? Colors.white : Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isActive
+                  ? Colors.grey.withValues(alpha: 0.3)
+                  : Colors.grey.withValues(alpha: 0.5),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
-              const SizedBox(width: 16),
-
-              // Content
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            ebook['title'] ?? 'Tanpa Tajuk',
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: isActive
-                                      ? Colors.black
-                                      : Colors.grey[600],
-                                ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Thumbnail
+                Container(
+                  width: 80,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.grey.withValues(alpha: 0.2),
+                  ),
+                  child: ebook['thumbnail_url'] != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            ebook['thumbnail_url'],
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return HugeIcon(
+                                icon: HugeIcons.strokeRoundedBook02,
+                                size: 40.0,
+                                color: Colors.grey.shade400,
+                              );
+                            },
                           ),
+                        )
+                      : HugeIcon(
+                          icon: HugeIcons.strokeRoundedBook02,
+                          size: 40.0,
+                          color: Colors.grey.shade400,
                         ),
-                        if (isPremium)
+                ),
+                const SizedBox(width: 16),
+
+                // Content
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              ebook['title'] ?? 'Tanpa Tajuk',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: isActive
+                                        ? Colors.black
+                                        : Colors.grey[600],
+                                  ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isPremium)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'Premium',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+
+                      if (ebook['author'] != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Oleh: ${ebook['author']}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Colors.grey[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                        ),
+                      ],
+
+                      if (category != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Kategori: ${category['name']}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+
+                      if (ebook['total_pages'] != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          '${ebook['total_pages']} muka surat',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: Colors.grey[600]),
+                        ),
+                      ],
+
+                      // Views and Downloads
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedView,
+                            size: 14.0,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${ebook['views_count'] ?? 0}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[600]),
+                          ),
+                          const SizedBox(width: 16),
+                          HugeIcon(
+                            icon: HugeIcons.strokeRoundedDownload01,
+                            size: 14.0,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${ebook['downloads_count'] ?? 0}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[600]),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.amber,
+                              color: isActive ? Colors.green : Colors.grey,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Text(
-                              'Premium',
-                              style: TextStyle(
+                            child: Text(
+                              isActive ? 'Aktif' : 'Tidak Aktif',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-
-                    if (ebook['author'] != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Oleh: ${ebook['author']}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                          fontStyle: FontStyle.italic,
-                        ),
+                          const Spacer(),
+                          Text(
+                            _formatDate(ebook['created_at']),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: Colors.grey[500]),
+                          ),
+                        ],
                       ),
                     ],
-
-                    if (category != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        'Kategori: ${category['name']}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.primaryColor,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-
-                    if (ebook['total_pages'] != null) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        '${ebook['total_pages']} muka surat',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-
-                    // Views and Downloads
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedView,
-                          size: 14.0,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${ebook['views_count'] ?? 0}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[600]),
-                        ),
-                        const SizedBox(width: 16),
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedDownload01,
-                          size: 14.0,
-                          color: Colors.grey.shade600,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${ebook['downloads_count'] ?? 0}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[600]),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isActive ? Colors.green : Colors.grey,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            isActive ? 'Aktif' : 'Tidak Aktif',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        Text(
-                          _formatDate(ebook['created_at']),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: Colors.grey[500]),
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
                 ),
-              ),
 
-              // Actions
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  switch (value) {
-                    case 'edit':
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => AdminEbookFormScreen(
-                            ebookId: ebook['id'],
-                            ebookData: ebook,
-                          ),
-                        ),
-                      ).then((_) => _refreshData());
-                      break;
-                    case 'toggle':
-                      _toggleEbookStatus(ebook['id'], isActive);
-                      break;
-                    case 'delete':
-                      _deleteEbook(
-                        ebook['id'],
-                        ebook['title'] ?? 'Tanpa Tajuk',
-                      );
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedEdit01,
-                          size: 16,
-                          color: Colors.blue,
-                        ),
-                        SizedBox(width: 8),
-                        Text('Edit'),
-                      ],
-                    ),
+                // Actions (3-dots opens bottom sheet)
+                IconButton(
+                  onPressed: () => _showEbookActionsBottomSheet(ebook),
+                  icon: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedMoreVertical,
+                    size: 20.0,
+                    color: Colors.grey,
                   ),
-                  PopupMenuItem(
-                    value: 'toggle',
-                    child: Row(
-                      children: [
-                        HugeIcon(
-                          icon: isActive
-                              ? HugeIcons.strokeRoundedViewOff
-                              : HugeIcons.strokeRoundedView,
-                          size: 16.0,
-                          color: Colors.blue,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(isActive ? 'Nyahaktif' : 'Aktifkan'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        HugeIcon(
-                          icon: HugeIcons.strokeRoundedDelete01,
-                          size: 16.0,
-                          color: Colors.red,
-                        ),
-                        SizedBox(width: 8),
-                        Text('Padam', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                  tooltip: 'Tindakan',
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  void _showEbookActionsBottomSheet(Map<String, dynamic> ebook) {
+    final bool isActive = ebook['is_active'] ?? true;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              16,
+              12,
+              16,
+              12 + MediaQuery.of(context).padding.bottom,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                ListTile(
+                  leading: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedEdit01,
+                    size: 20,
+                    color: Colors.blue,
+                  ),
+                  title: const Text('Edit'),
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AdminEbookFormScreen(
+                          ebookId: ebook['id'],
+                          ebookData: ebook,
+                        ),
+                      ),
+                    );
+                    if (mounted) _refreshData();
+                  },
+                ),
+                ListTile(
+                  leading: HugeIcon(
+                    icon: isActive
+                        ? HugeIcons.strokeRoundedViewOff
+                        : HugeIcons.strokeRoundedView,
+                    size: 20,
+                    color: Colors.blue,
+                  ),
+                  title: Text(isActive ? 'Nyahaktif' : 'Aktifkan'),
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                    await _toggleEbookStatus(ebook['id'], isActive);
+                  },
+                ),
+                ListTile(
+                  leading: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedDelete01,
+                    size: 20,
+                    color: Colors.red,
+                  ),
+                  title: const Text(
+                    'Padam',
+                    style: TextStyle(color: Colors.red),
+                  ),
+                  onTap: () async {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                    await _deleteEbook(
+                      ebook['id'],
+                      ebook['title'] ?? 'Tanpa Tajuk',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_notification.dart';
 import '../models/enhanced_notification.dart';
 import '../services/enhanced_notification_service.dart';
+import '../services/notification_config_service.dart';
 
 class NotificationsProvider with ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -12,6 +13,9 @@ class NotificationsProvider with ChangeNotifier {
   String? _error;
   final List<UserNotificationItem> _inbox = [];
   final List<EnhancedNotification> _enhancedInbox = [];
+
+  // User registration date cache for filtering
+  DateTime? _userRegistrationDate;
 
   bool get isLoading => _loading;
   String? get error => _error;
@@ -86,6 +90,32 @@ class NotificationsProvider with ChangeNotifier {
   List<UserNotificationItem> get legacyAdminAnnouncements =>
       _inbox.where((n) => n.isAdminAnnouncement).toList();
 
+  /// Load user registration date and cache it for filtering
+  Future<void> _loadUserRegistrationDate() async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      // Get registration date from profiles table
+      final response = await _supabase
+          .from('profiles')
+          .select('created_at')
+          .eq('id', user.id)
+          .single();
+
+      if (response['created_at'] != null) {
+        _userRegistrationDate = DateTime.parse(response['created_at']).toUtc();
+        if (kDebugMode) {
+          print('👤 User registration date loaded: $_userRegistrationDate');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to load user registration date: $e');
+      }
+    }
+  }
+
   Future<void> loadInbox() async {
     _loading = true;
     _error = null;
@@ -97,10 +127,15 @@ class NotificationsProvider with ChangeNotifier {
         throw Exception('User not authenticated');
       }
 
+      // Load user registration date for filtering
+      await _loadUserRegistrationDate();
+
       // Try enhanced system first
       try {
-        final enhancedNotifications =
-            await EnhancedNotificationService.getNotifications(limit: 50);
+        final enhancedNotifications = await EnhancedNotificationService.getNotifications(
+          limit: 50,
+          userRegistrationDate: _userRegistrationDate,
+        );
 
         if (enhancedNotifications.isNotEmpty) {
           _enhancedInbox
@@ -117,13 +152,10 @@ class NotificationsProvider with ChangeNotifier {
             ..addAll(legacyNotifications);
 
           if (kDebugMode) {
-            print(
-              '✅ Loaded ${enhancedNotifications.length} notifications using enhanced system',
-            );
-            print(
-              '📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
-              '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast',
-            );
+            print('✅ Loaded ${enhancedNotifications.length} notifications with filtering');
+            print('📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
+                  '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast');
+            print('🔍 Filtering applied for user registered: $_userRegistrationDate');
           }
 
           // Setup real-time subscription after initial load
@@ -212,6 +244,15 @@ class NotificationsProvider with ChangeNotifier {
           readRecord: newReadRecord,
         );
 
+        // Apply filtering for real-time notifications
+        final shouldShow = await _shouldShowRealtimeNotification(enhancedNotification);
+        if (!shouldShow) {
+          if (kDebugMode) {
+            print('🚫 Real-time notification filtered out for new user: ${enhancedNotification.title}');
+          }
+          return;
+        }
+
         // Add to the beginning of the list for newest first
         _enhancedInbox.insert(0, enhancedNotification);
 
@@ -231,6 +272,26 @@ class NotificationsProvider with ChangeNotifier {
       if (kDebugMode) {
         print('❌ Error handling real-time notification: $e');
       }
+    }
+  }
+
+  /// Check if a real-time notification should be shown to the user
+  Future<bool> _shouldShowRealtimeNotification(EnhancedNotification notification) async {
+    try {
+      // Use the config service to determine if this notification should be hidden
+      final shouldHide = await NotificationConfigService.shouldHideNotificationFromUser(
+        notificationDate: notification.createdAt,
+        userRegistrationDate: _userRegistrationDate ?? DateTime.now().toUtc(),
+        source: notification.source,
+      );
+
+      return !shouldHide;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error checking real-time notification visibility: $e');
+      }
+      // Fallback: show notification if there's an error
+      return true;
     }
   }
 
@@ -440,5 +501,50 @@ class NotificationsProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  /// Get notification configuration for debugging
+  Future<Map<String, dynamic>> getNotificationConfig() async {
+    try {
+      final config = await EnhancedNotificationService.getNotificationConfig();
+      return {
+        ...config,
+        'user_registration_date': _userRegistrationDate?.toIso8601String(),
+        'total_notifications_loaded': _enhancedInbox.length,
+        'unread_count': unreadCount,
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to get notification config: $e');
+      }
+      return {};
+    }
+  }
+
+  /// Initialize notification configuration (call during app startup)
+  Future<void> initializeNotificationSystem() async {
+    try {
+      await EnhancedNotificationService.initializeConfiguration();
+      if (kDebugMode) {
+        print('✅ Notification system initialized');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Failed to initialize notification system: $e');
+      }
+    }
+  }
+
+  /// Force reload notifications with current user registration date
+  Future<void> refreshWithFiltering() async {
+    if (kDebugMode) {
+      print('🔄 Refreshing notifications with filtering...');
+    }
+
+    // Clear cached registration date to force reload
+    _userRegistrationDate = null;
+
+    // Reload notifications
+    await loadInbox();
   }
 }

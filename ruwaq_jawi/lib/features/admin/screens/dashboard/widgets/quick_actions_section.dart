@@ -31,13 +31,14 @@ class AdminDashboardQuickActions extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
+          padding: EdgeInsets.zero,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
           childAspectRatio: 2,
           children: [
             _AdminDashboardActionButton(

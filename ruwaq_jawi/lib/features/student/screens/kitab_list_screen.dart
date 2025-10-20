@@ -29,6 +29,8 @@ class _KitabListScreenState extends State<KitabListScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   final ScrollController _scrollController = ScrollController();
+  // Preserve horizontal chips scroll position when selecting a category
+  final ScrollController _chipsController = ScrollController();
   bool _isScrolled = false;
   late AnimationController _animationController;
   late AnimationController _searchAnimationController;
@@ -91,6 +93,7 @@ class _KitabListScreenState extends State<KitabListScreen>
   void dispose() {
     _searchController.dispose();
     _scrollController.dispose();
+    _chipsController.dispose();
     _animationController.dispose();
     _searchAnimationController.dispose();
     _fadeAnimationController.dispose();
@@ -257,7 +260,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                   duration: const Duration(milliseconds: 200),
                   decoration: BoxDecoration(
                     color: AppTheme.surfaceColor,
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(28),
                     border: Border.all(
                       color: _isSearchFocused
                           ? AppTheme.primaryColor.withValues(alpha: 0.3)
@@ -274,6 +277,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                       ),
                     ],
                   ),
+                  clipBehavior: Clip.antiAlias,
                   child: TextField(
                     controller: _searchController,
                     onTap: () {
@@ -340,8 +344,10 @@ class _KitabListScreenState extends State<KitabListScreen>
           // Enhanced Category Filters
           Container(
             height: 50,
-            padding: const EdgeInsets.only(left: 20, bottom: 16),
+            padding: const EdgeInsets.only(bottom: 16),
             child: ListView.builder(
+              key: const PageStorageKey('video_category_chips'),
+              controller: _chipsController,
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               itemCount: categories.length,
@@ -350,11 +356,11 @@ class _KitabListScreenState extends State<KitabListScreen>
                 final isSelected = selectedCategory == category;
 
                 return Container(
-                  margin: const EdgeInsets.only(right: 5),
+                  margin: EdgeInsets.only(left: index == 0 ? 20 : 0, right: 5),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(24),
                       onTap: () {
                         HapticFeedback.lightImpact();
                         setState(() {
@@ -377,14 +383,14 @@ class _KitabListScreenState extends State<KitabListScreen>
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                                horizontal: 14,
                                 vertical: 8,
                               ),
                               decoration: BoxDecoration(
                                 color: isSelected
-                                    ? AppTheme.primaryColor
-                                    : AppTheme.surfaceColor,
-                                borderRadius: BorderRadius.circular(16),
+                                    ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                                    : Colors.white,
+                                borderRadius: BorderRadius.circular(24),
                                 border: Border.all(
                                   color: isSelected
                                       ? AppTheme.primaryColor
@@ -395,20 +401,21 @@ class _KitabListScreenState extends State<KitabListScreen>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (isSelected)
-                                    Padding(
-                                      padding: const EdgeInsets.only(right: 8),
-                                      child: PhosphorIcon(
-                                        PhosphorIcons.check(),
-                                        color: Colors.white,
-                                        size: 14,
-                                      ),
+                                  Padding(
+                                    padding: const EdgeInsets.only(right: 6),
+                                    child: PhosphorIcon(
+                                      _iconForCategoryName(category),
+                                      color: isSelected
+                                          ? AppTheme.primaryColor
+                                          : AppTheme.textSecondaryColor,
+                                      size: 16,
                                     ),
+                                  ),
                                   Text(
                                     category,
                                     style: TextStyle(
                                       color: isSelected
-                                          ? Colors.white
+                                          ? AppTheme.primaryColor
                                           : AppTheme.textSecondaryColor,
                                       fontSize: 14,
                                       fontWeight: isSelected
@@ -506,9 +513,9 @@ class _KitabListScreenState extends State<KitabListScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            PhosphorIcon(
-              PhosphorIcons.videoCamera(),
-              size: 32,
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedVideo01,
+              size: 32.0,
               color: AppTheme.primaryColor,
             ),
             const SizedBox(height: 4),
@@ -588,8 +595,8 @@ class _KitabListScreenState extends State<KitabListScreen>
                               child: _buildVideoThumbnail(kitab),
                             ),
                           ),
-                          // Duration badge (bottom right)
-                          if (kitab.totalDurationMinutes > 0)
+                          // Episode badge (bottom right) - replaces duration
+                          if (kitab.totalVideos > 0)
                             Positioned(
                               bottom: 6,
                               right: 6,
@@ -603,16 +610,14 @@ class _KitabListScreenState extends State<KitabListScreen>
                                   borderRadius: BorderRadius.circular(8),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.3,
-                                      ),
+                                      color: Colors.black.withValues(alpha: 0.3),
                                       blurRadius: 4,
                                       offset: const Offset(0, 1),
                                     ),
                                   ],
                                 ),
                                 child: Text(
-                                  kitab.formattedDuration,
+                                  '${kitab.totalVideos} ep',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 11,
@@ -676,46 +681,7 @@ class _KitabListScreenState extends State<KitabListScreen>
                                 ),
                               ),
                             ),
-                          // Play button overlay
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(16),
-                                gradient: LinearGradient(
-                                  begin: Alignment.center,
-                                  end: Alignment.center,
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.05),
-                                  ],
-                                ),
-                              ),
-                              child: Center(
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.95),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                        blurRadius: 8,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: PhosphorIcon(
-                                    PhosphorIcons.play(PhosphorIconsStyle.fill),
-                                    color: AppTheme.primaryColor,
-                                    size: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Removed play/pause overlay for cleaner thumbnail
                         ],
                       ),
 
@@ -805,43 +771,6 @@ class _KitabListScreenState extends State<KitabListScreen>
                               ),
 
                             const SizedBox(height: 8),
-
-                            // Video count badge
-                            if (kitab.totalVideos > 0)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    PhosphorIcon(
-                                      PhosphorIcons.videoCamera(),
-                                      color: AppTheme.primaryColor,
-                                      size: 12,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${kitab.totalVideos} episod',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            color: AppTheme.primaryColor,
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 11,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
                           ],
                         ),
                       ),
@@ -890,9 +819,8 @@ class _KitabListScreenState extends State<KitabListScreen>
   // Fixed app bar with better visibility
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      backgroundColor: _isScrolled
-          ? AppTheme.surfaceColor.withValues(alpha: 0.95)
-          : Colors.transparent,
+      backgroundColor: _isScrolled ? AppTheme.surfaceColor : Colors.transparent,
+      surfaceTintColor: Colors.transparent, // remove M3 greenish surface tint overlay
       elevation: _isScrolled ? 1 : 0,
       systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -1005,6 +933,27 @@ class _KitabListScreenState extends State<KitabListScreen>
     );
   }
 
+  // Map category names to varied icons (similar to Admin variety)
+  IconData _iconForCategoryName(String name) {
+    final s = name.toLowerCase();
+    if (s == 'semua' || s == 'all') return PhosphorIcons.gridFour();
+    if (s.contains('quran')) return PhosphorIcons.bookOpen();
+    if (s.contains('hadis') || s.contains('hadith')) return PhosphorIcons.scroll();
+    if (s.contains('fiqh') || s.contains('fikih')) return PhosphorIcons.listChecks();
+    if (s.contains('tafsir')) return PhosphorIcons.bookOpen();
+    if (s.contains('arab') || s.contains('nahu') || s.contains('sarf')) return PhosphorIcons.textAa();
+    if (s.contains('aqidah') || s.contains('akidah') || s.contains('iman')) return PhosphorIcons.shieldCheck();
+    if (s.contains('akhlak') || s.contains('adab') || s.contains('tasawuf')) return PhosphorIcons.heart();
+    if (s.contains('sirah') || s.contains('seerah') || s.contains('tarikh') || s.contains('history')) {
+      return PhosphorIcons.compass();
+    }
+    if (s.contains('doa') || s.contains('dua') || s.contains('zikir') || s.contains('dzikir')) {
+      return PhosphorIcons.handsPraying();
+    }
+    if (s.contains('usul') || s.contains('ushul') || s.contains('usool')) return PhosphorIcons.graduationCap();
+    return PhosphorIcons.tagSimple();
+  }
+
   /// Show bottom sheet with kitab options
   void _showKitabOptionsBottomSheet(VideoKitab kitab) {
     showModalBottomSheet<void>(
@@ -1061,9 +1010,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                         alpha: 0.1,
                                       ),
                                       child: Center(
-                                        child: PhosphorIcon(
-                                          PhosphorIcons.videoCamera(),
-                                          size: 16,
+                                        child: HugeIcon(
+                                          icon: HugeIcons.strokeRoundedVideo01,
+                                          size: 16.0,
                                           color: AppTheme.primaryColor,
                                         ),
                                       ),
@@ -1075,9 +1024,9 @@ class _KitabListScreenState extends State<KitabListScreen>
                                     alpha: 0.1,
                                   ),
                                   child: Center(
-                                    child: PhosphorIcon(
-                                      PhosphorIcons.videoCamera(),
-                                      size: 16,
+                                    child: HugeIcon(
+                                      icon: HugeIcons.strokeRoundedVideo01,
+                                      size: 16.0,
                                       color: AppTheme.primaryColor,
                                     ),
                                   ),

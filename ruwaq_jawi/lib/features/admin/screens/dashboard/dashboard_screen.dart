@@ -493,19 +493,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       );
     }
 
+    // Compute dynamic top padding so content never sits under the AppBar
+    final double statusBar = MediaQuery.of(context).padding.top;
+    final double visibleAppBar = (1.0 - _animationManager.appBarAnimation.value) * kToolbarHeight;
+    // Tighten the top padding while still staying below status/app bar
+    final double topPadding = 8 + statusBar + visibleAppBar;
+
     return RefreshIndicator(
       onRefresh: _loadDashboardData,
       child: SingleChildScrollView(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.fromLTRB(16, topPadding, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const AdminDashboardWelcomeCard(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 6),
             AdminDashboardStatsGrid(stats: _stats),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             AdminDashboardQuickActions(
               onAddCategory: _navigateToAddCategory,
               onAddKitab: _navigateToAddKitab,
@@ -514,7 +520,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               onNotifications: () => context.go('/admin/notifications'),
               onManageCategories: () => context.go('/admin/categories'),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             AdminDashboardRecentActivitySection(recentActivities: _recentActivities),
           ],
         ),
@@ -525,14 +531,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AdminDashboardAppBar(
         animationManager: _animationManager,
         notificationCountFuture: _notificationManager.getNotificationCount,
         onNotificationTap: _showNotifications,
         onProfileTap: () => context.go('/admin/profile'),
       ),
-      body: OfflineBanner(child: _buildBody()),
+      body: AnimatedBuilder(
+        animation: _animationManager.appBarAnimation,
+        builder: (context, _) {
+          return OfflineBanner(child: _buildBody());
+        },
+      ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 0),
     );
   }

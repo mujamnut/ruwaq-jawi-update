@@ -110,8 +110,8 @@ class ContentCardWidget extends StatelessWidget {
                                       ? '${content.totalPages} hal'
                                       : 'E-book')
                                   : (content.totalVideos > 0
-                                      ? '${content.totalVideos} episod'
-                                      : '1 episod'),
+                                      ? '${content.totalVideos} ep'
+                                      : '1 ep'),
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: AppTheme.primaryColor,
                                 fontWeight: FontWeight.w500,

@@ -60,7 +60,7 @@ class SmartPurchaseConfirmationWidget extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: HugeIcon(
-                  _getActionIcon(),
+                  icon: _getActionIcon(),
                   color: _getActionColor(),
                   size: 24.0,
                 ),
@@ -141,7 +141,7 @@ class SmartPurchaseConfirmationWidget extends StatelessWidget {
             child: Row(
               children: [
                 HugeIcon(
-                  HugeIcons.strokeRoundedInformationCircle,
+                  icon: HugeIcons.strokeRoundedInformationCircle,
                   color: Colors.blue,
                   size: 20.0,
                 ),
@@ -322,7 +322,7 @@ class SmartPurchaseConfirmationWidget extends StatelessWidget {
       child: Row(
         children: [
           HugeIcon(
-            HugeIcons.strokeRoundedTimeDuration05,
+            icon: HugeIcons.strokeRoundedTime01,
             color: Colors.green,
             size: 20.0,
           ),
@@ -332,7 +332,7 @@ class SmartPurchaseConfirmationWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${proratedDays} hari kredit diterapkan',
+                  '$proratedDays hari kredit diterapkan',
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -434,16 +434,16 @@ class SmartPurchaseConfirmationWidget extends StatelessWidget {
     }
   }
 
-  HugeIcon _getActionIcon() {
+  IconData _getActionIcon() {
     switch (actionType) {
       case 'new':
         return HugeIcons.strokeRoundedAdd01;
       case 'extension':
-        return HugeIcons.strokeRoundedTimeDuration05;
+        return HugeIcons.strokeRoundedTime01;
       case 'upgrade':
-        return HugeIcons.strokeRoundedArrowUp;
+        return HugeIcons.strokeRoundedArrowUp01;
       case 'downgrade':
-        return HugeIcons.strokeRoundedArrowDown;
+        return HugeIcons.strokeRoundedArrowDown01;
       default:
         return HugeIcons.strokeRoundedAdd01;
     }

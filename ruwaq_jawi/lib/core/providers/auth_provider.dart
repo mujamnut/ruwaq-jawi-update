@@ -2,10 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../models/user_profile.dart';
 import '../services/supabase_service.dart';
 import '../services/enhanced_notification_service.dart';
 import '../services/local_favorites_service.dart';
+import '../services/avatar_service.dart';
 
 enum AuthStatus { initial, loading, authenticated, unauthenticated, error }
 
@@ -14,6 +16,16 @@ class AuthProvider extends ChangeNotifier {
   UserProfile? _userProfile;
   String? _errorMessage;
   User? _user;
+
+  // Google Sign In instance
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'https://www.googleapis.com/auth/userinfo.email',
+      'https://www.googleapis.com/auth/userinfo.profile',
+      'openid',
+    ],
+  );
 
   AuthStatus get status => _status;
   UserProfile? get userProfile => _userProfile;
@@ -217,25 +229,39 @@ class AuthProvider extends ChangeNotifier {
         }
 
         if (event == AuthChangeEvent.signedIn && session != null) {
-          // Check if email is confirmed before allowing sign in
-          if (session.user.emailConfirmedAt == null) {
+          // Allow OAuth providers (e.g., Google) even if emailConfirmedAt is null.
+          // Only enforce confirmation for email/password sign-ins.
+          bool requireEmailConfirmed = false;
+          try {
+            final meta = session.user.appMetadata;
+            final provider = meta['provider'];
+            final providers = meta['providers'];
+            final isEmailProvider = (provider == 'email') ||
+                (providers is List && providers.contains('email'));
+            requireEmailConfirmed = isEmailProvider;
+          } catch (_) {
+            requireEmailConfirmed = false;
+          }
+
+          if (requireEmailConfirmed && session.user.emailConfirmedAt == null) {
             if (kDebugMode) {
-              print(
-                'DEBUG: User signed in but email not confirmed, signing out',
-              );
+              print('DEBUG: Email/password without confirmed email, signing out');
             }
-            // Sign out immediately if email not confirmed
             SupabaseService.signOut();
             return;
           }
 
           _user = session.user;
+          // Load profile without blocking auth completion
           _loadUserProfile().then((_) {
-            // Check subscription after profile is loaded
+            // Check subscription after profile is loaded (background)
             if (_userProfile != null) {
               refreshSubscriptionStatus(); // 🔥 Use refreshSubscriptionStatus() to update expired subscriptions
             }
           });
+
+          // Immediately set authenticated status for better UX
+          _scheduleStatus(AuthStatus.authenticated);
         } else if (event == AuthChangeEvent.signedOut) {
           _user = null;
           _userProfile = null;
@@ -334,6 +360,35 @@ class AuthProvider extends ChangeNotifier {
         );
       }
 
+      // If user logged in via OAuth (e.g., Google), prefer provider avatar when profile has no real avatar yet
+      try {
+        final metadata = _user?.userMetadata ?? {};
+        final dynamicMeta = metadata is Map ? metadata : <String, dynamic>{};
+        final oauthAvatar = (dynamicMeta['avatar_url'] as String?) ?? (dynamicMeta['picture'] as String?);
+        final currentAvatar = _userProfile?.avatarUrl ?? '';
+        final isFallbackAvatar = currentAvatar.isEmpty ||
+            currentAvatar.startsWith('initials://') ||
+            currentAvatar.contains('ui-avatars.com') ||
+            currentAvatar.contains('gravatar.com');
+
+        if (oauthAvatar != null && oauthAvatar.startsWith('http') && isFallbackAvatar) {
+          // Update DB profile avatar and local state
+          await SupabaseService.from('profiles')
+              .update({
+                'avatar_url': oauthAvatar,
+                'updated_at': DateTime.now().toUtc().toIso8601String(),
+              })
+              .eq('id', _user!.id);
+
+          _userProfile = _userProfile!.copyWith(avatarUrl: oauthAvatar, updatedAt: DateTime.now());
+          notifyListeners();
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('DEBUG: Skipping OAuth avatar update: $e');
+        }
+      }
+
       _scheduleStatus(AuthStatus.authenticated);
     } catch (e) {
       if (kDebugMode) {
@@ -383,12 +438,48 @@ class AuthProvider extends ChangeNotifier {
         print('DEBUG: Profile data - fullName: $fullName');
       }
 
+      // Determine avatar: prefer OAuth provider avatar (e.g., Google), fallback to generated
+      String? avatarUrl;
+      try {
+        final metadata = _user!.userMetadata ?? {};
+        final dynamicMeta = metadata is Map ? metadata : <String, dynamic>{};
+        final oauthAvatar = (dynamicMeta['avatar_url'] as String?) ?? (dynamicMeta['picture'] as String?);
+        if (oauthAvatar != null && oauthAvatar.startsWith('http')) {
+          avatarUrl = oauthAvatar;
+          if (kDebugMode) {
+            print('DEBUG: Using OAuth provider avatar: $avatarUrl');
+          }
+        }
+      } catch (_) {}
+
+      if (avatarUrl == null && _user!.email != null) {
+        try {
+          // Use Future.any to avoid blocking on slow avatar fetch
+          avatarUrl = await Future.any([
+            AvatarService.getAvatarUrl(
+              email: _user!.email!,
+              name: fullName,
+              size: 150, // Use larger size for better quality
+            ),
+            Future.delayed(const Duration(seconds: 3), () => ''), // Fallback after 3s
+          ]);
+          if (kDebugMode) {
+            print('DEBUG: Fallback avatar fetched (with timeout): $avatarUrl');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('DEBUG: Avatar fallback fetch failed: $e');
+          }
+        }
+      }
+
       // Create profile
       await SupabaseService.from('profiles').insert({
         'id': _user!.id,
         'full_name': fullName,
         'role': 'student',
         'subscription_status': 'inactive',
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
       });
 
       if (kDebugMode) {
@@ -470,52 +561,7 @@ class AuthProvider extends ChangeNotifier {
         print('DEBUG: Starting signUp process for $email');
       }
 
-      // First check if user already exists by trying a magic link with shouldCreateUser: false
-      try {
-        if (kDebugMode) {
-          print('DEBUG: Checking if user already exists');
-        }
-
-        await SupabaseService.client.auth
-            .signInWithOtp(
-              email: email,
-              shouldCreateUser: false, // Don't create if doesn't exist
-            );
-
-        // If we get here without exception, user exists
-        if (kDebugMode) {
-          print('DEBUG: User already exists, signup blocked');
-        }
-        _setError(
-          'Email sudah terdaftar. Sila guna email lain atau log masuk.',
-        );
-        _scheduleStatus(AuthStatus.unauthenticated);
-        return false;
-      } on AuthException catch (e) {
-        // Check if error indicates user doesn't exist
-        if (e.message.toLowerCase().contains('user not found') ||
-            e.message.toLowerCase().contains('invalid credentials') ||
-            e.message.toLowerCase().contains('signup disabled') ||
-            e.statusCode == '400') {
-          // User doesn't exist, continue with signup
-          if (kDebugMode) {
-            print(
-              'DEBUG: User does not exist, proceeding with signup: ${e.message}',
-            );
-          }
-        } else {
-          // Some other error, rethrow
-          rethrow;
-        }
-      } catch (e) {
-        // User doesn't exist, continue with signup
-        if (kDebugMode) {
-          print(
-            'DEBUG: User does not exist (generic error), proceeding with signup: $e',
-          );
-        }
-      }
-
+  
       final response = await SupabaseService.signUp(
         email: email,
         password: password,
@@ -577,6 +623,8 @@ class AuthProvider extends ChangeNotifier {
           errorMessage.contains('user with this email already exists') ||
           errorMessage.contains('email already exists') ||
           errorMessage.contains('email already taken') ||
+          errorMessage.contains('user_already_exists') ||
+          errorMessage.contains('user exists') ||
           (errorMessage.contains('email') && errorMessage.contains('taken')) ||
           (errorMessage.contains('email') && errorMessage.contains('exists')) ||
           e.statusCode == '422' || // Unprocessable Entity for duplicate email
@@ -585,6 +633,13 @@ class AuthProvider extends ChangeNotifier {
         _setError(
           'Email sudah terdaftar. Sila guna email lain atau log masuk.',
         );
+      } else if (errorMessage.contains('weak password') ||
+          errorMessage.contains('password should be at least')) {
+        _setError('Kata laluan terlalu lemah. Sila gunakan kata laluan yang lebih kuat.');
+      } else if (errorMessage.contains('invalid email') ||
+          errorMessage.contains('email format') ||
+          errorMessage.contains('invalid email format')) {
+        _setError('Format email tidak sah. Sila semak dan cuba lagi.');
       } else {
         _setError('Pendaftaran gagal: ${e.message}');
       }
@@ -694,6 +749,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  
   String _getSignInErrorMessage(dynamic error) {
     final errorString = error.toString().toLowerCase();
 
@@ -755,6 +811,11 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> signOut() async {
     try {
+      // Sign out from Google if signed in
+      if (_googleSignIn.currentUser != null) {
+        await signOutGoogle();
+      }
+
       await SupabaseService.signOut();
       _user = null;
       _userProfile = null;
@@ -880,6 +941,104 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  // Update user avatar
+  Future<bool> updateAvatar(String? avatarUrl) async {
+    try {
+      if (_user == null || _userProfile == null) {
+        _setError('User not authenticated');
+        return false;
+      }
+
+      clearError();
+
+      await SupabaseService.from('profiles').update({
+        'avatar_url': avatarUrl,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', _user!.id);
+
+      // Reload profile to get updated avatar
+      await _loadUserProfile();
+
+      return true;
+    } catch (e) {
+      _setError('Avatar update failed: ${e.toString()}');
+      return false;
+    }
+  }
+
+  // Refresh avatar from email (fetch fresh Gravatar)
+  Future<bool> refreshAvatarFromEmail({bool forceRefresh = true}) async {
+    try {
+      if (_user == null || _userProfile == null) {
+        _setError('User not authenticated');
+        return false;
+      }
+
+      final email = _user!.email;
+      final fullName = _userProfile!.fullName;
+
+      if (email == null) {
+        _setError('User email not found');
+        return false;
+      }
+
+      clearError();
+
+      // Fetch fresh avatar URL
+      final avatarUrl = await AvatarService.getAvatarUrl(
+        email: email,
+        name: fullName,
+        size: 150,
+        forceRefresh: forceRefresh,
+      );
+
+      // Only update if we got a valid URL (not initials://)
+      if (avatarUrl.isNotEmpty && !avatarUrl.startsWith('initials://')) {
+        return await updateAvatar(avatarUrl);
+      } else {
+        if (kDebugMode) {
+          print('AuthProvider: No external avatar found for $email');
+        }
+        return false;
+      }
+    } catch (e) {
+      _setError('Failed to refresh avatar: ${e.toString()}');
+      return false;
+    }
+  }
+
+  // Get avatar source information
+  Future<AvatarSource?> getAvatarSource() async {
+    if (_user == null || _userProfile == null) {
+      return null;
+    }
+
+    // If user has custom avatar, return custom
+    if (_userProfile!.avatarUrl != null && _userProfile!.avatarUrl!.isNotEmpty) {
+      return AvatarSource.custom;
+    }
+
+    final email = _user!.email;
+    final fullName = _userProfile!.fullName;
+
+    if (email == null) {
+      return AvatarSource.initials;
+    }
+
+    try {
+      return await AvatarService.getAvatarSource(
+        email: email,
+        name: fullName,
+        size: 80,
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('AuthProvider: Error getting avatar source: $e');
+      }
+      return AvatarSource.initials;
+    }
+  }
+
   // ==================== FAVORITES MIGRATION ====================
 
   /// Migrate local favorites to Supabase (background operation)
@@ -894,5 +1053,61 @@ class AuthProvider extends ChangeNotifier {
         }
       }
     });
+  }
+
+  // ==================== GOOGLE SIGN IN ====================
+
+  /// Sign in with Google
+  Future<bool> signInWithGoogle() async {
+    try {
+      _scheduleStatus(AuthStatus.loading);
+      clearError();
+      if (kDebugMode) {
+        print('DEBUG: Starting Google OAuth via Supabase');
+      }
+      await SupabaseService.signInWithGoogle();
+      // Completion handled by onAuthStateChange listener
+      // Add a safety timeout to avoid indefinite loading if callback fails
+      Future.delayed(const Duration(seconds: 30), () {
+        if (_status == AuthStatus.loading) {
+          _setError('Login Google mengambil masa terlalu lama. Sila cuba lagi.');
+          _scheduleStatus(AuthStatus.unauthenticated);
+        }
+      });
+      return true;
+    } on AuthException catch (e) {
+      _setError('Log masuk Google gagal: ${e.message}');
+      _scheduleStatus(AuthStatus.unauthenticated);
+      return false;
+    } catch (e) {
+      _setError('Log masuk Google gagal: ${e.toString()}');
+      _scheduleStatus(AuthStatus.unauthenticated);
+      return false;
+    }
+  }
+
+  /// Sign out from Google
+  Future<void> signOutGoogle() async {
+    try {
+      await _googleSignIn.signOut();
+      if (kDebugMode) {
+        print('DEBUG: Signed out from Google');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('DEBUG: Error signing out from Google: $e');
+      }
+      // Continue with normal sign out even if Google sign out fails
+    }
+  }
+
+  /// Get current signed-in Google user
+  GoogleSignInAccount? getGoogleUser() {
+    return _googleSignIn.currentUser;
+  }
+
+  /// Check if user is signed in with Google
+  bool get isGoogleSignedIn {
+    return _googleSignIn.currentUser != null;
   }
 }

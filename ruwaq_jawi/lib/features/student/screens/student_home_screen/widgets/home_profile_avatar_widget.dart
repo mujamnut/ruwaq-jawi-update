@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math' as math;
 import '../../../../../core/providers/auth_provider.dart';
 import '../../../../../core/theme/app_theme.dart';
+import '../../../../../core/services/avatar_service.dart';
 import '../managers/home_data_manager.dart';
 
 class HomeProfileAvatarWidget extends StatefulWidget {
@@ -101,10 +102,8 @@ class _HomeProfileAvatarWidgetState extends State<HomeProfileAvatarWidget>
                         transform: GradientRotation(angle),
                       )
                     : null,
-                border:
-                    isPremium ? null : Border.all(color: Colors.white, width: 2),
               ),
-              padding: EdgeInsets.all(isPremium ? 2 : 1),
+              padding: EdgeInsets.all(isPremium ? 2 : 0),
               child: isPremium
                   ? Container(
                       decoration: const BoxDecoration(
@@ -125,19 +124,13 @@ class _HomeProfileAvatarWidgetState extends State<HomeProfileAvatarWidget>
                         ),
                       ),
                     )
-                  : Container(
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                      ),
-                      child: ClipOval(
-                        child: _buildAvatarContent(
-                          profileImageUrl,
-                          userName,
-                          isPremium,
-                          initials,
-                          dataManager,
-                        ),
+                  : ClipOval(
+                      child: _buildAvatarContent(
+                        profileImageUrl,
+                        userName,
+                        isPremium,
+                        initials,
+                        dataManager,
                       ),
                     ),
             );
@@ -176,6 +169,13 @@ class _HomeProfileAvatarWidgetState extends State<HomeProfileAvatarWidget>
     String initials,
     HomeDataManager dataManager,
   ) {
+    // Handle initials:// scheme for local generated avatars
+    if (profileImageUrl != null && profileImageUrl.startsWith('initials://')) {
+      final name = profileImageUrl.replaceFirst('initials://', '').split('?')[0];
+      final extractedInitials = AvatarService.getInitials(name);
+      return _buildInitialsAvatar(extractedInitials, isPremium, dataManager);
+    }
+
     if (profileImageUrl != null && profileImageUrl.isNotEmpty) {
       return Image.network(
         profileImageUrl,

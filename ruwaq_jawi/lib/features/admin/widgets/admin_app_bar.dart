@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../../../core/theme/app_theme.dart';
 
 class AdminAppBar extends StatelessWidget implements PreferredSizeWidget {
@@ -38,18 +39,12 @@ class AdminAppBar extends StatelessWidget implements PreferredSizeWidget {
         leading: showBackButton
             ? IconButton(
                 onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
-                icon: PhosphorIcon(
-                  PhosphorIcons.arrowLeft(),
+                icon: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowLeft01,
                   color: AppTheme.textPrimaryColor,
-                  size: 24,
+                  size: 22,
                 ),
-                style: IconButton.styleFrom(
-                  backgroundColor: AppTheme.surfaceColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                ),
+                tooltip: 'Kembali',
               )
             : null,
         automaticallyImplyLeading: false,

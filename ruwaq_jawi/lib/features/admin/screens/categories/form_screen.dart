@@ -209,7 +209,30 @@ class _AdminAddCategoryScreenState extends State<AdminAddCategoryScreen> {
         }
       } else {
         // Create new category
-        final result = await SupabaseService.from('categories').insert(data);
+        // Check for duplicate name (friendly error)
+        final existing = await SupabaseService.from('categories')
+            .select('id')
+            .eq('name', _nameController.text.trim())
+            .maybeSingle();
+        if (existing != null) {
+          if (mounted) {
+            setState(() {
+              _error = 'Nama kategori sudah wujud';
+              _isLoading = false;
+            });
+          }
+          return;
+        }
+
+        final insertData = {
+          ...data,
+          'created_at': DateTime.now().toIso8601String(),
+        };
+
+        final result = await SupabaseService.from('categories')
+            .insert(insertData)
+            .select()
+            .single();
 
         if (kDebugMode) {
           print('DEBUG: Insert result: $result');

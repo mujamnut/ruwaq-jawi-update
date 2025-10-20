@@ -32,6 +32,7 @@ class EbookCategoryChipsWidget extends StatelessWidget {
       // Margin handled by parent container for consistency with video list
       margin: EdgeInsets.zero,
       child: ListView.builder(
+        key: const PageStorageKey('ebook_category_chips'),
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
         itemCount: allCategories.length,
@@ -40,11 +41,11 @@ class EbookCategoryChipsWidget extends StatelessWidget {
           final isSelected = selectedCategory == category;
 
           return Container(
-            margin: const EdgeInsets.only(right: 5),
+            margin: EdgeInsets.only(left: index == 0 ? 20 : 0, right: 5),
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(25),
+                borderRadius: BorderRadius.circular(24),
                 onTap: () {
                   HapticFeedback.lightImpact();
                   if (category == 'Semua') {
@@ -66,14 +67,14 @@ class EbookCategoryChipsWidget extends StatelessWidget {
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 16, // match video chips width
-                          vertical: 2, // thinner top-bottom
+                          horizontal: 14, // match admin chips width
+                          vertical: 6,
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppTheme.primaryColor
-                              : AppTheme.surfaceColor,
-                          borderRadius: BorderRadius.circular(25),
+                              ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(24),
                           border: Border.all(
                             color: isSelected
                                 ? AppTheme.primaryColor
@@ -106,20 +107,21 @@ class EbookCategoryChipsWidget extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (isSelected)
-                              Padding(
-                                padding: const EdgeInsets.only(right: 8),
-                                child: PhosphorIcon(
-                                  PhosphorIcons.check(),
-                                  color: Colors.white,
-                                  size: 14,
-                                ),
+                            Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: PhosphorIcon(
+                                _iconForCategoryName(category),
+                                color: isSelected
+                                    ? AppTheme.primaryColor
+                                    : AppTheme.textSecondaryColor,
+                                size: 16,
                               ),
+                            ),
                             Text(
                               category,
                               style: TextStyle(
                                 color: isSelected
-                                    ? Colors.white
+                                    ? AppTheme.primaryColor
                                     : AppTheme.textSecondaryColor,
                                 fontSize: 14,
                                 fontWeight: isSelected
@@ -139,5 +141,26 @@ class EbookCategoryChipsWidget extends StatelessWidget {
         },
       ),
     );
+  }
+  
+  // Map category names to varied icons (similar to Admin variety)
+  IconData _iconForCategoryName(String name) {
+    final s = name.toLowerCase();
+    if (s == 'semua' || s == 'all') return PhosphorIcons.gridFour();
+    if (s.contains('quran')) return PhosphorIcons.bookOpen();
+    if (s.contains('hadis') || s.contains('hadith')) return PhosphorIcons.scroll();
+    if (s.contains('fiqh') || s.contains('fikih')) return PhosphorIcons.listChecks();
+    if (s.contains('tafsir')) return PhosphorIcons.bookOpen();
+    if (s.contains('arab') || s.contains('nahu') || s.contains('sarf')) return PhosphorIcons.textAa();
+    if (s.contains('aqidah') || s.contains('akidah') || s.contains('iman')) return PhosphorIcons.shieldCheck();
+    if (s.contains('akhlak') || s.contains('adab') || s.contains('tasawuf')) return PhosphorIcons.heart();
+    if (s.contains('sirah') || s.contains('seerah') || s.contains('tarikh') || s.contains('history')) {
+      return PhosphorIcons.compass();
+    }
+    if (s.contains('doa') || s.contains('dua') || s.contains('zikir') || s.contains('dzikir')) {
+      return PhosphorIcons.handsPraying();
+    }
+    if (s.contains('usul') || s.contains('ushul') || s.contains('usool')) return PhosphorIcons.graduationCap();
+    return PhosphorIcons.tagSimple();
   }
 }

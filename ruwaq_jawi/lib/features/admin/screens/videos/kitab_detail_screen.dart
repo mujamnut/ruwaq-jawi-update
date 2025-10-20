@@ -1,11 +1,15 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import '../../../../core/models/kitab.dart';
 import '../../../../core/services/video_kitab_service.dart';
 import '../../../../core/services/video_episode_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../shared/pdf_viewer_screen.dart';
 
 class AdminKitabDetailScreen extends StatefulWidget {
   final String kitabId;
@@ -31,6 +35,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
 
   // Controllers untuk episodes (dynamic list)
   final List<TextEditingController> _episodeControllers = [];
+  YoutubePlayerController? _ytController;
+  int? _playingEpisodeIndex;
 
   @override
   void initState() {
@@ -45,6 +51,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     for (final controller in _episodeControllers) {
       controller.dispose();
     }
+    _ytController?.dispose();
     super.dispose();
   }
 
@@ -192,35 +199,35 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: Text(_kitab?.title ?? 'Detail Kitab'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
-        actions: [
-          IconButton(
-            onPressed: () {
-              context.push('/admin/content/edit', extra: _kitab?.toJson());
-            },
-            icon: const Icon(Icons.edit),
-            tooltip: 'Edit Kitab',
+        backgroundColor: Colors.white,
+        foregroundColor: AppTheme.textPrimaryColor,
+        centerTitle: false,
+        titleSpacing: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          icon: const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
+            size: 22,
+            color: AppTheme.textPrimaryColor,
           ),
-        ],
+          tooltip: 'Kembali',
+        ),
+        title: Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Text(
+            _kitab?.title ?? 'Detail Kitab',
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ),
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _buildContent(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _isSaving ? null : _saveChanges,
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
-        icon: _isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : const Icon(Icons.save),
-        label: Text(_isSaving ? 'Menyimpan...' : 'Simpan'),
-      ),
+      // Buang FAB supaya lebih bersih
     );
   }
 
@@ -229,18 +236,29 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       return const Center(child: Text('Kitab tidak dijumpai'));
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildKitabInfo(),
-          const SizedBox(height: 24),
-          _buildPreviewSection(),
-          const SizedBox(height: 24),
-          _buildEpisodesSection(),
-          const SizedBox(height: 100), // Space for FAB
-        ],
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (_ytController != null) {
+          // Auto-pause when user scrolls the page
+          try {
+            if (_ytController!.value.isPlaying) {
+              _ytController!.pause();
+            }
+          } catch (_) {}
+        }
+        return false;
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildKitabInfo(),
+            const SizedBox(height: 24),
+            _buildEpisodesSection(),
+            const SizedBox(height: 100), // Space for FAB
+          ],
+        ),
       ),
     );
   }
@@ -253,33 +271,40 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Maklumat Kitab',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primaryColor,
-              ),
+            Row(
+              children: [
+                Text(
+                  'Maklumat Kitab',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                ),
+                const Spacer(),
+                IconButton(
+                  onPressed: _showKitabActionsBottomSheet,
+                  icon: const Icon(Icons.more_vert, color: Colors.grey),
+                  tooltip: 'Tindakan',
+                ),
+              ],
             ),
             const SizedBox(height: 16),
 
             if (_kitab!.thumbnailUrl != null) ...[
-              Center(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
                   child: Image.network(
                     _kitab!.thumbnailUrl!,
-                    height: 120,
-                    width: 120,
+                    width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
-                        height: 120,
-                        width: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          borderRadius: BorderRadius.circular(8),
+                        decoration: BoxDecoration(color: Colors.grey[300]),
+                        child: const Center(
+                          child: Icon(Icons.image_not_supported, size: 40),
                         ),
-                        child: const Icon(Icons.book, size: 40),
                       );
                     },
                   ),
@@ -307,10 +332,140 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                 ),
               ],
             ),
+
+            // PDF Action (if available)
+            if (_kitab!.pdfUrl?.isNotEmpty == true) ...[
+              const SizedBox(height: 16),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final url = _kitab!.pdfUrl!.trim();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PdfViewerScreen(
+                          pdfUrl: url,
+                          title: _kitab!.title,
+                          kitabId: _kitab!.id,
+                        ),
+                      ),
+                    );
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: const BorderSide(color: AppTheme.primaryColor),
+                  ),
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('Lihat PDF'),
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  void _showKitabActionsBottomSheet() {
+    if (_kitab == null) return;
+    final bool isActive = _kitab!.isActive;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Icon(
+                  isActive ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.blue,
+                ),
+                title: Text(isActive ? 'Nyahaktif' : 'Aktifkan'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _toggleKitabActive(isActive);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Padam', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _deleteKitabConfirm();
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _toggleKitabActive(bool current) async {
+    if (_kitab == null) return;
+    try {
+      await VideoKitabService.toggleVideoKitabStatusAdmin(_kitab!.id, !current);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(!current ? 'Diaktifkan' : 'Dinonaktifkan'),
+          backgroundColor: !current ? Colors.green : Colors.orange,
+        ),
+      );
+      await _loadKitabDetail();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ralat mengubah status: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _deleteKitabConfirm() async {
+    if (_kitab == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pengesahan Padam'),
+        content: Text('Padam "${_kitab!.title}"? Tindakan ini tidak boleh dibuat asal.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Padam'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await VideoKitabService.deleteVideoKitab(_kitab!.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Berjaya dipadam'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context); // Keluar dari halaman detail selepas padam
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ralat memadam: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildInfoRow(String label, String value) {
@@ -380,8 +535,42 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                         _previewVideoId == null
                     ? 'URL YouTube tidak sah'
                     : null,
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.paste),
+                      tooltip: 'Tampal',
+                      onPressed: () async {
+                        final data = await Clipboard.getData('text/plain');
+                        final text = data?.text ?? '';
+                        if (text.isNotEmpty) {
+                          _previewUrlController.text = text.trim();
+                          setState(() {
+                            _previewVideoId =
+                                VideoEpisodeService.extractYouTubeVideoId(
+                                  _previewUrlController.text.trim(),
+                                );
+                          });
+                        }
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.clear),
+                      tooltip: 'Kosongkan',
+                      onPressed: () {
+                        _previewUrlController.clear();
+                        setState(() => _previewVideoId = null);
+                      },
+                    ),
+                  ],
+                ),
+                suffixIconConstraints: const BoxConstraints(
+                  minWidth: 64,
+                  maxWidth: 96,
+                ),
               ),
-              maxLines: 2,
+              maxLines: 1,
               onChanged: (value) {
                 setState(() {
                   _previewVideoId = VideoEpisodeService.extractYouTubeVideoId(
@@ -436,13 +625,13 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                       borderRadius: BorderRadius.circular(6),
                       child: Image.network(
                         _defaultThumbnailFor(_previewVideoId!),
-                        width: 80,
-                        height: 60,
+                        width: 160,
+                        height: 90,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
                           return Container(
-                            width: 80,
-                            height: 60,
+                            width: 160,
+                            height: 90,
                             decoration: BoxDecoration(
                               color: Colors.grey[300],
                               borderRadius: BorderRadius.circular(6),
@@ -469,8 +658,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                         loadingBuilder: (context, child, loadingProgress) {
                           if (loadingProgress == null) return child;
                           return Container(
-                            width: 80,
-                            height: 60,
+                            width: 160,
+                            height: 90,
                             decoration: BoxDecoration(
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(6),
@@ -534,79 +723,510 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   }
 
   Widget _buildEpisodesSection() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.video_library, color: AppTheme.primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Episode (${_episodeControllers.length})',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-                const Spacer(),
-                ElevatedButton.icon(
-                  onPressed: _addNewEpisode,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Episode'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
+    final episodes = _episodes;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.video_library, color: AppTheme.primaryColor),
+              const SizedBox(width: 8),
+              Text(
+                'Episode (${episodes.length})',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
                     ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Atur episode untuk kitab ini',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
 
-            if (_episodeControllers.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: const Column(
+          if (episodes.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: const Column(
+                children: [
+                  Icon(Icons.video_library, size: 48, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text(
+                    'Belum ada episode',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...List.generate(episodes.length, (index) {
+              final e = episodes[index];
+              return Column(
+                children: [
+                  _buildEpisodeDisplayCard(e, index),
+                  if (index != episodes.length - 1) ...[
+                    const SizedBox(height: 12),
+                    Divider(color: AppTheme.borderColor),
+                    const SizedBox(height: 12),
+                  ],
+                ],
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeDisplayCard(Map<String, dynamic> episode, int index) {
+    final bool isActive = episode['is_active'] ?? true;
+    final String? videoId = episode['youtube_video_id'] as String?;
+    final String? url = episode['youtube_video_url'] as String?;
+    final String title = episode['title'] ?? 'Episode ${index + 1}';
+    final int? part = episode['part_number'] as int?;
+    final int? duration = episode['duration_minutes'] as int?;
+    final String? thumb = episode['thumbnail_url'] as String?;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: (_playingEpisodeIndex == index && _ytController != null)
+              ? Stack(
                   children: [
-                    Icon(Icons.video_library, size: 48, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text(
-                      'Belum ada episode',
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: YoutubePlayer(
+                        controller: _ytController!,
+                        showVideoProgressIndicator: true,
+                      ),
                     ),
-                    SizedBox(height: 8),
-                    Text(
-                      'Tekan "Episode" untuk menambah',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          onTap: () {
+                            setState(() {
+                              _ytController?.pause();
+                              _ytController?.dispose();
+                              _ytController = null;
+                              _playingEpisodeIndex = null;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: const Padding(
+                            padding: EdgeInsets.all(6),
+                            child: Icon(Icons.close, color: Colors.white, size: 18),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              : Stack(
+                  children: [
+                    AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: InkWell(
+                        onTap: () {
+                          final id = videoId ?? (url != null
+                              ? VideoEpisodeService.extractYouTubeVideoId(url)
+                              : null);
+                          if (id == null || id.isEmpty) return;
+                          setState(() {
+                            _ytController?.dispose();
+                            _ytController = YoutubePlayerController(
+                              initialVideoId: id,
+                              flags: const YoutubePlayerFlags(
+                                autoPlay: true,
+                                mute: false,
+                              ),
+                            );
+                            _playingEpisodeIndex = index;
+                          });
+                        },
+                        child: thumb != null && thumb.isNotEmpty
+                            ? Image.network(thumb, fit: BoxFit.cover)
+                            : (videoId != null
+                                ? Image.network(
+                                    VideoEpisodeService.getYouTubeThumbnailUrl(
+                                      videoId,
+                                    ),
+                                    fit: BoxFit.cover,
+                                  )
+                                : Container(color: Colors.grey[200])),
+                      ),
+                    ),
+                    if ((episode['is_premium'] as bool?) == true)
+                      Positioned(
+                        left: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.35),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedCrown,
+                            size: 16,
+                            color: Colors.amber,
+                          ),
+                        ),
+                      ),
+                    if (part != null)
+                      Positioned(
+                        left: 8,
+                        bottom: 8,
+                        child: _buildOverlayBadge('Ep $part'),
+                      ),
+                    if (duration != null && duration > 0)
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: _buildOverlayBadge('${duration}m'),
+                      ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: Center(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              shape: BoxShape.circle,
+                            ),
+                            padding: const EdgeInsets.all(8),
+                            child: const Icon(
+                              Icons.play_arrow_rounded,
+                              color: Colors.white,
+                              size: 42,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              )
-            else
-              ...List.generate(_episodeControllers.length, (index) {
-                return _buildEpisodeCard(index);
-              }),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimaryColor,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          isActive ? Icons.check_circle : Icons.cancel,
+                          size: 16,
+                          color: isActive
+                              ? AppTheme.successColor
+                              : AppTheme.errorColor,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => _showEpisodeActionsBottomSheet(episode),
+                    icon: const Icon(Icons.more_vert, color: Colors.grey),
+                    tooltip: 'Tindakan',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              if (videoId != null)
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.ondemand_video,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'YouTube ID: $videoId',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showEpisodeActionsBottomSheet(Map<String, dynamic> episode) {
+    final bool isActive = episode['is_active'] ?? true;
+    final String? videoId = episode['youtube_video_id'] as String?;
+    final String? url = episode['youtube_video_url'] as String?;
+    final String id = episode['id'] as String;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit, color: Colors.blue),
+                title: const Text('Edit Episode'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _showEditEpisodeDialog(episode);
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(Icons.open_in_new, color: Colors.blue),
+                title: const Text('Buka di YouTube'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final link = videoId != null
+                      ? 'https://www.youtube.com/watch?v=$videoId'
+                      : (url ?? '');
+                  if (link.isNotEmpty && await canLaunchUrl(Uri.parse(link))) {
+                    await launchUrl(Uri.parse(link));
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.copy, color: Colors.blue),
+                title: const Text('Salin URL'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final link = videoId != null
+                      ? 'https://www.youtube.com/watch?v=$videoId'
+                      : (url ?? '');
+                  if (link.isNotEmpty) {
+                    await Clipboard.setData(ClipboardData(text: link));
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('URL disalin')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  isActive ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.blue,
+                ),
+                title: Text(isActive ? 'Nyahaktif' : 'Aktifkan'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  try {
+                    await VideoEpisodeService.toggleEpisodeStatus(
+                      id,
+                      !isActive,
+                    );
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          !isActive ? 'Diaktifkan' : 'Dinonaktifkan',
+                        ),
+                        backgroundColor: !isActive
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                    );
+                    _loadKitabDetail();
+                  } catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Ralat: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete, color: Colors.red),
+                title: const Text('Padam', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Pengesahan Padam'),
+                      content: const Text(
+                        'Padam episode ini? Tindakan tidak boleh dibuat asal.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Batal'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Padam'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (confirmed == true) {
+                    try {
+                      await VideoEpisodeService.deleteEpisode(id);
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Episode dipadam'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      _loadKitabDetail();
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Ralat: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showEditEpisodeDialog(Map<String, dynamic> episode) async {
+    final id = episode['id'] as String;
+    final title = episode['title']?.toString() ?? '';
+    final url = episode['youtube_video_url']?.toString() ?? '';
+    final titleController = TextEditingController(text: title);
+    final urlController = TextEditingController(text: url);
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Episode'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(labelText: 'Tajuk'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: urlController,
+                decoration: const InputDecoration(
+                  labelText: 'URL YouTube',
+                  hintText: 'https://www.youtube.com/watch?v=... atau VIDEO_ID',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Batal'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Simpan'),
+            ),
           ],
+        );
+      },
+    );
+
+    if (saved == true) {
+      try {
+        final newTitle = titleController.text.trim();
+        final rawUrl = urlController.text.trim();
+        final newId = VideoEpisodeService.extractYouTubeVideoId(rawUrl ?? '');
+        if (newId == null || newId.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('URL YouTube tidak sah'), backgroundColor: Colors.red),
+          );
+          return;
+        }
+        await VideoEpisodeService.updateEpisode(id, {
+          'title': newTitle.isEmpty ? 'Episode' : newTitle,
+          'youtube_video_id': newId,
+          'youtube_video_url': rawUrl.isEmpty ? 'https://www.youtube.com/watch?v=$newId' : rawUrl,
+          'thumbnail_url': VideoEpisodeService.getYouTubeThumbnailUrl(newId),
+        });
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Episode dikemas kini'), backgroundColor: Colors.green),
+        );
+        await _loadKitabDetail();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ralat mengemas kini: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // Small dark badge used over thumbnails (e.g., Ep number, duration)
+  Widget _buildOverlayBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
@@ -658,13 +1278,42 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
           // URL input
           TextFormField(
             controller: controller,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'URL Video Episode',
               hintText: 'https://www.youtube.com/watch?v=...',
-              prefixIcon: Icon(Icons.link),
-              border: OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.link),
+              border: const OutlineInputBorder(),
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.paste),
+                    tooltip: 'Tampal',
+                    onPressed: () async {
+                      final data = await Clipboard.getData('text/plain');
+                      final text = data?.text ?? '';
+                      if (text.isNotEmpty) {
+                        controller.text = text.trim();
+                        setState(() {});
+                      }
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.clear),
+                    tooltip: 'Kosongkan',
+                    onPressed: () {
+                      controller.clear();
+                      setState(() {});
+                    },
+                  ),
+                ],
+              ),
+              suffixIconConstraints: const BoxConstraints(
+                minWidth: 64,
+                maxWidth: 96,
+              ),
             ),
-            maxLines: 2,
+            maxLines: 1,
             onChanged: (value) => setState(() {}),
           ),
 
@@ -686,13 +1335,13 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                     borderRadius: BorderRadius.circular(6),
                     child: Image.network(
                       _defaultThumbnailFor(videoId),
-                      width: 60,
-                      height: 45,
+                      width: 120,
+                      height: 68,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          width: 60,
-                          height: 45,
+                          width: 120,
+                          height: 68,
                           decoration: BoxDecoration(
                             color: Colors.grey[300],
                             borderRadius: BorderRadius.circular(6),
@@ -719,8 +1368,8 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Container(
-                          width: 60,
-                          height: 45,
+                          width: 120,
+                          height: 68,
                           decoration: BoxDecoration(
                             color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(6),

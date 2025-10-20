@@ -107,12 +107,9 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (success && mounted) {
-        // Navigate based on user role
-        if (authProvider.isAdmin) {
-          context.go('/admin');
-        } else {
-          context.go('/home');
-        }
+        // Delegate role-based routing to Splash for consistency
+        // Ensures profile/role fully loaded before deciding destination
+        context.go('/');
       }
     } catch (e) {
       // Error handling is done in AuthProvider
@@ -126,20 +123,44 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _getLoginErrorIcon(String error) {
     if (error.contains('sambungan internet') ||
         error.contains('sambungan rangkaian')) {
-      return HugeIcon(icon: HugeIcons.strokeRoundedWifiDisconnected02, color: Colors.red, size: 20);
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedWifiDisconnected02,
+        color: Colors.red,
+        size: 20,
+      );
     } else if (error.contains('email atau kata laluan') ||
         error.contains('invalid')) {
-      return HugeIcon(icon: HugeIcons.strokeRoundedLockPassword, color: Colors.red, size: 20);
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedLockPassword,
+        color: Colors.red,
+        size: 20,
+      );
     } else if (error.contains('pelayan') || error.contains('server')) {
-      return HugeIcon(icon: HugeIcons.strokeRoundedCloud, color: Colors.red, size: 20);
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedCloud,
+        color: Colors.red,
+        size: 20,
+      );
     } else if (error.contains('masa terlalu lama') ||
         error.contains('timeout')) {
-      return HugeIcon(icon: HugeIcons.strokeRoundedTime04, color: Colors.red, size: 20);
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedTime04,
+        color: Colors.red,
+        size: 20,
+      );
     } else if (error.contains('terlalu banyak') ||
         error.contains('rate limit')) {
-      return HugeIcon(icon: HugeIcons.strokeRoundedCancel01, color: Colors.red, size: 20);
+      return HugeIcon(
+        icon: HugeIcons.strokeRoundedCancel01,
+        color: Colors.red,
+        size: 20,
+      );
     }
-    return HugeIcon(icon: HugeIcons.strokeRoundedAlert02, color: Colors.red, size: 20);
+    return HugeIcon(
+      icon: HugeIcons.strokeRoundedAlert02,
+      color: Colors.red,
+      size: 20,
+    );
   }
 
   String _getLoginErrorTitle(String error) {
@@ -274,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen>
                         child: FadeTransition(
                           opacity: _fadeAnimation,
                           child: Text(
-                            "Log Masuk",
+                            "Login",
                             style: Theme.of(context).textTheme.headlineSmall!
                                 .copyWith(
                                   fontWeight: FontWeight.bold,
@@ -320,12 +341,35 @@ class _LoginScreenState extends State<LoginScreen>
                         ),
                       ],
 
+                      // Reactive redirect after OAuth completes
+                      Consumer<AuthProvider>(
+                        builder: (context, ap, _) {
+                          // Only redirect once authenticated AND profile is loaded (role known)
+                          if (ap.status == AuthStatus.authenticated && ap.userProfile != null) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              if (ap.isAdmin) {
+                                context.go('/admin');
+                              } else {
+                                context.go('/home');
+                              }
+                            });
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+
                       Form(
                         key: _formKey,
                         child: Column(
                           children: [
                             TextFormField(
                               controller: _emailController,
+                              autofillHints: const [
+                                AutofillHints.username,
+                                AutofillHints.email,
+                              ],
+                              textInputAction: TextInputAction.next,
                               decoration: const InputDecoration(
                                 hintText: 'Email',
                                 filled: true,
@@ -361,6 +405,7 @@ class _LoginScreenState extends State<LoginScreen>
                               child: TextFormField(
                                 controller: _passwordController,
                                 obscureText: !_isPasswordVisible,
+                                textInputAction: TextInputAction.done,
                                 decoration: InputDecoration(
                                   hintText: 'Password',
                                   filled: true,
@@ -390,6 +435,11 @@ class _LoginScreenState extends State<LoginScreen>
                                     },
                                   ),
                                 ),
+                                onFieldSubmitted: (_) {
+                                  if (_formKey.currentState!.validate()) {
+                                    _handleLogin();
+                                  }
+                                },
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Kata laluan diperlukan';
@@ -399,6 +449,26 @@ class _LoginScreenState extends State<LoginScreen>
                                   }
                                   return null;
                                 },
+                              ),
+                            ),
+
+                            // Forgot password aligned to the right, just under password field
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () =>
+                                    context.push('/forgot-password'),
+                                child: Text(
+                                  'Forgot Password?',
+                                  style: Theme.of(context).textTheme.bodyMedium!
+                                      .copyWith(
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge!
+                                            .color!
+                                            .withValues(alpha: 0.64),
+                                      ),
+                                ),
                               ),
                             ),
 
@@ -453,12 +523,16 @@ class _LoginScreenState extends State<LoginScreen>
                                       Container(
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: Colors.red.withValues(alpha: 0.05),
+                                          color: Colors.red.withValues(
+                                            alpha: 0.05,
+                                          ),
                                           borderRadius: BorderRadius.circular(
                                             12,
                                           ),
                                           border: Border.all(
-                                            color: Colors.red.withValues(alpha: 0.2),
+                                            color: Colors.red.withValues(
+                                              alpha: 0.2,
+                                            ),
                                             width: 1,
                                           ),
                                         ),
@@ -506,7 +580,9 @@ class _LoginScreenState extends State<LoginScreen>
                                                             .errorMessage!,
                                                         style: TextStyle(
                                                           color: Colors.red
-                                                              .withValues(alpha: 0.8),
+                                                              .withValues(
+                                                                alpha: 0.8,
+                                                              ),
                                                           fontSize: 13,
                                                           height: 1.4,
                                                         ),
@@ -531,7 +607,9 @@ class _LoginScreenState extends State<LoginScreen>
                                                     foregroundColor: Colors.red,
                                                     side: BorderSide(
                                                       color: Colors.red
-                                                          .withValues(alpha: 0.3),
+                                                          .withValues(
+                                                            alpha: 0.3,
+                                                          ),
                                                     ),
                                                     padding:
                                                         const EdgeInsets.symmetric(
@@ -567,20 +645,75 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
 
                             const SizedBox(height: 16.0),
-                            TextButton(
-                              onPressed: () => context.push('/forgot-password'),
-                              child: Text(
-                                'Forgot Password?',
-                                style: Theme.of(context).textTheme.bodyMedium!
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .textTheme
-                                          .bodyLarge!
-                                          .color!
-                                          .withValues(alpha: 0.64),
+
+                            // OR divider
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  child: Text(
+                                    'Or',
+                                    style: TextStyle(
+                                      color: AppTheme.textSecondaryColor,
+                                      fontSize: 12,
                                     ),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Container(
+                                    height: 1,
+                                    color: Colors.black.withValues(alpha: 0.08),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 12),
+
+                            // Google sign-in button
+                            Consumer<AuthProvider>(
+                              builder: (context, ap, _) => SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed: ap.status == AuthStatus.loading
+                                      ? null
+                                      : () => context
+                                            .read<AuthProvider>()
+                                            .signInWithGoogle(),
+                                  style: OutlinedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: Colors.black87,
+                                    side: BorderSide(
+                                      color: AppTheme.borderColor,
+                                    ),
+                                    minimumSize: const Size.fromHeight(48),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(50),
+                                    ),
+                                  ),
+                                  icon: Image.network(
+                                    'https://developers.google.com/identity/images/g-logo.png',
+                                    height: 18,
+                                    width: 18,
+                                    errorBuilder: (_, __, ___) => const Icon(
+                                      Icons.g_mobiledata,
+                                      size: 20,
+                                    ),
+                                  ),
+                                  label: const Text('Sign in with Google'),
+                                ),
                               ),
                             ),
+
+                            const SizedBox(height: 16.0),
                             TextButton(
                               onPressed: () => context.push('/register'),
                               child: Text.rich(

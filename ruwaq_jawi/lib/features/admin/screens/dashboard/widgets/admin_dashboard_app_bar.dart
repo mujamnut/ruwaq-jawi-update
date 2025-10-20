@@ -148,7 +148,7 @@ class _AdminDashboardAppBarState extends State<AdminDashboardAppBar> {
                                       top: 0,
                                       child: Container(
                                         padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
+                                    decoration: BoxDecoration(
                                           color: Colors.red,
                                           borderRadius: BorderRadius.circular(6),
                                         ),

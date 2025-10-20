@@ -49,11 +49,13 @@ class AppTheme {
         brightness: Brightness.light,
       ),
 
-      // App Bar Theme - Transparent background as per CLAUDE.md
+      // App Bar Theme - Global white app bar, no surface tint
       appBarTheme: const AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: surfaceColor,
+        surfaceTintColor: Colors.transparent,
         foregroundColor: textPrimaryColor,
         elevation: 0,
+        scrolledUnderElevation: 1,
         centerTitle: true,
         titleTextStyle: TextStyle(
           fontSize: 20,
@@ -61,6 +63,9 @@ class AppTheme {
           color: textPrimaryColor,
         ),
       ),
+
+      // Global scaffold background for consistency
+      scaffoldBackgroundColor: backgroundColor,
 
       // Elevated Button Theme - Primary buttons use xl radius
       elevatedButtonTheme: ElevatedButtonThemeData(

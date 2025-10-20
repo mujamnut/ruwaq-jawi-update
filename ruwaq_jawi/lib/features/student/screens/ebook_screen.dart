@@ -30,6 +30,7 @@ class _EbookScreenState extends State<EbookScreen>
   late AnimationController _searchAnimationController;
 
   bool _isSearchFocused = false;
+  bool _isScrolled = false;
 
   @override
   void initState() {
@@ -51,6 +52,14 @@ class _EbookScreenState extends State<EbookScreen>
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
+
+    // Track scroll for dynamic AppBar like video screen
+    _scrollController.addListener(() {
+      final scrolled = _scrollController.offset > 10;
+      if (scrolled != _isScrolled) {
+        setState(() => _isScrolled = scrolled);
+      }
+    });
 
     // Load ebooks after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -85,7 +94,7 @@ class _EbookScreenState extends State<EbookScreen>
       builder: (context, kitabProvider, child) {
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor,
-          appBar: const EbookAppBarWidget(),
+          appBar: EbookAppBarWidget(isScrolled: _isScrolled),
           body: kitabProvider.isLoading
               ? _buildLoadingContent(kitabProvider)
               : kitabProvider.errorMessage != null
@@ -315,11 +324,11 @@ class _EbookScreenState extends State<EbookScreen>
               ),
             ),
 
-            // Category chips with left-only padding and bottom spacing (like video list)
+            // Category chips (no left padding)
             SliverToBoxAdapter(
               child: Container(
                 color: AppTheme.backgroundColor,
-                padding: const EdgeInsets.only(left: 20, bottom: 16),
+                padding: const EdgeInsets.only(bottom: 16),
                 child: EbookCategoryChipsWidget(
                   categories: kitabProvider.categories,
                   selectedCategoryId: _filterManager.selectedCategoryId,
@@ -381,11 +390,11 @@ class _EbookScreenState extends State<EbookScreen>
               ),
             ),
           ),
-          // Category chips with left-only padding
+          // Category chips (no left padding)
           SliverToBoxAdapter(
             child: Container(
               color: AppTheme.backgroundColor,
-              padding: const EdgeInsets.only(left: 20, bottom: 16),
+              padding: const EdgeInsets.only(bottom: 16),
               child: EbookCategoryChipsWidget(
                 categories: kitabProvider.categories,
                 selectedCategoryId: _filterManager.selectedCategoryId,

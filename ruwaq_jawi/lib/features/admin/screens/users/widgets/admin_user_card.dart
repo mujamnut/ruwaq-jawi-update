@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 
 import '../../../../../core/models/subscription.dart';
@@ -78,73 +79,16 @@ class AdminUserCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  PopupMenuButton<String>(
+                  IconButton(
+                    onPressed: () => _showUserActionsBottomSheet(
+                      context,
+                      hasActiveSubscription: hasActiveSubscription,
+                    ),
                     icon: HugeIcon(
                       icon: HugeIcons.strokeRoundedMoreVertical,
                       color: AppTheme.textSecondaryColor,
                     ),
-                    onSelected: (value) {
-                      switch (value) {
-                        case 'view':
-                          onView();
-                          break;
-                        case 'toggle':
-                          onToggleSubscription();
-                          break;
-                        case 'promote':
-                          onPromote?.call();
-                          break;
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'view',
-                        child: Row(
-                          children: [
-                            HugeIcon(
-                              icon: HugeIcons.strokeRoundedView,
-                              color: Colors.blue,
-                            ),
-                            SizedBox(width: 8),
-                            Text('Lihat Detail'),
-                          ],
-                        ),
-                      ),
-                      if (!user.isAdmin)
-                        PopupMenuItem(
-                          value: 'toggle',
-                          child: Row(
-                            children: [
-                              HugeIcon(
-                                icon: hasActiveSubscription
-                                    ? HugeIcons.strokeRoundedCancel01
-                                    : HugeIcons.strokeRoundedCheckmarkCircle02,
-                                color: hasActiveSubscription ? Colors.red : Colors.green,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                hasActiveSubscription
-                                    ? 'Batalkan Langganan'
-                                    : 'Aktifkan Langganan',
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (!user.isAdmin && onPromote != null)
-                        const PopupMenuItem(
-                          value: 'promote',
-                          child: Row(
-                            children: [
-                              HugeIcon(
-                                icon: HugeIcons.strokeRoundedUserSettings01,
-                                color: Colors.green,
-                              ),
-                              SizedBox(width: 8),
-                              Text('Jadikan Admin'),
-                            ],
-                          ),
-                        ),
-                    ],
+                    tooltip: 'Tindakan',
                   ),
                 ],
               ),
@@ -225,5 +169,74 @@ class AdminUserCard extends StatelessWidget {
     } else {
       return 'Baru sahaja';
     }
+  }
+
+  void _showUserActionsBottomSheet(
+    BuildContext context, {
+    required bool hasActiveSubscription,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedView,
+                  color: Colors.blue,
+                ),
+                title: const Text('Lihat Detail'),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(context);
+                  onView();
+                },
+              ),
+              if (!user.isAdmin)
+                ListTile(
+                  leading: HugeIcon(
+                    icon: hasActiveSubscription
+                        ? HugeIcons.strokeRoundedCancel01
+                        : HugeIcons.strokeRoundedCheckmarkCircle02,
+                    color: hasActiveSubscription ? Colors.red : Colors.green,
+                  ),
+                  title: Text(
+                    hasActiveSubscription
+                        ? 'Batalkan Langganan'
+                        : 'Aktifkan Langganan',
+                  ),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                    onToggleSubscription();
+                  },
+                ),
+              if (!user.isAdmin && onPromote != null)
+                ListTile(
+                  leading: const HugeIcon(
+                    icon: HugeIcons.strokeRoundedUserSettings01,
+                    color: Colors.green,
+                  ),
+                  title: const Text('Jadikan Admin'),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    Navigator.pop(context);
+                    onPromote?.call();
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
   }
 }

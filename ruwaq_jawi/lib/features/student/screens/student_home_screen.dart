@@ -6,7 +6,7 @@ import 'package:ruwaq_jawi/core/theme/app_theme.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/providers/connectivity_provider.dart';
-import '../../../core/services/popup_service.dart';
+import '../../../core/widgets/subscription_banner.dart';
 import '../widgets/student_bottom_nav.dart';
 
 // Import managers
@@ -64,16 +64,9 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
         context.read<NotificationsProvider>().loadInbox();
       }
 
-      // Check and show subscription promo popup if criteria met
-      _checkSubscriptionPromo();
-
       // Start auto-scroll after content loads
       _scrollManager.startAutoScroll();
     });
-  }
-
-  void _checkSubscriptionPromo() {
-    PopupService.checkAndShowSubscriptionPromo(context);
   }
 
   @override
@@ -101,6 +94,12 @@ class _StudentHomeScreenState extends State<StudentHomeScreen>
             ),
 
             const SizedBox(height: 32),
+
+            // Featured content section
+            // Subscription banner (shown once per day for non-premium)
+            const SubscriptionBanner(),
+
+            const SizedBox(height: 16),
 
             // Featured content section
             FeaturedSectionWidget(

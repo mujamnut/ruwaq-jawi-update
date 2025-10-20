@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lottie/lottie.dart';
 import '../../../core/providers/subscription_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
@@ -266,23 +267,40 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Status icon
+            // Status icon / animations
             if (_isVerifying)
-              Column(
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Theme.of(context).primaryColor,
-                    ),
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Lottie.asset(
+                        'assets/animations/sandy_loading.json',
+                        width: 160,
+                        height: 160,
+                        fit: BoxFit.contain,
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        _message,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 20),
-                ],
+                ),
               )
             else if (_paymentSuccess)
               Column(
                 children: [
-                  Icon(Icons.check_circle, color: Colors.green, size: 80),
-                  SizedBox(height: 20),
+                  Lottie.asset(
+                    'assets/animations/success.json',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.contain,
+                    repeat: false,
+                  ),
+                  SizedBox(height: 8),
                 ],
               )
             else
@@ -293,14 +311,15 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
                 ],
               ),
 
-            // Status message
-            Text(
-              _message,
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
+            // Status message (only when not verifying)
+            if (!_isVerifying)
+              Text(
+                _message,
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
 
-            SizedBox(height: 40),
+            if (!_isVerifying) SizedBox(height: 40),
 
             // Payment details - simplified for better UX
             if (!_isVerifying) // Only show details when not loading

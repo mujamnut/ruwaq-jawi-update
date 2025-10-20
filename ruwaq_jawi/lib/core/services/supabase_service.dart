@@ -39,6 +39,8 @@ class SupabaseService {
         url: supabaseUrl,
         anonKey: supabaseAnonKey,
         debug: AppConfig.isDevelopment,
+        // Note: PKCE is the default flow on mobile in supabase_flutter >=2.
+        // Keep authOptions default to avoid version mismatch errors.
       );
 
       _client = Supabase.instance.client;
@@ -94,6 +96,26 @@ class SupabaseService {
         throw Exception('Masa log masuk terlalu lama. Sila semak sambungan internet anda.');
       },
     );
+  }
+
+  // OAuth: Google Sign-In
+  static Future<void> signInWithGoogle({String? redirectTo}) async {
+    // Use a web bounce page by default to avoid transient 404 pages,
+    // then deep-link back into the app via custom scheme inside that page.
+    final String callback = redirectTo ?? 'https://ruwaqjawi.com/oauth-redirect';
+    if (kIsWeb) {
+      await client.auth
+          .signInWithOAuth(OAuthProvider.google)
+          .timeout(const Duration(seconds: 30), onTimeout: () {
+        throw Exception('Masa log masuk Google terlalu lama. Cuba lagi.');
+      });
+    } else {
+      await client.auth
+          .signInWithOAuth(OAuthProvider.google, redirectTo: callback)
+          .timeout(const Duration(seconds: 30), onTimeout: () {
+        throw Exception('Masa log masuk Google terlalu lama. Cuba lagi.');
+      });
+    }
   }
 
   static Future<void> signOut() async {

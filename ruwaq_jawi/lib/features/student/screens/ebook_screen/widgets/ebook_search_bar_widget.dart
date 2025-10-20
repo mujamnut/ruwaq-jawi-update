@@ -33,7 +33,7 @@ class EbookSearchBarWidget extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             decoration: BoxDecoration(
               color: AppTheme.surfaceColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(28),
               border: Border.all(
                 color: isSearchFocused
                     ? AppTheme.primaryColor.withValues(alpha: 0.3)
@@ -50,6 +50,7 @@ class EbookSearchBarWidget extends StatelessWidget {
                 ),
               ],
             ),
+            clipBehavior: Clip.antiAlias,
             child: TextField(
               controller: controller,
               onTap: () {

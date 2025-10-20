@@ -7,6 +7,7 @@ import 'package:hugeicons/hugeicons.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
+import 'profile_screen/services/password_change_service.dart';
 
 class PrivacySecurityScreen extends StatefulWidget {
   const PrivacySecurityScreen({super.key});
@@ -571,7 +572,7 @@ class _PrivacySecurityScreenState extends State<PrivacySecurityScreen>
   }
 
   void _handleChangePassword() {
-    _showPasswordChangeDialog();
+    PasswordChangeService.showPasswordChangeDialog(context);
   }
 
   Future<void> _handleTwoFactorAuth(bool enable) async {

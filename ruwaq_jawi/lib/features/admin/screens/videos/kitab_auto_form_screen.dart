@@ -3,14 +3,16 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter/services.dart';
+import 'package:pdfx/pdfx.dart' as pdfx;
 import 'dart:io';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/connectivity_provider.dart';
-import '../../../../core/services/network_service.dart';
+// import '../../../../core/services/network_service.dart';
 import '../../widgets/admin_app_bar.dart';
 import '../../widgets/youtube_sync_loading_dialog.dart';
-import '../../widgets/youtube_preview_dialog.dart';
+
+import '../../widgets/youtube_preview_sheet.dart';
 
 class AdminYouTubeAutoFormScreen extends StatefulWidget {
   const AdminYouTubeAutoFormScreen({super.key});
@@ -34,6 +36,11 @@ class _AdminYouTubeAutoFormScreenState
   bool _isLoading = false;
   bool _isLoadingCategories = false;
   List<Map<String, dynamic>> _categories = [];
+
+  bool get _isPlaylistUrlValid =>
+      _playlistUrlController.text.contains('playlist?list=');
+  bool get _canSync => !_isLoading && !_isLoadingCategories &&
+      _isPlaylistUrlValid && (_selectedCategoryId != null && _selectedCategoryId!.isNotEmpty);
 
   @override
   void initState() {
@@ -183,6 +190,49 @@ class _AdminYouTubeAutoFormScreenState
                       color: Colors.red,
                       size: 20,
                     ),
+                  ),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Paste',
+                        icon: const Icon(Icons.paste_rounded, size: 18),
+                        onPressed: () async {
+                          final data = await Clipboard.getData('text/plain');
+                          final text = data?.text?.trim();
+                          if (text != null && text.isNotEmpty) {
+                            setState(() {
+                              _playlistUrlController.text = text;
+                            });
+                          }
+                        },
+                      ),
+                      IconButton(
+                        tooltip: 'Validate URL',
+                        icon: Icon(
+                          Icons.check_circle_rounded,
+                          size: 18,
+                          color: _isPlaylistUrlValid
+                              ? AppTheme.primaryColor
+                              : AppTheme.textSecondaryColor,
+                        ),
+                        onPressed: () {
+                          final valid = _isPlaylistUrlValid;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                valid
+                                    ? 'Playlist URL is valid'
+                                    : 'URL tidak sah. Pastikan mengandungi "playlist?list="',
+                              ),
+                              backgroundColor:
+                                  valid ? Colors.green : Colors.red,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -482,7 +532,7 @@ class _AdminYouTubeAutoFormScreenState
               InkWell(
                 onTap: _pickPdfFile,
                 borderRadius: BorderRadius.circular(12),
-                child: Container(
+                child: AnimatedContainer(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -490,25 +540,35 @@ class _AdminYouTubeAutoFormScreenState
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: _selectedPdfFile != null
-                          ? Colors.green.withValues(alpha: 0.5)
+                          ? Colors.green.withValues(alpha: 0.6)
                           : AppTheme.borderColor,
-                      style: BorderStyle.solid,
+                      width: 1,
                     ),
                   ),
+                  constraints: const BoxConstraints(minHeight: 140),
+                  duration: const Duration(milliseconds: 180),
                   child: Stack(
+                    alignment: Alignment.center,
                     children: [
                       Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          PhosphorIcon(
-                            _selectedPdfFile != null
-                                ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
-                                : PhosphorIcons.cloudArrowUp(),
-                            size: 32,
-                            color: _selectedPdfFile != null
-                                ? Colors.green
-                                : AppTheme.textSecondaryColor,
+                          Semantics(
+                            label: _selectedPdfFile != null
+                                ? 'PDF dipilih'
+                                : 'Muat naik PDF',
+                            child: PhosphorIcon(
+                              _selectedPdfFile != null
+                                  ? PhosphorIcons.checkCircle(PhosphorIconsStyle.fill)
+                                  : PhosphorIcons.cloudArrowUp(),
+                              size: 32,
+                              color: _selectedPdfFile != null
+                                  ? Colors.green
+                                  : AppTheme.textSecondaryColor,
+                            ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           Text(
                             _selectedPdfFile != null
                                 ? _selectedPdfFile!.name
@@ -524,14 +584,14 @@ class _AdminYouTubeAutoFormScreenState
                             overflow: TextOverflow.ellipsis,
                           ),
                           if (_selectedPdfFile != null) ...[
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
                             Text(
                               'Size: ${(_selectedPdfFile!.size / (1024 * 1024)).toStringAsFixed(1)} MB',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(color: AppTheme.textSecondaryColor),
                             ),
                           ] else ...[
-                            const SizedBox(height: 4),
+                            const SizedBox(height: 6),
                             Text(
                               'PDF files only • Max 50MB',
                               style: Theme.of(context).textTheme.bodySmall
@@ -627,7 +687,7 @@ class _AdminYouTubeAutoFormScreenState
                   Expanded(
                     flex: 2,
                     child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _syncPlaylist,
+                      onPressed: _canSync ? _syncPlaylist : null,
                       icon: _isLoading
                           ? SizedBox(
                               width: 18,
@@ -645,7 +705,11 @@ class _AdminYouTubeAutoFormScreenState
                               color: Colors.white,
                             ),
                       label: Text(
-                        _isLoading ? 'Syncing...' : 'Sync Playlist',
+                        _isLoading
+                            ? 'Syncing...'
+                            : _canSync
+                                ? 'Sync Playlist'
+                                : 'Complete required fields',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -754,37 +818,81 @@ class _AdminYouTubeAutoFormScreenState
     if (_selectedPdfFile == null) return;
 
     try {
+      Future<pdfx.PdfDocument>? documentFuture;
       if (_selectedPdfFile!.path != null) {
-        // File is available locally
         final file = File(_selectedPdfFile!.path!);
         if (await file.exists()) {
-          if (await canLaunchUrl(Uri.file(file.path))) {
-            await launchUrl(Uri.file(file.path));
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Tidak dapat membuka PDF. Sila gunakan aplikasi PDF viewer.'),
-                  backgroundColor: Colors.orange,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            }
-          }
+          documentFuture = pdfx.PdfDocument.openFile(file.path);
         }
       } else if (_selectedPdfFile!.bytes != null) {
-        // File is in memory, need to save temporarily
-        // For simplicity, show message that they need to check after sync
+        documentFuture = pdfx.PdfDocument.openData(_selectedPdfFile!.bytes!);
+      }
+
+      if (documentFuture == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('PDF akan tersedia selepas sync playlist selesai'),
-              backgroundColor: Colors.blue,
+            const SnackBar(
+              content: Text('Tidak dapat memuatkan PDF untuk pratonton.'),
+              backgroundColor: Colors.orange,
               behavior: SnackBarBehavior.floating,
             ),
           );
         }
+        return;
       }
+
+      final controller = pdfx.PdfController(document: documentFuture);
+
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) {
+          return Dialog(
+            insetPadding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: MediaQuery.of(context).size.height * 0.8,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor,
+                      border: const Border(bottom: BorderSide(color: AppTheme.borderColor)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('Pratonton PDF', style: TextStyle(fontWeight: FontWeight.w600)),
+                        const Spacer(),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: pdfx.PdfView(
+                      controller: controller,
+                      builders: pdfx.PdfViewBuilders<pdfx.DefaultBuilderOptions>(
+                        options: const pdfx.DefaultBuilderOptions(),
+                        documentLoaderBuilder: (_) => const Center(child: CircularProgressIndicator()),
+                        pageLoaderBuilder: (_) => const Center(child: CircularProgressIndicator()),
+                        errorBuilder: (_, error) => Center(
+                          child: Text('Ralat memuatkan PDF: $error'),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      controller.dispose();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -994,131 +1102,145 @@ class _AdminYouTubeAutoFormScreenState
         // Close loading dialog
         Navigator.of(context).pop();
 
-        // Show preview dialog
-        showDialog(
-          context: context,
-          builder: (context) => YouTubePreviewDialog(
-            playlistTitle: syncData['playlist_title'] ?? 'Unknown Playlist',
-            playlistDescription: syncData['playlist_description'],
-            channelTitle: syncData['channel_title'],
-            totalVideos: syncData['total_videos'] ?? 0,
-            totalDurationMinutes: syncData['total_duration_minutes'] ?? 0,
-            isPremium: _isPremium,
-            isActive: _isActive,
-            categoryName: _categories.firstWhere(
-              (cat) => cat['id'] == _selectedCategoryId,
-            )['name']!,
-            episodes: episodes,
-            onApprove: () async {
-              try {
-                print('=== APPROVING PLAYLIST ===');
-                print('Playlist ID: ${syncData['playlist_id']}');
-
-                // Approve and publish the playlist
-                final approveResponse = await Supabase.instance.client.functions
-                    .invoke(
+                  // Show preview sheet on phones, dialog on wide screens
+          final isWide = MediaQuery.of(context).size.width >= 900;
+          if (!isWide) {
+            await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => YouTubePreviewSheet(
+                playlistTitle: syncData['playlist_title'] ?? 'Unknown Playlist',
+                playlistDescription: syncData['playlist_description'],
+                channelTitle: syncData['channel_title'],
+                totalVideos: syncData['total_videos'] ?? 0,
+                totalDurationMinutes: syncData['total_duration_minutes'] ?? 0,
+                isPremium: _isPremium,
+                isActive: _isActive,
+                categoryName: _categories.firstWhere((cat) => cat['id'] == _selectedCategoryId)['name']!,
+                episodes: episodes,
+                pdfUploaded: (syncData['pdf_uploaded'] == true),
+                pdfSelected: (_selectedPdfFile != null),
+                pdfUrl: syncData['pdf_url'],
+                pdfSizeBytes: _selectedPdfFile?.size,
+                onApprove: () async {
+                  try {
+                    await Supabase.instance.client.functions.invoke(
                       'youtube-admin-tools?action=approve_playlist',
                       body: {'playlist_id': syncData['playlist_id']},
                     );
-
-                print('Approve response status: ${approveResponse.status}');
-                print('Approve response data: ${approveResponse.data}');
-                print('=== PLAYLIST APPROVED ===');
-
-                if (mounted) {
-                  Navigator.of(context).pop(); // Close preview
-                  Navigator.of(context).pop(); // Go back to main screen
-
-                  // Construct success message based on PDF status
-                  String successMessage =
-                      '✅ Playlist approved and published successfully!';
-                  if (syncData['pdf_uploaded'] == true) {
-                    successMessage =
-                        '✅ Playlist approved and published successfully (with PDF)!';
-                  } else if (_selectedPdfFile != null &&
-                      syncData['pdf_uploaded'] == false) {
-                    successMessage =
-                        '✅ Playlist approved! (PDF upload failed - you can add it later)';
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).pop();
+                      String successMessage = '? Playlist approved and published successfully!';
+                      if (syncData['pdf_uploaded'] == true) {
+                        successMessage = '? Playlist approved and published successfully (with PDF)!';
+                      } else if (_selectedPdfFile != null && syncData['pdf_uploaded'] == false) {
+                        successMessage = '? Playlist approved! (PDF upload failed - you can add it later)';
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(successMessage), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error approving playlist: ${e.toString()}'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                      );
+                    }
                   }
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(successMessage),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                      duration: const Duration(seconds: 5),
-                    ),
-                  );
-                }
-              } catch (e, stackTrace) {
-                print('=== APPROVAL ERROR ===');
-                print('Error: ${e.toString()}');
-                print('Stack trace: $stackTrace');
-                print('=== APPROVAL ERROR END ===');
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Error approving playlist: ${e.toString()}',
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              }
-            },
-            onReject: () async {
-              try {
-                print('=== REJECTING PLAYLIST ===');
-                print('Playlist ID: ${syncData['playlist_id']}');
-
-                // Delete the synced playlist
-                final rejectResponse = await Supabase.instance.client.functions
-                    .invoke(
+                },
+                onReject: () async {
+                  try {
+                    await Supabase.instance.client.functions.invoke(
                       'youtube-admin-tools?action=delete-kitab',
                       body: {'kitab_id': syncData['playlist_id']},
                     );
-
-                print('Reject response status: ${rejectResponse.status}');
-                print('Reject response data: ${rejectResponse.data}');
-                print('=== PLAYLIST REJECTED ===');
-
-                if (mounted) {
-                  Navigator.of(context).pop(); // Close preview
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Playlist rejected and removed'),
-                      backgroundColor: Colors.orange,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              } catch (e, stackTrace) {
-                print('=== REJECTION ERROR ===');
-                print('Error: ${e.toString()}');
-                print('Stack trace: $stackTrace');
-                print('=== REJECTION ERROR END ===');
-
-                if (mounted) {
-                  Navigator.of(context).pop(); // Close preview anyway
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        'Error rejecting playlist: ${e.toString()}',
-                      ),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-              }
-            },
-          ),
-        );
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Playlist rejected and removed'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error rejecting playlist: ${e.toString()}'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  }
+                },
+              ),
+            );
+          } else {
+            await showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => YouTubePreviewSheet(
+                playlistTitle: syncData['playlist_title'] ?? 'Unknown Playlist',
+                playlistDescription: syncData['playlist_description'],
+                channelTitle: syncData['channel_title'],
+                totalVideos: syncData['total_videos'] ?? 0,
+                totalDurationMinutes: syncData['total_duration_minutes'] ?? 0,
+                isPremium: _isPremium,
+                isActive: _isActive,
+                categoryName: _categories.firstWhere((cat) => cat['id'] == _selectedCategoryId)['name']!,
+                episodes: episodes,
+                pdfUploaded: (syncData['pdf_uploaded'] == true),
+                pdfSelected: (_selectedPdfFile != null),
+                pdfUrl: syncData['pdf_url'],
+                pdfSizeBytes: _selectedPdfFile?.size,
+                onApprove: () async {
+                  try {
+                    await Supabase.instance.client.functions.invoke(
+                      'youtube-admin-tools?action=approve_playlist',
+                      body: {'playlist_id': syncData['playlist_id']},
+                    );
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      Navigator.of(context).pop();
+                      String successMessage = '? Playlist approved and published successfully!';
+                      if (syncData['pdf_uploaded'] == true) {
+                        successMessage = '? Playlist approved and published successfully (with PDF)!';
+                      } else if (_selectedPdfFile != null && syncData['pdf_uploaded'] == false) {
+                        successMessage = '? Playlist approved! (PDF upload failed - you can add it later)';
+                      }
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(successMessage), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error approving playlist: ${e.toString()}'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  }
+                },
+                onReject: () async {
+                  try {
+                    await Supabase.instance.client.functions.invoke(
+                      'youtube-admin-tools?action=delete-kitab',
+                      body: {'kitab_id': syncData['playlist_id']},
+                    );
+                    if (mounted) {
+                      Navigator.of(ctx).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Playlist rejected and removed'), backgroundColor: Colors.orange, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error rejecting playlist: ${e.toString()}'), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
+                      );
+                    }
+                  }
+                },
+              ),
+            );
+          }
       }
     } catch (e, stackTrace) {
       print('=== AUTO SYNC ERROR ===');
@@ -1175,3 +1297,7 @@ class _AdminYouTubeAutoFormScreenState
     }
   }
 }
+
+
+
+

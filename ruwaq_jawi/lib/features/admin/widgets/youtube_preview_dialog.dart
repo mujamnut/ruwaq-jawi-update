@@ -32,11 +32,19 @@ class YouTubePreviewDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    const double edge = 20.0;
+    final double maxW = size.width - (edge * 2);
+    final double maxH = size.height - (edge * 2);
     return Dialog(
       backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.all(edge),
       child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        constraints: const BoxConstraints(maxHeight: 600, maxWidth: 500),
+        width: double.infinity,
+        constraints: BoxConstraints(
+          maxHeight: maxH,
+          maxWidth: maxW,
+        ),
         decoration: BoxDecoration(
           color: AppTheme.backgroundColor,
           borderRadius: BorderRadius.circular(20),

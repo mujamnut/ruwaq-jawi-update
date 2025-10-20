@@ -86,7 +86,12 @@
       "Bash(move kitab_form_screen.dart kitab_manual_form_screen.dart)",
       "Bash(npx supabase functions delete:*)",
       "Bash(npx supabase login:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(where:*)",
+      "Read(//c/**)",
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe\":*)",
+      "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore)",
+      "Bash(openssl:*)"
     ],
     "deny": [],
     "ask": []

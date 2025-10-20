@@ -88,11 +88,12 @@ class VideoPlayerManager {
             autoPlay: true,
             mute: false,
             enableCaption: true,
-            controlsVisibleAtStart: false,
-            hideControls: true, // Hide YouTube's controls, use our custom
-            disableDragSeek: false, // Allow our custom seekbar
+            controlsVisibleAtStart: true,
+            hideControls: false, // Show YouTube's native controls
+            disableDragSeek: false,
             loop: false,
-            useHybridComposition: true,
+            // Use Virtual Display so Flutter overlays (double-tap layer) can receive gestures in fullscreen
+            useHybridComposition: false,
           ),
         );
 
