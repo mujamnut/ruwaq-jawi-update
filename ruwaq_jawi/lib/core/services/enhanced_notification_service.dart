@@ -17,6 +17,7 @@ class EnhancedNotificationService {
   static Future<List<EnhancedNotification>> getNotifications({
     bool unreadOnly = false,
     int limit = 50,
+    int offset = 0,
     DateTime? userRegistrationDate,
   }) async {
     try {
@@ -34,7 +35,7 @@ class EnhancedNotificationService {
       final response = await _supabase.rpc('get_user_notifications', params: {
         'p_user_id': user.id,
         'p_limit': limit,
-        'p_offset': 0,
+        'p_offset': offset,
       });
 
       if (response == null) {

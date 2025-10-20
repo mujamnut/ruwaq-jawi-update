@@ -10,6 +10,7 @@ class NotificationsProvider with ChangeNotifier {
   RealtimeChannel? _notificationChannel;
 
   bool _loading = false;
+  bool _loadingMore = false;
   String? _error;
   final List<UserNotificationItem> _inbox = [];
   final List<EnhancedNotification> _enhancedInbox = [];
@@ -17,11 +18,19 @@ class NotificationsProvider with ChangeNotifier {
   // User registration date cache for filtering
   DateTime? _userRegistrationDate;
 
+  // Pagination state
+  int _offset = 0;
+  final int _limit = 50;
+  bool _hasMore = true;
+
   bool get isLoading => _loading;
+  bool get isLoadingMore => _loadingMore;
   String? get error => _error;
   List<UserNotificationItem> get inbox => List.unmodifiable(_inbox);
   List<EnhancedNotification> get enhancedInbox =>
       List.unmodifiable(_enhancedInbox);
+
+  bool get hasMore => _hasMore;
 
   int get unreadCount {
     final user = _supabase.auth.currentUser;
@@ -118,7 +127,10 @@ class NotificationsProvider with ChangeNotifier {
 
   Future<void> loadInbox() async {
     _loading = true;
+    _loadingMore = false;
     _error = null;
+    _offset = 0;
+    _hasMore = true;
     notifyListeners();
 
     try {
@@ -133,7 +145,8 @@ class NotificationsProvider with ChangeNotifier {
       // Try enhanced system first
       try {
         final enhancedNotifications = await EnhancedNotificationService.getNotifications(
-          limit: 50,
+          limit: _limit,
+          offset: _offset,
           userRegistrationDate: _userRegistrationDate,
         );
 
@@ -161,6 +174,7 @@ class NotificationsProvider with ChangeNotifier {
           // Setup real-time subscription after initial load
           _setupRealtimeSubscription();
 
+          _hasMore = enhancedNotifications.length >= _limit;
           _loading = false;
           notifyListeners();
           return;
@@ -185,6 +199,78 @@ class NotificationsProvider with ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> loadMore() async {
+    if (_loading || _loadingMore || !_hasMore) return;
+    try {
+      _loadingMore = true;
+      notifyListeners();
+
+      _offset += _limit;
+      final more = await EnhancedNotificationService.getNotifications(
+        limit: _limit,
+        offset: _offset,
+        userRegistrationDate: _userRegistrationDate,
+      );
+
+      if (more.isEmpty) {
+        _hasMore = false;
+      } else {
+        _enhancedInbox.addAll(more);
+        _inbox.addAll(more.map((e) => e.toLegacyUserNotificationItem()));
+        _hasMore = more.length >= _limit;
+      }
+
+      _loadingMore = false;
+      notifyListeners();
+    } catch (e) {
+      _loadingMore = false;
+      notifyListeners();
+    }
+  }
+
+  /// Local-only toggle to mark a notification as unread (UI only)
+  void markAsUnreadLocal(String userNotificationId) {
+    final enhancedIndex = _enhancedInbox.indexWhere((n) => n.id == userNotificationId);
+    if (enhancedIndex != -1) {
+      _enhancedInbox[enhancedIndex] = _enhancedInbox[enhancedIndex].copyWith(
+        isRead: false,
+        readAt: null,
+      );
+    }
+
+    final legacyIndex = _inbox.indexWhere((n) => n.id == userNotificationId);
+    if (legacyIndex != -1) {
+      final item = _inbox[legacyIndex];
+      final updatedMetadata = Map<String, dynamic>.from(item.metadata ?? {});
+      // Remove read_at marker for personal notifications
+      updatedMetadata.remove('read_at');
+      // For broadcast/global notifications, remove current user from read_by list
+      if (item.isGlobal) {
+        final userId = _supabase.auth.currentUser?.id;
+        if (userId != null) {
+          final readBy = List<String>.from(updatedMetadata['read_by'] ?? []);
+          readBy.removeWhere((id) => id == userId);
+          updatedMetadata['read_by'] = readBy;
+        }
+      }
+      _inbox[legacyIndex] = UserNotificationItem(
+        id: item.id,
+        userId: item.userId,
+        message: item.message,
+        metadata: updatedMetadata,
+        deliveredAt: item.deliveredAt,
+        targetCriteria: item.targetCriteria,
+        deliveryStatus: item.deliveryStatus,
+        isFavorite: item.isFavorite,
+        readAt: null,
+        purchaseId: item.purchaseId,
+        notificationId: item.notificationId,
+      );
+    }
+
+    notifyListeners();
   }
 
   /// Setup real-time subscription for new notifications

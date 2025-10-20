@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../../../../core/models/user_notification.dart';
 import '../../../../../core/theme/app_theme.dart';
+import '../utils/notification_ui_utils.dart';
 
 /// Beautiful bottom sheet untuk display full notification details
 /// dengan smooth animations dan clear action buttons
@@ -94,7 +96,7 @@ class _NotificationDetailBottomSheetState
   @override
   Widget build(BuildContext context) {
     final type = widget.notification.type.toLowerCase();
-    final color = _getNotificationColor(type);
+    final color = notificationColorForType(type);
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -189,7 +191,7 @@ class _NotificationDetailBottomSheetState
           ),
           child: Center(
             child: PhosphorIcon(
-              _getNotificationIcon(type),
+              notificationIconForType(type),
               color: color,
               size: 28,
             ),
@@ -217,7 +219,7 @@ class _NotificationDetailBottomSheetState
                   ),
                 ),
                 child: Text(
-                  _getTypeDisplayName(type),
+                  typeDisplayName(type),
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
@@ -406,6 +408,64 @@ class _NotificationDetailBottomSheetState
           ),
         if (hasActionUrl) const SizedBox(height: 12),
 
+        // Link utilities row (copy/share)
+        if (hasActionUrl)
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final url = widget.notification.actionUrl!;
+                    await Clipboard.setData(ClipboardData(text: url));
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Pautan disalin'),
+                          backgroundColor: AppTheme.successColor,
+                          behavior: SnackBarBehavior.floating,
+                          duration: const Duration(seconds: 2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  icon: PhosphorIcon(PhosphorIcons.copy(), size: 18),
+                  label: const Text('Salin Pautan'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: BorderSide(color: AppTheme.primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final url = widget.notification.actionUrl!;
+                    await Share.share(url);
+                  },
+                  icon: PhosphorIcon(PhosphorIcons.shareNetwork(), size: 18),
+                  label: const Text('Kongsi'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: BorderSide(color: AppTheme.primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        if (hasActionUrl) const SizedBox(height: 12),
+
         // Secondary actions row
         Row(
           children: [
@@ -520,96 +580,11 @@ class _NotificationDetailBottomSheetState
     }
   }
 
-  IconData _getNotificationIcon(String type) {
-    switch (type) {
-      case 'email':
-        return PhosphorIcons.envelope();
-      case 'push':
-        return PhosphorIcons.bell();
-      case 'announcement':
-      case 'admin_announcement':
-        return PhosphorIcons.megaphone();
-      case 'update':
-        return PhosphorIcons.downloadSimple();
-      case 'promotion':
-        return PhosphorIcons.gift();
-      case 'reminder':
-        return PhosphorIcons.clock();
-      case 'system':
-        return PhosphorIcons.gear();
-      case 'payment':
-      case 'payment_success':
-        return PhosphorIcons.creditCard();
-      case 'subscription':
-      case 'subscription_expiring':
-        return PhosphorIcons.crown();
-      case 'content':
-      case 'content_published':
-        return PhosphorIcons.bookOpen();
-      default:
-        return PhosphorIcons.bellRinging();
-    }
-  }
+  IconData _getNotificationIcon(String type) => notificationIconForType(type);
 
-  Color _getNotificationColor(String type) {
-    switch (type) {
-      case 'email':
-        return Colors.blue;
-      case 'push':
-        return AppTheme.primaryColor;
-      case 'announcement':
-      case 'admin_announcement':
-        return Colors.orange;
-      case 'update':
-      case 'content_published':
-        return Colors.green;
-      case 'promotion':
-        return Colors.purple;
-      case 'reminder':
-        return Colors.amber;
-      case 'system':
-        return Colors.grey;
-      case 'payment':
-      case 'payment_success':
-        return Colors.teal;
-      case 'subscription':
-      case 'subscription_expiring':
-        return const Color(0xFFFFD700);
-      default:
-        return AppTheme.primaryColor;
-    }
-  }
+  Color _getNotificationColor(String type) => notificationColorForType(type);
 
-  String _getTypeDisplayName(String type) {
-    switch (type.toLowerCase()) {
-      case 'email':
-        return 'E-mel';
-      case 'push':
-        return 'Push';
-      case 'announcement':
-      case 'admin_announcement':
-        return 'Pengumuman';
-      case 'update':
-        return 'Kemaskini';
-      case 'promotion':
-        return 'Promosi';
-      case 'reminder':
-        return 'Peringatan';
-      case 'system':
-        return 'Sistem';
-      case 'payment':
-      case 'payment_success':
-        return 'Pembayaran';
-      case 'subscription':
-      case 'subscription_expiring':
-        return 'Langganan';
-      case 'content':
-      case 'content_published':
-        return 'Kandungan';
-      default:
-        return 'Umum';
-    }
-  }
+  String _getTypeDisplayName(String type) => typeDisplayName(type);
 
   String _formatDateTime(DateTime dateTime) {
     final now = DateTime.now();
