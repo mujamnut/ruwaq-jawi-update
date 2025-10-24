@@ -75,9 +75,8 @@ class _SubscriptionDetailScreenState extends State<SubscriptionDetailScreen>
         subscriptionProvider.loadUserSubscriptions(),
         subscriptionProvider.loadSubscriptionPlans(),
       ]);
-      print('🔄 Subscription data refreshed');
     } catch (e) {
-      print('⚠️ Error refreshing subscription data: $e');
+      // Error refreshing subscription data
     }
 
     if (mounted) {

@@ -45,7 +45,7 @@ class PopupService {
       return !isSameDay;
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking popup show criteria: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -70,12 +70,12 @@ class PopupService {
             return SubscriptionPromoPopup(
               onDismiss: () {
                 if (kDebugMode) {
-                  print('Subscription promo popup dismissed');
+                  // Debug logging removed
                 }
               },
               onSubscribe: () {
                 if (kDebugMode) {
-                  print('User clicked subscribe from popup');
+                  // Debug logging removed
                 }
               },
             );
@@ -84,7 +84,7 @@ class PopupService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error showing subscription promo popup: $e');
+        // Debug logging removed
       }
     }
   }
@@ -101,7 +101,7 @@ class PopupService {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('Error recording popup shown: $e');
+        // Debug logging removed
       }
     }
   }
@@ -118,7 +118,7 @@ class PopupService {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('Error dismissing popup permanently: $e');
+        // Debug logging removed
       }
     }
   }
@@ -135,7 +135,7 @@ class PopupService {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting popup tracking: $e');
+        // Debug logging removed
       }
       return null;
     }
@@ -157,7 +157,7 @@ class PopupService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error in checkAndShowSubscriptionPromo: $e');
+        // Debug logging removed
       }
     }
   }
@@ -166,7 +166,7 @@ class PopupService {
   static void resetSessionFlag() {
     _shownInCurrentSession = false;
     if (kDebugMode) {
-      print('Popup session flag reset');
+      // Debug logging removed
     }
   }
 
@@ -182,11 +182,11 @@ class PopupService {
       _shownInCurrentSession = false; // Also reset session flag
 
       if (kDebugMode) {
-        print('Popup tracking reset for testing');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error resetting popup tracking: $e');
+        // Debug logging removed
       }
     }
   }

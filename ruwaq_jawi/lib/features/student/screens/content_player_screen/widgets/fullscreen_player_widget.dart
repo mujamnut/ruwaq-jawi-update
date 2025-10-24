@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:hugeicons/hugeicons.dart';
 
 /// Fullscreen player with custom controls
 class FullscreenPlayerWidget extends StatelessWidget {

@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/payment_config.dart';
 import '../services/supabase_service.dart';
@@ -14,8 +13,8 @@ class DirectPaymentVerificationService {
   /// Verify payment status directly with ToyyibPay API
   Future<ToyyibPayVerificationResult> verifyPaymentWithToyyibPay(String billId) async {
     try {
-      debugPrint('🔍 === DIRECT TOYYIBPAY VERIFICATION ===');
-      debugPrint('📋 Verifying Bill ID: $billId');
+      // Debug logging removed
+      // Debug logging removed
 
       final response = await http.post(
         Uri.parse(PaymentConfig.getBillUrl),
@@ -25,8 +24,8 @@ class DirectPaymentVerificationService {
         },
       ).timeout(const Duration(seconds: 30));
 
-      debugPrint('📊 ToyyibPay API Response Status: ${response.statusCode}');
-      debugPrint('📄 ToyyibPay API Response Body: ${response.body}');
+      // Debug logging removed
+      // Debug logging removed
 
       if (response.statusCode != 200) {
         return ToyyibPayVerificationResult(
@@ -36,12 +35,12 @@ class DirectPaymentVerificationService {
       }
 
       final data = json.decode(response.body);
-      debugPrint('📋 Parsed ToyyibPay Response: $data');
+      // Debug logging removed
 
       return _parseToyyibPayResponse(data, billId);
 
     } catch (e) {
-      debugPrint('❌ Direct ToyyibPay verification error: $e');
+      // Debug logging removed
       return ToyyibPayVerificationResult(
         success: false,
         message: 'Gagal mengesahkan pembayaran: ${e.toString()}',
@@ -68,7 +67,7 @@ class DirectPaymentVerificationService {
         );
       }
 
-      debugPrint('📋 Transaction data: $transaction');
+      // Debug logging removed
 
       // Extract payment status
       final billStatus = transaction['billStatus']?.toString();
@@ -76,17 +75,17 @@ class DirectPaymentVerificationService {
       final billPaidAmount = transaction['billpaidAmount']?.toString();
       final billInvoiceNo = transaction['billpaymentInvoiceNo']?.toString();
 
-      debugPrint('📊 Status Details:');
-      debugPrint('  - Bill Status: $billStatus');
-      debugPrint('  - Payment Status: $billPaymentStatus');
-      debugPrint('  - Paid Amount: $billPaidAmount');
-      debugPrint('  - Invoice No: $billInvoiceNo');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       // Determine if payment is successful
       final isPaid = (billPaymentStatus == '1' || billPaymentStatus == 'success');
       final amount = double.tryParse(billPaidAmount ?? '0') ?? 0.0;
 
-      debugPrint('✅ Payment Status: ${isPaid ? 'SUCCESS' : 'PENDING/FAILED'}');
+      // Debug logging removed
 
       return ToyyibPayVerificationResult(
         success: true,
@@ -99,7 +98,7 @@ class DirectPaymentVerificationService {
       );
 
     } catch (e) {
-      debugPrint('❌ Error parsing ToyyibPay response: $e');
+      // Debug logging removed
       return ToyyibPayVerificationResult(
         success: false,
         message: 'Gagal memproses respons ToyyibPay: ${e.toString()}',
@@ -116,12 +115,12 @@ class DirectPaymentVerificationService {
     bool forceVerification = true, // 🔥 SECURITY: Always verify by default
   }) async {
     try {
-      debugPrint('🔄 === SECURE DIRECT SUBSCRIPTION ACTIVATION ===');
-      debugPrint('📋 Bill: $billId | User: $userId | Plan: $planId | Amount: RM$amount');
+      // Debug logging removed
+      // Debug logging removed
 
       // 🔥 SECURITY: MANDATORY payment verification step
       if (forceVerification) {
-        debugPrint('🔒 STEP 0: Verifying payment with ToyyibPay...');
+        // Debug logging removed
         final verificationResult = await verifyPaymentWithToyyibPay(billId);
 
         if (!verificationResult.success) {
@@ -142,7 +141,7 @@ class DirectPaymentVerificationService {
 
         // 🔥 SECURITY: Verify amount matches expected amount
         if (verificationResult.amount != amount) {
-          debugPrint('⚠️ Amount mismatch - Expected: RM$amount, Paid: RM${verificationResult.amount}');
+          // Debug logging removed
           return PaymentRecoveryResult(
             success: false,
             message: '❌ Jumlah pembayaran tidak sepadai. Sila hubungi support untuk bantuan.',
@@ -150,9 +149,9 @@ class DirectPaymentVerificationService {
           );
         }
 
-        debugPrint('✅ Payment verification successful - Amount: RM${verificationResult.amount}');
+        // Debug logging removed
       } else {
-        debugPrint('⚠️ WARNING: Skipping payment verification (should only be used for testing)');
+        // Debug logging removed
       }
 
       final now = DateTime.now().toUtc().toIso8601String();
@@ -172,7 +171,7 @@ class DirectPaymentVerificationService {
           .add(Duration(days: durationDays))
           .toIso8601String();
 
-      debugPrint('📅 Plan duration: $durationDays days, End date: $endDate');
+      // Debug logging removed
 
       // Step 2: Get user profile
       final profileData = await SupabaseService.from('profiles')
@@ -181,7 +180,7 @@ class DirectPaymentVerificationService {
           .maybeSingle();
 
       // 🔥 SECURITY: Check for duplicate activation attempts
-      debugPrint('🔍 Checking for duplicate activation...');
+      // Debug logging removed
       final existingPayment = await SupabaseService.from('payments')
           .select('id, status, paid_at')
           .eq('bill_id', billId)
@@ -189,7 +188,7 @@ class DirectPaymentVerificationService {
           .maybeSingle();
 
       if (existingPayment != null && existingPayment['status'] == 'completed') {
-        debugPrint('⚠️ Payment already completed at: ${existingPayment['paid_at']}');
+        // Debug logging removed
         return PaymentRecoveryResult(
           success: false,
           message: 'Pembayaran ini telah diproses sebelumnya pada ${existingPayment['paid_at']}. Sila semak status langganan anda.',
@@ -198,7 +197,7 @@ class DirectPaymentVerificationService {
       }
 
       // Step 3: Update payment status to completed with audit trail
-      debugPrint('💳 Updating payment status with audit trail...');
+      // Debug logging removed
       await SupabaseService.from('payments')
           .update({
             'status': 'completed',
@@ -224,7 +223,7 @@ class DirectPaymentVerificationService {
           .eq('user_id', userId);
 
       // Step 4: Create/update subscription
-      debugPrint('📝 Creating/updating subscription...');
+      // Debug logging removed
       await SupabaseService.from('user_subscriptions')
           .upsert({
             'user_id': userId,
@@ -244,7 +243,7 @@ class DirectPaymentVerificationService {
           });
 
       // Step 5: Update profile status
-      debugPrint('👤 Updating user profile...');
+      // Debug logging removed
       await SupabaseService.from('profiles')
           .update({
             'subscription_status': 'active',
@@ -261,7 +260,7 @@ class DirectPaymentVerificationService {
         endDate: endDate,
       );
 
-      debugPrint('✅ Direct subscription activation completed successfully!');
+      // Debug logging removed
 
       return PaymentRecoveryResult(
         success: true,
@@ -273,7 +272,7 @@ class DirectPaymentVerificationService {
       );
 
     } catch (e) {
-      debugPrint('❌ Direct activation error: $e');
+      // Debug logging removed
       return PaymentRecoveryResult(
         success: false,
         message: 'Gagal mengaktifkan langganan: ${e.toString()}',
@@ -330,9 +329,9 @@ class DirectPaymentVerificationService {
             'created_at': now,
             'updated_at': now,
           });
-      debugPrint('✅ Direct activation notification created');
+      // Debug logging removed
     } catch (e) {
-      debugPrint('⚠️ Error creating direct activation notification: $e');
+      // Debug logging removed
     }
   }
 }

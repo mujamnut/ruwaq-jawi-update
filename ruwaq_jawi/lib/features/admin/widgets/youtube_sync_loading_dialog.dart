@@ -301,7 +301,6 @@ class _YouTubeSyncLoadingDialogState extends State<YouTubeSyncLoadingDialog>
                 itemBuilder: (context, index) {
                   final isCompleted = index < _currentStep;
                   final isCurrent = index == _currentStep;
-                  final isPending = index > _currentStep;
 
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 2),

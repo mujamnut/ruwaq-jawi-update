@@ -1,5 +1,4 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/foundation.dart';
 
 class YouTubeSyncService {
   static final _supabase = Supabase.instance.client;
@@ -58,7 +57,7 @@ class YouTubeSyncService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('Error fetching sync logs: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -76,7 +75,7 @@ class YouTubeSyncService {
       }
       return settings;
     } catch (e) {
-      debugPrint('Error fetching sync settings: $e');
+      // Debug logging removed
       return {};
     }
   }
@@ -93,7 +92,7 @@ class YouTubeSyncService {
           .eq('setting_key', key);
       return true;
     } catch (e) {
-      debugPrint('Error updating sync setting: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -114,7 +113,7 @@ class YouTubeSyncService {
       final response = await _supabase.rpc('get_playlists_for_sync');
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      debugPrint('Error fetching playlists for sync: $e');
+      // Debug logging removed
       return [];
     }
   }

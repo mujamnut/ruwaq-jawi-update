@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -345,19 +344,12 @@ class _RegisterScreenState extends State<RegisterScreen>
     }
 
     final authProvider = context.read<AuthProvider>();
-    if (kDebugMode) {
-      print('DEBUG: Attempting signup for email: ${_emailController.text.trim()}');
-    }
 
     final success = await authProvider.signUp(
       email: _emailController.text.trim(),
       password: _passwordController.text,
       fullName: _fullNameController.text.trim(),
     );
-
-    if (kDebugMode) {
-      print('DEBUG: Signup result - success: $success, error: ${authProvider.errorMessage}');
-    }
 
     if (mounted) {
       if (success) {

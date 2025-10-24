@@ -1,33 +1,42 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EnvConfig {
-  static const String _supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: 'https://ckgxglvozrsognqqkpkk.supabase.co',
-  );
+  // 🔧 Load from .env file using flutter_dotenv
+  static String get supabaseUrl {
+    final url = dotenv.env['SUPABASE_URL'];
+    if (url == null || url.isEmpty) {
+      throw Exception('❌ SUPABASE_URL not found in .env file');
+    }
+    return url;
+  }
 
-  static const String _supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    defaultValue: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZ3hnbHZvenJzb2ducXFrcGtrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYyOTIwMDYsImV4cCI6MjA3MTg2ODAwNn0.AnTcS1uSC83m7pYT9UxAb_enhcEGCIor49AhuyCTkiQ',
-  );
+  static String get supabaseAnonKey {
+    final key = dotenv.env['SUPABASE_ANON_KEY'];
+    if (key == null || key.isEmpty) {
+      throw Exception('❌ SUPABASE_ANON_KEY not found in .env file');
+    }
+    return key;
+  }
 
-  static const String _youtubeApiKey = String.fromEnvironment(
-    'YOUTUBE_API_KEY',
-    defaultValue: 'your_youtube_api_key_here',
-  );
-
-  // Getters
-  static String get supabaseUrl => _supabaseUrl;
-  static String get supabaseAnonKey => _supabaseAnonKey;
-  static String get youtubeApiKey => _youtubeApiKey;
+  static String get youtubeApiKey {
+    final key = dotenv.env['YOUTUBE_API_KEY'];
+    if (key == null || key.isEmpty) {
+      if (kDebugMode) {
+        // Debug logging removed
+      }
+      return 'your_youtube_api_key_here';
+    }
+    return key;
+  }
 
   // Debug info (only in debug mode)
   static void printConfig() {
     if (kDebugMode) {
-      print('🔧 Environment Configuration:');
-      print('   Supabase URL: ${_supabaseUrl.substring(0, 30)}...');
-      print('   Supabase Key: ${_supabaseAnonKey.substring(0, 20)}...');
-      print('   YouTube Key: ${_youtubeApiKey.substring(0, 10)}...');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
     }
   }
 }

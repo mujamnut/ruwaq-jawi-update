@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -36,15 +37,22 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
+    // 🔧 Load .env file for Development
+    await dotenv.load(fileName: ".env");
+
+    // 🔧 Set Development environment
+    EnvironmentConfig.setEnvironment(Environment.development);
+    AppConfig.setEnvironment(Environment.development);
+
     // Initialize Hive for local storage
     await Hive.initFlutter();
-    
+
     // Initialize local favorites service
     await LocalFavoritesService.initialize();
-    
+
     // Initialize video progress service
     await VideoProgressService.initialize();
-    
+
     // Initialize PDF cache service
     await PdfCacheService.initialize();
     
@@ -247,9 +255,10 @@ class _BackgroundPaymentWrapperState extends State<BackgroundPaymentWrapper>
     WidgetsBinding.instance.addObserver(this);
 
     // Start background service selepas app fully loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _startBackgroundServiceIfNeeded();
-    });
+    // Disabled - pending_payments table not implemented yet
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   _startBackgroundServiceIfNeeded();
+    // });
   }
 
   @override
@@ -267,7 +276,8 @@ class _BackgroundPaymentWrapperState extends State<BackgroundPaymentWrapper>
     switch (state) {
       case AppLifecycleState.resumed:
         // App resumed - check for pending payments
-        _startBackgroundServiceIfNeeded();
+        // Disabled - pending_payments table not implemented yet
+        // _startBackgroundServiceIfNeeded();
         break;
       case AppLifecycleState.paused:
         // App paused - optionally stop background service to save battery
@@ -282,20 +292,21 @@ class _BackgroundPaymentWrapperState extends State<BackgroundPaymentWrapper>
     }
   }
 
-  void _startBackgroundServiceIfNeeded() {
-    try {
-      if (context.mounted && !BackgroundPaymentService.isRunning) {
-        if (kDebugMode) {
-          print('🚀 Starting background payment verification service...');
-        }
-        BackgroundPaymentService.startBackgroundVerification(context);
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error starting background payment service: $e');
-      }
-    }
-  }
+  // Disabled - pending_payments table not implemented yet
+  // void _startBackgroundServiceIfNeeded() {
+  //   try {
+  //     if (context.mounted && !BackgroundPaymentService.isRunning) {
+  //       if (kDebugMode) {
+  //         print('🚀 Starting background payment verification service...');
+  //       }
+  //       BackgroundPaymentService.startBackgroundVerification(context);
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('❌ Error starting background payment service: $e');
+  //     }
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

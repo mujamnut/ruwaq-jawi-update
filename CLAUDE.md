@@ -1,8 +1,8 @@
-ui always use the shadcn flutter,icon use phosphor for icon must to use solid icon,if icon not need to use solid icon,use huge icon stroke rounded whole this project. make or add something animation to make this app look responsive and smooth not like stone.
+"ui always use the shadcn flutter,icon use phosphor for icon must to use solid icon,if icon not need to use solid icon,use huge icon stroke rounded whole this project. make or add something animation to make this app look responsive and smooth not like stone."
 "Always follow proper color usage in the Maktabah Ruwaq Jawi app. Accent colors like 0xFF00BF6D must never be used as large backgrounds. Keep backgrounds neutral (white, gray, or soft tones) for readability. Apply the 60-30-10 rule: 60% neutral colors for backgrounds, 30% secondary colors for surfaces, and 10% accent colors for highlights, buttons, or important icons. Maintain shadcn style: clean, minimal, balanced, and professional."
 "Always apply rounded corners based on context in the Maktabah Ruwaq Jawi app. Cards and primary buttons should use larger rounded corners (xl–2xl) for a modern and friendly feel. Secondary or tertiary buttons should use medium rounding (md). Admin panels or data-heavy UI should keep corners small (sm–md) for a clean and professional look. Never mix random radii—stay consistent with the shadcn style: soft, balanced, and minimal."
 analyze the error after every edit file for sure the error.
-AppBar: Transparent background (bukan hijau lagi), phosphor back button
+AppBar: Transparent background (bukan hijau lagi), huge icon back button left arrow
 SearchBar: Grey background, rounded, dengan X button untuk clear
   jangan guna icon terlalu banyak dalam satu page,guna yang penting penting saja.
   background tema putih,guna background untuk semua putih abu-abu dan untuk card buat putih bersih supaya nampak clean(jangan guna terlalu card),dan untuk tema gelap pula sebaliknya,background hitam bersih dan card abu-abu.text pula kalau untuk title atau maklumat penting,bagi terang,kalau untuk maklumat tidak penting warna abu-abu.

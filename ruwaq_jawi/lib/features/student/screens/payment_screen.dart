@@ -105,12 +105,8 @@ class PaymentScreen extends StatelessWidget {
     PaymentProvider paymentProvider,
   ) async {
     try {
-      print('Processing payment for email: $userEmail'); // Debug log
-
       // Ensure phone number is not empty
       final phone = userPhone.isNotEmpty ? userPhone : '60123456789';
-
-      print('Processing payment with phone: $phone'); // Debug log
 
       final payment = await paymentProvider.createSubscriptionPayment(
         plan: plan,
@@ -129,10 +125,6 @@ class PaymentScreen extends StatelessWidget {
       if (!context.mounted) return;
 
       // Launch Toyyibpay payment page
-      print(
-        '🚀 Launching ToyyibPay with Plan ID: ${plan.id}, Amount: ${plan.price}',
-      );
-
       final paymentResult = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
@@ -150,22 +142,18 @@ class PaymentScreen extends StatelessWidget {
       if (paymentResult == true) {
         // Payment successful - refresh auth provider and navigate properly
         if (context.mounted) {
-          print('🔄 Starting comprehensive app refresh after payment verification...');
-
           // Refresh all relevant providers for immediate premium access
           try {
             // 1. Refresh AuthProvider (subscription status)
             if (context.mounted) {
               final authProvider = context.read<AuthProvider>();
               await authProvider.refreshSubscriptionStatus();
-              print('✅ AuthProvider refreshed');
             }
 
             // 2. Refresh SubscriptionProvider (subscription data)
             if (context.mounted) {
               final subscriptionProvider = context.read<SubscriptionProvider>();
               await subscriptionProvider.loadUserSubscriptions();
-              print('✅ SubscriptionProvider refreshed');
             }
 
             // 3. Refresh KitabProvider (content with premium access)
@@ -173,15 +161,12 @@ class PaymentScreen extends StatelessWidget {
               try {
                 final kitabProvider = context.read<KitabProvider>();
                 await kitabProvider.refresh();
-                print('✅ KitabProvider refreshed - premium content now accessible');
               } catch (e) {
-                print('⚠️ Error refreshing KitabProvider: $e');
+                // Error refreshing KitabProvider
               }
             }
-
-            print('🎉 App refresh completed - premium access now available!');
           } catch (e) {
-            print('⚠️ Error during app refresh: $e');
+            // Error during app refresh
           }
 
           // Show success message

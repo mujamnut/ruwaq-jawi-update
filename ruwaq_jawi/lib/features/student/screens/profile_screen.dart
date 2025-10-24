@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
 import '../../../core/theme/app_theme.dart';
@@ -14,9 +17,6 @@ import '../../../core/services/avatar_service.dart';
 import 'profile_screen/managers/profile_animation_manager.dart';
 import 'profile_screen/managers/profile_data_manager.dart';
 import 'profile_screen/managers/subscription_manager.dart';
-
-// Import services
-import 'profile_screen/services/password_change_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -109,8 +109,58 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  void _handleChangePassword() {
-    PasswordChangeService.showPasswordChangeDialog(context);
+  Future<void> _handleUploadCustomAvatar() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+      if (!mounted) return;
+
+      _showLoadingDialog('Uploading avatar...');
+
+      final authProvider = context.read<AuthProvider>();
+      final userProfile = authProvider.userProfile;
+
+      if (userProfile == null) {
+        if (!mounted) return;
+        Navigator.pop(context);
+        _showErrorMessage('User profile not found');
+        return;
+      }
+
+      final userId = userProfile.id;
+      final file = File(image.path);
+      final fileExt = image.path.split('.').last;
+      final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final filePath = 'avatars/$fileName';
+
+      // Upload to Supabase Storage
+      await Supabase.instance.client.storage
+          .from('user-avatars')
+          .upload(filePath, file);
+
+      // Get public URL
+      final publicUrl = Supabase.instance.client.storage
+          .from('user-avatars')
+          .getPublicUrl(filePath);
+
+      // Update user profile
+      await authProvider.updateAvatar(publicUrl);
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      _showSuccessMessage('Avatar updated successfully!');
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      _showErrorMessage('Failed to upload avatar: $e');
+    }
   }
 
   void _handleManageAvatar() async {
@@ -124,7 +174,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.5,
+        height: MediaQuery.of(context).size.height * 0.55,
         decoration: const BoxDecoration(
           color: AppTheme.surfaceColor,
           borderRadius: BorderRadius.only(
@@ -232,6 +282,19 @@ class _ProfileScreenState extends State<ProfileScreen>
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Column(
                 children: [
+                  // Upload custom image
+                  _buildAvatarOption(
+                    icon: HugeIcons.strokeRoundedImage02,
+                    title: 'Upload Custom Image',
+                    subtitle: 'Choose image from your phone',
+                    onTap: () {
+                      Navigator.pop(context);
+                      _handleUploadCustomAvatar();
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
                   // Refresh from email
                   _buildAvatarOption(
                     icon: HugeIcons.strokeRoundedRefresh,
@@ -560,7 +623,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   // In production, these would be extracted to separate widget files
 
   Widget _buildGradientHeader(userProfile) {
-    final isPremium = _subscriptionManager.currentSubscription != null;
     final createdAt = userProfile.createdAt;
     final joinedDate = createdAt != null
         ? '${_getMonthName(createdAt.month)} ${createdAt.year}'
@@ -662,7 +724,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     return months[month - 1];
   }
 
-  
+
   Widget _buildAvatarWithBadge(userProfile) {
     final isPremium = _subscriptionManager.currentSubscription != null;
 
@@ -680,71 +742,77 @@ class _ProfileScreenState extends State<ProfileScreen>
       builder: (context, value, child) {
         return Transform.scale(
           scale: value,
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // Premium rotating ring (gold sweep gradient)
-              if (isPremium)
-                AnimatedBuilder(
-                  animation: _ringController,
-                  builder: (context, _) {
-                    final angle = _ringController.value * 2 * math.pi;
-                    return Container(
-                      width: 112,
-                      height: 112,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: SweepGradient(
-                          colors: const [
-                            Color(0xFFFFD700),
-                            Color(0xFFFFA500),
-                            Color(0xFFFFD700),
-                            Color(0xFFDAA520),
-                            Color(0xFFFFD700),
-                          ],
-                          stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
-                          transform: GradientRotation(angle),
-                        ),
-                      ),
-                      child: Container(
-                        margin: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
+          child: GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              _handleUploadCustomAvatar();
+            },
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Premium rotating ring (gold sweep gradient)
+                if (isPremium)
+                  AnimatedBuilder(
+                    animation: _ringController,
+                    builder: (context, _) {
+                      final angle = _ringController.value * 2 * math.pi;
+                      return Container(
+                        width: 112,
+                        height: 112,
+                        decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white,
+                          gradient: SweepGradient(
+                            colors: const [
+                              Color(0xFFFFD700),
+                              Color(0xFFFFA500),
+                              Color(0xFFFFD700),
+                              Color(0xFFDAA520),
+                              Color(0xFFFFD700),
+                            ],
+                            stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+                            transform: GradientRotation(angle),
+                          ),
                         ),
+                        child: Container(
+                          margin: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                // Avatar
+                Container(
+                  width: isPremium ? 104 : 100,
+                  height: isPremium ? 104 : 100,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isPremium ? Colors.white : Colors.transparent,
+                    border: isPremium
+                        ? Border.all(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            width: 3,
+                          )
+                        : null,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.15),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
                       ),
-                    );
-                  },
-                ),
-              // Avatar
-              Container(
-                width: isPremium ? 104 : 100,
-                height: isPremium ? 104 : 100,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isPremium ? Colors.white : Colors.transparent,
-                  border: isPremium
-                      ? Border.all(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          width: 3,
-                        )
-                      : null,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: _buildProfileAvatarImage(
+                      userProfile,
+                      size: isPremium ? 98 : 100,
                     ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: _buildProfileAvatarImage(
-                    userProfile,
-                    size: isPremium ? 98 : 100,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         );
       },

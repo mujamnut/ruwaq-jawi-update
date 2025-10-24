@@ -25,7 +25,6 @@ class RatingStarsWidget extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         ...List.generate(5, (index) {
-          final starValue = index + 1;
           final difference = rating - index;
 
           Widget star;

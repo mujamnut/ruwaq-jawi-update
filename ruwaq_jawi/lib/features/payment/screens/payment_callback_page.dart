@@ -5,10 +5,7 @@ import 'package:lottie/lottie.dart';
 import '../../../core/providers/subscription_provider.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/providers/kitab_provider.dart';
-import '../../../core/services/supabase_service.dart';
 import '../../../core/services/payment_processing_service.dart';
-import '../../../core/services/enhanced_notification_service.dart';
-import '../../../core/models/subscription.dart';
 
 class PaymentCallbackPage extends StatefulWidget {
   final String billId;
@@ -48,22 +45,18 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
 
     if (widget.redirectStatus?.toLowerCase() == 'success' &&
         widget.redirectStatusId == '1') {
-      print('🎉 ToyyibPay redirect indicates SUCCESS (status=success, status_id=1)');
       return true;
     }
 
     if (widget.redirectStatus?.toLowerCase() == 'failed') {
-      print('❌ ToyyibPay redirect indicates FAILED (status=failed)');
       return false;
     }
 
     if (widget.redirectStatus?.toLowerCase() == 'cancel' ||
         widget.redirectStatus?.toLowerCase() == 'cancelled') {
-      print('🚫 ToyyibPay redirect indicates CANCELLED');
       return false;
     }
 
-    print('❓ ToyyibPay redirect status unclear: status=${widget.redirectStatus}, status_id=${widget.redirectStatusId}');
     return null; // Unknown - need API verification
   }
 
@@ -71,8 +64,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
   /// Uses PaymentProcessingService for standardized processing
   Future<void> handlePaymentSuccess() async {
     try {
-      print('🎯 Starting centralized payment success processing...');
-
       // Payment record is now automatically created by PaymentProcessingService
 
       // Use centralized payment processing service
@@ -87,28 +78,18 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
       );
 
       if (result.success) {
-        print('✅ Payment processed successfully!');
-        print('📋 Subscription ID: ${result.subscriptionId}');
-        print('📋 Days Added: ${result.daysAdded}');
-        print('📋 End Date: ${result.endDate}');
-
         // Comprehensive app refresh after successful payment
         await _refreshAllProviders();
-
-      } else {
-        print('❌ Payment processing failed: ${result.message}');
       }
 
     } catch (e) {
-      print('❌ Error in centralized payment processing: $e');
+      // Error handling
     }
   }
 
   /// Refresh all providers after successful payment
   Future<void> _refreshAllProviders() async {
     try {
-      print('🔄 Starting comprehensive app refresh...');
-
       // 1. Refresh AuthProvider (subscription status and profile)
       if (mounted) {
         final authProvider = Provider.of<AuthProvider>(
@@ -116,7 +97,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
           listen: false,
         );
         await authProvider.checkActiveSubscription();
-        print('✅ AuthProvider refreshed - subscription status updated');
       }
 
       // 2. Refresh SubscriptionProvider (subscription data)
@@ -125,7 +105,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         listen: false,
       );
       await subscriptionProvider.loadUserSubscriptions();
-      print('✅ SubscriptionProvider refreshed - subscription data updated');
 
       // 3. Refresh KitabProvider (ebook and content data with premium access)
       if (mounted) {
@@ -135,22 +114,19 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
             listen: false,
           );
           await kitabProvider.refresh();
-          print('✅ KitabProvider refreshed - content premium access updated');
         } catch (e) {
-          print('⚠️ Error refreshing KitabProvider: $e');
+          // Error refreshing KitabProvider
         }
       }
 
-      print('🎉 All providers refreshed successfully!');
     } catch (e) {
-      print('⚠️ Error during comprehensive refresh: $e');
+      // Error during comprehensive refresh
     }
   }
 
   @override
   void initState() {
     super.initState();
-    print('🔍 Payment callback - ToyyibPay redirect status: ${widget.redirectStatus}, ID: ${widget.redirectStatusId}');
     _verifyPayment();
   }
 
@@ -160,11 +136,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         _isVerifying = true;
         _message = 'Mengesahkan status pembayaran...';
       });
-
-      print('🔍 Payment callback reached - USING CENTRALIZED PROCESSING...');
-      print(
-        '📋 Bill ID: ${widget.billId}, Plan: ${widget.planId}, Amount: RM${widget.amount}',
-      );
 
       // Use centralized payment processing service
       final paymentService = PaymentProcessingService();
@@ -178,11 +149,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
       );
 
       if (result.success) {
-        print('🎉 Payment processed successfully!');
-        print('📋 Subscription ID: ${result.subscriptionId}');
-        print('📋 Days Added: ${result.daysAdded}');
-        print('📋 End Date: ${result.endDate}');
-
         // Refresh all providers after successful payment
         await _refreshAllProviders();
 
@@ -199,8 +165,6 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
         }
 
       } else {
-        print('❌ Payment processing failed: ${result.message}');
-
         setState(() {
           _isVerifying = false;
           _paymentSuccess = false;
@@ -210,13 +174,12 @@ class _PaymentCallbackPageState extends State<PaymentCallbackPage> {
           if (redirectSuccess == false) {
             _message = 'Pembayaran telah dibatalkan. Tiada bayaran dikenakan.';
           } else {
-            _message = result.message ?? 'Pembayaran tidak berjaya. Tiada bayaran dikenakan.';
+            _message = result.message.isEmpty ? 'Pembayaran tidak berjaya. Tiada bayaran dikenakan.' : result.message;
           }
         });
       }
 
     } catch (e) {
-      print('❌ Error in payment verification: $e');
       setState(() {
         _isVerifying = false;
         _paymentSuccess = false;

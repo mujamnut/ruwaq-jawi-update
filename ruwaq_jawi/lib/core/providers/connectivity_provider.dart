@@ -49,12 +49,12 @@ class ConnectivityProvider with ChangeNotifier {
       _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
         _updateConnectionStatus,
         onError: (error) {
-          debugPrint('Connectivity error: $error');
+          // Debug logging removed
           _updateConnectionStatus([ConnectivityResult.none]);
         },
       );
     } catch (e) {
-      debugPrint('Failed to initialize connectivity: $e');
+      // Debug logging removed
       _updateConnectionStatus([ConnectivityResult.none]);
     }
   }
@@ -67,43 +67,41 @@ class ConnectivityProvider with ChangeNotifier {
     final wasOnline = _isOnline;
     _isOnline = result.isNotEmpty && !result.every((status) => status == ConnectivityResult.none);
 
-    debugPrint('🌐 [CONNECTIVITY] Status changed: ${_isOnline ? 'Online' : 'Offline'} ($_connectionType)');
+    // Debug logging removed
 
     // Only notify if status actually changed AND provider is not disposed
     if (wasOnline != _isOnline && !_isDisposed) {
-      debugPrint('🔶 [CONNECTIVITY] Status CHANGED - wasOnline:$wasOnline, isOnline:$_isOnline, disposed:$_isDisposed');
+      // Debug logging removed
       // Debounce rapid changes (e.g., switching between WiFi and mobile)
       _debounceTimer = Timer(const Duration(milliseconds: 300), () {
         if (_isDisposed) {
-          debugPrint('⚠️ [CONNECTIVITY] Debounce cancelled - disposed');
+          // Debug logging removed
           return;
         }
 
         // Double-check status hasn't changed again during debounce
         if (wasOnline != _isOnline) {
-          debugPrint('🔶 [CONNECTIVITY] Debounce complete - scheduling notifyListeners');
+          // Debug logging removed
           // Use SchedulerBinding to ensure we're not in the middle of a build
           SchedulerBinding.instance.addPostFrameCallback((_) {
             if (!_isDisposed && wasOnline != _isOnline) {
               try {
-                debugPrint('🔶 [CONNECTIVITY:_updateConnectionStatus] notifyListeners - wasOnline:$wasOnline, isOnline:$_isOnline');
+                // Debug logging removed
                 notifyListeners();
-                debugPrint('✅ [CONNECTIVITY] notifyListeners COMPLETED');
+                // Debug logging removed
               } catch (e) {
-                debugPrint('❌ [CONNECTIVITY] Error notifying listeners: $e');
+                // Debug logging removed
               }
             } else {
-              debugPrint('⚠️ [CONNECTIVITY] PostFrameCallback skipped - disposed:$_isDisposed');
+              // Debug logging removed
             }
           });
         } else {
-          debugPrint('⚠️ [CONNECTIVITY] Status changed during debounce - skipping notify');
+          // Debug logging removed
         }
       });
     }
   }
-
-  String get _connectionType => connectionType;
 
   /// Check if device has internet connectivity
   Future<bool> hasInternetConnection() async {
@@ -111,7 +109,7 @@ class ConnectivityProvider with ChangeNotifier {
       final result = await Connectivity().checkConnectivity();
       return result.isNotEmpty && !result.every((status) => status == ConnectivityResult.none);
     } catch (e) {
-      debugPrint('Error checking connectivity: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -122,7 +120,7 @@ class ConnectivityProvider with ChangeNotifier {
       final result = await Connectivity().checkConnectivity();
       _updateConnectionStatus(result);
     } catch (e) {
-      debugPrint('Error refreshing connectivity: $e');
+      // Debug logging removed
       _updateConnectionStatus([ConnectivityResult.none]);
     }
   }
@@ -192,14 +190,14 @@ class ConnectivityProvider with ChangeNotifier {
   /// Returns null if offline, otherwise returns operation result
   Future<T?> executeWhenOnline<T>(Future<T> Function() operation) async {
     if (isOffline) {
-      debugPrint('⚠️ Cannot execute operation: Device is offline');
+      // Debug logging removed
       return null;
     }
 
     try {
       return await operation();
     } catch (e) {
-      debugPrint('❌ Operation failed: $e');
+      // Debug logging removed
       // Refresh connectivity in case we went offline
       await refreshConnectivity();
       rethrow;

@@ -40,6 +40,7 @@ import '../../features/admin/screens/categories/list_screen.dart' as admin_categ
 import '../../features/admin/screens/categories/form_screen.dart' as admin_category_form;
 // Admin - Notifications
 import '../../features/admin/screens/notifications/notification_list_screen.dart' as admin_notification;
+import '../../features/admin/screens/notifications/admin_notification_inbox_screen.dart';
 // Admin - Subscriptions
 import '../../features/admin/screens/subscriptions/subscription_list_screen.dart' as admin_subscription;
 // Admin - Shared
@@ -597,6 +598,11 @@ class AppRouter {
           name: 'admin-notifications-send',
           builder: (context, state) => const admin_notification.AdminNotificationsScreen(),
         ),
+        GoRoute(
+          path: '/admin/notifications/inbox',
+          name: 'admin-notifications-inbox',
+          builder: (context, state) => const AdminNotificationInboxScreen(),
+        ),
         // Admin Kitabs Routes
         // Mode Selection (Choose Manual or Auto)
         GoRoute(
@@ -692,8 +698,8 @@ class AppRouter {
             }
 
             // Debug logging for payment callback
-            print('🔍 Payment callback route - URL: ${state.uri}');
-            print('📋 Parsed parameters: billId=$billId, planId=$extractedPlanId, amount=$amountStr, status=$status, statusId=$statusId');
+            // Debug logging removed
+            // Debug logging removed
 
             // Try to get amount from order_id parsing or use default
             double amount = 0.0;
@@ -711,7 +717,7 @@ class AppRouter {
 
             // More flexible validation - only billId is required
             if (billId == null) {
-              print('❌ No billId found in redirect URL');
+              // Debug logging removed
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 context.go('/subscription');
               });
@@ -720,7 +726,7 @@ class AppRouter {
               );
             }
 
-            print('✅ Proceeding with payment callback: billId=$billId, planId=$extractedPlanId, amount=$amount');
+            // Debug logging removed
 
             return PaymentCallbackPage(
               billId: billId,
@@ -834,7 +840,7 @@ class AppRouter {
 
                     // More flexible validation - only billId is required
                     if (billId == null) {
-                      print('❌ No billId found in redirect URL');
+                      // Debug logging removed
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         context.go('/subscription');
                       });
@@ -843,7 +849,7 @@ class AppRouter {
                       );
                     }
 
-                    print('✅ Proceeding with payment callback (route 2): billId=$billId, planId=$extractedPlanId, amount=$amount');
+                    // Debug logging removed
 
                     return PaymentCallbackPage(
                       billId: billId,

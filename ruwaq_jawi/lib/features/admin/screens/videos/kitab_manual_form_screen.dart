@@ -1,7 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
@@ -237,10 +237,8 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       if (context.mounted) {
         showDialog(
           context: context,
-          builder: (context) => _PdfViewerDialog(
-            file: pdfFile,
-            title: 'Pratonton PDF',
-          ),
+          builder: (context) =>
+              _PdfViewerDialog(file: pdfFile, title: 'Pratonton PDF'),
         );
       }
     } catch (e) {
@@ -256,10 +254,8 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       if (context.mounted) {
         showDialog(
           context: context,
-          builder: (context) => _PdfViewerDialog(
-            url: pdfUrl,
-            title: 'Pratonton PDF',
-          ),
+          builder: (context) =>
+              _PdfViewerDialog(url: pdfUrl, title: 'Pratonton PDF'),
         );
       }
     } catch (e) {
@@ -273,10 +269,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     try {
       final uri = Uri.parse(pdfUrl);
       if (await canLaunchUrl(uri)) {
-        await launchUrl(
-          uri,
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
         if (context.mounted) {
           _showSnackBar('Tidak dapat memuat turun PDF', isError: true);
@@ -290,26 +283,19 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
   }
 
   Future<void> _submitForm() async {
-    print('=== SUBMIT FORM DEBUG START ===');
-    print('Form validation: ${_formKey.currentState?.validate()}');
 
     if (!_formKey.currentState!.validate()) {
-      print('Form validation failed, returning early');
       return;
     }
 
-    print('Setting loading state to true');
     setState(() => _isLoading = true);
 
     try {
       String? thumbnailUrl = _thumbnailUrl;
-      print('Thumbnail URL: $thumbnailUrl');
 
       Map<String, dynamic> result;
 
       if (_isEditing) {
-        print('=== EDITING MODE ===');
-        print('Kitab ID: ${widget.kitabId}');
 
         // Update existing video kitab
         final videoKitabData = {
@@ -327,20 +313,16 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           'total_pages': int.tryParse(_totalPagesController.text),
         };
 
-        print('Update data: $videoKitabData');
-        print('Calling VideoKitabService.updateVideoKitabAdmin...');
 
         final updatedKitab = await VideoKitabService.updateVideoKitabAdmin(
           widget.kitabId!,
           videoKitabData,
         );
 
-        print('Update successful! Result: ${updatedKitab.toJson()}');
         result = updatedKitab.toJson();
 
         _showSnackBar('Kitab berjaya dikemaskini!');
       } else {
-        print('=== CREATE MODE ===');
 
         // Create new video kitab
         final videoKitabData = {
@@ -358,14 +340,11 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
           'total_pages': int.tryParse(_totalPagesController.text),
         };
 
-        print('Create data: $videoKitabData');
-        print('Calling VideoKitabService.createVideoKitab...');
 
         final createdKitab = await VideoKitabService.createVideoKitab(
           videoKitabData,
         );
 
-        print('Create successful! Result: ${createdKitab.toJson()}');
         result = createdKitab.toJson();
 
         _showSnackBar('Kitab berjaya ditambah!');
@@ -374,25 +353,24 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       // kitabId available in result['id'] if needed for future file uploads
 
       // File upload functionality
-      String? finalThumbnailUrl = thumbnailUrl;
       String? finalPdfUrl = _pdfUrl;
 
       // Upload thumbnail if selected
       if (_selectedThumbnail != null) {
         try {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final thumbnailPath = 'thumbnails/video_kitab_${timestamp}_${_selectedThumbnail!.path.split('/').last}';
+          final thumbnailPath =
+              'thumbnails/video_kitab_${timestamp}_${_selectedThumbnail!.path.split('/').last}';
 
           final thumbnailBytes = await _selectedThumbnail!.readAsBytes();
           await Supabase.instance.client.storage
               .from('video-kitab-files')
               .uploadBinary(thumbnailPath, thumbnailBytes);
 
-          finalThumbnailUrl = Supabase.instance.client.storage
+          thumbnailUrl = Supabase.instance.client.storage
               .from('video-kitab-files')
               .getPublicUrl(thumbnailPath);
         } catch (e) {
-          print('Error uploading thumbnail: $e');
           _showSnackBar('Ralat upload thumbnail: $e', isError: true);
         }
       }
@@ -401,7 +379,8 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
       if (_selectedPdf != null) {
         try {
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final pdfPath = 'pdfs/video_kitab_${timestamp}_${_selectedPdf!.path.split('/').last}';
+          final pdfPath =
+              'pdfs/video_kitab_${timestamp}_${_selectedPdf!.path.split('/').last}';
 
           final pdfBytes = await _selectedPdf!.readAsBytes();
           await Supabase.instance.client.storage
@@ -429,25 +408,17 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             });
           }
         } catch (e) {
-          print('Error uploading PDF: $e');
           _showSnackBar('Ralat upload PDF: $e', isError: true);
         }
       }
 
-      print('Navigating back with result: $result');
       // Navigate back with success result
       Navigator.pop(context, result);
 
-      print('=== SUBMIT FORM SUCCESS ===');
-    } catch (e, stackTrace) {
-      print('=== ERROR IN SUBMIT FORM ===');
-      print('Error: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       _showSnackBar('Ralat: ${e.toString()}', isError: true);
     } finally {
-      print('Setting loading state to false');
       setState(() => _isLoading = false);
-      print('=== SUBMIT FORM DEBUG END ===');
     }
   }
 
@@ -466,33 +437,45 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
+        leading: IconButton(
+          icon: const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
+            color: AppTheme.textPrimaryColor,
+            size: 24.0,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(_isEditing ? 'Edit Kitab' : 'Tambah Kitab'),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
+        backgroundColor: AppTheme.backgroundColor,
+        foregroundColor: AppTheme.textPrimaryColor,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppTheme.textLightColor,
-          labelColor: AppTheme.textLightColor,
-          unselectedLabelColor: AppTheme.textLightColor.withValues(alpha: 0.7),
+          indicatorColor: AppTheme.textPrimaryColor,
+          labelColor: AppTheme.textPrimaryColor,
+          unselectedLabelColor: AppTheme.textSecondaryColor,
           tabs: const [
             Tab(
               icon: HugeIcon(
                 icon: HugeIcons.strokeRoundedInformationCircle,
-                color: Colors.grey,
+                color: AppTheme.textSecondaryColor,
               ),
               text: 'Maklumat',
             ),
             Tab(
               icon: HugeIcon(
                 icon: HugeIcons.strokeRoundedPdf01,
-                color: Colors.grey,
+                color: AppTheme.textSecondaryColor,
               ),
               text: 'Fail',
             ),
             Tab(
               icon: HugeIcon(
                 icon: HugeIcons.strokeRoundedVideo01,
-                color: Colors.grey,
+                color: AppTheme.textSecondaryColor,
               ),
               text: 'Episode',
             ),
@@ -507,7 +490,9 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.primaryColor,
+                  ),
                 ),
               ),
             ),
@@ -871,20 +856,54 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         GestureDetector(
           onTap: onPickFile,
           child: Container(
-            height: isImage ? 160 : 100,
+            height: isImage ? 200 : 180,
             width: double.infinity,
             decoration: BoxDecoration(
-              color: AppTheme.surfaceColor,
+              color: isImage
+                  ? AppTheme.surfaceColor
+                  : (selectedFile != null
+                        ? Colors.red.withValues(alpha: 0.05)
+                        : (currentFile != null && currentFile.isNotEmpty
+                              ? Colors.green.withValues(alpha: 0.05)
+                              : AppTheme.surfaceColor)),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppTheme.borderColor),
+              border: Border.all(
+                color: isImage
+                    ? AppTheme.borderColor
+                    : (selectedFile != null
+                          ? Colors.red.withValues(alpha: 0.3)
+                          : (currentFile != null && currentFile.isNotEmpty
+                                ? Colors.green.withValues(alpha: 0.3)
+                                : AppTheme.borderColor)),
+                width: isImage ? 1 : 2,
+              ),
+              boxShadow:
+                  !isImage &&
+                      (selectedFile != null ||
+                          (currentFile != null && currentFile.isNotEmpty))
+                  ? [
+                      BoxShadow(
+                        color:
+                            (selectedFile != null ? Colors.red : Colors.green)
+                                .withValues(alpha: 0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
             ),
-            child: _buildFileDisplay(currentFile, selectedFile, isImage),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _buildFileDisplay(currentFile, selectedFile, isImage),
+            ),
           ),
         ),
         const SizedBox(height: 8),
 
         // Action buttons for existing files
-        if (!isImage && (currentFile != null && currentFile.isNotEmpty || selectedFile != null))
+        if (!isImage &&
+            (currentFile != null && currentFile.isNotEmpty ||
+                selectedFile != null))
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -896,16 +915,13 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                     await _previewPdfUrl(currentFile);
                   }
                 },
-                icon: const Icon(
-                  HugeIcons.strokeRoundedEye,
-                  size: 14,
-                ),
-                label: const Text(
-                  'Pratonton',
-                  style: TextStyle(fontSize: 12),
-                ),
+                icon: const Icon(HugeIcons.strokeRoundedEye, size: 14),
+                label: const Text('Pratonton', style: TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -916,16 +932,16 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                   onPressed: () async {
                     await _downloadPdf(currentFile);
                   },
-                  icon: const Icon(
-                    HugeIcons.strokeRoundedDownload01,
-                    size: 14,
-                  ),
+                  icon: const Icon(HugeIcons.strokeRoundedDownload01, size: 14),
                   label: const Text(
                     'Muat Turun',
                     style: TextStyle(fontSize: 12),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -947,37 +963,61 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         children: [
           if (isImage)
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: Image.file(
                 selectedFile,
-                height: 80,
-                width: 80,
+                height: 130,
+                width: 280,
                 fit: BoxFit.cover,
               ),
             )
           else
             Container(
-              width: 80,
-              height: 80,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.red.withValues(alpha: 0.15),
+                    Colors.red.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.red.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    HugeIcons.strokeRoundedPdf01,
-                    size: 32.0,
-                    color: Colors.red,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      HugeIcons.strokeRoundedPdf01,
+                      size: 36.0,
+                      color: Colors.red,
+                    ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
+                  const SizedBox(height: 8),
+                  const Text(
                     'PDF Baru',
                     style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                       color: Colors.red,
                     ),
                   ),
@@ -1000,43 +1040,67 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
         children: [
           if (isImage)
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: Image.network(
                 currentFile,
-                height: 80,
-                width: 80,
+                height: 130,
+                width: 280,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   return const Icon(
                     HugeIcons.strokeRoundedImageNotFound01,
-                    size: 32.0,
+                    size: 40.0,
                   );
                 },
               ),
             )
           else
             Container(
-              width: 80,
-              height: 80,
+              width: 120,
+              height: 120,
               decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.green.withValues(alpha: 0.15),
+                    Colors.green.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.green.withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: const Column(
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    HugeIcons.strokeRoundedPdf01,
-                    size: 32.0,
-                    color: Colors.green,
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      HugeIcons.strokeRoundedPdf01,
+                      size: 36.0,
+                      color: Colors.green,
+                    ),
                   ),
-                  SizedBox(height: 2),
-                  Text(
+                  const SizedBox(height: 8),
+                  const Text(
                     'PDF Sedia Ada',
                     style: TextStyle(
-                      fontSize: 8,
-                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
                       color: Colors.green,
                     ),
                   ),
@@ -1061,7 +1125,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
             isImage
                 ? HugeIcons.strokeRoundedImage01
                 : HugeIcons.strokeRoundedUpload01,
-            size: 32.0,
+            size: 40.0,
             color: Colors.grey,
           ),
           const SizedBox(height: 4),
@@ -1202,9 +1266,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                       ),
                     ),
                     child: Text(
-                      episode['is_active'] == true
-                          ? 'AKTIF'
-                          : 'TIDAK AKTIF',
+                      episode['is_active'] == true ? 'AKTIF' : 'TIDAK AKTIF',
                       style: TextStyle(
                         fontSize: 9,
                         color: episode['is_active'] == true
@@ -1316,7 +1378,9 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                 width: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppTheme.textLightColor,
+                  ),
                 ),
               )
             : Text(
@@ -1324,6 +1388,7 @@ class _AdminKitabFormScreenState extends State<AdminKitabFormScreen>
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  color: AppTheme.textLightColor,
                 ),
               ),
       ),
@@ -1487,11 +1552,7 @@ class _PdfViewerDialog extends StatefulWidget {
   final String? url;
   final String title;
 
-  const _PdfViewerDialog({
-    this.file,
-    this.url,
-    required this.title,
-  });
+  const _PdfViewerDialog({this.file, this.url, required this.title});
 
   @override
   State<_PdfViewerDialog> createState() => _PdfViewerDialogState();
@@ -1540,7 +1601,7 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
         _pdfController = controller;
 
         // Get total pages
-        final pageCount = await controller.pagesCount;
+        final pageCount = controller.pagesCount;
         setState(() {
           _totalPages = pageCount ?? 1;
           _isLoading = false;
@@ -1570,7 +1631,9 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Fail tempatan tidak boleh dibuka di browser. Sila gunakan aplikasi PDF viewer.'),
+            content: Text(
+              'Fail tempatan tidak boleh dibuka di browser. Sila gunakan aplikasi PDF viewer.',
+            ),
           ),
         );
       }
@@ -1583,16 +1646,13 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
       try {
         final uri = Uri.parse(pdfUrl);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ralat membuka PDF: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Ralat membuka PDF: $e')));
         }
       }
     }
@@ -1642,7 +1702,10 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
                   ),
                   if (!_isLoading && !_hasError && _totalPages > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
@@ -1669,9 +1732,7 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
             ),
 
             // Content
-            Expanded(
-              child: _buildContent(),
-            ),
+            Expanded(child: _buildContent()),
 
             // Footer with controls
             if (!_isLoading && !_hasError && _totalPages > 0)
@@ -1773,10 +1834,7 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
             const SizedBox(height: 16),
             const Text(
               'Ralat memuatkan PDF',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -1800,9 +1858,7 @@ class _PdfViewerDialogState extends State<_PdfViewerDialog> {
     }
 
     if (_pdfController == null) {
-      return const Center(
-        child: Text('Tiada PDF untuk dipaparkan'),
-      );
+      return const Center(child: Text('Tiada PDF untuk dipaparkan'));
     }
 
     return Container(

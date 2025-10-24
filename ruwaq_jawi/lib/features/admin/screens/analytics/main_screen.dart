@@ -90,7 +90,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
         }
       }
     } catch (e) {
-      print('Error loading cached analytics: $e');
+      // Error loading cached analytics
     }
   }
 
@@ -103,7 +103,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
       await prefs.setString('cached_admin_analytics', analyticsJson);
       await prefs.setInt('cached_admin_analytics_timestamp', timestamp);
     } catch (e) {
-      print('Error caching analytics: $e');
+      // Error caching analytics
     }
   }
 
@@ -528,7 +528,7 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text(
           'Analytics',
@@ -730,153 +730,6 @@ class _AdminAnalyticsRealScreenState extends State<AdminAnalyticsRealScreen> {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey[600],
                   ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUserAnalytics() {
-    final users = _analytics['users'] ?? {};
-    
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'User Analytics',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Students',
-                    users['students'].toString(),
-                    HugeIcons.strokeRoundedSchool,
-                    Colors.blue,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Admin',
-                    users['admins'].toString(),
-                    HugeIcons.strokeRoundedUserSettings01,
-                    Colors.red,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Active Subscribers',
-                    users['activeSubscribers'].toString(),
-                    HugeIcons.strokeRoundedUserCheck01,
-                    Colors.green,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'New (30 days)',
-                    users['recentRegistrations'].toString(),
-                    HugeIcons.strokeRoundedNewReleases,
-                    Colors.orange,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContentAnalytics() {
-    final content = _analytics['content'] ?? {};
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Content Analytics',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Total Videos',
-                    content['totalVideos'].toString(),
-                    HugeIcons.strokeRoundedVideo01,
-                    Colors.red,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Active Videos',
-                    content['activeVideos'].toString(),
-                    HugeIcons.strokeRoundedPlayCircle,
-                    Colors.green,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Premium Video Kitab',
-                    content['premiumKitab'].toString(),
-                    HugeIcons.strokeRoundedStar,
-                    Colors.amber,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Total E-books',
-                    content['totalEbooks'].toString(),
-                    HugeIcons.strokeRoundedBook02,
-                    Colors.purple,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Active E-books',
-                    content['activeEbooks'].toString(),
-                    HugeIcons.strokeRoundedBook02,
-                    Colors.blue,
-                  ),
-                ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Total Categories',
-                    content['totalCategories'].toString(),
-                    HugeIcons.strokeRoundedGrid,
-                    Colors.orange,
-                  ),
-                ),
-              ],
             ),
           ],
         ),

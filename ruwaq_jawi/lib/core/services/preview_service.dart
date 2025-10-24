@@ -68,7 +68,7 @@ class PreviewService {
 
       return data.isNotEmpty;
     } catch (e) {
-      print('Error checking preview availability: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -87,7 +87,7 @@ class PreviewService {
 
       return previews.isNotEmpty ? previews.first : null;
     } catch (e) {
-      print('Error getting primary preview: $e');
+      // Debug logging removed
       return null;
     }
   }
@@ -312,7 +312,7 @@ class PreviewService {
 
       return data.isNotEmpty;
     } catch (e) {
-      print('Error validating content exists: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -349,7 +349,7 @@ class PreviewService {
 
       return data;
     } catch (e) {
-      print('Error getting content details: $e');
+      // Debug logging removed
       return null;
     }
   }

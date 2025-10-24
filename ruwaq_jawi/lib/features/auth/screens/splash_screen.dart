@@ -16,7 +16,6 @@ class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   String _status = 'Memulakan aplikasi...';
   bool _hasError = false;
-  bool _fadeOut = false;
 
   // Animation controllers
   late AnimationController _logoController;

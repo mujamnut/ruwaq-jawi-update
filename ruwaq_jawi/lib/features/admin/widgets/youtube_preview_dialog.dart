@@ -574,24 +574,6 @@ class YouTubePreviewDialog extends StatelessWidget {
               ],
             ),
           ),
-
-          // Preview badge if applicable
-          if (false) // Preview status now managed via preview_content table
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: AppTheme.secondaryColor,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'PREVIEW',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white,
-                  fontSize: 8,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
         ],
       ),
     );

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ebook_rating.dart';
 
@@ -11,11 +10,11 @@ class EbookRatingService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        debugPrint('❌ User not authenticated');
+        // Debug logging removed
         return null;
       }
 
-      debugPrint('📊 Fetching user rating for ebook: $ebookId');
+      // Debug logging removed
 
       final response = await _supabase
           .from('ebook_ratings')
@@ -25,15 +24,15 @@ class EbookRatingService {
           .maybeSingle();
 
       if (response == null) {
-        debugPrint('ℹ️ No rating found for user');
+        // Debug logging removed
         return null;
       }
 
       final rating = EbookRating.fromJson(response);
-      debugPrint('✅ Found user rating: ${rating.rating} stars');
+      // Debug logging removed
       return rating;
     } catch (e) {
-      debugPrint('❌ Error fetching user rating: $e');
+      // Debug logging removed
       return null;
     }
   }
@@ -49,16 +48,16 @@ class EbookRatingService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        debugPrint('❌ User not authenticated');
+        // Debug logging removed
         return false;
       }
 
       if (rating < 1 || rating > 5) {
-        debugPrint('❌ Invalid rating value: $rating (must be 1-5)');
+        // Debug logging removed
         return false;
       }
 
-      debugPrint('⭐ Submitting rating for ebook $ebookId: $rating stars');
+      // Debug logging removed
 
       // Use upsert to insert or update
       await _supabase.from('ebook_ratings').upsert(
@@ -72,10 +71,10 @@ class EbookRatingService {
         onConflict: 'ebook_id,user_id', // Unique constraint columns
       );
 
-      debugPrint('✅ Rating submitted successfully');
+      // Debug logging removed
       return true;
     } catch (e) {
-      debugPrint('❌ Error submitting rating: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -86,11 +85,11 @@ class EbookRatingService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        debugPrint('❌ User not authenticated');
+        // Debug logging removed
         return false;
       }
 
-      debugPrint('🗑️ Deleting rating for ebook: $ebookId');
+      // Debug logging removed
 
       await _supabase
           .from('ebook_ratings')
@@ -98,10 +97,10 @@ class EbookRatingService {
           .eq('ebook_id', ebookId)
           .eq('user_id', userId);
 
-      debugPrint('✅ Rating deleted successfully');
+      // Debug logging removed
       return true;
     } catch (e) {
-      debugPrint('❌ Error deleting rating: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -114,7 +113,7 @@ class EbookRatingService {
     int offset = 0,
   }) async {
     try {
-      debugPrint('📋 Fetching ratings for ebook: $ebookId (limit: $limit, offset: $offset)');
+      // Debug logging removed
 
       final response = await _supabase
           .from('ebook_ratings')
@@ -127,10 +126,10 @@ class EbookRatingService {
           .map((json) => EbookRating.fromJson(json))
           .toList();
 
-      debugPrint('✅ Fetched ${ratings.length} ratings');
+      // Debug logging removed
       return ratings;
     } catch (e) {
-      debugPrint('❌ Error fetching ebook ratings: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -139,7 +138,7 @@ class EbookRatingService {
   /// Returns map with breakdown by star rating (1-5)
   static Future<Map<int, int>> getRatingDistribution(String ebookId) async {
     try {
-      debugPrint('📊 Fetching rating distribution for ebook: $ebookId');
+      // Debug logging removed
 
       final response = await _supabase
           .from('ebook_ratings')
@@ -155,10 +154,10 @@ class EbookRatingService {
         distribution[rating] = (distribution[rating] ?? 0) + 1;
       }
 
-      debugPrint('✅ Rating distribution: $distribution');
+      // Debug logging removed
       return distribution;
     } catch (e) {
-      debugPrint('❌ Error fetching rating distribution: $e');
+      // Debug logging removed
       return {1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
     }
   }

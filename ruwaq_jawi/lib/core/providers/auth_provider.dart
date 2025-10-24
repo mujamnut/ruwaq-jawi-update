@@ -43,7 +43,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       if (kDebugMode) {
-        print('AuthProvider: Checking subscription for user: ${_user!.id}');
+        // Debug logging removed
       }
 
       // Use the optimized database function to check and update subscription status
@@ -53,14 +53,14 @@ class AuthProvider extends ChangeNotifier {
 
       final newStatus = response as String?;
       if (kDebugMode) {
-        print('AuthProvider: Subscription status from DB function: $newStatus');
+        // Debug logging removed
       }
 
       // Update local profile status
       if (newStatus != null && _userProfile != null) {
         if (_userProfile!.subscriptionStatus != newStatus) {
           if (kDebugMode) {
-            print('AuthProvider: Updating local profile status from ${_userProfile!.subscriptionStatus} to $newStatus');
+            // Debug logging removed
           }
           _userProfile = _userProfile!.copyWith(subscriptionStatus: newStatus);
           notifyListeners();
@@ -71,7 +71,7 @@ class AuthProvider extends ChangeNotifier {
       return hasActive;
     } catch (e) {
       if (kDebugMode) {
-        print('AuthProvider: Error checking subscription with DB function: $e');
+        // Debug logging removed
         // Fallback to manual check if function fails
         return await _fallbackSubscriptionCheck();
       }
@@ -86,7 +86,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final now = DateTime.now().toUtc();
       if (kDebugMode) {
-        print('AuthProvider: Using fallback subscription check for user: ${_user!.id}');
+        // Debug logging removed
       }
 
       final response = await SupabaseService.from('user_subscriptions')
@@ -99,7 +99,7 @@ class AuthProvider extends ChangeNotifier {
 
       final hasActive = response != null;
       if (kDebugMode) {
-        print('AuthProvider: Fallback - Active subscription found: $hasActive');
+        // Debug logging removed
       }
 
       // Update profile status based on subscription
@@ -107,7 +107,7 @@ class AuthProvider extends ChangeNotifier {
         final currentProfileStatus = _userProfile?.subscriptionStatus;
         if (currentProfileStatus != 'active') {
           if (kDebugMode) {
-            print('AuthProvider: Fallback - Updating profile status to active');
+            // Debug logging removed
           }
           await _updateProfileSubscriptionStatus('active');
         }
@@ -121,9 +121,7 @@ class AuthProvider extends ChangeNotifier {
 
         if (expiredSub != null) {
           if (kDebugMode) {
-            print(
-              'AuthProvider: Fallback - Found expired subscription, updating profile status',
-            );
+            // Debug logging removed
           }
           await _updateProfileSubscriptionStatus('expired');
         } else {
@@ -135,7 +133,7 @@ class AuthProvider extends ChangeNotifier {
       return hasActive;
     } catch (e) {
       if (kDebugMode) {
-        print('AuthProvider: Fallback subscription check also failed: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -156,13 +154,13 @@ class AuthProvider extends ChangeNotifier {
       if (_userProfile != null) {
         _userProfile = _userProfile!.copyWith(subscriptionStatus: status);
         if (kDebugMode) {
-          debugPrint('🔶 [AUTH_PROVIDER:_updateProfileSubscriptionStatus] notifyListeners - status:$status');
+          // Debug logging removed
         }
         notifyListeners();
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error updating profile subscription status: $e');
+        // Debug logging removed
       }
     }
   }
@@ -170,7 +168,7 @@ class AuthProvider extends ChangeNotifier {
   void _setStatus(AuthStatus status) {
     _status = status;
     if (kDebugMode) {
-      debugPrint('🔶 [AUTH_PROVIDER:_setStatus] notifyListeners - status:$status');
+      // Debug logging removed
     }
     notifyListeners();
   }
@@ -179,7 +177,7 @@ class AuthProvider extends ChangeNotifier {
     _status = AuthStatus.initial;
     _errorMessage = null;
     if (kDebugMode) {
-      debugPrint('🔶 [AUTH_PROVIDER:resetToInitial] notifyListeners');
+      // Debug logging removed
     }
     notifyListeners();
   }
@@ -206,7 +204,7 @@ class AuthProvider extends ChangeNotifier {
     // Gunakan _scheduleStatus untuk konsisten
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (kDebugMode) {
-        debugPrint('🔶 [AUTH_PROVIDER:clearError] notifyListeners (PostFrameCallback)');
+        // Debug logging removed
       }
       notifyListeners();
     });
@@ -225,7 +223,7 @@ class AuthProvider extends ChangeNotifier {
         final Session? session = data.session;
 
         if (kDebugMode) {
-          print('DEBUG: Auth state changed: $event');
+          // Debug logging removed
         }
 
         if (event == AuthChangeEvent.signedIn && session != null) {
@@ -245,7 +243,7 @@ class AuthProvider extends ChangeNotifier {
 
           if (requireEmailConfirmed && session.user.emailConfirmedAt == null) {
             if (kDebugMode) {
-              print('DEBUG: Email/password without confirmed email, signing out');
+              // Debug logging removed
             }
             SupabaseService.signOut();
             return;
@@ -268,7 +266,7 @@ class AuthProvider extends ChangeNotifier {
           _scheduleStatus(AuthStatus.unauthenticated);
         } else if (event == AuthChangeEvent.tokenRefreshed) {
           if (kDebugMode) {
-            print('DEBUG: Token refreshed successfully');
+            // Debug logging removed
           }
         }
       });
@@ -279,7 +277,7 @@ class AuthProvider extends ChangeNotifier {
         // Check if email is confirmed
         if (currentUser.emailConfirmedAt == null) {
           if (kDebugMode) {
-            print('DEBUG: User email not confirmed, signing out');
+            // Debug logging removed
           }
           // Sign out unverified users
           await SupabaseService.signOut();
@@ -318,14 +316,14 @@ class AuthProvider extends ChangeNotifier {
     try {
       if (_user == null) {
         if (kDebugMode) {
-          print('DEBUG: No user found, setting unauthenticated');
+          // Debug logging removed
         }
         _scheduleStatus(AuthStatus.unauthenticated);
         return;
       }
 
       if (kDebugMode) {
-        print('DEBUG: Loading profile for user: ${_user!.id}');
+        // Debug logging removed
       }
 
       final response = await SupabaseService.from('profiles')
@@ -340,7 +338,7 @@ class AuthProvider extends ChangeNotifier {
           );
 
       if (kDebugMode) {
-        print('DEBUG: Profile loaded successfully');
+        // Debug logging removed
       }
       _userProfile = UserProfile.fromJson(response);
 
@@ -362,9 +360,8 @@ class AuthProvider extends ChangeNotifier {
 
       // If user logged in via OAuth (e.g., Google), prefer provider avatar when profile has no real avatar yet
       try {
-        final metadata = _user?.userMetadata ?? {};
-        final dynamicMeta = metadata is Map ? metadata : <String, dynamic>{};
-        final oauthAvatar = (dynamicMeta['avatar_url'] as String?) ?? (dynamicMeta['picture'] as String?);
+        final metadata = _user?.userMetadata ?? <String, dynamic>{};
+        final oauthAvatar = (metadata['avatar_url'] as String?) ?? (metadata['picture'] as String?);
         final currentAvatar = _userProfile?.avatarUrl ?? '';
         final isFallbackAvatar = currentAvatar.isEmpty ||
             currentAvatar.startsWith('initials://') ||
@@ -385,28 +382,28 @@ class AuthProvider extends ChangeNotifier {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('DEBUG: Skipping OAuth avatar update: $e');
+          // Debug logging removed
         }
       }
 
       _scheduleStatus(AuthStatus.authenticated);
     } catch (e) {
       if (kDebugMode) {
-        print('DEBUG: Profile load error: $e');
+        // Debug logging removed
       }
 
       // If profile doesn't exist, create it first
       if (e.toString().contains('No rows returned') ||
           e.toString().contains('PGRST116')) {
         if (kDebugMode) {
-          print('DEBUG: Profile not found, creating new profile');
+          // Debug logging removed
         }
         try {
           await _createUserProfile();
           return;
         } catch (createError) {
           if (kDebugMode) {
-            print('DEBUG: Profile creation failed: $createError');
+            // Debug logging removed
           }
           _setError('Failed to create user profile: ${createError.toString()}');
           return;
@@ -414,7 +411,7 @@ class AuthProvider extends ChangeNotifier {
       }
 
       if (kDebugMode) {
-        print('DEBUG: Setting error and unauthenticated status');
+        // Debug logging removed
       }
       _setError('Failed to load user profile: ${e.toString()}');
     }
@@ -425,7 +422,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       if (kDebugMode) {
-        print('DEBUG: Creating profile for user: ${_user!.id}');
+        // Debug logging removed
       }
 
       // Get user metadata
@@ -435,19 +432,18 @@ class AuthProvider extends ChangeNotifier {
           'User';
 
       if (kDebugMode) {
-        print('DEBUG: Profile data - fullName: $fullName');
+        // Debug logging removed
       }
 
       // Determine avatar: prefer OAuth provider avatar (e.g., Google), fallback to generated
       String? avatarUrl;
       try {
-        final metadata = _user!.userMetadata ?? {};
-        final dynamicMeta = metadata is Map ? metadata : <String, dynamic>{};
-        final oauthAvatar = (dynamicMeta['avatar_url'] as String?) ?? (dynamicMeta['picture'] as String?);
+        final metadata = _user!.userMetadata ?? <String, dynamic>{};
+        final oauthAvatar = (metadata['avatar_url'] as String?) ?? (metadata['picture'] as String?);
         if (oauthAvatar != null && oauthAvatar.startsWith('http')) {
           avatarUrl = oauthAvatar;
           if (kDebugMode) {
-            print('DEBUG: Using OAuth provider avatar: $avatarUrl');
+            // Debug logging removed
           }
         }
       } catch (_) {}
@@ -464,11 +460,11 @@ class AuthProvider extends ChangeNotifier {
             Future.delayed(const Duration(seconds: 3), () => ''), // Fallback after 3s
           ]);
           if (kDebugMode) {
-            print('DEBUG: Fallback avatar fetched (with timeout): $avatarUrl');
+            // Debug logging removed
           }
         } catch (e) {
           if (kDebugMode) {
-            print('DEBUG: Avatar fallback fetch failed: $e');
+            // Debug logging removed
           }
         }
       }
@@ -483,7 +479,7 @@ class AuthProvider extends ChangeNotifier {
       });
 
       if (kDebugMode) {
-        print('DEBUG: Profile created, loading profile...');
+        // Debug logging removed
       }
 
       // Load the newly created profile
@@ -495,7 +491,7 @@ class AuthProvider extends ChangeNotifier {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('DEBUG: Profile creation error: $e');
+        // Debug logging removed
       }
       throw Exception('Profile creation failed: ${e.toString()}');
     }
@@ -506,7 +502,7 @@ class AuthProvider extends ChangeNotifier {
 
     try {
       if (kDebugMode) {
-        print('🎉 Sending welcome notification to new user: ${_user!.id}');
+        // Debug logging removed
       }
 
       final notificationSuccess =
@@ -529,18 +525,16 @@ class AuthProvider extends ChangeNotifier {
 
       if (notificationSuccess) {
         if (kDebugMode) {
-          print(
-            '✅ Welcome notification sent successfully to ${_userProfile!.fullName}',
-          );
+          // Debug logging removed
         }
       } else {
         if (kDebugMode) {
-          print('❌ Failed to send welcome notification to user: ${_user!.id}');
+          // Debug logging removed
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error sending welcome notification: $e');
+        // Debug logging removed
       }
     }
   }
@@ -558,7 +552,7 @@ class AuthProvider extends ChangeNotifier {
       // We'll handle it in the catch block below
 
       if (kDebugMode) {
-        print('DEBUG: Starting signUp process for $email');
+        // Debug logging removed
       }
 
   
@@ -569,9 +563,7 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (kDebugMode) {
-        print(
-          'DEBUG: SignUp response - user: ${response.user?.id}, session: ${response.session?.accessToken != null}',
-        );
+        // Debug logging removed
       }
 
       if (response.user != null) {
@@ -581,9 +573,7 @@ class AuthProvider extends ChangeNotifier {
         if (response.user!.emailConfirmedAt != null) {
           // User already exists and is confirmed - this shouldn't happen for new signups
           if (kDebugMode) {
-            print(
-              'DEBUG: User already exists and is confirmed - treating as duplicate',
-            );
+            // Debug logging removed
           }
           _setError(
             'Email sudah terdaftar. Sila guna email lain atau log masuk.',
@@ -609,8 +599,8 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } on AuthException catch (e) {
       if (kDebugMode) {
-        print('DEBUG: AuthException in signUp: ${e.message}');
-        print('DEBUG: AuthException status code: ${e.statusCode}');
+        // Debug logging removed
+        // Debug logging removed
       }
 
       // Handle specific auth errors like duplicate email
@@ -658,7 +648,7 @@ class AuthProvider extends ChangeNotifier {
       clearError();
 
       if (kDebugMode) {
-        print('DEBUG: Starting sign in for $email');
+        // Debug logging removed
       }
 
       // Clear any existing expired session first
@@ -666,7 +656,7 @@ class AuthProvider extends ChangeNotifier {
         final currentUser = SupabaseService.client.auth.currentUser;
         if (currentUser != null) {
           if (kDebugMode) {
-            print('DEBUG: Clearing existing session before sign in');
+            // Debug logging removed
           }
           await SupabaseService.signOut();
           _user = null;
@@ -674,7 +664,7 @@ class AuthProvider extends ChangeNotifier {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('DEBUG: Error clearing existing session: $e');
+          // Debug logging removed
         }
       }
 
@@ -684,14 +674,14 @@ class AuthProvider extends ChangeNotifier {
       );
 
       if (kDebugMode) {
-        print('DEBUG: Sign in response received, user: ${response.user?.id}');
+        // Debug logging removed
       }
 
       if (response.user != null) {
         // Check if email is confirmed
         if (response.user!.emailConfirmedAt == null) {
           if (kDebugMode) {
-            print('DEBUG: User email not confirmed during sign in');
+            // Debug logging removed
           }
           await SupabaseService.signOut(); // Sign out unverified user
           _setError(
@@ -702,7 +692,7 @@ class AuthProvider extends ChangeNotifier {
 
         _user = response.user;
         if (kDebugMode) {
-          print('DEBUG: Loading user profile...');
+          // Debug logging removed
         }
         await _loadUserProfile();
 
@@ -715,19 +705,19 @@ class AuthProvider extends ChangeNotifier {
         _migrateFavoritesToSupabase();
 
         if (kDebugMode) {
-          print('DEBUG: Sign in completed successfully');
+          // Debug logging removed
         }
         return true;
       } else {
         if (kDebugMode) {
-          print('DEBUG: Sign in failed - no user returned');
+          // Debug logging removed
         }
         _setError('Email atau kata laluan tidak sah. Sila semak dan cuba lagi.');
         return false;
       }
     } on AuthException catch (e) {
       if (kDebugMode) {
-        print('DEBUG: AuthException in signIn: ${e.message}');
+        // Debug logging removed
       }
 
       // Handle specific auth errors
@@ -742,7 +732,7 @@ class AuthProvider extends ChangeNotifier {
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('DEBUG: Sign in error: $e');
+        // Debug logging removed
       }
       _setError(_getSignInErrorMessage(e));
       return false;
@@ -836,7 +826,7 @@ class AuthProvider extends ChangeNotifier {
 
     // Note: Provider caches should be cleared by listening to auth state changes
     if (kDebugMode) {
-      print('🧹 Auth provider user data cleared');
+      // Debug logging removed
     }
   }
 
@@ -870,18 +860,18 @@ class AuthProvider extends ChangeNotifier {
   Future<void> refreshSubscriptionStatus() async {
     if (_user != null) {
       if (kDebugMode) {
-        print('AuthProvider: Force refreshing subscription status for user: ${_user!.id}');
+        // Debug logging removed
       }
 
       // First, run the database function to ensure expired subscriptions are updated
       try {
         await SupabaseService.client.rpc('update_expired_subscriptions');
         if (kDebugMode) {
-          print('AuthProvider: Ran update_expired_subscriptions function');
+          // Debug logging removed
         }
       } catch (e) {
         if (kDebugMode) {
-          print('AuthProvider: Error running update_expired_subscriptions: $e');
+          // Debug logging removed
         }
       }
 
@@ -926,7 +916,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('Change password error: $e');
+        // Debug logging removed
       }
       if (e.toString().contains('Same password')) {
         _setError(
@@ -997,7 +987,7 @@ class AuthProvider extends ChangeNotifier {
         return await updateAvatar(avatarUrl);
       } else {
         if (kDebugMode) {
-          print('AuthProvider: No external avatar found for $email');
+          // Debug logging removed
         }
         return false;
       }
@@ -1033,7 +1023,7 @@ class AuthProvider extends ChangeNotifier {
       );
     } catch (e) {
       if (kDebugMode) {
-        print('AuthProvider: Error getting avatar source: $e');
+        // Debug logging removed
       }
       return AvatarSource.initials;
     }
@@ -1049,7 +1039,7 @@ class AuthProvider extends ChangeNotifier {
         await LocalFavoritesService.migrateToSupabase();
       } catch (e) {
         if (kDebugMode) {
-          print('⚠️ Favorites migration failed (non-critical): $e');
+          // Debug logging removed
         }
       }
     });
@@ -1063,7 +1053,7 @@ class AuthProvider extends ChangeNotifier {
       _scheduleStatus(AuthStatus.loading);
       clearError();
       if (kDebugMode) {
-        print('DEBUG: Starting Google OAuth via Supabase');
+        // Debug logging removed
       }
       await SupabaseService.signInWithGoogle();
       // Completion handled by onAuthStateChange listener
@@ -1091,11 +1081,11 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _googleSignIn.signOut();
       if (kDebugMode) {
-        print('DEBUG: Signed out from Google');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('DEBUG: Error signing out from Google: $e');
+        // Debug logging removed
       }
       // Continue with normal sign out even if Google sign out fails
     }

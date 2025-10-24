@@ -1,8 +1,6 @@
 🎯 CADANGAN CIRI PREMIUM TAMBAHAN
 TIER 1: MUST-HAVE (Highly Recommended)
 1. 🎬 Video Playback Controls Premium
-Justification: Competitor apps seperti Udemy, Coursera semua ada
-- Playback speed control (0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x)
 - Picture-in-Picture (PiP) mode
 - Background audio playback (dengar sambil buat kerja lain)
 Impact: HIGH - User premium akan rasa lagi valuable Complexity: MEDIUM

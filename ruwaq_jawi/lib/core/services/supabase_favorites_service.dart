@@ -24,7 +24,7 @@ class SupabaseFavoritesService {
       return response?['is_saved'] ?? false;
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking video kitab save status: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -35,15 +35,17 @@ class SupabaseFavoritesService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        if (kDebugMode) print('❌ No user ID for saving video kitab');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return false;
       }
 
       if (kDebugMode) {
-        print('🔄 Attempting to save video kitab: $videoKitabId (user: $userId)');
+        // Debug logging removed
       }
 
-      final response = await _supabase
+      await _supabase
           .from('video_kitab_user_interactions')
           .upsert({
             'user_id': userId,
@@ -53,15 +55,15 @@ class SupabaseFavoritesService {
           .select();
 
       if (kDebugMode) {
-        print('✅ Video kitab saved successfully: $videoKitabId');
-        print('   Response: $response');
+        // Debug logging removed
+        // Debug logging removed
       }
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Error saving video kitab: $videoKitabId');
-        print('   Error: $e');
-        print('   Stack trace: $stackTrace');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       return false;
     }
@@ -80,12 +82,12 @@ class SupabaseFavoritesService {
       }, onConflict: 'user_id,video_kitab_id');
 
       if (kDebugMode) {
-        print('✅ Video kitab unsaved: $videoKitabId');
+        // Debug logging removed
       }
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error unsaving video kitab: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -108,7 +110,7 @@ class SupabaseFavoritesService {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting saved video kitabs: $e');
+        // Debug logging removed
       }
       return [];
     }
@@ -132,7 +134,7 @@ class SupabaseFavoritesService {
       return response?['is_saved'] ?? false;
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking ebook save status: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -143,15 +145,17 @@ class SupabaseFavoritesService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        if (kDebugMode) print('❌ No user ID for saving ebook');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return false;
       }
 
       if (kDebugMode) {
-        print('🔄 Attempting to save ebook: $ebookId (user: $userId)');
+        // Debug logging removed
       }
 
-      final response = await _supabase
+      await _supabase
           .from('ebook_user_interactions')
           .upsert({
             'user_id': userId,
@@ -161,15 +165,15 @@ class SupabaseFavoritesService {
           .select();
 
       if (kDebugMode) {
-        print('✅ Ebook saved successfully: $ebookId');
-        print('   Response: $response');
+        // Debug logging removed
+        // Debug logging removed
       }
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Error saving ebook: $ebookId');
-        print('   Error: $e');
-        print('   Stack trace: $stackTrace');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       return false;
     }
@@ -188,12 +192,12 @@ class SupabaseFavoritesService {
       }, onConflict: 'user_id,ebook_id');
 
       if (kDebugMode) {
-        print('✅ Ebook unsaved: $ebookId');
+        // Debug logging removed
       }
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error unsaving ebook: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -216,7 +220,7 @@ class SupabaseFavoritesService {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting saved ebooks: $e');
+        // Debug logging removed
       }
       return [];
     }
@@ -240,7 +244,7 @@ class SupabaseFavoritesService {
       return response?['is_saved'] ?? false;
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking video episode save status: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -251,15 +255,17 @@ class SupabaseFavoritesService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        if (kDebugMode) print('❌ No user ID for saving video episode');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return false;
       }
 
       if (kDebugMode) {
-        print('🔄 Attempting to save video episode: $episodeId (user: $userId)');
+        // Debug logging removed
       }
 
-      final response = await _supabase
+      await _supabase
           .from('video_episode_user_interactions')
           .upsert({
             'user_id': userId,
@@ -269,15 +275,15 @@ class SupabaseFavoritesService {
           .select();
 
       if (kDebugMode) {
-        print('✅ Video episode saved successfully: $episodeId');
-        print('   Response: $response');
+        // Debug logging removed
+        // Debug logging removed
       }
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Error saving video episode: $episodeId');
-        print('   Error: $e');
-        print('   Stack trace: $stackTrace');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       return false;
     }
@@ -296,12 +302,12 @@ class SupabaseFavoritesService {
       }, onConflict: 'user_id,episode_id');
 
       if (kDebugMode) {
-        print('✅ Video episode unsaved: $episodeId');
+        // Debug logging removed
       }
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error unsaving video episode: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -324,7 +330,7 @@ class SupabaseFavoritesService {
           .toList();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting saved video episodes: $e');
+        // Debug logging removed
       }
       return [];
     }
@@ -337,18 +343,22 @@ class SupabaseFavoritesService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        if (kDebugMode) print('❌ No user ID for batch saving video kitabs');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return false;
       }
 
       if (kitabIds.isEmpty) {
-        if (kDebugMode) print('⚠️ No video kitabs to save');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return true;
       }
 
       if (kDebugMode) {
-        print('🔄 Batch saving ${kitabIds.length} video kitabs...');
-        print('   Sample IDs: ${kitabIds.take(3).join(", ")}');
+        // Debug logging removed
+        // Debug logging removed
       }
 
       final data = kitabIds
@@ -359,21 +369,21 @@ class SupabaseFavoritesService {
               })
           .toList();
 
-      final response = await _supabase
+      await _supabase
           .from('video_kitab_user_interactions')
           .upsert(data, onConflict: 'user_id,video_kitab_id')
           .select();
 
       if (kDebugMode) {
-        print('✅ Batch saved ${kitabIds.length} video kitabs successfully');
-        print('   Inserted/updated: ${response.length} rows');
+        // Debug logging removed
+        // Debug logging removed
       }
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Error batch saving video kitabs');
-        print('   Error: $e');
-        print('   Stack trace: $stackTrace');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       return false;
     }
@@ -384,18 +394,22 @@ class SupabaseFavoritesService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        if (kDebugMode) print('❌ No user ID for batch saving ebooks');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return false;
       }
 
       if (ebookIds.isEmpty) {
-        if (kDebugMode) print('⚠️ No ebooks to save');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return true;
       }
 
       if (kDebugMode) {
-        print('🔄 Batch saving ${ebookIds.length} ebooks...');
-        print('   Sample IDs: ${ebookIds.take(3).join(", ")}');
+        // Debug logging removed
+        // Debug logging removed
       }
 
       final data = ebookIds
@@ -406,21 +420,21 @@ class SupabaseFavoritesService {
               })
           .toList();
 
-      final response = await _supabase
+      await _supabase
           .from('ebook_user_interactions')
           .upsert(data, onConflict: 'user_id,ebook_id')
           .select();
 
       if (kDebugMode) {
-        print('✅ Batch saved ${ebookIds.length} ebooks successfully');
-        print('   Inserted/updated: ${response.length} rows');
+        // Debug logging removed
+        // Debug logging removed
       }
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Error batch saving ebooks');
-        print('   Error: $e');
-        print('   Stack trace: $stackTrace');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       return false;
     }
@@ -431,18 +445,22 @@ class SupabaseFavoritesService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        if (kDebugMode) print('❌ No user ID for batch saving video episodes');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return false;
       }
 
       if (episodeIds.isEmpty) {
-        if (kDebugMode) print('⚠️ No video episodes to save');
+        if (kDebugMode) {
+          // Debug logging removed
+        }
         return true;
       }
 
       if (kDebugMode) {
-        print('🔄 Batch saving ${episodeIds.length} video episodes...');
-        print('   Sample IDs: ${episodeIds.take(3).join(", ")}');
+        // Debug logging removed
+        // Debug logging removed
       }
 
       final data = episodeIds
@@ -453,21 +471,21 @@ class SupabaseFavoritesService {
               })
           .toList();
 
-      final response = await _supabase
+      await _supabase
           .from('video_episode_user_interactions')
           .upsert(data, onConflict: 'user_id,episode_id')
           .select();
 
       if (kDebugMode) {
-        print('✅ Batch saved ${episodeIds.length} video episodes successfully');
-        print('   Inserted/updated: ${response.length} rows');
+        // Debug logging removed
+        // Debug logging removed
       }
       return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode) {
-        print('❌ Error batch saving video episodes');
-        print('   Error: $e');
-        print('   Stack trace: $stackTrace');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       return false;
     }

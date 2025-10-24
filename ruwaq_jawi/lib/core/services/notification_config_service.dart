@@ -30,13 +30,13 @@ class NotificationConfigService {
       _cacheExpiry = DateTime.now().add(const Duration(hours: 1)); // Cache for 1 hour
 
       if (kDebugMode) {
-        print('🔧 NotificationConfig: Legacy cutoff date loaded: $cutoffDate');
+        // Debug logging removed
       }
 
       return cutoffDate;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ NotificationConfig: Failed to load cutoff date, using default: $e');
+        // Debug logging removed
       }
       // Fallback to default cutoff date
       final defaultDate = DateTime(2024, 1, 1).toUtc();
@@ -66,13 +66,13 @@ class NotificationConfigService {
       _cacheExpiry = DateTime.now().add(const Duration(hours: 1));
 
       if (kDebugMode) {
-        print('🔧 NotificationConfig: Hide legacy from new users: $shouldHide');
+        // Debug logging removed
       }
 
       return shouldHide;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ NotificationConfig: Failed to load hide legacy setting, using default: $e');
+        // Debug logging removed
       }
       // Fallback to default (enabled)
       _cachedHideLegacyEnabled = true;
@@ -101,13 +101,13 @@ class NotificationConfigService {
       _cacheExpiry = DateTime.now().add(const Duration(hours: 1));
 
       if (kDebugMode) {
-        print('🔧 NotificationConfig: Filtering enabled: $enabled');
+        // Debug logging removed
       }
 
       return enabled;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ NotificationConfig: Failed to load filtering setting, using default: $e');
+        // Debug logging removed
       }
       // Fallback to default (enabled)
       _cachedFilteringEnabled = true;
@@ -132,7 +132,7 @@ class NotificationConfigService {
     // This prevents brand-new users from seeing older announcements
     if (notificationDate.isBefore(userRegistrationDate)) {
       if (kDebugMode) {
-        print('🔎 NotificationFilter: Hiding because notification < registration');
+        // Debug logging removed
       }
       return true;
     }
@@ -151,13 +151,13 @@ class NotificationConfigService {
     final isUserNew = userRegistrationDate.isAfter(cutoffDate);
 
     if (kDebugMode) {
-      print('🔍 NotificationFilter Check:');
-      print('  Notification date: $notificationDate');
-      print('  User registration: $userRegistrationDate');
-      print('  Cutoff date: $cutoffDate');
-      print('  Is notification legacy: $isNotificationLegacy');
-      print('  Is user new: $isUserNew');
-      print('  Should hide: ${isNotificationLegacy && isUserNew}');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
     }
 
     return isNotificationLegacy && isUserNew;
@@ -196,13 +196,13 @@ class NotificationConfigService {
       _clearCache();
 
       if (kDebugMode) {
-        print('✅ NotificationConfig: Updated configuration: $updates');
+        // Debug logging removed
       }
 
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ NotificationConfig: Failed to update configuration: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -239,7 +239,7 @@ class NotificationConfigService {
       };
     } catch (e) {
       if (kDebugMode) {
-        print('❌ NotificationConfig: Failed to get current config: $e');
+        // Debug logging removed
       }
       return {};
     }
@@ -268,13 +268,13 @@ class NotificationConfigService {
       _clearCache();
 
       if (kDebugMode) {
-        print('✅ NotificationConfig: Default settings initialized');
+        // Debug logging removed
       }
 
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ NotificationConfig: Failed to initialize defaults: $e');
+        // Debug logging removed
       }
       return false;
     }

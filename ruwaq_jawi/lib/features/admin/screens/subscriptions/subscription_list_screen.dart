@@ -130,7 +130,6 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
         _error = 'Tidak dapat memuat data langganan selepas $_maxRetries cubaan. Sila periksa sambungan internet anda.';
         _isLoading = false;
       });
-      print('Subscription loading error: $e'); // Log for debugging
     }
   }
 
@@ -461,7 +460,6 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
             itemCount: _subscriptions.length,
             itemBuilder: (context, index) {
               final subscription = _subscriptions[index];
-              final isActive = subscription['status'] == 'active';
               final endDate = DateTime.parse(subscription['end_date']);
               final isExpired = endDate.isBefore(DateTime.now().toUtc());
               final isExpiringSoon = endDate.isBefore(DateTime.now().toUtc().add(const Duration(days: 7))) && !isExpired;
@@ -716,7 +714,6 @@ class _AdminSubscriptionsScreenState extends State<AdminSubscriptionsScreen> {
           ),
         );
       }
-      print('Cancel subscription error: $e'); // Log for debugging
     }
   }
 

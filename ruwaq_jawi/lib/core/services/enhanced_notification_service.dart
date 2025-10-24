@@ -25,7 +25,7 @@ class EnhancedNotificationService {
       if (user == null) return [];
 
       if (kDebugMode) {
-        print('🔄 Loading notifications with hybrid approach and filtering...');
+        // Debug logging removed
       }
 
       // Get user registration date if not provided
@@ -40,7 +40,7 @@ class EnhancedNotificationService {
 
       if (response == null) {
         if (kDebugMode) {
-          print('⚠️ RPC function not available, falling back to legacy system');
+          // Debug logging removed
         }
         return await _fallbackToLegacySystem(unreadOnly: unreadOnly, limit: limit);
       }
@@ -72,16 +72,16 @@ class EnhancedNotificationService {
       final List<EnhancedNotification> notifications = filteredNotifications;
 
       if (kDebugMode) {
-        print('✅ Loaded ${notifications.length} notifications with filtering');
-        print('🔍 New system: ${notifications.where((n) => n.source == 'new_system').length}');
-        print('🔍 Legacy system: ${notifications.where((n) => n.source == 'legacy_system').length}');
-        print('👤 User registration date: $userRegistrationDate');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
 
       return notifications;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error in hybrid approach, falling back to legacy: $e');
+        // Debug logging removed
       }
       return await _fallbackToLegacySystem(unreadOnly: unreadOnly, limit: limit);
     }
@@ -93,7 +93,7 @@ class EnhancedNotificationService {
     int limit = 50,
   }) async {
     if (kDebugMode) {
-      print('❌ Enhanced notification system not available, no fallback');
+      // Debug logging removed
     }
     return [];
   }
@@ -117,7 +117,7 @@ class EnhancedNotificationService {
       return 0;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error getting unread count: $e');
+        // Debug logging removed
       }
       return 0;
     }
@@ -139,25 +139,25 @@ class EnhancedNotificationService {
 
           if (response == true) {
             if (kDebugMode) {
-              print('✅ Marked as read using new system: $notificationId');
+              // Debug logging removed
             }
             return true;
           }
         } catch (e) {
           if (kDebugMode) {
-            print('❌ Enhanced system failed to mark as read: $e');
+            // Debug logging removed
           }
           return false;
         }
       }
 
       if (kDebugMode) {
-        print('❌ Failed to mark as read - no fallback available');
+        // Debug logging removed
       }
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error marking as read: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -196,24 +196,24 @@ class EnhancedNotificationService {
 
         if (response != null) {
           if (kDebugMode) {
-            print('✅ Created broadcast notification using new system');
+            // Debug logging removed
           }
           return true;
         }
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Enhanced broadcast notification failed: $e');
+          // Debug logging removed
         }
         throw Exception('Failed to create broadcast notification: $e');
       }
 
       if (kDebugMode) {
-        print('❌ Enhanced broadcast notification creation failed - no fallback available');
+        // Debug logging removed
       }
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error creating broadcast notification: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -239,24 +239,24 @@ class EnhancedNotificationService {
 
         if (response != null) {
           if (kDebugMode) {
-            print('✅ Created personal notification using new system');
+            // Debug logging removed
           }
           return true;
         }
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Enhanced system failed to create personal notification: $e');
+          // Debug logging removed
         }
         return false;
       }
 
       if (kDebugMode) {
-        print('❌ Failed to create personal notification - no fallback available');
+        // Debug logging removed
       }
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error creating personal notification: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -272,12 +272,12 @@ class EnhancedNotificationService {
       }
 
       if (kDebugMode) {
-        print('✅ Marked all ${notifications.length} notifications as read');
+        // Debug logging removed
       }
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error marking all as read: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -298,24 +298,24 @@ class EnhancedNotificationService {
 
         if (response == true) {
           if (kDebugMode) {
-            print('✅ Soft deleted notification: $notificationId');
+            // Debug logging removed
           }
           return true;
         }
       } catch (e) {
         if (kDebugMode) {
-          print('❌ Failed to delete notification: $e');
+          // Debug logging removed
         }
         return false;
       }
 
       if (kDebugMode) {
-        print('❌ Delete notification failed - response was false');
+        // Debug logging removed
       }
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error deleting notification: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -364,7 +364,7 @@ class EnhancedNotificationService {
       return {'migrated': 0, 'errors': 0};
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error migrating legacy notifications: $e');
+        // Debug logging removed
       }
       return {'migrated': 0, 'errors': 1};
     }
@@ -412,16 +412,16 @@ class EnhancedNotificationService {
       }
 
       if (kDebugMode) {
-        print('🔍 System Health Check:');
+        // Debug logging removed
         health.forEach((key, value) {
-          print('  $key: ${value ? "✅" : "❌"}');
+          // Debug logging removed
         });
       }
 
       return health;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error checking system health: $e');
+        // Debug logging removed
       }
       return {};
     }
@@ -442,7 +442,7 @@ class EnhancedNotificationService {
       return null;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to get user registration date: $e');
+        // Debug logging removed
       }
       return null;
     }
@@ -469,7 +469,7 @@ class EnhancedNotificationService {
       return !shouldHide;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error checking notification visibility: $e');
+        // Debug logging removed
       }
       // Fallback: show notification if there's an error
       return true;
@@ -481,11 +481,11 @@ class EnhancedNotificationService {
     try {
       await NotificationConfigService.initializeDefaults();
       if (kDebugMode) {
-        print('✅ Notification configuration initialized');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to initialize notification configuration: $e');
+        // Debug logging removed
       }
     }
   }
@@ -496,7 +496,7 @@ class EnhancedNotificationService {
       return await NotificationConfigService.getCurrentConfig();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to get notification config: $e');
+        // Debug logging removed
       }
       return {};
     }

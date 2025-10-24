@@ -47,7 +47,6 @@ class _PreviewVideoSelectionDialogState
         });
       }
     } catch (e) {
-      print('Error loading preview videos: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

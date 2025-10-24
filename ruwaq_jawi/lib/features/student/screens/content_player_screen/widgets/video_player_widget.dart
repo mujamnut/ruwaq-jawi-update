@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
-import 'package:hugeicons/hugeicons.dart';
 import '../../../../../core/theme/app_theme.dart';
 import '../../../../../core/models/video_episode.dart';
 

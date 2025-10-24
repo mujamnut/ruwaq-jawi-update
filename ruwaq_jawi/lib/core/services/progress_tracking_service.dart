@@ -46,7 +46,7 @@ class ProgressTrackingService {
         );
       }
     } catch (e) {
-      print('Error loading local progress: $e');
+      // Debug logging removed
       _localProgress = {};
     }
   }
@@ -60,7 +60,7 @@ class ProgressTrackingService {
       );
       await prefs.setString(_localProgressKey, progressJson);
     } catch (e) {
-      print('Error saving local progress: $e');
+      // Debug logging removed
     }
   }
 
@@ -124,7 +124,7 @@ class ProgressTrackingService {
       // Download recent changes from server
       await _downloadRecentChanges(userId);
     } catch (e) {
-      print('Sync error: $e');
+      // Debug logging removed
     }
   }
 
@@ -162,7 +162,7 @@ class ProgressTrackingService {
             });
           }
         } catch (e) {
-          print('Error syncing progress for kitab ${progress.kitabId}: $e');
+          // Debug logging removed
         }
       }
     }
@@ -188,7 +188,7 @@ class ProgressTrackingService {
 
       await _saveLocalProgress();
     } catch (e) {
-      print('Error downloading server progress: $e');
+      // Debug logging removed
     }
   }
 

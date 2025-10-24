@@ -6,7 +6,6 @@ import 'package:shadcn_ui/shadcn_ui.dart';
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/services/enhanced_notification_service.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../widgets/admin_bottom_nav.dart';
 import 'notification_create_screen.dart';
 
 class AdminNotificationsScreen extends StatefulWidget {
@@ -20,7 +19,6 @@ class AdminNotificationsScreen extends StatefulWidget {
 class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
     with TickerProviderStateMixin {
   List<Map<String, dynamic>> _notifications = [];
-  List<Map<String, dynamic>> _users = [];
   bool _isLoading = true;
   String? _error;
   late TabController _tabController;
@@ -113,7 +111,6 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
 
       setState(() {
         _notifications = allNotifications;
-        _users = List<Map<String, dynamic>>.from(usersData);
         _isLoading = false;
       });
     } catch (e) {
@@ -168,12 +165,8 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
               fontWeight: FontWeight.w500,
             ),
             tabs: const [
-              Tab(
-                text: 'Hantar Notifikasi',
-              ),
-              Tab(
-                text: 'Sejarah',
-              ),
+              Tab(text: 'Hantar Notifikasi'),
+              Tab(text: 'Sejarah'),
             ],
           ),
         ),
@@ -201,13 +194,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
         ),
         label: const Text(
           'Buat Notifikasi',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
       ),
-      bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
     );
   }
 
@@ -675,96 +664,198 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
       typeText = 'Custom';
     }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shadowColor: Colors.black12,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
+    return Dismissible(
+      key: Key(notification['id'].toString()),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
+          color: AppTheme.errorColor,
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white,
         ),
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: typeColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+        child: const Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            HugeIcon(
+              icon: HugeIcons.strokeRoundedDelete02,
+              color: Colors.white,
+              size: 28,
             ),
-            child: HugeIcon(icon: typeIcon, color: typeColor, size: 24.0),
-          ),
-          title: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 6),
-              Text(
-                body,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+            SizedBox(height: 4),
+            Text(
+              'Padam',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: typeColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: typeColor.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      typeText,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: typeColor,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  if (isEnhancedSystem) ...[
+            ),
+          ],
+        ),
+      ),
+      confirmDismiss: (direction) async {
+        return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                HugeIcon(
+                  icon: HugeIcons.strokeRoundedDelete02,
+                  color: AppTheme.errorColor,
+                  size: 24,
+                ),
+                SizedBox(width: 12),
+                Text('Padam Notifikasi?'),
+              ],
+            ),
+            content: const Text(
+              'Adakah anda pasti mahu memadamkan notifikasi ini? Tindakan ini tidak boleh dibatalkan.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Batal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.errorColor,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Padam'),
+              ),
+            ],
+          ),
+        );
+      },
+      onDismissed: (direction) async {
+        // Delete notification
+        // Hard delete notification from database (admin only)
+        try {
+          // Delete from notifications table permanently
+          await SupabaseService.from('notifications')
+              .delete()
+              .eq('id', notification['id']);
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Notifikasi berjaya dipadam secara kekal'),
+                backgroundColor: AppTheme.successColor,
+              ),
+            );
+            _loadData();
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Gagal memadamkan: $e'),
+                backgroundColor: AppTheme.errorColor,
+              ),
+            );
+            _loadData();
+          }
+        }
+      },
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        elevation: 2,
+        shadowColor: Colors.black12,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            color: Colors.white,
+          ),
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: typeColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: HugeIcon(icon: typeIcon, color: typeColor, size: 24.0),
+            ),
+            title: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 6),
+                Text(
+                  body,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
+                        horizontal: 6,
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.teal.withValues(alpha: 0.1),
+                        color: typeColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                         border: Border.all(
-                          color: Colors.teal.withValues(alpha: 0.3),
+                          color: typeColor.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Text(
-                        'V2',
+                        typeText,
                         style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.teal,
-                          fontWeight: FontWeight.w600,
+                          fontSize: 11,
+                          color: typeColor,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
+                    if (isEnhancedSystem) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.teal.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: Colors.teal.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Text(
+                          'V2',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.teal,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Text(
+                      timeAgo,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
                   ],
-                  Text(
-                    timeAgo,
-                    style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -844,10 +935,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                       value: 'premium',
                       child: Text('Premium Users'),
                     ),
-                    DropdownMenuItem(
-                      value: 'free',
-                      child: Text('Free Users'),
-                    ),
+                    DropdownMenuItem(value: 'free', child: Text('Free Users')),
                     DropdownMenuItem(
                       value: 'custom',
                       child: Text('Select Users'),
@@ -908,7 +996,8 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                                   user['full_name'] ?? 'Unknown',
                                   style: const TextStyle(fontSize: 10),
                                 ),
-                                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                backgroundColor: AppTheme.primaryColor
+                                    .withValues(alpha: 0.1),
                                 deleteIcon: const Icon(
                                   HugeIcons.strokeRoundedCancel01,
                                   size: 12,
@@ -916,7 +1005,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                                 ),
                                 onDeleted: () {
                                   setState(() {
-                                    selectedUsers.removeWhere((u) => u['id'] == user['id']);
+                                    selectedUsers.removeWhere(
+                                      (u) => u['id'] == user['id'],
+                                    );
                                     selectedUserIds.remove(user['id']);
                                   });
                                 },
@@ -1057,9 +1148,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                     future: _loadUsers(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       if (!snapshot.hasData || snapshot.hasError) {
@@ -1074,7 +1163,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                         itemCount: users.length,
                         itemBuilder: (context, index) {
                           final user = users[index];
-                          final isSelected = selectedUserIds.contains(user['id']);
+                          final isSelected = selectedUserIds.contains(
+                            user['id'],
+                          );
 
                           return CheckboxListTile(
                             value: isSelected,
@@ -1085,8 +1176,12 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                                     selectedUsers.add(user);
                                     selectedUserIds.add(user['id'] as String);
                                   } else {
-                                    selectedUsers.removeWhere((u) => u['id'] == user['id']);
-                                    selectedUserIds.remove(user['id'] as String);
+                                    selectedUsers.removeWhere(
+                                      (u) => u['id'] == user['id'],
+                                    );
+                                    selectedUserIds.remove(
+                                      user['id'] as String,
+                                    );
                                   }
                                 });
                               });
@@ -1110,7 +1205,10 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
                                 ? CircleAvatar(
                                     backgroundColor: AppTheme.primaryColor,
                                     child: Text(
-                                      (selectedUserIds.indexOf(user['id'] as String) + 1)
+                                      (selectedUserIds.indexOf(
+                                                user['id'] as String,
+                                              ) +
+                                              1)
                                           .toString(),
                                       style: const TextStyle(
                                         color: Colors.white,
@@ -1181,9 +1279,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen>
 
   Future<List<Map<String, dynamic>>> _loadUsers() async {
     try {
-      final users = await SupabaseService.from('profiles')
-          .select('id, full_name, role')
-          .order('full_name', ascending: true);
+      final users = await SupabaseService.from(
+        'profiles',
+      ).select('id, full_name, role').order('full_name', ascending: true);
 
       return List<Map<String, dynamic>>.from(users as List);
     } catch (e) {

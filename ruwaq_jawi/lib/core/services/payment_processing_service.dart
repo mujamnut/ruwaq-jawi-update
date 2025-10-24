@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../config/env_config.dart';
@@ -33,8 +32,8 @@ class PaymentProcessingService {
     String? redirectStatusId,
     PaymentSource source = PaymentSource.redirect,
   }) async {
-    debugPrint('🚀 === STREAMLINED PAYMENT PROCESSING ===');
-    debugPrint('📋 Bill ID: $billId | Plan: $planId | Amount: RM$amount | Source: $source');
+    // Debug logging removed
+    // Debug logging removed
 
     // IMPORTANT: This method only handles redirect responses
     // Webhook is the single source of truth for payment completion
@@ -54,7 +53,7 @@ class PaymentProcessingService {
       final isSuccessful = _isPaymentSuccessful(redirectStatus, redirectStatusId);
 
       if (isSuccessful) {
-        debugPrint('✅ Payment successful via redirect - activating subscription immediately');
+        // Debug logging removed
 
         // 🔥 FIXED: Activate subscription immediately instead of relying on webhooks
         // This ensures users get instant access without waiting for webhook callbacks
@@ -68,7 +67,7 @@ class PaymentProcessingService {
             transactionId: billId,
           );
 
-          debugPrint('🎉 Subscription activated immediately!');
+          // Debug logging removed
 
           return PaymentResult(
             success: true,
@@ -80,7 +79,7 @@ class PaymentProcessingService {
           );
 
         } catch (activationError) {
-          debugPrint('❌ Immediate activation failed: $activationError');
+          // Debug logging removed
 
           // Fallback: Update payment to completed and let recovery mechanism handle it
           await _updatePaymentStatus(billId, 'completed');
@@ -97,7 +96,7 @@ class PaymentProcessingService {
       }
 
       // STEP 3: Handle failed redirects
-      debugPrint('❌ Payment redirect indicates failure');
+      // Debug logging removed
       await _updatePaymentStatus(billId, 'failed');
 
       return PaymentResult(
@@ -107,7 +106,7 @@ class PaymentProcessingService {
       );
 
     } catch (e) {
-      debugPrint('❌ Payment processing error: $e');
+      // Debug logging removed
       return PaymentResult(
         success: false,
         message: 'Ralat pemprosesan pembayaran: ${e.toString()}',
@@ -128,7 +127,7 @@ class PaymentProcessingService {
     try {
       final now = DateTime.now().toUtc();
 
-      debugPrint('📝 Creating centralized payment record: $billId');
+      // Debug logging removed
 
       await SupabaseService.from('payments').insert({
         'user_id': userId ?? SupabaseService.currentUser?.id,
@@ -158,9 +157,9 @@ class PaymentProcessingService {
         'updated_at': now.toIso8601String(),
       });
 
-      debugPrint('✅ Centralized payment record created: $billId');
+      // Debug logging removed
     } catch (e) {
-      debugPrint('❌ Failed to create centralized payment record: $e');
+      // Debug logging removed
       rethrow;
     }
   }
@@ -171,7 +170,7 @@ class PaymentProcessingService {
     try {
       final now = DateTime.now().toUtc().toIso8601String();
 
-      debugPrint('🔍 Looking for payment record with bill_id: $billId');
+      // Debug logging removed
 
       // First, try to find the payment record created by PaymentProvider
       final existingPayment = await SupabaseService.from('payments')
@@ -182,7 +181,7 @@ class PaymentProcessingService {
           .maybeSingle();
 
       if (existingPayment != null) {
-        debugPrint('✅ Found payment record: ${existingPayment['id']} (current status: ${existingPayment['status']})');
+        // Debug logging removed
 
         // Update the existing record
         await SupabaseService.from('payments')
@@ -193,12 +192,12 @@ class PaymentProcessingService {
             })
             .eq('id', existingPayment['id']);
 
-        debugPrint('✅ Payment status updated to: $status for record ID: ${existingPayment['id']}');
+        // Debug logging removed
       } else {
-        debugPrint('⚠️ No payment record found with bill_id: $billId');
+        // Debug logging removed
 
         // Create new payment record if not found (fallback)
-        debugPrint('📝 Creating new payment record for: $billId');
+        // Debug logging removed
         await SupabaseService.from('payments').insert({
           'user_id': SupabaseService.currentUser!.id,
           'amount_cents': 0, // Will be updated by actual payment logic
@@ -214,12 +213,12 @@ class PaymentProcessingService {
           'paid_at': status == 'completed' ? now : null,
         });
 
-        debugPrint('✅ New payment record created with status: $status');
+        // Debug logging removed
       }
     } catch (e) {
-      debugPrint('❌ Error updating payment status: $e');
+      // Debug logging removed
       // Print more detailed error for debugging
-      debugPrint('❌ Error details: ${e.toString()}');
+      // Debug logging removed
     }
   }
 
@@ -248,7 +247,7 @@ class PaymentProcessingService {
       final difference = endDateTime.difference(now).inDays;
       return difference > 0 ? difference : 0;
     } catch (e) {
-      debugPrint('⚠️ Error calculating days added: $e');
+      // Debug logging removed
       return 30; // Default to 30 days if calculation fails
     }
   }
@@ -261,8 +260,8 @@ class PaymentProcessingService {
 
   /// Process webhook payment confirmation
   Future<PaymentResult> processWebhookConfirmation(Map<String, dynamic> webhookData) async {
-    debugPrint('🪝 === WEBHOOK PAYMENT CONFIRMATION ===');
-    debugPrint('📋 Webhook data: $webhookData');
+    // Debug logging removed
+    // Debug logging removed
 
     try {
       final billId = webhookData['bill_code']?.toString() ?? webhookData['billId']?.toString();
@@ -280,7 +279,7 @@ class PaymentProcessingService {
         source: PaymentSource.webhook,
       );
     } catch (e) {
-      debugPrint('❌ Webhook processing error: $e');
+      // Debug logging removed
       return PaymentResult(
         success: false,
         message: 'Webhook processing error: ${e.toString()}',
@@ -297,8 +296,8 @@ class PaymentProcessingService {
     String? planId,
     bool forceVerify = false,
   }) async {
-    debugPrint('🔧 === PAYMENT RECOVERY MECHANISM ===');
-    debugPrint('📋 Bill ID: $billId | User: $userId | Plan: $planId | Force: $forceVerify');
+    // Debug logging removed
+    // Debug logging removed
 
     try {
       final currentUserId = userId ?? SupabaseService.currentUser?.id;
@@ -321,11 +320,11 @@ class PaymentProcessingService {
         );
       }
 
-      debugPrint('📊 Current payment status: ${paymentData['status']}');
+      // Debug logging removed
 
       // Step 2: If already completed, return subscription info
       if (paymentData['status'] == 'completed') {
-        debugPrint('✅ Payment already completed, checking subscription...');
+        // Debug logging removed
 
         final subscriptionData = await SupabaseService.from('user_subscriptions')
             .select('*')
@@ -347,12 +346,12 @@ class PaymentProcessingService {
 
       // Step 3: Try to verify with ToyyibPay API if force verify
       if (forceVerify && paymentData['status'] == 'pending') {
-        debugPrint('🔍 Attempting to verify payment with ToyyibPay API...');
+        // Debug logging removed
 
         final verificationResult = await _verifyPaymentWithToyyibPay(billId);
 
         if (verificationResult.success && verificationResult.isPaid) {
-          debugPrint('💰 Payment verified as successful! Activating subscription...');
+          // Debug logging removed
 
           // Activate subscription locally
           final activationResult = await _activateSubscriptionLocally(
@@ -376,7 +375,7 @@ class PaymentProcessingService {
           .maybeSingle();
 
       if (pendingPayment != null && forceVerify) {
-        debugPrint('🔄 Found pending payment, attempting activation...');
+        // Debug logging removed
 
         final activationResult = await _activateSubscriptionLocally(
           billId: billId,
@@ -397,7 +396,7 @@ class PaymentProcessingService {
       );
 
     } catch (e) {
-      debugPrint('❌ Payment recovery error: $e');
+      // Debug logging removed
       return PaymentRecoveryResult(
         success: false,
         message: 'Ralat semasa recovery: ${e.toString()}',
@@ -409,7 +408,7 @@ class PaymentProcessingService {
   /// Verify payment status with ToyyibPay API
   Future<ToyyibPayVerificationResult> _verifyPaymentWithToyyibPay(String billId) async {
     try {
-      debugPrint('🔍 Calling ToyyibPay API for bill: $billId');
+      // Debug logging removed
 
       final response = await SupabaseClient(
         EnvConfig.supabaseUrl,
@@ -422,7 +421,7 @@ class PaymentProcessingService {
 
       // Check for error in response
       if (response.data is Map && response.data['success'] == false) {
-        debugPrint('❌ Verify payment function error: ${response.data['error']}');
+        // Debug logging removed
         return ToyyibPayVerificationResult(
           success: false,
           message: response.data['error']?.toString() ?? 'Unknown error',
@@ -433,7 +432,7 @@ class PaymentProcessingService {
       return ToyyibPayVerificationResult.fromJson(data);
 
     } catch (e) {
-      debugPrint('❌ ToyyibPay verification error: $e');
+      // Debug logging removed
       return ToyyibPayVerificationResult(
         success: false,
         message: 'G Mengesahkan pembayaran: ${e.toString()}',
@@ -450,7 +449,7 @@ class PaymentProcessingService {
     required String transactionId,
   }) async {
     try {
-      debugPrint('🔄 Activating subscription locally...');
+      // Debug logging removed
 
       final now = DateTime.now().toUtc().toIso8601String();
 
@@ -526,7 +525,7 @@ class PaymentProcessingService {
         billId: billId,
       );
 
-      debugPrint('✅ Subscription activated successfully via recovery!');
+      // Debug logging removed
 
       return PaymentRecoveryResult(
         success: true,
@@ -538,7 +537,7 @@ class PaymentProcessingService {
       );
 
     } catch (e) {
-      debugPrint('❌ Local activation error: $e');
+      // Debug logging removed
       return PaymentRecoveryResult(
         success: false,
         message: 'Gagal mengaktifkan langganan: ${e.toString()}',
@@ -585,7 +584,7 @@ class PaymentProcessingService {
           .select('id')
           .single();
 
-      if (result != null) {
+      if (result.isNotEmpty) {
         await SupabaseService.from('notification_reads')
             .insert({
               'notification_id': result['id'],
@@ -594,10 +593,10 @@ class PaymentProcessingService {
               'created_at': now,
               'updated_at': now,
             });
-        debugPrint('✅ Recovery notification created');
+        // Debug logging removed
       }
     } catch (e) {
-      debugPrint('⚠️ Error creating recovery notification: $e');
+      // Debug logging removed
     }
   }
 }

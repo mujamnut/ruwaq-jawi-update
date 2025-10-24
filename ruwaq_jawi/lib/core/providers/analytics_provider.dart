@@ -117,7 +117,7 @@ class AnalyticsProvider with ChangeNotifier {
       _totalRevenue = _premiumSubscribers * 29.90; // Assuming RM29.90 per month
 
     } catch (e) {
-      print('Error loading overview metrics: $e');
+      // Debug logging removed
     }
   }
 
@@ -154,7 +154,7 @@ class AnalyticsProvider with ChangeNotifier {
       }
 
     } catch (e) {
-      print('Error loading growth data: $e');
+      // Debug logging removed
       // Set default growth values
       _userGrowthPercent = 12.5;
       _activeUserGrowthPercent = 8.3;
@@ -182,7 +182,7 @@ class AnalyticsProvider with ChangeNotifier {
       });
 
     } catch (e) {
-      print('Error loading chart data: $e');
+      // Debug logging removed
       // Set default chart data
       _userGrowthData = [
         const FlSpot(0, 100),
@@ -237,7 +237,7 @@ class AnalyticsProvider with ChangeNotifier {
       _popularContent = _popularContent.take(5).toList();
 
     } catch (e) {
-      print('Error loading popular content: $e');
+      // Debug logging removed
       // Set default popular content
       _popularContent = [
         {'title': 'Kitab Fiqh Muamalat', 'views': 1500, 'type': 'book'},

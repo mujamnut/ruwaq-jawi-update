@@ -15,8 +15,8 @@ class DeepLinkService {
     // Listen to Supabase auth state changes to handle deep links
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
       (data) async {
-        print('Auth state change: ${data.event}');
-        print('Session exists: ${data.session != null}');
+        // Debug logging removed
+        // Debug logging removed
         
         // Handle auth errors from deep links
         if (data.event == AuthChangeEvent.passwordRecovery) {
@@ -32,7 +32,7 @@ class DeepLinkService {
           // Check if this is specifically from email confirmation deep link
           // We can detect this by checking if user was previously unauthenticated
           // and emailConfirmedAt was just updated
-          print('User signed in normally - allowing login to proceed');
+          // Debug logging removed
         }
       },
     );
@@ -42,7 +42,7 @@ class DeepLinkService {
 
 
   static Future<void> handleDeepLink(Uri uri) async {
-    print('Deep link received: $uri');
+    // Debug logging removed
 
     // Check for error parameters first
     final params = uri.queryParameters;

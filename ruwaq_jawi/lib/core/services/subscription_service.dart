@@ -26,7 +26,7 @@ class SubscriptionService {
 
     try {
       if (kDebugMode) {
-        print('🚀 Activating subscription for user: $userId, plan: $planId, amount: RM$amount');
+        // Debug logging removed
       }
 
       // Get plan details
@@ -73,9 +73,9 @@ class SubscriptionService {
 
       if (existingSubscription != null) {
         if (kDebugMode) {
-          print('⚠️ User already has active subscription, EXTENDING...');
-          print('📅 Current end date: ${existingSubscription['end_date']}');
-          print('➕ Adding $durationDays days');
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
         }
 
         // EXTEND existing subscription
@@ -96,11 +96,11 @@ class SubscriptionService {
             .eq('id', existingSubscription['id']);
 
         if (kDebugMode) {
-          print('📅 New end date: ${endDate.toIso8601String()}');
+          // Debug logging removed
         }
       } else {
         if (kDebugMode) {
-          print('🆕 No active subscription found, CREATING NEW...');
+          // Debug logging removed
         }
 
         // CREATE new subscription
@@ -123,7 +123,7 @@ class SubscriptionService {
         });
 
         if (kDebugMode) {
-          print('📅 Subscription period: ${startDate.toIso8601String()} to ${endDate.toIso8601String()}');
+          // Debug logging removed
         }
       }
 
@@ -157,14 +157,14 @@ class SubscriptionService {
       });
 
       if (kDebugMode) {
-        print('✅ Subscription $subscriptionType completed successfully');
-        print('💰 Payment recorded: RM${amount.toStringAsFixed(2)}');
-        print('📱 Plan: $planName ($durationDays days)');
-        print('👤 User: $userName');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error activating subscription: $e');
+        // Debug logging removed
       }
       rethrow;
     }
@@ -184,7 +184,7 @@ class SubscriptionService {
       return result.isNotEmpty;
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking subscription: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -205,7 +205,7 @@ class SubscriptionService {
           .maybeSingle();
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting subscription details: $e');
+        // Debug logging removed
       }
       return null;
     }
@@ -215,9 +215,9 @@ class SubscriptionService {
   Future<bool> verifyPayment(String billCode) async {
     if (_toyyibPaySecretKey == null || _toyyibPaySecretKey == 'sandbox_secret_key_here') {
       if (kDebugMode) {
-        print('❌ ToyyibPay secret key not configured properly');
-        print('📝 Current key: ${_toyyibPaySecretKey ?? 'null'}');
-        print('💡 TEMPORARY: Simulating successful verification for testing');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
       }
       // TEMPORARY: Return true for testing purposes (REMOVE IN PRODUCTION!)
       return true;
@@ -225,7 +225,7 @@ class SubscriptionService {
 
     try {
       if (kDebugMode) {
-        print('🔍 Verifying payment with ToyyibPay API for bill: $billCode');
+        // Debug logging removed
       }
 
       final response = await http.post(
@@ -238,8 +238,8 @@ class SubscriptionService {
       );
 
       if (kDebugMode) {
-        print('📡 ToyyibPay API response: ${response.statusCode}');
-        print('📄 Response body: ${response.body}');
+        // Debug logging removed
+        // Debug logging removed
       }
 
       if (response.statusCode == 200) {
@@ -248,29 +248,29 @@ class SubscriptionService {
         if (data is List && data.isNotEmpty) {
           final paymentStatus = data[0]['billpaymentStatus'];
           if (kDebugMode) {
-            print('💳 Payment status from API: $paymentStatus');
+            // Debug logging removed
             if (paymentStatus == '1') {
-              print('✅ Payment VERIFIED successful!');
+              // Debug logging removed
             } else {
-              print('❌ Payment NOT successful (status: $paymentStatus)');
+              // Debug logging removed
             }
           }
           return paymentStatus == '1';
         } else {
           if (kDebugMode) {
-            print('❌ No payment data found for bill: $billCode');
+            // Debug logging removed
           }
           return false;
         }
       } else {
         if (kDebugMode) {
-          print('❌ ToyyibPay API error: ${response.statusCode}');
+          // Debug logging removed
         }
         return false;
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Payment verification error: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -280,7 +280,7 @@ class SubscriptionService {
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     try {
       if (kDebugMode) {
-        print('🔍 SubscriptionService: Fetching subscription plans from database...');
+        // Debug logging removed
       }
 
       final result = await _supabase
@@ -290,14 +290,14 @@ class SubscriptionService {
           .order('price');
 
       if (kDebugMode) {
-        print('✅ SubscriptionService: Successfully fetched ${result.length} plans');
+        // Debug logging removed
       }
 
       return List<Map<String, dynamic>>.from(result);
     } catch (e) {
       if (kDebugMode) {
-        print('❌ SubscriptionService: Error getting subscription plans: $e');
-        print('📊 Error details: ${e.runtimeType}');
+        // Debug logging removed
+        // Debug logging removed
 
         // Check if it's an authentication error
         final errorString = e.toString().toLowerCase();
@@ -305,10 +305,10 @@ class SubscriptionService {
             errorString.contains('access token is expired') ||
             errorString.contains('permission denied') ||
             errorString.contains('unauthorized')) {
-          print('🔐 SubscriptionService: Authentication error detected');
+          // Debug logging removed
         } else if (errorString.contains('socketexception') ||
                    errorString.contains('failed host lookup')) {
-          print('🌐 SubscriptionService: Network connectivity error detected');
+          // Debug logging removed
         }
       }
       return [];
@@ -324,7 +324,7 @@ class SubscriptionService {
     required String userId,
   }) async {
     if (kDebugMode) {
-      print('⚠️ storePendingPayment is deprecated - use PaymentProcessingService instead');
+      // Debug logging removed
     }
     // No-op - payment records are now handled by PaymentProcessingService
   }
@@ -351,7 +351,7 @@ class SubscriptionService {
       return false;
     } catch (e) {
       if (kDebugMode) {
-        print('Error verifying and activating payment: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -378,11 +378,11 @@ class SubscriptionService {
           .eq('status', 'pending'); // Only update pending payments
 
       if (kDebugMode) {
-        print('✅ Pending payment status updated: $billId -> $status');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error updating pending payment status: $e');
+        // Debug logging removed
       }
       rethrow;
     }

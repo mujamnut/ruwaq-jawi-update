@@ -2,14 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/providers/notifications_provider.dart';
 import '../../../core/models/user_notification.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/enhanced_notification_service.dart';
 import 'notification_screen/widgets/notification_detail_bottom_sheet.dart';
-import 'notification_screen/utils/notification_ui_utils.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({super.key});
@@ -19,9 +18,7 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  // Search & filter
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
+  // Filter
   String _activeFilter = 'all'; // all, unread, high, content, payment, announcement
 
   // Selection mode
@@ -38,14 +35,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = context.read<NotificationsProvider>();
       await provider.loadInbox();
-    });
-    _listController.addListener(() {
-      if (!_listController.hasClients) return;
-      final max = _listController.position.maxScrollExtent;
-      final offset = _listController.position.pixels;
-      if (max - offset < 200) {
-        context.read<NotificationsProvider>().loadMore();
-      }
     });
   }
 
@@ -78,7 +67,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   });
                 },
               )
-            : null,
+            : IconButton(
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowLeft01,
+                  color: AppTheme.textPrimaryColor,
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
         actions: [
           if (_selectionMode) ...[
             IconButton(
@@ -116,59 +111,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       }
                     },
             ),
-          ] else ...[
-            Consumer<NotificationsProvider>(
-              builder: (context, notificationProvider, child) {
-                if (notificationProvider.inbox.isNotEmpty && notificationProvider.unreadCount > 0) {
-                  return TextButton(
-                    onPressed: () async {
-                      final confirm = await _showClearAllDialog(context);
-                      if (confirm == true) {
-                        await _markAllAsRead(notificationProvider);
-                      }
-                    },
-                    child: Text(
-                      'Tandai Semua Dibaca',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ]
+          ],
         ],
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Cari notifikasi...',
-                prefixIcon: const Icon(Icons.search),
-                isDense: true,
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.borderColor),
-                ),
-              ),
-              onChanged: (val) {
-                setState(() => _searchQuery = val.trim());
-              },
-            ),
-          ),
           SizedBox(
-            height: 44,
+            height: 50,
             child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               children: [
                 _buildFilterChip('Semua', 'all'),
                 const SizedBox(width: 8),
@@ -184,7 +136,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 8),
           Expanded(
             child: Consumer<NotificationsProvider>(
               builder: (context, notificationProvider, child) {
@@ -200,68 +151,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void dispose() {
     _listController.dispose();
-    _searchController.dispose();
     super.dispose();
-  }
-
-  Widget _buildSwipeBackground({
-    required bool alignLeft,
-    required Color color,
-    required IconData icon,
-    required String label,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      alignment: alignLeft ? Alignment.centerLeft : Alignment.centerRight,
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment:
-            alignLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
-        children: [
-          PhosphorIcon(icon, color: Colors.white, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _markAllAsRead(NotificationsProvider provider) async {
-    try {
-      final success = await EnhancedNotificationService.markAllAsRead();
-      if (!mounted) return;
-      if (success) {
-        await provider.loadInbox();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Semua notifikasi ditandakan sebagai dibaca'),
-            backgroundColor: AppTheme.successColor,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      } else {
-        final user = Supabase.instance.client.auth.currentUser;
-        if (user == null) return;
-        final unreadNotifications = provider.inbox.where((n) => !n.isReadByUser(user.id)).toList();
-        for (final notification in unreadNotifications) {
-          await provider.markAsRead(notification.id);
-        }
-      }
-    } catch (e) {
-      debugPrint('Error marking all as read: $e');
-    }
   }
 
   Widget _buildNotificationsBody(NotificationsProvider provider) {
@@ -295,7 +185,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Tiada notifikasi untuk penapis/carian',
+                  'Tiada notifikasi untuk penapis ini',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: AppTheme.textPrimaryColor,
                         fontWeight: FontWeight.w700,
@@ -303,7 +193,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Cuba ubah penapis atau padam carian.',
+                  'Cuba ubah penapis untuk melihat notifikasi lain.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: AppTheme.textSecondaryColor,
                       ),
@@ -316,46 +206,67 @@ class _NotificationScreenState extends State<NotificationScreen> {
     }
 
     final grouped = _groupByDate(filtered);
+    final hasMore = provider.hasMore;
 
     return RefreshIndicator(
       onRefresh: _refresh,
       color: AppTheme.primaryColor,
       child: ListView.builder(
         controller: _listController,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-        itemCount: grouped.length + (provider.isLoadingMore ? 1 : 0),
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+        itemCount: grouped.length + (hasMore || provider.isLoadingMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index >= grouped.length) {
-            return const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: CircularProgressIndicator(color: AppTheme.primaryColor),
-              ),
-            );
+            // Load More button or loading indicator
+            if (provider.isLoadingMore) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppTheme.primaryColor),
+                ),
+              );
+            }
+
+            if (hasMore) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+                child: OutlinedButton(
+                  onPressed: () => provider.loadMore(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryColor,
+                    side: BorderSide(color: AppTheme.primaryColor),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      PhosphorIcon(
+                        PhosphorIcons.arrowDown(),
+                        size: 18,
+                        color: AppTheme.primaryColor,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Muat lebih banyak',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.primaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
+            return const SizedBox.shrink();
           }
 
-          final item = grouped[index];
-          if (item is _Header) {
-            return Padding(
-              padding: const EdgeInsets.fromLTRB(4, 16, 4, 8),
-              child: Text(
-                item.title,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.textSecondaryColor,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.2,
-                    ),
-              ),
-            );
-          } else if (item is UserNotificationItem) {
-            final idx = index;
-            return AnimatedContainer(
-              duration: Duration(milliseconds: 120 + ((idx % 10) * 15)),
-              curve: Curves.easeOut,
-              child: _buildNotificationCard(item, provider),
-            );
-          }
-          return const SizedBox.shrink();
+          final group = grouped[index];
+          return _buildDateGroupCard(group, provider);
         },
       ),
     );
@@ -491,11 +402,73 @@ class _NotificationScreenState extends State<NotificationScreen> {
         fontWeight: FontWeight.w600,
       ),
       selectedColor: AppTheme.primaryColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(25),
+      ),
       onSelected: (_) => setState(() => _activeFilter = key),
     );
   }
 
-  Widget _buildNotificationCard(
+  Widget _buildDateGroupCard(_DateGroup group, NotificationsProvider provider) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Text(
+                group.title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    ),
+              ),
+            ),
+            // Notification items with dividers
+            ...List.generate(
+              group.items.length * 2 - 1,
+              (index) {
+                if (index.isOdd) {
+                  // Divider
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: AppTheme.borderColor.withValues(alpha: 0.5),
+                    ),
+                  );
+                } else {
+                  // Notification item
+                  final itemIndex = index ~/ 2;
+                  final notification = group.items[itemIndex];
+                  return _buildNotificationItem(notification, provider);
+                }
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationItem(
     UserNotificationItem notification,
     NotificationsProvider provider,
   ) {
@@ -505,274 +478,101 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final title = notification.title;
     final body = notification.body;
     final createdAt = notification.deliveredAt;
-    final notificationType = notification.type;
     final isSelected = _selectedIds.contains(notification.id);
 
-    return Dismissible(
-      key: ValueKey(notification.id),
-      direction: DismissDirection.horizontal,
-      background: _buildSwipeBackground(
-        alignLeft: true,
-        color: isRead ? Colors.amber : AppTheme.primaryColor,
-        icon: isRead ? PhosphorIcons.eye() : PhosphorIcons.check(),
-        label: isRead ? 'Belum Baca' : 'Tandai Baca',
-      ),
-      secondaryBackground: _buildSwipeBackground(
-        alignLeft: false,
-        color: AppTheme.errorColor,
-        icon: PhosphorIcons.trash(),
-        label: 'Padam',
-      ),
-      confirmDismiss: (direction) async {
-        if (direction == DismissDirection.startToEnd) {
-          // Swipe kanan: toggle read/unread
-          if (isRead) {
-            context.read<NotificationsProvider>().markAsUnreadLocal(notification.id);
-          } else {
-            await context.read<NotificationsProvider>().markAsRead(notification.id);
-          }
-          return false;
-        } else {
-          final confirm = await _showDeleteDialog(context);
-          return confirm == true;
-        }
-      },
-      onDismissed: (_) async {
-        // Capture context before async operations
-        final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-        try {
-          // Delete notification using provider
-          await provider.deleteNotification(notification.id);
-
-          if (mounted) {
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIcons.checkCircle(),
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('Notifikasi dipadam'),
-                  ],
-                ),
-                backgroundColor: AppTheme.successColor,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }
-        } catch (e) {
-          // Show error if delete failed
-          if (mounted) {
-            scaffoldMessenger.showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    PhosphorIcon(
-                      PhosphorIcons.warningCircle(),
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text('Gagal memadamkan notifikasi'),
-                  ],
-                ),
-                backgroundColor: AppTheme.errorColor,
-                behavior: SnackBarBehavior.floating,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            );
-          }
-        }
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryColor.withValues(alpha: 0.08)
-              : (isRead
-                  ? AppTheme.surfaceColor
-                  : AppTheme.primaryColor.withValues(alpha: 0.05)),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? AppTheme.primaryColor
-                : (isRead
-                    ? AppTheme.borderColor
-                    : AppTheme.primaryColor.withValues(alpha: 0.3)),
-            width: isSelected ? 2 : (isRead ? 1 : 2),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: (isSelected || !isRead) ? 0.08 : 0.05),
-              blurRadius: (isSelected || !isRead) ? 12 : 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () {
-              if (_selectionMode) {
-                setState(() {
-                  final isSelected = _selectedIds.contains(notification.id);
-                  if (isSelected) {
-                    _selectedIds.remove(notification.id);
-                    if (_selectedIds.isEmpty) _selectionMode = false;
-                  } else {
-                    _selectedIds.add(notification.id);
-                  }
-                });
-                return;
-              }
-              // ✅ IMPROVED: Show bottom sheet instead of auto navigate
-              HapticFeedback.lightImpact();
-              _showNotificationDetail(notification, provider);
-            },
-            onLongPress: () {
-              setState(() {
-                _selectionMode = true;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          if (_selectionMode) {
+            setState(() {
+              final isSelected = _selectedIds.contains(notification.id);
+              if (isSelected) {
+                _selectedIds.remove(notification.id);
+                if (_selectedIds.isEmpty) _selectionMode = false;
+              } else {
                 _selectedIds.add(notification.id);
-              });
-            },
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
+              }
+            });
+            return;
+          }
+          HapticFeedback.lightImpact();
+          _showNotificationDetail(notification, provider);
+        },
+        onLongPress: () {
+          setState(() {
+            _selectionMode = true;
+            _selectedIds.add(notification.id);
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title with Time on same row
+              Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Notification Icon - reduced size
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: notificationColorForType(
-                        notificationType,
-                      ).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: PhosphorIcon(
-                        notificationIconForType(notificationType),
-                        color: notificationColorForType(notificationType),
-                        size: 24,
-                      ),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            fontWeight: isRead ? FontWeight.w600 : FontWeight.w700,
+                            color: AppTheme.textPrimaryColor,
+                          ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 16),
-
-                  // Content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                title,
-                                style: Theme.of(context).textTheme.bodyLarge
-                                    ?.copyWith(
-                                      fontWeight: isRead
-                                          ? FontWeight.w600
-                                          : FontWeight.w700,
-                                      color: AppTheme.textPrimaryColor,
-                                    ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (_selectionMode)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8),
-                                child: Icon(
-                                  isSelected
-                                      ? Icons.check_circle
-                                      : Icons.circle_outlined,
-                                  size: 18,
-                                  color: isSelected
-                                      ? AppTheme.primaryColor
-                                      : AppTheme.textSecondaryColor,
-                                ),
-                              ),
-                            if (!isRead)
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          body,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: AppTheme.textSecondaryColor,
-                                height: 1.4,
-                              ),
-                          maxLines: 2,  // ✅ IMPROVED: Reduced to 2 lines - less clutter
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 12),
-                        // ✅ IMPROVED: Simplified metadata row - removed redundant buttons
-                        Row(
-                          children: [
-                            Text(
-                              _formatTimeAgo(createdAt),
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: AppTheme.textSecondaryColor,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                            ),
-                            const SizedBox(width: 8),
-                            if (!isRead)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  'Baru',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
-                                      ),
-                                ),
-                              ),
-                            const Spacer(),
-                            // Simple tap indicator
-                            PhosphorIcon(
-                              PhosphorIcons.caretRight(),
-                              size: 16,
+                  const SizedBox(width: 12),
+                  Row(
+                    children: [
+                      Text(
+                        _formatTime(createdAt),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: AppTheme.textSecondaryColor,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ],
+                      ),
+                      if (!isRead) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
                         ),
                       ],
-                    ),
+                      if (_selectionMode)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Icon(
+                            isSelected ? Icons.check_circle : Icons.circle_outlined,
+                            size: 18,
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : AppTheme.textSecondaryColor,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 8),
+              // Body
+              Text(
+                body,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppTheme.textSecondaryColor,
+                      height: 1.4,
+                    ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ),
@@ -911,11 +711,20 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  IconData _getNotificationIcon(String type) => notificationIconForType(type);
+  String _formatTime(DateTime dateTime) {
+    int hour = dateTime.hour;
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final period = hour >= 12 ? 'PM' : 'AM';
 
-  Color _getNotificationColor(String type) => notificationColorForType(type);
+    // Convert to 12-hour format
+    if (hour == 0) {
+      hour = 12;
+    } else if (hour > 12) {
+      hour = hour - 12;
+    }
 
-  String _formatTimeAgo(DateTime dateTime) => formatTimeAgoShort(dateTime);
+    return '$hour:$minute $period';
+  }
 
   Future<void> _handleNotificationTap(UserNotificationItem notification, BuildContext context) async {
     final provider = context.read<NotificationsProvider>();
@@ -1062,129 +871,80 @@ class _NotificationScreenState extends State<NotificationScreen> {
     );
   }
 
-  Future<bool?> _showClearAllDialog(BuildContext context) async {
-    return showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            PhosphorIcon(
-              PhosphorIcons.checkCircle(),
-              color: AppTheme.primaryColor,
-              size: 24,
-            ),
-            const SizedBox(width: 12),
-            const Text('Tandai Semua Dibaca?'),
-          ],
-        ),
-        content: const Text(
-          'Anda pasti mahu menandakan semua notifikasi sebagai dibaca?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(
-              'Batal',
-              style: TextStyle(color: AppTheme.textSecondaryColor),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Tandai Dibaca'),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // Helpers
-List<UserNotificationItem> _applyFilterAndSearchStatic(
-  List<UserNotificationItem> list,
-  String activeFilter,
-  String query,
-) {
-  var items = list;
-
-  // Filter by type/state
-  items = items.where((n) {
-    final type = n.type.toLowerCase();
-    switch (activeFilter) {
-      case 'unread':
-        // Unread resolved at runtime in state-specific helper
-        return true;
-      case 'high':
-        return n.isHighPriority;
-      case 'content':
-        return type.contains('content');
-      case 'payment':
-        return type.contains('payment') || n.isPaymentNotification;
-      case 'announcement':
-        return n.isAdminAnnouncement;
-      default:
-        return true;
-    }
-  }).toList();
-
-  // Search text
-  if (query.isNotEmpty) {
-    final q = query.toLowerCase();
-    items = items
-        .where((n) => n.title.toLowerCase().contains(q) || n.body.toLowerCase().contains(q))
-        .toList();
-  }
-
-  // Sort
-  items.sort((a, b) => b.deliveredAt.compareTo(a.deliveredAt));
-  return items;
-}
-
 extension on _NotificationScreenState {
   List<UserNotificationItem> _applyFilterAndSearch(NotificationsProvider provider) {
     var items = provider.inbox;
     final user = Supabase.instance.client.auth.currentUser;
-    items = _applyFilterAndSearchStatic(items, _activeFilter, _searchQuery);
-    if (_activeFilter == 'unread' && user != null) {
-      items = items.where((n) => !n.isReadByUser(user.id)).toList();
-    }
+
+    // Filter by type/state
+    items = items.where((n) {
+      final type = n.type.toLowerCase();
+      switch (_activeFilter) {
+        case 'unread':
+          return user != null ? !n.isReadByUser(user.id) : true;
+        case 'high':
+          return n.isHighPriority;
+        case 'content':
+          return type.contains('content');
+        case 'payment':
+          return type.contains('payment') || n.isPaymentNotification;
+        case 'announcement':
+          return n.isAdminAnnouncement;
+        default:
+          return true;
+      }
+    }).toList();
+
+    // Sort by date
+    items.sort((a, b) => b.deliveredAt.compareTo(a.deliveredAt));
+
     return items;
   }
 
-  List<dynamic> _groupByDate(List<UserNotificationItem> list) {
-    final items = <dynamic>[];
-    String? currentHeader;
-    String labelFor(DateTime dt) {
-      final now = DateTime.now();
-      final d = DateUtils.dateOnly(dt);
-      final today = DateUtils.dateOnly(now);
-      final yesterday = today.subtract(const Duration(days: 1));
-      if (d == today) return 'Hari ini';
-      if (d == yesterday) return 'Semalam';
-      if (now.difference(d).inDays < 7) return 'Minggu ini';
-      return 'Lebih lama';
-    }
+  List<_DateGroup> _groupByDate(List<UserNotificationItem> list) {
+    final groups = <_DateGroup>[];
+    DateTime? currentDate;
+    List<UserNotificationItem> currentItems = [];
 
     for (final n in list) {
-      final label = labelFor(n.deliveredAt);
-      if (label != currentHeader) {
-        currentHeader = label;
-        items.add(_Header(label));
+      final notifDate = DateUtils.dateOnly(n.deliveredAt);
+
+      if (currentDate == null || notifDate != currentDate) {
+        // Save previous group if exists
+        if (currentDate != null && currentItems.isNotEmpty) {
+          final label = _formatDateHeader(currentDate);
+          groups.add(_DateGroup(label, List.from(currentItems)));
+        }
+        currentDate = notifDate;
+        currentItems = [n];
+      } else {
+        currentItems.add(n);
       }
-      items.add(n);
     }
-    return items;
+
+    // Add last group
+    if (currentDate != null && currentItems.isNotEmpty) {
+      final label = _formatDateHeader(currentDate);
+      groups.add(_DateGroup(label, currentItems));
+    }
+
+    return groups;
+  }
+
+  String _formatDateHeader(DateTime date) {
+    final months = [
+      'Januari', 'Februari', 'Mac', 'April', 'Mei', 'Jun',
+      'Julai', 'Ogos', 'September', 'Oktober', 'November', 'Disember'
+    ];
+    return '${date.day} ${months[date.month - 1]} ${date.year}';
   }
 }
 
-class _Header {
+class _DateGroup {
   final String title;
-  _Header(this.title);
+  final List<UserNotificationItem> items;
+  _DateGroup(this.title, this.items);
 }

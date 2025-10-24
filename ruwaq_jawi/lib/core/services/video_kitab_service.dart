@@ -239,12 +239,12 @@ class VideoKitabService {
 
   // Admin update function - direct update without triggers (triggers removed)
   static Future<VideoKitab> updateVideoKitabAdmin(String id, Map<String, dynamic> updates) async {
-    print('=== VideoKitabService.updateVideoKitabAdmin DEBUG ===');
-    print('Kitab ID: $id');
-    print('Updates: $updates');
+    // Debug logging removed
+    // Debug logging removed
+    // Debug logging removed
 
     try {
-      print('Calling Supabase update...');
+      // Debug logging removed
 
       // Direct update - no triggers causing issues anymore
       final response = await SupabaseService.from(_tableName)
@@ -259,16 +259,16 @@ class VideoKitabService {
           ''')
           .single();
 
-      print('Supabase update successful! Response: $response');
+      // Debug logging removed
 
       final videoKitab = VideoKitab.fromJson(response);
-      print('VideoKitab object created successfully');
+      // Debug logging removed
 
       return videoKitab;
-    } catch (e, stackTrace) {
-      print('=== ERROR in updateVideoKitabAdmin ===');
-      print('Error: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
       throw Exception('Failed to update video kitab: $e');
     }
   }

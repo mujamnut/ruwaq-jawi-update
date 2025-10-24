@@ -118,14 +118,13 @@ class _AdminPaymentsScreenState extends State<AdminPaymentsScreen> {
             'Tidak dapat memuat data pembayaran selepas $_maxRetries cubaan. Sila periksa sambungan internet anda.';
         _isLoading = false;
       });
-      print('Payment loading error: $e'); // Log for debugging
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text(
           'Transaksi Pembayaran',

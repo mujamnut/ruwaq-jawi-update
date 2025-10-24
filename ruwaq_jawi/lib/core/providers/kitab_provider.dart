@@ -423,7 +423,7 @@ class KitabProvider extends ChangeNotifier {
 
       // return results;
     } catch (e) {
-      print('Error loading continue reading: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -468,14 +468,14 @@ class KitabProvider extends ChangeNotifier {
       notifyListeners();
 
       return videos;
-    } on SocketException catch (e) {
-      print('Network error loading kitab videos: $e');
+    } on SocketException {
+      // Debug logging removed
       rethrow; // Let caller handle network error
-    } on TimeoutException catch (e) {
-      print('Timeout loading kitab videos: $e');
+    } on TimeoutException {
+      // Debug logging removed
       rethrow; // Let caller handle timeout
     } catch (e) {
-      print('Error loading kitab videos: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -516,7 +516,7 @@ class KitabProvider extends ChangeNotifier {
       final allVideos = await loadKitabVideos(videoKitabId);
       return allVideos; // Return all videos as preview for video kitab type previews
     } catch (e) {
-      print('Error loading preview videos: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -542,7 +542,7 @@ class KitabProvider extends ChangeNotifier {
 
       return previewEpisodes;
     } catch (e) {
-      print('Error loading video episode previews: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -570,7 +570,7 @@ class KitabProvider extends ChangeNotifier {
   /// Check if video kitab has any preview content using unified preview system
   Future<bool> hasPreviewVideos(String videoKitabId) async {
     try {
-      print('DEBUG: Checking preview content for video kitab: $videoKitabId');
+      // Debug logging removed
 
       // First check if video kitab itself has preview content
       final hasVideoKitabPreview = await PreviewService.hasPreview(
@@ -579,7 +579,7 @@ class KitabProvider extends ChangeNotifier {
       );
 
       if (hasVideoKitabPreview) {
-        print('DEBUG: Found video kitab level preview');
+        // Debug logging removed
         return true;
       }
 
@@ -592,15 +592,15 @@ class KitabProvider extends ChangeNotifier {
         );
 
         if (hasEpisodePreview) {
-          print('DEBUG: Found episode level preview');
+          // Debug logging removed
           return true;
         }
       }
 
-      print('DEBUG: No preview content found');
+      // Debug logging removed
       return false;
     } catch (e) {
-      print('Error checking preview videos: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -637,7 +637,7 @@ class KitabProvider extends ChangeNotifier {
           final videoEpisode = VideoEpisode.fromJson(response);
           previewVideos.add(videoEpisode);
         } catch (e) {
-          print('Error loading preview video episode ${preview.contentId}: $e');
+          // Debug logging removed
           // Skip this preview if episode not found or inactive
           continue;
         }
@@ -648,7 +648,7 @@ class KitabProvider extends ChangeNotifier {
 
       return previewVideos;
     } catch (e) {
-      print('Error loading all preview videos: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -664,7 +664,7 @@ class KitabProvider extends ChangeNotifier {
         includeContentDetails: true,
       );
     } catch (e) {
-      print('Error loading ebook previews: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -680,7 +680,7 @@ class KitabProvider extends ChangeNotifier {
         includeContentDetails: true,
       );
     } catch (e) {
-      print('Error loading video kitab previews: $e');
+      // Debug logging removed
       return [];
     }
   }

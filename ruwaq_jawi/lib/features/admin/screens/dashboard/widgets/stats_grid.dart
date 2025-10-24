@@ -15,7 +15,7 @@ class AdminDashboardStatsGrid extends StatelessWidget {
       padding: EdgeInsets.zero,
       crossAxisSpacing: 10,
       mainAxisSpacing: 10,
-      childAspectRatio: 1.7,
+      childAspectRatio: 1.5,
       children: [
         _AdminDashboardStatCard(
           title: 'Jumlah Pengguna',
@@ -62,7 +62,7 @@ class _AdminDashboardStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -80,30 +80,41 @@ class _AdminDashboardStatCard extends StatelessWidget {
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: HugeIcon(icon: icon, color: color, size: 24.0),
+                child: HugeIcon(icon: icon, color: color, size: 18.0),
               ),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  value,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: color,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const Spacer(),
           Text(
             title,
             style: Theme.of(
               context,
-            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
+            ).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

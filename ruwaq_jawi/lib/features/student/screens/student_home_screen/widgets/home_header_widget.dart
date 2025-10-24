@@ -279,14 +279,9 @@ class _RotatingTaglineState extends State<_RotatingTagline> {
 // Typing + deleting effect tagline
 class _TypingTagline extends StatefulWidget {
   final List<String> messages;
-  final Duration typeDelay;
-  final Duration deleteDelay;
-  final Duration holdDelay;
+
   const _TypingTagline({
     required this.messages,
-    this.typeDelay = const Duration(milliseconds: 60),
-    this.deleteDelay = const Duration(milliseconds: 40),
-    this.holdDelay = const Duration(milliseconds: 900),
   });
 
   @override
@@ -294,6 +289,10 @@ class _TypingTagline extends StatefulWidget {
 }
 
 class _TypingTaglineState extends State<_TypingTagline> {
+  static const Duration _typeDelay = Duration(milliseconds: 60);
+  static const Duration _deleteDelay = Duration(milliseconds: 40);
+  static const Duration _holdDelay = Duration(milliseconds: 900);
+
   int _msg = 0;
   int _chars = 0;
   bool _deleting = false;
@@ -302,7 +301,7 @@ class _TypingTaglineState extends State<_TypingTagline> {
   @override
   void initState() {
     super.initState();
-    _scheduleNext(widget.typeDelay);
+    _scheduleNext(_typeDelay);
   }
 
   void _scheduleNext(Duration d) {
@@ -317,19 +316,19 @@ class _TypingTaglineState extends State<_TypingTagline> {
       if (!_deleting) {
         if (_chars < text.length) {
           _chars++;
-          _scheduleNext(widget.typeDelay);
+          _scheduleNext(_typeDelay);
         } else {
           _deleting = true;
-          _scheduleNext(widget.holdDelay);
+          _scheduleNext(_holdDelay);
         }
       } else {
         if (_chars > 0) {
           _chars--;
-          _scheduleNext(widget.deleteDelay);
+          _scheduleNext(_deleteDelay);
         } else {
           _deleting = false;
           _msg = (_msg + 1) % widget.messages.length;
-          _scheduleNext(widget.typeDelay);
+          _scheduleNext(_typeDelay);
         }
       }
     });
@@ -355,46 +354,6 @@ class _TypingTaglineState extends State<_TypingTagline> {
       ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
-class _QuickChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  const _QuickChip({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppTheme.backgroundColor,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              PhosphorIcon(icon, size: 16, color: AppTheme.textSecondaryColor),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: AppTheme.textSecondaryColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

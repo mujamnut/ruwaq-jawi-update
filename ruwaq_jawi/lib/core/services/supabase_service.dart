@@ -32,7 +32,7 @@ class SupabaseService {
 
       if (kDebugMode) {
         EnvConfig.printConfig();
-        print('🔧 SupabaseService: Initializing Supabase client...');
+        // Debug logging removed
       }
 
       await Supabase.initialize(
@@ -46,11 +46,11 @@ class SupabaseService {
       _client = Supabase.instance.client;
 
       if (kDebugMode) {
-        print('✅ SupabaseService: Supabase client initialized successfully');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ SupabaseService: Failed to initialize Supabase: $e');
+        // Debug logging removed
       }
       throw Exception('Gagal menghubungkan ke pangkalan data: ${e.toString()}');
     }
@@ -408,17 +408,17 @@ class SupabaseService {
   static Future<bool> testConnection() async {
     try {
       if (kDebugMode) {
-        print('🔍 SupabaseService: Testing database connection...');
+        // Debug logging removed
       }
 
       // Check if we have a valid session first
       final currentSession = client.auth.currentSession;
       if (currentSession == null) {
         if (kDebugMode) {
-          print('⚠️ SupabaseService: No active session, skipping authenticated connection test');
+          // Debug logging removed
         }
         // Try unauthenticated connection instead
-        final result = await client
+        await client
             .from('app_settings')
             .select('setting_key')
             .limit(1)
@@ -432,7 +432,7 @@ class SupabaseService {
       }
 
       // Simple query to test connection with current session
-      final result = await from('app_settings')
+      await from('app_settings')
           .select('setting_key')
           .limit(1)
           .timeout(
@@ -443,25 +443,25 @@ class SupabaseService {
           );
 
       if (kDebugMode) {
-        print('✅ SupabaseService: Connection test successful');
+        // Debug logging removed
       }
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ SupabaseService: Connection test failed: $e');
+        // Debug logging removed
 
         // If JWT expired, try to refresh the session
         if (e.toString().contains('JWT expired') || e.toString().contains('PGRST303')) {
-          print('🔄 SupabaseService: JWT expired, attempting to refresh session...');
+          // Debug logging removed
           try {
             await client.auth.refreshSession();
             if (kDebugMode) {
-              print('✅ SupabaseService: Session refreshed successfully');
+              // Debug logging removed
             }
             return true;
           } catch (refreshError) {
             if (kDebugMode) {
-              print('❌ SupabaseService: Failed to refresh session: $refreshError');
+              // Debug logging removed
             }
           }
         }
@@ -475,7 +475,7 @@ class SupabaseService {
       // Check if we have a valid client
       if (_client == null) {
         if (kDebugMode) {
-          print('❌ SupabaseService: Client not initialized');
+          // Debug logging removed
         }
         return false;
       }
@@ -484,7 +484,7 @@ class SupabaseService {
       final user = currentUser;
       if (user == null) {
         if (kDebugMode) {
-          print('⚠️ SupabaseService: No authenticated user');
+          // Debug logging removed
         }
         // This is not necessarily an error - some operations don't require auth
       }
@@ -493,7 +493,7 @@ class SupabaseService {
       return await testConnection();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ SupabaseService: Health check failed: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -511,13 +511,13 @@ class SupabaseService {
     while (attempts < maxRetries) {
       try {
         if (kDebugMode && operationName != null) {
-          print('🔄 SupabaseService: Attempting $operationName (attempt ${attempts + 1}/$maxRetries)');
+          // Debug logging removed
         }
 
         final result = await operation();
 
         if (kDebugMode && operationName != null) {
-          print('✅ SupabaseService: $operationName successful on attempt ${attempts + 1}');
+          // Debug logging removed
         }
 
         return result;
@@ -526,13 +526,13 @@ class SupabaseService {
         lastError = e;
 
         if (kDebugMode && operationName != null) {
-          print('❌ SupabaseService: $operationName failed on attempt $attempts: $e');
+          // Debug logging removed
         }
 
         // If this is the last attempt, throw the error
         if (attempts >= maxRetries) {
           if (kDebugMode && operationName != null) {
-            print('💥 SupabaseService: $operationName failed after $maxRetries attempts');
+            // Debug logging removed
           }
           rethrow;
         }

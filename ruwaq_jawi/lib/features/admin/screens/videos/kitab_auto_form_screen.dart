@@ -96,7 +96,6 @@ class _AdminYouTubeAutoFormScreenState
         _isLoadingCategories = false;
       });
     } catch (e) {
-      print('Error loading categories: $e');
       setState(() {
         _isLoadingCategories = false;
       });
@@ -920,7 +919,6 @@ class _AdminYouTubeAutoFormScreenState
       final result = await InternetAddress.lookup('supabase.co');
       return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
     } catch (e) {
-      print('Network connectivity check failed: $e');
       return false;
     }
   }
@@ -935,17 +933,10 @@ class _AdminYouTubeAutoFormScreenState
     });
 
     try {
-      print('=== AUTO SYNC DEBUG START ===');
-      print('Playlist URL: ${_playlistUrlController.text}');
-      print('Category ID: $_selectedCategoryId');
-      print('Is Premium: $_isPremium');
-      print('Is Active: $_isActive');
 
       // Check network connectivity first
-      print('Checking network connectivity...');
       final hasConnectivity = await _checkNetworkConnectivity();
       if (!hasConnectivity) {
-        print('No network connectivity detected');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -959,7 +950,6 @@ class _AdminYouTubeAutoFormScreenState
         }
         return;
       }
-      print('Network connectivity confirmed');
 
       // Show loading dialog
       if (mounted) {
@@ -977,11 +967,6 @@ class _AdminYouTubeAutoFormScreenState
           ? null
           : _authorController.text.trim();
 
-      print('Calling edge function: youtube-playlist-sync');
-      print(
-        'Request body: ${{'playlist_url': _playlistUrlController.text, 'category_id': _selectedCategoryId, 'is_premium': _isPremium, 'is_active': _isActive, 'author': authorName}}',
-      );
-
       // Call YouTube sync API
       final response = await Supabase.instance.client.functions.invoke(
         'youtube-playlist-sync',
@@ -994,48 +979,34 @@ class _AdminYouTubeAutoFormScreenState
         },
       );
 
-      print('Edge function response status: ${response.status}');
-      print('Edge function response data: ${response.data}');
 
       if (response.status != 200) {
-        print('ERROR: Non-200 status code received');
-        print('Error details: ${response.data}');
         throw Exception('Failed to sync playlist: ${response.data}');
       }
 
       final syncData = response.data;
-      print('SUCCESS: Edge function returned data');
-      print('Sync data keys: ${syncData?.keys?.toList()}');
-      print('Episodes count: ${(syncData?['episodes'] as List?)?.length ?? 0}');
 
       // Upload PDF if selected
       if (_selectedPdfFile != null && syncData['video_kitab_id'] != null) {
         try {
-          print('=== UPLOADING PDF ===');
-          print('Video Kitab ID: ${syncData['video_kitab_id']}');
-          print('PDF File: ${_selectedPdfFile!.name}');
-          print('PDF Size: ${_selectedPdfFile!.size} bytes');
 
           // Create storage path
           final timestamp = DateTime.now().millisecondsSinceEpoch;
           final pdfPath =
               'pdfs/video_kitab_${timestamp}_${_selectedPdfFile!.name}';
 
-          print('Uploading to storage path: $pdfPath');
 
           // Upload PDF to storage
           await Supabase.instance.client.storage
               .from('video-kitab-files')
               .uploadBinary(pdfPath, _selectedPdfFile!.bytes!);
 
-          print('PDF uploaded to storage successfully');
 
           // Get public URL
           final pdfUrl = Supabase.instance.client.storage
               .from('video-kitab-files')
               .getPublicUrl(pdfPath);
 
-          print('PDF public URL: $pdfUrl');
 
           // Update video_kitab with PDF info
           await Supabase.instance.client
@@ -1048,17 +1019,11 @@ class _AdminYouTubeAutoFormScreenState
               })
               .eq('id', syncData['video_kitab_id']);
 
-          print('Video kitab updated with PDF info');
-          print('=== PDF UPLOAD SUCCESS ===');
 
           // Store PDF success flag in syncData for later use
           syncData['pdf_uploaded'] = true;
           syncData['pdf_url'] = pdfUrl;
-        } catch (e, stackTrace) {
-          print('=== PDF UPLOAD ERROR ===');
-          print('Error: ${e.toString()}');
-          print('Stack trace: $stackTrace');
-          print('=== PDF UPLOAD ERROR END ===');
+        } catch (e) {
 
           // Store PDF failure flag but don't fail entire sync
           syncData['pdf_uploaded'] = false;
@@ -1079,7 +1044,6 @@ class _AdminYouTubeAutoFormScreenState
           }
         }
       } else if (_selectedPdfFile != null) {
-        print('WARNING: PDF selected but video_kitab_id not found in response');
       }
 
       final List<VideoEpisodePreview> episodes =
@@ -1095,8 +1059,6 @@ class _AdminYouTubeAutoFormScreenState
               .toList() ??
           [];
 
-      print('Parsed episodes: ${episodes.length}');
-      print('=== AUTO SYNC DEBUG SUCCESS ===');
 
       if (mounted) {
         // Close loading dialog
@@ -1242,12 +1204,7 @@ class _AdminYouTubeAutoFormScreenState
             );
           }
       }
-    } catch (e, stackTrace) {
-      print('=== AUTO SYNC ERROR ===');
-      print('Error type: ${e.runtimeType}');
-      print('Error message: ${e.toString()}');
-      print('Stack trace: $stackTrace');
-      print('=== AUTO SYNC ERROR END ===');
+    } catch (e) {
 
       if (mounted) {
         // Close loading dialog if open

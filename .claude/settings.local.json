@@ -1,8 +1,4 @@
 {
-  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "5b5002f0f50e4f239b77ae070dd1c834.ZSTjt4CYseaxD5cT",
-    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic"
-  },
   "permissions": {
     "allow": [
       "mcp__supabase__list_tables",
@@ -91,7 +87,11 @@
       "Read(//c/**)",
       "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe\":*)",
       "Bash(\"/c/Program Files/Android/Android Studio/jbr/bin/keytool.exe\" -exportcert -alias androiddebugkey -keystore ~/.android/debug.keystore)",
-      "Bash(openssl:*)"
+      "Bash(openssl:*)",
+      "Read(//c//**)",
+      "Bash(for file in \"screens/payments/payments_screen.dart\" \"screens/subscriptions/subscription_list_screen.dart\" \"screens/videos/episode_form_screen.dart\" \"services/admin_content_service.dart\")",
+      "Bash(move:*)",
+      "Bash(node remove_prints.js:*)"
     ],
     "deny": [],
     "ask": []

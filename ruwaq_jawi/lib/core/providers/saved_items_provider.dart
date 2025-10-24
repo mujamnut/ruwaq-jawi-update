@@ -42,10 +42,10 @@ class SavedItemsProvider extends ChangeNotifier {
       _savedEpisodes = results[1] as List<VideoEpisode>;
       _savedEbooks = results[2] as List<Ebook>;
 
-      debugPrint('✅ Loaded saved items: ${_savedKitab.length} kitabs, ${_savedEpisodes.length} episodes, ${_savedEbooks.length} ebooks');
+      // Debug logging removed
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error loading saved items: $e');
+      // Debug logging removed
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -73,19 +73,19 @@ class SavedItemsProvider extends ChangeNotifier {
         // Unsave
         await SupabaseFavoritesService.unsaveVideoKitab(kitab.id);
         _savedKitab.removeWhere((k) => k.id == kitab.id);
-        debugPrint('✅ Video kitab unsaved: ${kitab.id}');
+        // Debug logging removed
       } else {
         // Save
         await SupabaseFavoritesService.saveVideoKitab(kitab.id);
         _savedKitab.insert(0, kitab);
-        debugPrint('✅ Video kitab saved: ${kitab.id}');
+        // Debug logging removed
       }
 
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error toggling kitab saved: $e');
+      // Debug logging removed
       notifyListeners();
       return false;
     }
@@ -99,7 +99,7 @@ class SavedItemsProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error adding kitab to saved: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -113,7 +113,7 @@ class SavedItemsProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error removing kitab from saved: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -134,19 +134,19 @@ class SavedItemsProvider extends ChangeNotifier {
         // Unsave
         await SupabaseFavoritesService.unsaveEbook(ebook.id);
         _savedEbooks.removeWhere((e) => e.id == ebook.id);
-        debugPrint('✅ Ebook unsaved: ${ebook.id}');
+        // Debug logging removed
       } else {
         // Save
         await SupabaseFavoritesService.saveEbook(ebook.id);
         _savedEbooks.insert(0, ebook);
-        debugPrint('✅ Ebook saved: ${ebook.id}');
+        // Debug logging removed
       }
 
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error toggling ebook saved: $e');
+      // Debug logging removed
       notifyListeners();
       return false;
     }
@@ -173,19 +173,19 @@ class SavedItemsProvider extends ChangeNotifier {
         // Unsave
         await SupabaseFavoritesService.unsaveVideoEpisode(episode.id);
         _savedEpisodes.removeWhere((e) => e.id == episode.id);
-        debugPrint('✅ Episode unsaved: ${episode.id}');
+        // Debug logging removed
       } else {
         // Save
         await SupabaseFavoritesService.saveVideoEpisode(episode.id);
         _savedEpisodes.insert(0, episode);
-        debugPrint('✅ Episode saved: ${episode.id}');
+        // Debug logging removed
       }
 
       notifyListeners();
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error toggling episode saved: $e');
+      // Debug logging removed
       notifyListeners();
       return false;
     }
@@ -200,11 +200,11 @@ class SavedItemsProvider extends ChangeNotifier {
     try {
       await SupabaseFavoritesService.saveVideoEpisode(videoId);
       await loadSavedItems();
-      debugPrint('✅ Video saved: $videoTitle');
+      // Debug logging removed
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error adding video to saved: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -215,11 +215,11 @@ class SavedItemsProvider extends ChangeNotifier {
       await SupabaseFavoritesService.unsaveVideoEpisode(videoId);
       _savedEpisodes.removeWhere((e) => e.id == videoId);
       notifyListeners();
-      debugPrint('✅ Video removed from saved: $videoId');
+      // Debug logging removed
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('❌ Error removing video from saved: $e');
+      // Debug logging removed
       return false;
     }
   }

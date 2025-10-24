@@ -74,7 +74,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
         await _refreshData();
       }
     } catch (e) {
-      print('Error loading cached data: $e');
+      // Error loading cached data
       await _refreshData();
     }
   }
@@ -95,7 +95,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_categoriesKey, json.encode(_categories));
     } catch (e) {
-      print('Error loading categories: $e');
+      // Error loading categories
     }
   }
 
@@ -443,7 +443,7 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         foregroundColor: AppTheme.textPrimaryColor,
@@ -556,101 +556,6 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: TextField(
-        decoration: InputDecoration(
-          hintText: 'Cari e-book mengikut tajuk atau pengarang...',
-          prefixIcon: const HugeIcon(
-            icon: HugeIcons.strokeRoundedSearch01,
-            color: Colors.grey,
-          ),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
-      ),
-    );
-  }
-
-  Widget _buildStatsCard() {
-    final filteredEbooks = _filteredEbooks;
-    final totalEbooks = filteredEbooks.length;
-    final activeEbooks = filteredEbooks
-        .where((e) => e['is_active'] == true)
-        .length;
-    final premiumEbooks = filteredEbooks
-        .where((e) => e['is_premium'] == true)
-        .length;
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.borderColor, width: 1),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildStatPill(
-              label: 'Jumlah',
-              value: totalEbooks.toString(),
-              icon: HugeIcons.strokeRoundedBook02,
-              selected:
-                  _selectedCategoryFilter == null &&
-                  _premiumFilter == null &&
-                  _activeFilter == null,
-              onTap: () {
-                HapticFeedback.lightImpact();
-                setState(() {
-                  _selectedCategoryFilter = null;
-                  _premiumFilter = null;
-                  _activeFilter = null;
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatPill(
-              label: 'Aktif',
-              value: activeEbooks.toString(),
-              icon: HugeIcons.strokeRoundedCheckmarkCircle02,
-              selected: _activeFilter == true,
-              onTap: () {
-                HapticFeedback.lightImpact();
-                setState(() {
-                  _activeFilter = _activeFilter == true ? null : true;
-                });
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildStatPill(
-              label: 'Premium',
-              value: premiumEbooks.toString(),
-              icon: HugeIcons.strokeRoundedStar,
-              selected: _premiumFilter == true,
-              onTap: () {
-                HapticFeedback.lightImpact();
-                setState(() {
-                  _premiumFilter = _premiumFilter == true ? null : true;
-                });
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   // Compact chips below search: Jumlah, Aktif, Premium
   Widget _buildCompactStatsChips() {
     final filteredEbooks = _filteredEbooks;
@@ -713,69 +618,6 @@ class _AdminEbookListScreenState extends State<AdminEbookListScreen> {
     );
   }
 
-  Widget _buildStatPill({
-    required String label,
-    required String value,
-    required IconData icon,
-    required VoidCallback onTap,
-    bool selected = false,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: selected
-                ? AppTheme.primaryColor.withValues(alpha: 0.06)
-                : Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: selected ? AppTheme.primaryColor : AppTheme.borderColor,
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              HugeIcon(
-                icon: icon,
-                color: selected
-                    ? AppTheme.primaryColor
-                    : AppTheme.textSecondaryColor,
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.textPrimaryColor,
-                    ),
-                  ),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.textSecondaryColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   Widget _buildEbookList() {
     if (_isLoading) {

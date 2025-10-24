@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/kitab.dart';
 import '../models/ebook.dart';
@@ -14,11 +13,11 @@ class SupabaseSavedItemsService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        debugPrint('No authenticated user');
+        // Debug logging removed
         return [];
       }
 
-      debugPrint('Fetching saved kitabs for user: ${user.id}');
+      // Debug logging removed
 
       final response = await _supabase
           .from('video_kitab_user_interactions')
@@ -44,7 +43,7 @@ class SupabaseSavedItemsService {
           .eq('is_saved', true)
           .order('updated_at', ascending: false);
 
-      debugPrint('Saved kitabs response: $response');
+      // Debug logging removed
 
       final List<Kitab> kitabs = [];
       for (final item in response) {
@@ -54,10 +53,10 @@ class SupabaseSavedItemsService {
         }
       }
 
-      debugPrint('Found ${kitabs.length} saved kitabs');
+      // Debug logging removed
       return kitabs;
     } catch (e) {
-      debugPrint('Error fetching saved kitabs: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -67,11 +66,11 @@ class SupabaseSavedItemsService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        debugPrint('No authenticated user');
+        // Debug logging removed
         return [];
       }
 
-      debugPrint('Fetching saved episodes for user: ${user.id}');
+      // Debug logging removed
 
       final response = await _supabase
           .from('video_episode_user_interactions')
@@ -99,7 +98,7 @@ class SupabaseSavedItemsService {
           .eq('is_saved', true)
           .order('updated_at', ascending: false);
 
-      debugPrint('Saved episodes response: $response');
+      // Debug logging removed
 
       final List<VideoEpisode> episodes = [];
       for (final item in response) {
@@ -109,10 +108,10 @@ class SupabaseSavedItemsService {
         }
       }
 
-      debugPrint('Found ${episodes.length} saved episodes');
+      // Debug logging removed
       return episodes;
     } catch (e) {
-      debugPrint('Error fetching saved episodes: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -122,11 +121,11 @@ class SupabaseSavedItemsService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        debugPrint('No authenticated user');
+        // Debug logging removed
         return [];
       }
 
-      debugPrint('Fetching saved ebooks for user: ${user.id}');
+      // Debug logging removed
 
       final response = await _supabase
           .from('ebook_user_interactions')
@@ -154,7 +153,7 @@ class SupabaseSavedItemsService {
           .eq('is_saved', true)
           .order('updated_at', ascending: false);
 
-      debugPrint('Saved ebooks response: $response');
+      // Debug logging removed
 
       final List<Ebook> ebooks = [];
       for (final item in response) {
@@ -164,10 +163,10 @@ class SupabaseSavedItemsService {
         }
       }
 
-      debugPrint('Found ${ebooks.length} saved ebooks');
+      // Debug logging removed
       return ebooks;
     } catch (e) {
-      debugPrint('Error fetching saved ebooks: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -177,7 +176,7 @@ class SupabaseSavedItemsService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        debugPrint('No authenticated user');
+        // Debug logging removed
         return false;
       }
 
@@ -206,7 +205,7 @@ class SupabaseSavedItemsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error toggling kitab saved status: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -216,7 +215,7 @@ class SupabaseSavedItemsService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        debugPrint('No authenticated user');
+        // Debug logging removed
         return false;
       }
 
@@ -245,7 +244,7 @@ class SupabaseSavedItemsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error toggling episode saved status: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -255,7 +254,7 @@ class SupabaseSavedItemsService {
     try {
       final user = _supabase.auth.currentUser;
       if (user == null) {
-        debugPrint('No authenticated user');
+        // Debug logging removed
         return false;
       }
 
@@ -284,7 +283,7 @@ class SupabaseSavedItemsService {
 
       return true;
     } catch (e) {
-      debugPrint('Error toggling ebook saved status: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -304,7 +303,7 @@ class SupabaseSavedItemsService {
 
       return response?['is_saved'] == true;
     } catch (e) {
-      debugPrint('Error checking kitab saved status: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -324,7 +323,7 @@ class SupabaseSavedItemsService {
 
       return response?['is_saved'] == true;
     } catch (e) {
-      debugPrint('Error checking episode saved status: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -344,7 +343,7 @@ class SupabaseSavedItemsService {
 
       return response?['is_saved'] == true;
     } catch (e) {
-      debugPrint('Error checking ebook saved status: $e');
+      // Debug logging removed
       return false;
     }
   }

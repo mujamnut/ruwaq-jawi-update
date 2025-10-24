@@ -123,6 +123,7 @@ flutter:
     - assets/images/categories/
     - assets/fonts/
     - assets/animations/
+    - .env
 
   # Custom fonts
   fonts:

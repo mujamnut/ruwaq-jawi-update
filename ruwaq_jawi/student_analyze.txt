@@ -1,0 +1,95 @@
+Analyzing student...                                            
+
+warning - The declaration '_buildCategoryCard' isn't referenced - lib\features\student\screens\category_list_screen.dart:257:10 - unused_element
+warning - Dead code - lib\features\student\screens\category_list_screen.dart:481:5 - dead_code
+warning - Dead code - lib\features\student\screens\category_list_screen.dart:564:5 - dead_code
+warning - The declaration '_countItemsForCategory' isn't referenced - lib\features\student\screens\category_list_screen.dart:587:7 - unused_element
+warning - The declaration '_buildSliverLoadingState' isn't referenced - lib\features\student\screens\category_list_screen.dart:601:10 - unused_element
+warning - Unused import: 'package:hugeicons/hugeicons.dart' - lib\features\student\screens\content_player_screen\widgets\fullscreen_player_widget.dart:3:8 - unused_import
+warning - Unused import: 'package:hugeicons/hugeicons.dart' - lib\features\student\screens\content_player_screen\widgets\video_player_widget.dart:3:8 - unused_import
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\ebook_detail_screen.dart:187:21 - use_build_context_synchronously
+warning - Unused import: 'ebook_screen/widgets/ebook_loading_state_widget.dart' - lib\features\student\screens\ebook_screen.dart:13:8 - unused_import
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\ebook_screen\widgets\ebook_list_card_widget.dart:343:46 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\student\screens\kitab_detail_screen.dart:203:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\kitab_detail_screen.dart:1773:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\kitab_detail_screen.dart:1826:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\kitab_detail_screen.dart:1914:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\kitab_detail_screen.dart:2053:15 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\kitab_detail_screen.dart:2056:15 - avoid_print
+   info - Uses 'await' on an instance of 'bool', which is not a subtype of 'Future' - lib\features\student\screens\kitab_list_screen.dart:1236:14 - await_only_futures
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\kitab_list_screen.dart:1272:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\kitab_list_screen.dart:1293:34 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\kitab_list_screen.dart:1321:34 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\notification_screen.dart:103:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\notification_screen.dart:810:30 - use_build_context_synchronously
+warning - Unused import: 'package:hugeicons/hugeicons.dart' - lib\features\student\screens\notification_screen\widgets\notification_detail_bottom_sheet.dart:3:8 - unused_import
+warning - Unused import: '../../../core/services/supabase_service.dart' - lib\features\student\screens\payment_history_screen.dart:10:8 - unused_import
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:108:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:113:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:132:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:153:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:161:15 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:168:15 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:176:17 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:178:17 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:182:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\payment_screen.dart:184:13 - avoid_print
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:188:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:198:15 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:199:13 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:201:13 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:217:9 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\student\screens\preview_video_player_screen.dart:118:7 - avoid_print
+warning - The declaration '_showPasswordChangeDialog' isn't referenced - lib\features\student\screens\privacy_security_screen.dart:657:8 - unused_element
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\privacy_security_screen.dart:775:42 - use_build_context_synchronously
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:850:21 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:851:21 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:861:21 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:862:21 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\privacy_security_screen.dart:1539:42 - use_build_context_synchronously
+warning - The declaration '_handleChangePassword' isn't referenced - lib\features\student\screens\profile_screen.dart:115:8 - unused_element
+warning - The value of the local variable 'isPremium' isn't used - lib\features\student\screens\profile_screen.dart:633:11 - unused_local_variable
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\profile_screen_backup.dart:382:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\saved_items_screen.dart:930:38 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\saved_items_screen.dart:985:38 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\saved_items_screen.dart:1033:38 - use_build_context_synchronously
+   info - Unnecessary use of getter and setter to wrap a field - lib\features\student\screens\student_home_screen\managers\home_scroll_manager.dart:22:11 - unnecessary_getters_setters
+   info - Unnecessary use of getter and setter to wrap a field - lib\features\student\screens\student_home_screen\managers\home_scroll_manager.dart:23:12 - unnecessary_getters_setters
+warning - A value for optional parameter 'typeDelay' isn't ever given - lib\features\student\screens\student_home_screen\widgets\home_header_widget.dart:287:10 - unused_element_parameter
+warning - A value for optional parameter 'deleteDelay' isn't ever given - lib\features\student\screens\student_home_screen\widgets\home_header_widget.dart:288:10 - unused_element_parameter
+warning - A value for optional parameter 'holdDelay' isn't ever given - lib\features\student\screens\student_home_screen\widgets\home_header_widget.dart:289:10 - unused_element_parameter
+warning - The declaration '_QuickChip' isn't referenced - lib\features\student\screens\student_home_screen\widgets\home_header_widget.dart:362:7 - unused_element
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\student_home_screen_backup.dart:1871:36 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_detail_screen.dart:78:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_detail_screen.dart:80:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:82:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:88:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:95:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:106:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:110:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:115:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:120:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:1078:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\subscription_screen.dart:1105:7 - avoid_print
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1161:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1165:9 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1179:47 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1180:23 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1183:28 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:47:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:51:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:62:13 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:96:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:105:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:123:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:124:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:125:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:133:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:145:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:151:11 - avoid_print
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\toyyibpay_payment_screen.dart:164:36 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:175:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\student\screens\toyyibpay_payment_screen.dart:190:11 - avoid_print
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\toyyibpay_payment_screen.dart:273:31 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\student\widgets\preview_video_selection_dialog.dart:50:7 - avoid_print
+

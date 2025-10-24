@@ -475,24 +475,6 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen>
     );
   }
 
-  Widget _buildTabBar() {
-    return Container(
-      color: AppTheme.surfaceColor,
-      child: TabBar(
-        controller: _tabController,
-        labelColor: AppTheme.primaryColor,
-        unselectedLabelColor: AppTheme.textSecondaryColor,
-        indicatorColor: AppTheme.primaryColor,
-        tabs: const [
-          Tab(text: 'Info', icon: Icon(Icons.info_outline)),
-          Tab(text: 'E-books', icon: Icon(Icons.book_outlined)),
-          Tab(text: 'Video Kitab', icon: Icon(Icons.video_library_outlined)),
-          Tab(text: 'Aktiviti', icon: Icon(Icons.timeline_outlined)),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTabContent() {
     return TabBarView(
       controller: _tabController,

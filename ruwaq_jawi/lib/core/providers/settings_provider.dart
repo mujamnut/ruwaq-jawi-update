@@ -126,7 +126,7 @@ class SettingsProvider with ChangeNotifier {
       _debugMode = response['debug_mode'] ?? _debugMode;
       _autoBackup = response['auto_backup'] ?? _autoBackup;
     } catch (e) {
-      print('Settings not found in Supabase, using defaults: $e');
+      // Debug logging removed
     }
   }
 
@@ -159,7 +159,7 @@ class SettingsProvider with ChangeNotifier {
       _debugMode = prefs.getBool('debug_mode') ?? _debugMode;
       _autoBackup = prefs.getBool('auto_backup') ?? _autoBackup;
     } catch (e) {
-      print('Error loading from local storage: $e');
+      // Debug logging removed
     }
   }
 
@@ -212,7 +212,7 @@ class SettingsProvider with ChangeNotifier {
           .from('app_settings')
           .upsert(settingsData);
     } catch (e) {
-      print('Error saving to Supabase: $e');
+      // Debug logging removed
     }
   }
 
@@ -245,7 +245,7 @@ class SettingsProvider with ChangeNotifier {
       await prefs.setBool('debug_mode', _debugMode);
       await prefs.setBool('auto_backup', _autoBackup);
     } catch (e) {
-      print('Error saving to local storage: $e');
+      // Debug logging removed
     }
   }
 
@@ -408,9 +408,9 @@ class SettingsProvider with ChangeNotifier {
       // Create backup logic here
       // This could export settings to a file or cloud storage
       
-      print('Creating backup...');
+      // Debug logging removed
       await Future.delayed(const Duration(seconds: 2)); // Simulate backup process
-      print('Backup created successfully');
+      // Debug logging removed
     } catch (e) {
       _error = e.toString();
       notifyListeners();

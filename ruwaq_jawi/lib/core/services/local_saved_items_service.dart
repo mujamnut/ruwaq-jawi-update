@@ -1,5 +1,4 @@
 import 'package:hive/hive.dart';
-import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import '../models/kitab.dart';
 import '../models/saved_item.dart';
@@ -23,7 +22,7 @@ class LocalSavedItemsService {
       _savedVideosBox = await Hive.openBox<String>(_videosBoxName);
       _savedEbooksBox = await Hive.openBox<String>(_ebooksBoxName);
     } catch (e) {
-      debugPrint('Error initializing LocalSavedItemsService: $e');
+      // Debug logging removed
     }
   }
 
@@ -35,7 +34,7 @@ class LocalSavedItemsService {
       final json = jsonEncode(item.toJson());
       await _savedItemsBox!.put(item.id, json);
     } catch (e) {
-      debugPrint('Error saving item: $e');
+      // Debug logging removed
     }
   }
 
@@ -50,7 +49,7 @@ class LocalSavedItemsService {
       }
       return items;
     } catch (e) {
-      debugPrint('Error getting saved items: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -61,7 +60,7 @@ class LocalSavedItemsService {
     try {
       await _savedItemsBox!.delete(itemId);
     } catch (e) {
-      debugPrint('Error removing item: $e');
+      // Debug logging removed
     }
   }
 
@@ -77,7 +76,7 @@ class LocalSavedItemsService {
       // Also save via LocalFavoritesService (dual-write to Supabase)
       await LocalFavoritesService.addVideoKitabToFavorites(kitab.id);
     } catch (e) {
-      debugPrint('Error saving kitab: $e');
+      // Debug logging removed
     }
   }
 
@@ -92,7 +91,7 @@ class LocalSavedItemsService {
       }
       return kitabs;
     } catch (e) {
-      debugPrint('Error getting saved kitab: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -107,7 +106,7 @@ class LocalSavedItemsService {
       // Also remove via LocalFavoritesService (sync to Supabase)
       await LocalFavoritesService.removeVideoKitabFromFavorites(kitabId);
     } catch (e) {
-      debugPrint('Error removing kitab: $e');
+      // Debug logging removed
     }
   }
 
@@ -125,7 +124,7 @@ class LocalSavedItemsService {
       final key = '${videoData['kitabId']}_${videoData['episodeId']}';
       await _savedVideosBox!.put(key, json);
     } catch (e) {
-      debugPrint('Error saving video: $e');
+      // Debug logging removed
     }
   }
 
@@ -140,7 +139,7 @@ class LocalSavedItemsService {
       }
       return videos;
     } catch (e) {
-      debugPrint('Error getting saved videos: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -152,7 +151,7 @@ class LocalSavedItemsService {
       final key = '${kitabId}_$episodeId';
       await _savedVideosBox!.delete(key);
     } catch (e) {
-      debugPrint('Error removing video: $e');
+      // Debug logging removed
     }
   }
 
@@ -175,7 +174,7 @@ class LocalSavedItemsService {
       final ebookId = ebookData['id'] as String;
       await LocalFavoritesService.addEbookToFavorites(ebookId);
     } catch (e) {
-      debugPrint('Error saving ebook: $e');
+      // Debug logging removed
     }
   }
 
@@ -190,7 +189,7 @@ class LocalSavedItemsService {
       }
       return ebooks;
     } catch (e) {
-      debugPrint('Error getting saved ebooks: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -205,7 +204,7 @@ class LocalSavedItemsService {
       // Also remove via LocalFavoritesService (sync to Supabase)
       await LocalFavoritesService.removeEbookFromFavorites(ebookId);
     } catch (e) {
-      debugPrint('Error removing ebook: $e');
+      // Debug logging removed
     }
   }
 
@@ -222,7 +221,7 @@ class LocalSavedItemsService {
       await _savedVideosBox?.clear();
       await _savedEbooksBox?.clear();
     } catch (e) {
-      debugPrint('Error clearing saved items: $e');
+      // Debug logging removed
     }
   }
 
@@ -238,7 +237,7 @@ class LocalSavedItemsService {
                 (_savedEbooksBox?.length ?? 0),
       };
     } catch (e) {
-      debugPrint('Error getting statistics: $e');
+      // Debug logging removed
       return {'kitab': 0, 'videos': 0, 'ebooks': 0, 'total': 0};
     }
   }

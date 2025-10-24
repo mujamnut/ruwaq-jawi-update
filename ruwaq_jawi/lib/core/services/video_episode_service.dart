@@ -289,7 +289,7 @@ class VideoEpisodeService {
           .eq('id', videoKitabId);
     } catch (e) {
       // Don't throw error for stats update failure
-      print('Warning: Failed to update video kitab stats: $e');
+      // Debug logging removed
     }
   }
 }

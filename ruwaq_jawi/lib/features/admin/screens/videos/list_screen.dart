@@ -13,7 +13,6 @@ import '../../../../core/models/category.dart' as CategoryModel;
 import '../../widgets/admin_bottom_nav.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'kitab_manual_form_screen.dart';
-import 'kitab_auto_form_screen.dart';
 import 'kitab_detail_screen.dart';
 
 class AdminVideoListScreen extends StatefulWidget {
@@ -35,8 +34,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   final _searchController = TextEditingController();
   late AnimationController _fabAnimationController;
   late AnimationController _listAnimationController;
-  late Animation<double> _fabScaleAnimation;
-  late Animation<double> _fabRotationAnimation;
   final ScrollController _scrollController = ScrollController();
   bool _isAppBarVisible = true;
 
@@ -54,25 +51,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-
-    // Setup FAB animations
-    _fabScaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _fabAnimationController,
-        curve: Curves.elasticOut,
-      ),
-    );
-
-    _fabRotationAnimation =
-        Tween<double>(
-          begin: 0.0,
-          end: 0.125, // 45 degrees
-        ).animate(
-          CurvedAnimation(
-            parent: _fabAnimationController,
-            curve: Curves.easeInOut,
-          ),
-        );
 
     // Setup scroll listener for app bar visibility
     _scrollController.addListener(_onScroll);
@@ -251,23 +229,26 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
   SliverAppBar _buildTitleSliverAppBar(bool innerBoxIsScrolled) {
     final bool filterActive = _selectedFilter != 'all';
     return SliverAppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       foregroundColor: AppTheme.textPrimaryColor,
       elevation: 0,
       pinned: true,
       forceElevated: innerBoxIsScrolled,
-      systemOverlayStyle: SystemUiOverlayStyle.dark,
-      titleSpacing: 0,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+      ),
+      leading: null,
+      automaticallyImplyLeading: false,
+      titleSpacing: 16,
       centerTitle: false,
-      title: const Padding(
-        padding: EdgeInsets.only(left: 16),
-        child: Text(
-          'Video Kitab',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            letterSpacing: -0.2,
-          ),
+      title: const Text(
+        'Urus Kitab',
+        style: TextStyle(
+          color: AppTheme.textPrimaryColor,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+          letterSpacing: -0.2,
         ),
       ),
       bottom: PreferredSize(
@@ -444,98 +425,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
-  Widget _buildSearchAndFilterSection() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: const BoxDecoration(color: Colors.white),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Modern Search Bar
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              color: Colors.transparent,
-              border: Border.all(color: AppTheme.borderColor, width: 1),
-            ),
-            child: TextField(
-              controller: _searchController,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-              decoration: InputDecoration(
-                hintText: 'Cari kitab, pengarang, atau kategori...',
-                hintStyle: TextStyle(
-                  color: AppTheme.textSecondaryColor.withValues(alpha: 0.6),
-                  fontSize: 15,
-                ),
-                filled: true,
-                fillColor: AppTheme.neutralGray,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(28),
-                  borderSide: BorderSide.none,
-                ),
-                prefixIcon: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 10,
-                  ),
-                  child: HugeIcon(
-                    icon: HugeIcons.strokeRoundedSearch01,
-                    color: AppTheme.textSecondaryColor.withValues(alpha: 0.7),
-                    size: 18,
-                  ),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 12,
-                ),
-              ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Modern Filter Chips
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _buildModernFilterChip(
-                  'all',
-                  'Semua',
-                  HugeIcons.strokeRoundedGridView,
-                ),
-                _buildModernFilterChip(
-                  'active',
-                  'Aktif',
-                  HugeIcons.strokeRoundedCheckmarkCircle02,
-                ),
-                _buildModernFilterChip(
-                  'inactive',
-                  'Tidak Aktif',
-                  HugeIcons.strokeRoundedCancel01,
-                ),
-                _buildModernFilterChip(
-                  'premium',
-                  'Premium',
-                  HugeIcons.strokeRoundedStar,
-                ),
-                _buildModernFilterChip(
-                  'free',
-                  'Percuma',
-                  HugeIcons.strokeRoundedGift,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildModernFilterChip(String value, String label, IconData icon, {VoidCallback? onChanged}) {
     final isSelected = _selectedFilter == value;
@@ -772,7 +661,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
           itemCount: _filteredKitab.length,
           itemBuilder: (context, index) {
             final kitab = _filteredKitab[index];
-            final animationDelay = index * 0.1;
             return TweenAnimationBuilder(
               duration: Duration(milliseconds: 600 + (index * 100)),
               tween: Tween<double>(begin: 0.0, end: 1.0),
@@ -975,43 +863,6 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
-  Widget _buildStatusBadge(
-    String label,
-    Color color,
-    IconData icon, {
-    EdgeInsets? margin,
-  }) {
-    return Container(
-      margin: margin,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.9),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HugeIcon(icon: icon, size: 12, color: Colors.white),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // Small dark badge used over thumbnails (duration, count)
   Widget _buildOverlayBadge(String text) {
@@ -1032,75 +883,7 @@ class _AdminVideoListScreenState extends State<AdminVideoListScreen>
     );
   }
 
-  Widget _buildInfoChip({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        HugeIcon(icon: icon, size: 16, color: color),
-        const SizedBox(width: 6),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            color: color,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildEnhancedPlaceholder() {
-    return Container(
-      width: double.infinity,
-      height: 140,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppTheme.primaryColor.withValues(alpha: 0.1),
-            AppTheme.primaryLightColor.withValues(alpha: 0.05),
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: HugeIcon(
-              icon: HugeIcons.strokeRoundedVideo01,
-              size: 40,
-              color: AppTheme.primaryColor.withValues(alpha: 0.7),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Video Kitab',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.primaryColor.withValues(alpha: 0.8),
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // Full-card background placeholder (used when thumbnail missing or fails)
   Widget _buildCardBackgroundPlaceholder() {

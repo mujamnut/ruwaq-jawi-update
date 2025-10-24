@@ -190,7 +190,9 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     });
 
     // Show controls temporarily when toggling fullscreen
-    _controlsManager.showControlsTemporarily(isPlaying: _videoManager.isPlaying);
+    _controlsManager.showControlsTemporarily(
+      isPlaying: _videoManager.isPlaying,
+    );
     _controlsManager.cancelTimers();
 
     try {
@@ -382,7 +384,8 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               size: 20.0,
             ),
             onPressed: () {
-              final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+              final isLandscape =
+                  MediaQuery.of(context).orientation == Orientation.landscape;
               if (_isFullscreen || isLandscape) {
                 _toggleFullscreen();
               } else {
@@ -407,10 +410,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
               switchInCurve: Curves.easeInOut,
               switchOutCurve: Curves.easeInOut,
               transitionBuilder: (child, animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: child,
-                );
+                return FadeTransition(opacity: animation, child: child);
               },
               // Use unique keys to force proper transitions
               // If fullscreen requested but still portrait, show portrait layout temporarily
@@ -479,7 +479,6 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
           : _buildContent(player),
     );
   }
-
 
   Widget _buildErrorView() {
     return Center(
@@ -558,9 +557,7 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
     // Ensure our back button auto-hides in cadence with controls
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _controlsManager.startControlsTimer(
-        isPlaying: _videoManager.isPlaying,
-      );
+      _controlsManager.startControlsTimer(isPlaying: _videoManager.isPlaying);
     });
 
     return Column(
@@ -610,7 +607,12 @@ class _ContentPlayerScreenState extends State<ContentPlayerScreen>
                             children: [
                               // Title and Description
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+                                padding: const EdgeInsets.fromLTRB(
+                                  20,
+                                  20,
+                                  20,
+                                  16,
+                                ),
                                 child: _buildTitleAndDescription(),
                               ),
 
@@ -690,10 +692,7 @@ class _ExpandableDescriptionState extends State<_ExpandableDescription> {
   void _checkIfNeedsExpansion() {
     final span = TextSpan(
       text: widget.description,
-      style: const TextStyle(
-        fontSize: 15,
-        height: 1.4,
-      ),
+      style: const TextStyle(fontSize: 15, height: 1.4),
     );
 
     final tp = TextPainter(
@@ -738,7 +737,7 @@ class _ExpandableDescriptionState extends State<_ExpandableDescription> {
             child: Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                _isExpanded ? 'Kurang' : 'Lagi...',
+                _isExpanded ? 'Less' : 'More...',
                 style: const TextStyle(
                   color: AppTheme.primaryColor,
                   fontSize: 14,

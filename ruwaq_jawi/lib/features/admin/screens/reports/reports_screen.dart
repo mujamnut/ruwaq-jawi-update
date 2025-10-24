@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
@@ -234,25 +235,36 @@ class _AdminReportsScreenState extends State<AdminReportsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        title: const Text('Laporan Sistem'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppTheme.textPrimaryColor,
         elevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const HugeIcon(
             icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: Colors.white,
-            size: 20.0,
+            color: AppTheme.textPrimaryColor,
+            size: 24.0,
           ),
           onPressed: () => context.go('/admin'),
         ),
+        title: const Text(
+          'Laporan Sistem',
+          style: TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const HugeIcon(
               icon: HugeIcons.strokeRoundedRefresh,
-              color: Colors.white,
+              color: AppTheme.textPrimaryColor,
               size: 24.0,
             ),
             onPressed: _loadReportData,

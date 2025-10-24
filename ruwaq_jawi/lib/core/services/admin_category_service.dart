@@ -317,7 +317,7 @@ class AdminCategoryService {
       }
     } catch (e) {
       // Log error tapi jangan throw - ini bukan critical
-      print('Warning: Tidak dapat memadam icon lama: $e');
+      // Debug logging removed
     }
   }
 }

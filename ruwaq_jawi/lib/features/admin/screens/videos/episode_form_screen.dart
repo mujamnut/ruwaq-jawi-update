@@ -240,7 +240,6 @@ class _AdminEpisodeFormScreenState extends State<AdminEpisodeFormScreen> {
       }
     } catch (e) {
       // Silently fail - don't bother user with API errors
-      print('Could not detect video duration: $e');
     }
   }
 

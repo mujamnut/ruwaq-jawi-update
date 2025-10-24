@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class VideoProgressService {
@@ -18,7 +17,7 @@ class VideoProgressService {
       _box = await Hive.openBox(_boxName);
       _isInitialized = true;
     } catch (e) {
-      debugPrint('Error initializing VideoProgressService: $e');
+      // Debug logging removed
       _isInitialized = false;
       // Don't throw - allow app to continue without video progress tracking
     }
@@ -27,9 +26,7 @@ class VideoProgressService {
   /// Get the progress box with safe initialization
   static Box<dynamic>? get _progressBox {
     if (_box == null || !_box!.isOpen) {
-      debugPrint(
-        'VideoProgressService not initialized. Attempting to initialize...',
-      );
+      // Debug logging removed
       // Try to initialize on demand
       initialize().then((_) {});
       return null;
@@ -45,7 +42,7 @@ class VideoProgressService {
     try {
       final box = _progressBox;
       if (box == null) {
-        debugPrint('Cannot save video position: box not initialized');
+        // Debug logging removed
         return false;
       }
 
@@ -63,7 +60,7 @@ class VideoProgressService {
       await box.put(_videoProgressKey, updatedProgress);
       return true;
     } catch (e) {
-      debugPrint('Error saving video position: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -73,7 +70,7 @@ class VideoProgressService {
     try {
       final box = _progressBox;
       if (box == null) {
-        debugPrint('Cannot get video position: box not initialized');
+        // Debug logging removed
         return 0;
       }
 
@@ -94,7 +91,7 @@ class VideoProgressService {
 
       return 0; // Start from beginning if no progress saved
     } catch (e) {
-      debugPrint('Error getting video position for $videoId: $e');
+      // Debug logging removed
       return 0;
     }
   }
@@ -104,7 +101,7 @@ class VideoProgressService {
     try {
       final box = _progressBox;
       if (box == null) {
-        debugPrint('Cannot get last watched time: box not initialized');
+        // Debug logging removed
         return null;
       }
 
@@ -118,7 +115,7 @@ class VideoProgressService {
 
       return null;
     } catch (e) {
-      debugPrint('Error getting last watched time: $e');
+      // Debug logging removed
       return null;
     }
   }
@@ -129,7 +126,7 @@ class VideoProgressService {
       final position = getVideoPosition(videoId);
       return position > 10; // Consider watched if more than 10 seconds
     } catch (e) {
-      debugPrint('Error checking watch progress: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -139,7 +136,7 @@ class VideoProgressService {
     try {
       final box = _progressBox;
       if (box == null) {
-        debugPrint('Cannot get all video progress: box not initialized');
+        // Debug logging removed
         return {};
       }
 
@@ -149,7 +146,7 @@ class VideoProgressService {
           <String, dynamic>{};
       return Map<String, Map<String, dynamic>>.from(allProgress);
     } catch (e) {
-      debugPrint('Error getting all video progress: $e');
+      // Debug logging removed
       return {};
     }
   }
@@ -170,7 +167,7 @@ class VideoProgressService {
 
       return sortedEntries.take(limit).map((entry) => entry.key).toList();
     } catch (e) {
-      debugPrint('Error getting recently watched videos: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -180,7 +177,7 @@ class VideoProgressService {
     try {
       final box = _progressBox;
       if (box == null) {
-        debugPrint('Cannot remove video progress: box not initialized');
+        // Debug logging removed
         return false;
       }
 
@@ -193,7 +190,7 @@ class VideoProgressService {
 
       return true;
     } catch (e) {
-      debugPrint('Error removing video progress: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -206,7 +203,7 @@ class VideoProgressService {
         await box.delete(_videoProgressKey);
       }
     } catch (e) {
-      debugPrint('Error clearing all video progress: $e');
+      // Debug logging removed
     }
   }
 
@@ -241,7 +238,7 @@ class VideoProgressService {
       _box = null;
       _isInitialized = false;
     } catch (e) {
-      debugPrint('Error closing VideoProgressService: $e');
+      // Debug logging removed
     }
   }
 }

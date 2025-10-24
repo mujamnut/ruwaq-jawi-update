@@ -200,7 +200,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
         );
         _episodePreviewStatus[episode.id] = hasPreview;
       } catch (e) {
-        print('Error checking preview for episode ${episode.id}: $e');
         _episodePreviewStatus[episode.id] = false;
       }
     }
@@ -1392,7 +1391,6 @@ class _KitabDetailScreenState extends State<KitabDetailScreen>
         }
       }
     } catch (e) {
-      debugPrint('Error toggling saved status: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1770,7 +1768,6 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
         });
       }
     } catch (e) {
-      print('❌ Connectivity check error: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -1823,7 +1820,6 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
         throw Exception('No video URL provided');
       }
     } catch (e) {
-      print('❌ YouTube player initialization error: $e');
       if (mounted) {
         setState(() {
           _hasError = true;
@@ -1911,7 +1907,7 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
       _controller?.dispose();
       _controller = null;
     } catch (e) {
-      print('❌ Error disposing YouTube controller: $e');
+      // Error disposing controller
     }
     super.dispose();
   }
@@ -2050,10 +2046,10 @@ class _HeaderVideoPlayerState extends State<_HeaderVideoPlayer> {
             controller: _controller!,
             showVideoProgressIndicator: false, // Hide default progress
             onReady: () {
-              print('✅ YouTube player ready');
+              // YouTube player ready
             },
             onEnded: (metaData) {
-              print('📺 Video ended');
+              // Video ended
             },
           ),
         ),

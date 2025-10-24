@@ -115,7 +115,6 @@ class _PreviewVideoPlayerScreenState extends State<PreviewVideoPlayerScreen>
         });
       }
     } catch (e) {
-      print('Error loading preview data: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;

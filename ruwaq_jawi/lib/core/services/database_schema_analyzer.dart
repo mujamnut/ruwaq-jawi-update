@@ -1,5 +1,4 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter/foundation.dart';
 import 'supabase_service.dart';
 
 /// Database field information
@@ -382,7 +381,7 @@ class DatabaseSchemaAnalyzer {
 
         return List<Map<String, dynamic>>.from(data);
       } catch (e2) {
-        debugPrint('Error fetching foreign key data: $e2');
+        // Debug logging removed
         return [];
       }
     }

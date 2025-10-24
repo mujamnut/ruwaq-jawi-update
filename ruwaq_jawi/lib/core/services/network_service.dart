@@ -61,9 +61,7 @@ class NetworkService {
       try {
         // Check if online
         if (connectivity.isOffline) {
-          debugPrint(
-            '🔄 NetworkService: Waiting for connection (attempt ${attempts + 1}/$maxRetries)',
-          );
+          // Debug logging removed
 
           // Wait for connection
           await _waitForConnection(connectivity, timeout: retryDelay);
@@ -84,9 +82,7 @@ class NetworkService {
         return await operation();
       } catch (e) {
         attempts++;
-        debugPrint(
-          '❌ NetworkService: Operation failed (attempt $attempts/$maxRetries): $e',
-        );
+        // Debug logging removed
 
         // Check if network error
         if (_isNetworkError(e)) {

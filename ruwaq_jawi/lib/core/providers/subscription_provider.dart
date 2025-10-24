@@ -32,9 +32,9 @@ class SubscriptionProvider with ChangeNotifier {
 
       secretKey = secretSetting?.settingValue?['value'];
 
-      print('🔑 ToyyibPay credentials loaded: ${secretKey != null ? 'Secret Key found' : 'No secret key'}');
+      // Debug logging removed
     } catch (e) {
-      print('⚠️ Could not load ToyyibPay credentials from settings: $e');
+      // Debug logging removed
       // Use hardcoded for testing (remove in production!)
       secretKey = 'sandbox_secret_key_here'; // Replace with actual sandbox key
     }
@@ -45,7 +45,7 @@ class SubscriptionProvider with ChangeNotifier {
       toyyibPaySecretKey: secretKey,
     );
 
-    print('✅ SubscriptionService initialized successfully');
+    // Debug logging removed
   }
 
   // Getters
@@ -272,7 +272,7 @@ class SubscriptionProvider with ChangeNotifier {
     required String planId,
     required double amount,
   }) async {
-    print('⚠️ storePendingPayment is deprecated - payment records are now handled automatically by PaymentProcessingService');
+    // Debug logging removed
     // No-op - payment records are now handled by PaymentProcessingService
   }
 
@@ -291,13 +291,13 @@ class SubscriptionProvider with ChangeNotifier {
         throw Exception('User not authenticated');
       }
 
-      print('🔍 === NEW PAYMENT VERIFICATION FLOW ===');
-      print('📋 Bill ID: $billId');
-      print('📋 Plan ID: $planId');
-      print('📋 Amount: RM$amount');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       // STEP 1: Verify payment with verify-payment Edge Function (v31)
-      print('🔍 STEP 1: Verifying payment status...');
+      // Debug logging removed
       final paymentResult = await _verifyPaymentOnly(
         billId: billId,
         userId: user.id,
@@ -305,18 +305,18 @@ class SubscriptionProvider with ChangeNotifier {
       );
 
       if (!paymentResult['success']) {
-        print('❌ PAYMENT VERIFICATION FAILED');
-        print('   Reason: ${paymentResult['message']}');
-        print('   Status: ${paymentResult['paymentStatus']}');
+        // Debug logging removed
+        // Debug logging removed
+        // Debug logging removed
         return false;
       }
 
-      print('✅ PAYMENT VERIFICATION SUCCESSFUL');
-      print('   Status: ${paymentResult['paymentStatus']}');
-      print('   Amount: RM${paymentResult['paymentData']['amount']}');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       // STEP 2: Activate/Extend subscription
-      print('🔁 STEP 2: Activating/Extending subscription...');
+      // Debug logging removed
 
       // Check if user has existing active subscription
       final hasExistingSubscription = await _hasActiveSubscription(user.id);
@@ -324,14 +324,14 @@ class SubscriptionProvider with ChangeNotifier {
       bool activationSuccess = false;
 
       if (hasExistingSubscription) {
-        print('🔄 User has existing subscription - Using extend-subscription...');
+        // Debug logging removed
         activationSuccess = await _extendSubscription(
           userId: user.id,
           planId: planId,
           paymentData: paymentResult['paymentData'],
         );
       } else {
-        print('🆕 User has no active subscription - Using activate-subscription...');
+        // Debug logging removed
         activationSuccess = await _activateSubscription(
           userId: user.id,
           planId: planId,
@@ -340,18 +340,18 @@ class SubscriptionProvider with ChangeNotifier {
       }
 
       if (activationSuccess) {
-        print('✅ SUBSCRIPTION ACTIVATION SUCCESSFUL');
+        // Debug logging removed
         // Reload subscriptions to reflect changes
         await loadUserSubscriptions();
-        print('✅ User data refreshed');
+        // Debug logging removed
         return true;
       } else {
-        print('❌ SUBSCRIPTION ACTIVATION FAILED');
+        // Debug logging removed
         return false;
       }
 
     } catch (e) {
-      print('❌ Error in payment verification flow: $e');
+      // Debug logging removed
       _setError('Error verifying payment: $e');
       return false;
     } finally {
@@ -372,7 +372,7 @@ class SubscriptionProvider with ChangeNotifier {
         'planId': planId,
       });
 
-      print('📤 Calling verify-payment Edge Function (v31)...');
+      // Debug logging removed
 
       final response = await http.post(
         Uri.parse('https://ckgxglvozrsognqqkpkk.supabase.co/functions/v1/verify-payment'),
@@ -383,28 +383,28 @@ class SubscriptionProvider with ChangeNotifier {
         body: requestBody,
       );
 
-      print('📥 verify-payment Response:');
-      print('   Status: ${response.statusCode}');
-      print('   Body: ${response.body}');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       if (response.statusCode == 200) {
         try {
           final data = jsonDecode(response.body);
-          print('✅ Payment verification completed');
-          print('   Success: ${data['success']}');
-          print('   Status: ${data['paymentStatus']}');
-          print('   Message: ${data['message']}');
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
           return data;
         } catch (jsonError) {
-          print('❌ Failed to parse verify-payment response: $jsonError');
+          // Debug logging removed
           return {'success': false, 'error': 'Invalid response format'};
         }
       } else {
-        print('❌ verify-payment HTTP Error: ${response.statusCode}');
+        // Debug logging removed
         return {'success': false, 'error': 'HTTP error ${response.statusCode}'};
       }
     } catch (error) {
-      print('❌ verify-payment request error: $error');
+      // Debug logging removed
       return {'success': false, 'error': error.toString()};
     }
   }
@@ -422,7 +422,7 @@ class SubscriptionProvider with ChangeNotifier {
         'paymentData': paymentData,
       });
 
-      print('📤 Calling extend-subscription Edge Function...');
+      // Debug logging removed
 
       final response = await http.post(
         Uri.parse('https://ckgxglvozrsognqqkpkk.supabase.co/functions/v1/extend-subscription'),
@@ -433,29 +433,29 @@ class SubscriptionProvider with ChangeNotifier {
         body: requestBody,
       );
 
-      print('📥 extend-subscription Response:');
-      print('   Status: ${response.statusCode}');
-      print('   Body: ${response.body}');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       if (response.statusCode == 200) {
         try {
           final data = jsonDecode(response.body);
-          print('✅ Subscription extension completed');
-          print('   Success: ${data['success']}');
-          print('   Action: ${data['action']}');
-          print('   Message: ${data['message']}');
-          print('   Days Added: ${data['daysAdded'] ?? 0}');
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
           return data['success'] ?? false;
         } catch (jsonError) {
-          print('❌ Failed to parse extend-subscription response: $jsonError');
+          // Debug logging removed
           return false;
         }
       } else {
-        print('❌ extend-subscription HTTP Error: ${response.statusCode}');
+        // Debug logging removed
         return false;
       }
     } catch (error) {
-      print('❌ extend-subscription request error: $error');
+      // Debug logging removed
       return false;
     }
   }
@@ -473,7 +473,7 @@ class SubscriptionProvider with ChangeNotifier {
         'paymentData': paymentData,
       });
 
-      print('📤 Calling activate-subscription Edge Function...');
+      // Debug logging removed
 
       final response = await http.post(
         Uri.parse('https://ckgxglvozrsognqqkpkk.supabase.co/functions/v1/activate-subscription'),
@@ -484,29 +484,29 @@ class SubscriptionProvider with ChangeNotifier {
         body: requestBody,
       );
 
-      print('📥 activate-subscription Response:');
-      print('   Status: ${response.statusCode}');
-      print('   Body: ${response.body}');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       if (response.statusCode == 200) {
         try {
           final data = jsonDecode(response.body);
-          print('✅ Subscription activation completed');
-          print('   Success: ${data['success']}');
-          print('   Action: ${data['action']}');
-          print('   Message: ${data['message']}');
-          print('   Days Added: ${data['daysAdded'] ?? 0}');
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
           return data['success'] ?? false;
         } catch (jsonError) {
-          print('❌ Failed to parse activate-subscription response: $jsonError');
+          // Debug logging removed
           return false;
         }
       } else {
-        print('❌ activate-subscription HTTP Error: ${response.statusCode}');
+        // Debug logging removed
         return false;
       }
     } catch (error) {
-      print('❌ activate-subscription request error: $error');
+      // Debug logging removed
       return false;
     }
   }
@@ -532,7 +532,7 @@ class SubscriptionProvider with ChangeNotifier {
 
       return endDate.isAfter(now);
     } catch (e) {
-      print('⚠️ Error checking active subscription: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -552,7 +552,7 @@ class SubscriptionProvider with ChangeNotifier {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      print('❌ Error getting pending payments: $e');
+      // Debug logging removed
       return [];
     }
   }
@@ -563,14 +563,14 @@ class SubscriptionProvider with ChangeNotifier {
       _setLoading(true);
       
       final pendingPayments = await getPendingPayments();
-      print('🔍 Found ${pendingPayments.length} pending payments');
+      // Debug logging removed
       
       for (final payment in pendingPayments) {
         final billId = payment['bill_id'];
         final planId = payment['plan_id'];
         final amount = payment['amount']?.toDouble() ?? 0.0;
 
-        print('⏳ Verifying payment: $billId');
+        // Debug logging removed
         await verifyPaymentStatus(
           billId: billId,
           planId: planId,
@@ -582,7 +582,7 @@ class SubscriptionProvider with ChangeNotifier {
       }
       
     } catch (e) {
-      print('❌ Error verifying pending payments: $e');
+      // Debug logging removed
       _setError('Error verifying payments: $e');
     } finally {
       _setLoading(false);
@@ -599,16 +599,16 @@ class SubscriptionProvider with ChangeNotifier {
     required String planId,
   }) async {
     try {
-      print('🔄 Processing payment redirect:');
-      print('  Bill Code: $billCode');
-      print('  Status: $status');
-      print('  Status ID: $statusId');
-      print('  Transaction ID: $transactionId');
-      print('  Plan ID: $planId');
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
+      // Debug logging removed
 
       // Only activate if status is success and statusId is 1
       if (status.toLowerCase() == 'success' && statusId == '1') {
-        print('🎉 Payment successful from redirect! Activating subscription...');
+        // Debug logging removed
 
         final user = SupabaseService.currentUser;
         if (user == null) {
@@ -617,30 +617,28 @@ class SubscriptionProvider with ChangeNotifier {
 
         // Get plan details to determine amount
         double amount = 6.90; // Default fallback
-        String planName = 'Unknown Plan';
 
         try {
           final planDetails = await SupabaseService.from('subscription_plans')
-              .select('price, name')
+              .select('price')
               .eq('id', planId)
               .maybeSingle();
           if (planDetails != null) {
             amount = double.tryParse(planDetails['price']?.toString() ?? '6.90') ?? 6.90;
-            planName = planDetails['name'] ?? 'Unknown Plan';
           }
         } catch (e) {
-          print('⚠️ Could not get plan details: $e');
+          // Debug logging removed
         }
 
-        print('💰 Plan: $planName (RM${amount.toStringAsFixed(2)})');
+        // Debug logging removed
 
         // Check if user already has active subscription
-        final hasExisting = await _hasActiveSubscription(user.id);
-        print('📱 User has existing subscription: $hasExisting');
+        await _hasActiveSubscription(user.id);
+        // Debug logging removed
 
         // Use SubscriptionService for activation (handles both new and extension)
         if (_subscriptionService != null) {
-          print('🚀 Activating subscription via SubscriptionService...');
+          // Debug logging removed
 
           await _subscriptionService!.activateSubscription(
             userId: user.id,
@@ -653,9 +651,9 @@ class SubscriptionProvider with ChangeNotifier {
           // Update pending payment status if exists
           try {
             await _subscriptionService!.updatePendingPaymentStatus(billCode, 'completed');
-            print('✅ Pending payment status updated');
+            // Debug logging removed
           } catch (e) {
-            print('⚠️ Could not update pending payment status (may not exist): $e');
+            // Debug logging removed
           }
 
         } else {
@@ -665,15 +663,15 @@ class SubscriptionProvider with ChangeNotifier {
         // Reload subscriptions to reflect changes
         await loadUserSubscriptions();
 
-        print('✅ Subscription activated successfully from redirect!');
-        print('🎯 Type: ${hasExisting ? 'Extension' : 'New subscription'}');
+        // Debug logging removed
+        // Debug logging removed
         return true;
       } else {
-        print('⚠️ Payment redirect shows non-success status: $status (ID: $statusId)');
+        // Debug logging removed
         return false;
       }
     } catch (e) {
-      print('❌ Error handling payment redirect: $e');
+      // Debug logging removed
       _setError('Error processing payment: $e');
       return false;
     }
@@ -689,7 +687,7 @@ class SubscriptionProvider with ChangeNotifier {
     double? amount, // Optional amount parameter
   }) async {
     try {
-      print('🔧 Attempting direct activation for bill: $billId');
+      // Debug logging removed
       
       // Use passed amount or get plan details to determine amount
       double finalAmount = amount ?? 6.90; // Use passed amount or default fallback
@@ -705,11 +703,11 @@ class SubscriptionProvider with ChangeNotifier {
             finalAmount = double.tryParse(planDetails['price']?.toString() ?? '6.90') ?? 6.90;
           }
         } catch (e) {
-          print('⚠️ Could not get plan price for direct activation: $e');
+          // Debug logging removed
         }
       }
 
-      print('💰 Using amount: RM${finalAmount.toStringAsFixed(2)} for activation');
+      // Debug logging removed
       
       // Call fixed direct activation edge function
       final response = await http.post(
@@ -732,11 +730,11 @@ class SubscriptionProvider with ChangeNotifier {
         final data = jsonDecode(response.body);
         return data['success'] == true;
       } else {
-        print('❌ Direct activation HTTP error: ${response.statusCode}');
+        // Debug logging removed
         return false;
       }
     } catch (e) {
-      print('❌ Error in direct activation: $e');
+      // Debug logging removed
       return false;
     }
   }

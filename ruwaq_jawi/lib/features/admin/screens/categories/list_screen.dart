@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../../../../core/services/supabase_service.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/auto_generated_form.dart';
-import '../../widgets/admin_bottom_nav.dart';
 import '../../widgets/shimmer_loading.dart';
 import 'form_screen.dart';
 
@@ -21,7 +19,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   List<Map<String, dynamic>> _categories = [];
   bool _isLoading = true;
   String? _error;
-  String _searchQuery = '';
 
   @override
   void initState() {
@@ -86,19 +83,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredCategories {
-    if (_searchQuery.isEmpty) {
-      return _categories;
-    }
-    return _categories.where((category) {
-      final name = category['name']?.toString().toLowerCase() ?? '';
-      final description =
-          category['description']?.toString().toLowerCase() ?? '';
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) || description.contains(query);
-    }).toList();
-  }
-
   Future<void> _deleteCategory(Map<String, dynamic> category) async {
     // Check if category is being used
     final [ebooksCount, videoKitabCount] = await Future.wait([
@@ -150,35 +134,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     }
   }
 
-  Future<void> _toggleCategoryStatus(Map<String, dynamic> category) async {
-    try {
-      final newStatus = !(category['is_active'] ?? true);
-
-      await SupabaseService.from('categories')
-          .update({
-            'is_active': newStatus,
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', category['id']);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Kategori "${category['name']}" ${newStatus ? 'diaktifkan' : 'dinyahaktifkan'}',
-            ),
-            backgroundColor: AppTheme.primaryColor,
-          ),
-        );
-        _loadCategories();
-      }
-    } catch (e) {
-      if (mounted) {
-        _showErrorDialog('Ralat', 'Gagal mengemas kini status kategori: $e');
-      }
-    }
-  }
-
   Future<bool> _showConfirmDialog(String title, String message) async {
     final result = await showDialog<bool>(
       context: context,
@@ -220,25 +175,36 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: Colors.white,
-        title: const Text('Urus Kategori'),
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppTheme.textPrimaryColor,
         elevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
         leading: IconButton(
           icon: const HugeIcon(
             icon: HugeIcons.strokeRoundedArrowLeft01,
-            color: Colors.white,
-            size: 20.0,
+            color: AppTheme.textPrimaryColor,
+            size: 24.0,
           ),
           onPressed: () => context.go('/admin'),
         ),
+        title: const Text(
+          'Urus Kategori',
+          style: TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
             icon: const HugeIcon(
               icon: HugeIcons.strokeRoundedPlusSignCircle,
-              color: Colors.white,
+              color: AppTheme.textPrimaryColor,
               size: 24.0,
             ),
             onPressed: () async {
@@ -254,7 +220,6 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
         ],
       ),
       body: _buildBody(),
-      bottomNavigationBar: const AdminBottomNav(currentIndex: 3),
     );
   }
 
@@ -312,7 +277,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
                 },
               ),
               IconButton(
-                icon: const Icon(Icons.delete),
+                icon: const Icon(Icons.delete, color: Colors.red),
                 onPressed: () => _deleteCategory(category),
               ),
             ],

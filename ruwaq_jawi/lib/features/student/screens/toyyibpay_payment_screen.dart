@@ -44,12 +44,9 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
             }
 
             // EARLY DETECTION: Check URL immediately when page starts loading
-            print('WebView starting to load URL: $url');
             _checkForPaymentCompletion(url);
           },
           onPageFinished: (String url) {
-            print('WebView finished loading URL: $url');
-
             // Double-check for payment completion
             _checkForPaymentCompletion(url);
 
@@ -59,8 +56,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
             }
           },
           onNavigationRequest: (NavigationRequest request) {
-            print('WebView navigation request: ${request.url}');
-
             // Check for payment completion before allowing navigation
             _checkForPaymentCompletion(request.url);
 
@@ -92,8 +87,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
       if (uri != null) {
         status = uri.queryParameters['status'];
         statusId = uri.queryParameters['status_id'];
-
-        print('🔍 Extracted redirect parameters: status=$status, status_id=$statusId');
       }
 
       // Determine success/failure based on parameters
@@ -101,8 +94,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
                   url.contains('status=success') ||
                   url.contains('status=1') ||
                   url.contains('Payment Successful');
-
-      print('🔍 Payment completion detected: URL=$url, Success=$isSuccess');
     }
 
     if (shouldHandle) {
@@ -120,9 +111,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
     if (!mounted || _hasNavigated) return;
 
     _hasNavigated = true;
-    print('🔄 Payment completed with status: $isSuccess');
-    print('📋 Bill Code: ${widget.billCode}');
-    print('📋 Redirect Parameters: status=$status, status_id=$statusId');
 
     Future.delayed(const Duration(seconds: 1), () {
       if (!mounted) return;
@@ -130,8 +118,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
       try {
         if (isSuccess && widget.planId != null && widget.amount != null) {
           // SUCCESS: Navigate to payment verification screen with redirect parameters
-          print('✅ Payment successful - navigating to verification...');
-
           // Build URL with redirect parameters for reliable verification
           String callbackUrl = '/payment-callback?billId=${widget.billCode}&planId=${widget.planId}&amount=${widget.amount}';
 
@@ -142,15 +128,10 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
             callbackUrl += '&redirectStatusId=$statusId';
           }
 
-          print('📋 Navigating to: $callbackUrl');
-
           // Use go_router instead of Navigator.pushReplacement
           context.pushReplacement(callbackUrl);
         } else {
           // FAILED/CANCELLED: Navigate back to subscription with error message
-          print(
-            '❌ Payment failed/cancelled - navigating back to subscription...',
-          );
 
           if (Navigator.canPop(context)) {
             Navigator.pop(context, false);
@@ -172,7 +153,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
           });
         }
       } catch (e) {
-        print('❌ Navigation error in payment screen: $e');
         // Fallback navigation
         try {
           if (isSuccess && widget.planId != null && widget.amount != null) {
@@ -187,7 +167,6 @@ class _ToyyibpayPaymentScreenState extends State<ToyyibpayPaymentScreen> {
             context.go('/subscription');
           }
         } catch (e2) {
-          print('❌ Failed fallback navigation: $e2');
           // Last resort
           context.go('/home');
         }

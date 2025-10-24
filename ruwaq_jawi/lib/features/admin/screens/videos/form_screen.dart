@@ -1,15 +1,12 @@
 ﻿import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pdfx/pdfx.dart' as pdfx;
-import 'package:http/http.dart' as http;
-import '../../../../config/youtube_api.dart';
 import '../../../../core/models/video_kitab.dart';
 import '../../../../core/services/admin_category_service.dart';
 import '../../../../core/services/video_kitab_service.dart';
@@ -179,9 +176,6 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           );
           previewStatus[episode.id] = hasPreview;
         } catch (e) {
-          if (kDebugMode) {
-            print('Error checking preview for episode ${episode.id}: $e');
-          }
           previewStatus[episode.id] = false;
         }
       }
@@ -192,9 +186,6 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       });
     } catch (e) {
       // Don't show error for episodes - just log it
-      if (kDebugMode) {
-        print('Could not load episodes: $e');
-      }
       setState(() {
         _episodes = [];
         _episodePreviewStatus.clear();
@@ -255,88 +246,12 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       });
     } catch (e) {
       _showSnackBar('Ralat mengemas kini preview: $e', isError: true);
-      if (kDebugMode) {
-        print('Error toggling preview for episode ${episode.id}: $e');
-      }
     }
   }
 
   // =====================================================
   // HELPER METHODS
   // =====================================================
-
-  // YouTube helper methods
-  Future<void> _detectVideoDurationFromYouTube(String youTubeUrl) async {
-    // Check if YouTube API is configured
-    if (!YouTubeApiConfig.isEnabled) {
-      return; // Silently skip if not configured
-    }
-
-    try {
-      // Extract video ID from YouTube URL
-      final videoId = _extractYouTubeVideoId(youTubeUrl);
-      if (videoId == null) {
-        return; // Invalid URL, skip silently
-      }
-
-      // Call YouTube Data API to get video duration
-      final url = YouTubeApiConfig.getVideoDetailsUrl(videoId);
-
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['items'] != null && data['items'].isNotEmpty) {
-          final duration = data['items'][0]['contentDetails']['duration'];
-          final durationInMinutes = _parseDurationToMinutes(duration);
-
-          // Update duration field if found in episode form
-          _showSnackBar(
-            'Durasi video: $durationInMinutes minit',
-            isError: false,
-          );
-        }
-      }
-    } catch (e) {
-      // Silently fail - don't bother user with API errors in video kitab form
-      if (kDebugMode) {
-        print('Could not detect video duration: $e');
-      }
-    }
-  }
-
-  String? _extractYouTubeVideoId(String url) {
-    // Handle different YouTube URL formats
-    final patterns = [
-      RegExp(r'(?:youtube\.com/watch\?v=)([a-zA-Z0-9_-]{11})'),
-      RegExp(r'(?:youtu\.be/)([a-zA-Z0-9_-]{11})'),
-      RegExp(r'(?:youtube\.com/embed/)([a-zA-Z0-9_-]{11})'),
-    ];
-
-    for (final pattern in patterns) {
-      final match = pattern.firstMatch(url);
-      if (match != null) {
-        return match.group(1);
-      }
-    }
-    return null;
-  }
-
-  int _parseDurationToMinutes(String duration) {
-    // Parse ISO 8601 duration format (PT#M#S)
-    final regex = RegExp(r'PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?');
-    final match = regex.firstMatch(duration);
-
-    if (match != null) {
-      final hours = int.tryParse(match.group(1) ?? '0') ?? 0;
-      final minutes = int.tryParse(match.group(2) ?? '0') ?? 0;
-      final seconds = int.tryParse(match.group(3) ?? '0') ?? 0;
-
-      return hours * 60 +
-          minutes +
-          (seconds > 0 ? 1 : 0); // Round up if has seconds
-    }
-    return 0;
-  }
 
   // PDF helper methods
   Future<void> _detectPdfPageCount(File pdfFile) async {
@@ -366,11 +281,29 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: AppTheme.textPrimaryColor,
+        elevation: 0,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: Brightness.dark,
+        ),
+        leading: IconButton(
+          icon: const HugeIcon(
+            icon: HugeIcons.strokeRoundedArrowLeft01,
+            color: AppTheme.textPrimaryColor,
+            size: 24.0,
+          ),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           _isEditing ? 'Edit Video Kitab' : 'Tambah Video Kitab Baru',
+          style: const TextStyle(
+            color: AppTheme.textPrimaryColor,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        backgroundColor: AppTheme.primaryColor,
-        foregroundColor: AppTheme.textLightColor,
+        centerTitle: true,
         actions: [
           if (_isLoading)
             const Center(
@@ -381,7 +314,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                   height: 20,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(AppTheme.textPrimaryColor),
                   ),
                 ),
               ),
@@ -396,8 +329,8 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
                     ? 'Selesai'
                     : (_isEditing ? 'Kemaskini' : 'Simpan'),
                 style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimaryColor,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
             ),
@@ -1311,23 +1244,14 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       String? uploadedPdfStoragePath;
       int? uploadedPdfFileSize;
 
-      if (kDebugMode) {
-        print('DEBUG: Starting file upload process...');
-      }
 
       // Upload thumbnail if new file selected
       if (_selectedThumbnail != null) {
         try {
-          if (kDebugMode) {
-            print('DEBUG: Starting thumbnail upload...');
-          }
           final fileName =
               'video_kitab_thumbnail_${DateTime.now().millisecondsSinceEpoch}.jpg';
           final storagePath = 'thumbnails/$fileName';
 
-          if (kDebugMode) {
-            print('DEBUG: Uploading thumbnail to: $storagePath');
-          }
           await SupabaseService.client.storage
               .from('video-kitab-files')
               .upload(storagePath, _selectedThumbnail!);
@@ -1335,15 +1259,7 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
           uploadedThumbnailUrl = SupabaseService.client.storage
               .from('video-kitab-files')
               .getPublicUrl(storagePath);
-          if (kDebugMode) {
-            print(
-              'DEBUG: Thumbnail uploaded successfully: $uploadedThumbnailUrl',
-            );
-          }
         } catch (e) {
-          if (kDebugMode) {
-            print('DEBUG: Thumbnail upload error: $e');
-          }
           _showSnackBar('Ralat upload thumbnail: $e', isError: true);
           // Don't stop execution - continue with PDF upload
         }
@@ -1352,16 +1268,10 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
       // Upload PDF if new file selected
       if (_selectedPdf != null) {
         try {
-          if (kDebugMode) {
-            print('DEBUG: Starting PDF upload...');
-          }
           final fileName =
               'video_kitab_${DateTime.now().millisecondsSinceEpoch}.pdf';
           final storagePath = 'pdfs/$fileName';
 
-          if (kDebugMode) {
-            print('DEBUG: Uploading PDF to: $storagePath');
-          }
           await SupabaseService.client.storage
               .from('video-kitab-files')
               .upload(storagePath, _selectedPdf!);
@@ -1371,23 +1281,12 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
               .getPublicUrl(storagePath);
           uploadedPdfStoragePath = storagePath;
           uploadedPdfFileSize = await _selectedPdf!.length();
-          if (kDebugMode) {
-            print(
-              'DEBUG: PDF uploaded successfully: $uploadedPdfUrl, Size: $uploadedPdfFileSize bytes',
-            );
-          }
         } catch (e) {
-          if (kDebugMode) {
-            print('DEBUG: PDF upload error: $e');
-          }
           _showSnackBar('Ralat upload PDF: $e', isError: true);
           // Don't stop execution - continue with save
         }
       }
 
-      if (kDebugMode) {
-        print('DEBUG: Preparing video kitab data...');
-      }
       final videoKitabData = {
         'title': _titleController.text.trim(),
         'author': _authorController.text.trim().isEmpty
@@ -1407,36 +1306,19 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         'is_premium': _isPremium,
         'is_active': _isActive,
       };
-      if (kDebugMode) {
-        print('DEBUG: Video kitab data: $videoKitabData');
-      }
 
       if (_isEditing) {
         // Update existing video kitab
-        if (kDebugMode) {
-          print(
-            'DEBUG: Updating existing video kitab with ID: ${widget.videoKitabId}',
-          );
-        }
         await VideoKitabService.updateVideoKitabAdmin(
           widget.videoKitabId!,
           videoKitabData,
         );
-        if (kDebugMode) {
-          print('DEBUG: Update successful');
-        }
         _showSnackBar('Video Kitab berjaya dikemaskini!');
       } else {
         // Create new video kitab
-        if (kDebugMode) {
-          print('DEBUG: Creating new video kitab...');
-        }
         final createdVideoKitab = await VideoKitabService.createVideoKitab(
           videoKitabData,
         );
-        if (kDebugMode) {
-          print('DEBUG: Created video kitab with ID: ${createdVideoKitab.id}');
-        }
 
         // Update our state with the new video kitab ID so episodes can be managed
         setState(() {
@@ -1455,18 +1337,11 @@ class _AdminVideoKitabFormScreenState extends State<AdminVideoKitabFormScreen>
         Navigator.of(context).pop(true); // Return true to indicate success
       }
     } catch (e) {
-      if (kDebugMode) {
-        print('DEBUG: Save error: $e');
-        print('DEBUG: Error type: ${e.runtimeType}');
-      }
       _showSnackBar(
         'Ralat menyimpan video kitab: ${e.toString()}',
         isError: true,
       );
     } finally {
-      if (kDebugMode) {
-        print('DEBUG: Save operation completed, setting loading to false');
-      }
       setState(() {
         _isLoading = false;
       });

@@ -10,7 +10,6 @@ import 'ebook_screen/widgets/ebook_search_bar_widget.dart';
 import 'ebook_screen/widgets/ebook_category_chips_widget.dart';
 import 'ebook_screen/widgets/ebook_list_widget.dart';
 import 'ebook_screen/widgets/ebook_empty_state_widget.dart';
-import 'ebook_screen/widgets/ebook_loading_state_widget.dart';
 
 class EbookScreen extends StatefulWidget {
   const EbookScreen({super.key});

@@ -1,0 +1,86 @@
+Analyzing ruwaq_jawi...                                         
+
+   info - Missing a deprecation message - lib\core\providers\subscription_provider.dart:269:3 - provide_deprecation_message
+   info - Missing a deprecation message - lib\core\services\subscription_service.dart:319:3 - provide_deprecation_message
+   info - The prefix 'CategoryModel' isn't a lower_case_with_underscores identifier - lib\core\services\supabase_service.dart:6:37 - library_prefixes
+warning - The value of the local variable 'starValue' isn't used - lib\core\widgets\rating_stars_widget.dart:28:17 - unused_local_variable
+   info - Unnecessary use of 'toList' in a spread - lib\features\admin\screens\ebooks\list_screen.dart:330:28 - unnecessary_to_list_in_spreads
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\notifications\admin_notification_inbox_screen.dart:101:42 - use_build_context_synchronously
+   info - The prefix 'CategoryModel' isn't a lower_case_with_underscores identifier - lib\features\admin\screens\search\search_screen.dart:6:51 - library_prefixes
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\screens\users\detail_screen.dart:467:22 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\screens\users\detail_screen.dart:468:41 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:580:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:587:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:627:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:636:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:651:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:662:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:697:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:706:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:993:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:1006:28 - use_build_context_synchronously
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:307:23 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:460:27 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:512:27 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1095:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1122:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1163:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1190:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:875:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:895:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:908:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:949:44 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:958:44 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\kitab_detail_screen.dart:1025:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:416:21 - use_build_context_synchronously
+   info - The prefix 'CategoryModel' isn't a lower_case_with_underscores identifier - lib\features\admin\screens\videos\list_screen.dart:12:51 - library_prefixes
+   info - Invalid use of a private type in a public API - lib\features\admin\screens\videos\list_screen.dart:22:3 - library_private_types_in_public_api
+   info - Empty catch block - lib\features\admin\services\admin_content_service.dart:366:17 - empty_catches
+   info - Empty catch block - lib\features\admin\services\admin_content_service.dart:394:17 - empty_catches
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:87:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:93:11 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:102:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:113:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\widgets\shimmer_loading.dart:166:35 - deprecated_member_use
+   info - Unnecessary braces in a string interpolation - lib\features\admin\widgets\youtube_preview_sheet.dart:157:39 - unnecessary_brace_in_string_interps
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\widgets\youtube_preview_sheet.dart:350:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\widgets\youtube_preview_sheet.dart:355:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\widgets\youtube_preview_sheet.dart:365:22 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\widgets\youtube_preview_sheet.dart:366:41 - deprecated_member_use
+warning - The value of the field '_fadeOut' isn't used - lib\features\auth\screens\splash_screen.dart:19:8 - unused_field
+   info - Don't use 'BuildContext's across async gaps - lib\features\payment\screens\payment_callback_page.dart:104:9 - use_build_context_synchronously
+warning - Dead code - lib\features\payment\screens\payment_callback_page.dart:177:39 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\features\payment\screens\payment_callback_page.dart:177:42 - dead_null_aware_expression
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\ebook_detail_screen.dart:187:21 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\ebook_screen\widgets\ebook_list_card_widget.dart:343:46 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\kitab_list_screen.dart:1272:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\kitab_list_screen.dart:1293:34 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\kitab_list_screen.dart:1321:34 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\notification_screen.dart:103:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\notification_screen.dart:810:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:173:32 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:183:15 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:184:13 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:186:13 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\payment_screen.dart:202:9 - use_build_context_synchronously
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:698:21 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:699:21 - deprecated_member_use
+   info - 'groupValue' is deprecated and shouldn't be used. Use a RadioGroup ancestor to manage group value instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:709:21 - deprecated_member_use
+   info - 'onChanged' is deprecated and shouldn't be used. Use RadioGroup to handle value change instead. This feature was deprecated after v3.32.0-0.0.pre - lib\features\student\screens\privacy_security_screen.dart:710:21 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\privacy_security_screen.dart:1387:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\profile_screen_backup.dart:382:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\saved_items_screen.dart:930:38 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\saved_items_screen.dart:985:38 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\saved_items_screen.dart:1033:38 - use_build_context_synchronously
+   info - Unnecessary use of getter and setter to wrap a field - lib\features\student\screens\student_home_screen\managers\home_scroll_manager.dart:22:11 - unnecessary_getters_setters
+   info - Unnecessary use of getter and setter to wrap a field - lib\features\student\screens\student_home_screen\managers\home_scroll_manager.dart:23:12 - unnecessary_getters_setters
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\student_home_screen_backup.dart:1871:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1135:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1139:9 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1153:47 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1154:23 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\subscription_screen.dart:1157:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\student\screens\toyyibpay_payment_screen.dart:145:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\student\screens\toyyibpay_payment_screen.dart:252:31 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - test\youtube_id_validation_test.dart:73:5 - avoid_print
+

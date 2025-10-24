@@ -7,7 +7,6 @@ import 'package:hugeicons/hugeicons.dart';
 import '../../../core/providers/subscription_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/payment_processing_service.dart';
-import '../../../core/services/supabase_service.dart';
 
 class PaymentHistoryScreen extends StatefulWidget {
   const PaymentHistoryScreen({super.key});

@@ -1,7 +1,6 @@
 ﻿import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:hugeicons/hugeicons.dart';
@@ -24,11 +23,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
   // Using static methods from VideoKitabService and VideoEpisodeService
 
   Kitab? _kitab;
-  String? _previewVideoId;
   List<Map<String, dynamic>> _episodes = [];
 
   bool _isLoading = true;
-  bool _isSaving = false;
 
   // Controllers untuk preview video
   final _previewUrlController = TextEditingController();
@@ -71,7 +68,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       // Load preview video
       if (_kitab?.youtubeVideoUrl != null) {
         _previewUrlController.text = _kitab!.youtubeVideoUrl!;
-        _previewVideoId = _kitab!.youtubeVideoId;
       }
 
       // Load episodes
@@ -109,80 +105,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     }
   }
 
-  String _defaultThumbnailFor(String id) =>
-      VideoEpisodeService.getYouTubeThumbnailUrl(id);
-
-  void _addNewEpisode() {
-    setState(() {
-      _episodeControllers.add(TextEditingController());
-    });
-  }
-
-  void _removeEpisode(int index) {
-    setState(() {
-      _episodeControllers[index].dispose();
-      _episodeControllers.removeAt(index);
-    });
-  }
-
-  Future<void> _saveChanges() async {
-    if (_kitab == null) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      // Save preview video
-      String? previewVideoId;
-      String? previewVideoUrl = _previewUrlController.text.trim();
-
-      if (previewVideoUrl.isNotEmpty) {
-        previewVideoId = VideoEpisodeService.extractYouTubeVideoId(
-          previewVideoUrl,
-        );
-        if (previewVideoId == null) {
-          throw Exception('URL preview video tidak sah');
-        }
-      }
-
-      // Update kitab with preview video
-      await VideoKitabService.updateVideoKitabAdmin(widget.kitabId, {
-        'youtube_video_id': previewVideoId,
-        'youtube_video_url': previewVideoUrl.isEmpty ? null : previewVideoUrl,
-      });
-
-      // Clear existing episodes
-      for (final episode in _episodes) {
-        await VideoEpisodeService.deleteEpisode(episode['id']);
-      }
-
-      // Save new episodes
-      for (int i = 0; i < _episodeControllers.length; i++) {
-        final url = _episodeControllers[i].text.trim();
-        if (url.isNotEmpty) {
-          final videoId = VideoEpisodeService.extractYouTubeVideoId(url);
-          if (videoId != null) {
-            // Create episode
-            await VideoEpisodeService.createEpisode({
-              'video_kitab_id': widget.kitabId,
-              'title': '${_kitab!.title} - Episode ${i + 1}',
-              'youtube_video_id': videoId,
-              'youtube_video_url': url,
-              'thumbnail_url': _defaultThumbnailFor(videoId),
-              'part_number': i + 1,
-              'is_active': true,
-            });
-          }
-        }
-      }
-
-      _showSnackBar('Perubahan berjaya disimpan!');
-      await _loadKitabDetail(); // Reload data
-    } catch (e) {
-      _showSnackBar('Ralat menyimpan: ${e.toString()}', isError: true);
-    } finally {
-      setState(() => _isSaving = false);
-    }
-  }
 
   void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -199,7 +121,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.backgroundColor,
         foregroundColor: AppTheme.textPrimaryColor,
         centerTitle: false,
         titleSpacing: 0,
@@ -493,234 +415,6 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     );
   }
 
-  Widget _buildPreviewSection() {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.preview, color: AppTheme.primaryColor),
-                const SizedBox(width: 8),
-                Text(
-                  'Video Preview (Percuma)',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Video preview yang boleh ditonton semua pengguna tanpa langganan',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
-
-            TextFormField(
-              controller: _previewUrlController,
-              decoration: InputDecoration(
-                labelText: 'URL Video Preview',
-                hintText: 'https://www.youtube.com/watch?v=...',
-                prefixIcon: const Icon(Icons.link),
-                border: const OutlineInputBorder(),
-                errorText:
-                    _previewUrlController.text.trim().isNotEmpty &&
-                        _previewVideoId == null
-                    ? 'URL YouTube tidak sah'
-                    : null,
-                suffixIcon: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.paste),
-                      tooltip: 'Tampal',
-                      onPressed: () async {
-                        final data = await Clipboard.getData('text/plain');
-                        final text = data?.text ?? '';
-                        if (text.isNotEmpty) {
-                          _previewUrlController.text = text.trim();
-                          setState(() {
-                            _previewVideoId =
-                                VideoEpisodeService.extractYouTubeVideoId(
-                                  _previewUrlController.text.trim(),
-                                );
-                          });
-                        }
-                      },
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.clear),
-                      tooltip: 'Kosongkan',
-                      onPressed: () {
-                        _previewUrlController.clear();
-                        setState(() => _previewVideoId = null);
-                      },
-                    ),
-                  ],
-                ),
-                suffixIconConstraints: const BoxConstraints(
-                  minWidth: 64,
-                  maxWidth: 96,
-                ),
-              ),
-              maxLines: 1,
-              onChanged: (value) {
-                setState(() {
-                  _previewVideoId = VideoEpisodeService.extractYouTubeVideoId(
-                    value.trim(),
-                  );
-                });
-              },
-            ),
-
-            // Debug info for invalid URLs
-            if (_previewUrlController.text.trim().isNotEmpty &&
-                _previewVideoId == null) ...[
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning, size: 16, color: Colors.red),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'URL tidak sah. Pastikan URL YouTube valid dan video ID 11 karakter.',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: Colors.red[700]),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            if (_previewVideoId != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: Colors.green.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(
-                        _defaultThumbnailFor(_previewVideoId!),
-                        width: 160,
-                        height: 90,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            width: 160,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  size: 20,
-                                  color: Colors.grey,
-                                ),
-                                Text(
-                                  'Error',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
-                            width: 160,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Video ID: $_previewVideoId',
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w500),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                          ),
-                          const SizedBox(height: 4),
-                          const Text(
-                            'Preview (Percuma)',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.green,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () async {
-                        final url =
-                            'https://www.youtube.com/watch?v=$_previewVideoId';
-                        if (await canLaunchUrl(Uri.parse(url))) {
-                          await launchUrl(Uri.parse(url));
-                        }
-                      },
-                      icon: const Icon(Icons.open_in_new),
-                      tooltip: 'Buka di YouTube',
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildEpisodesSection() {
     final episodes = _episodes;
@@ -792,6 +486,9 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     final int? duration = episode['duration_minutes'] as int?;
     final String? thumb = episode['thumbnail_url'] as String?;
 
+    // Check if video ID is valid (11 characters for YouTube)
+    final bool hasValidVideoId = videoId != null && videoId.length == 11;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -842,31 +539,154 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                               ? VideoEpisodeService.extractYouTubeVideoId(url)
                               : null);
                           if (id == null || id.isEmpty) return;
-                          setState(() {
-                            _ytController?.dispose();
-                            _ytController = YoutubePlayerController(
-                              initialVideoId: id,
-                              flags: const YoutubePlayerFlags(
-                                autoPlay: true,
-                                mute: false,
+
+                          try {
+                            setState(() {
+                              _ytController?.dispose();
+                              _ytController = YoutubePlayerController(
+                                initialVideoId: id,
+                                flags: const YoutubePlayerFlags(
+                                  autoPlay: true,
+                                  mute: false,
+                                ),
+                              );
+                              _playingEpisodeIndex = index;
+                            });
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Ralat memuat video: Video mungkin private atau tidak tersedia'),
+                                backgroundColor: Colors.orange,
                               ),
                             );
-                            _playingEpisodeIndex = index;
-                          });
+                          }
                         },
                         child: thumb != null && thumb.isNotEmpty
-                            ? Image.network(thumb, fit: BoxFit.cover)
+                            ? Image.network(
+                                thumb,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey[300],
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        const Icon(
+                                          Icons.warning_rounded,
+                                          size: 32,
+                                          color: Colors.orange,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        const Text(
+                                          'Video Private/Tidak Tersedia',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                },
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    color: Colors.grey[200],
+                                    child: Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded /
+                                                loadingProgress.expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
                             : (videoId != null
                                 ? Image.network(
                                     VideoEpisodeService.getYouTubeThumbnailUrl(
                                       videoId,
                                     ),
                                     fit: BoxFit.cover,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return Container(
+                                        color: Colors.grey[300],
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            const Icon(
+                                              Icons.warning_rounded,
+                                              size: 32,
+                                              color: Colors.orange,
+                                            ),
+                                            const SizedBox(height: 8),
+                                            const Text(
+                                              'Video Private/Tidak Tersedia',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: Colors.grey,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        color: Colors.grey[200],
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            value: loadingProgress.expectedTotalBytes != null
+                                                ? loadingProgress.cumulativeBytesLoaded /
+                                                    loadingProgress.expectedTotalBytes!
+                                                : null,
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   )
                                 : Container(color: Colors.grey[200])),
                       ),
                     ),
-                    if ((episode['is_premium'] as bool?) == true)
+                    // Warning badge for invalid/private videos
+                    if (!hasValidVideoId)
+                      Positioned(
+                        left: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.warning_rounded,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 4),
+                              const Text(
+                                'Invalid/Private',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    if ((episode['is_premium'] as bool?) == true && hasValidVideoId)
                       Positioned(
                         left: 8,
                         top: 8,
@@ -926,13 +746,23 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
                   Expanded(
                     child: Row(
                       children: [
+                        if (!hasValidVideoId) ...[
+                          Icon(
+                            Icons.warning_rounded,
+                            size: 18,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         Expanded(
                           child: Text(
                             title,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
-                              color: AppTheme.textPrimaryColor,
+                              color: hasValidVideoId
+                                  ? AppTheme.textPrimaryColor
+                                  : Colors.red,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -960,18 +790,23 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
               if (videoId != null)
                 Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.ondemand_video,
                       size: 14,
-                      color: Colors.grey,
+                      color: hasValidVideoId ? Colors.grey : Colors.red,
                     ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
-                        'YouTube ID: $videoId',
-                        style: const TextStyle(
+                        hasValidVideoId
+                            ? 'YouTube ID: $videoId'
+                            : 'YouTube ID: $videoId (Invalid/Private)',
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: hasValidVideoId ? Colors.grey : Colors.red,
+                          fontWeight: hasValidVideoId
+                              ? FontWeight.normal
+                              : FontWeight.w600,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1185,7 +1020,7 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
       try {
         final newTitle = titleController.text.trim();
         final rawUrl = urlController.text.trim();
-        final newId = VideoEpisodeService.extractYouTubeVideoId(rawUrl ?? '');
+        final newId = VideoEpisodeService.extractYouTubeVideoId(rawUrl);
         if (newId == null || newId.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('URL YouTube tidak sah'), backgroundColor: Colors.red),
@@ -1232,190 +1067,4 @@ class _AdminKitabDetailScreenState extends State<AdminKitabDetailScreen> {
     );
   }
 
-  Widget _buildEpisodeCard(int index) {
-    final controller = _episodeControllers[index];
-    final videoId = VideoEpisodeService.extractYouTubeVideoId(controller.text);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.borderColor),
-        borderRadius: BorderRadius.circular(12),
-        color: AppTheme.surfaceColor,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Episode header
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Episode ${index + 1}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => _removeEpisode(index),
-                icon: const Icon(Icons.delete, color: Colors.red, size: 20),
-                tooltip: 'Buang Episode',
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // URL input
-          TextFormField(
-            controller: controller,
-            decoration: InputDecoration(
-              labelText: 'URL Video Episode',
-              hintText: 'https://www.youtube.com/watch?v=...',
-              prefixIcon: const Icon(Icons.link),
-              border: const OutlineInputBorder(),
-              suffixIcon: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.paste),
-                    tooltip: 'Tampal',
-                    onPressed: () async {
-                      final data = await Clipboard.getData('text/plain');
-                      final text = data?.text ?? '';
-                      if (text.isNotEmpty) {
-                        controller.text = text.trim();
-                        setState(() {});
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.clear),
-                    tooltip: 'Kosongkan',
-                    onPressed: () {
-                      controller.clear();
-                      setState(() {});
-                    },
-                  ),
-                ],
-              ),
-              suffixIconConstraints: const BoxConstraints(
-                minWidth: 64,
-                maxWidth: 96,
-              ),
-            ),
-            maxLines: 1,
-            onChanged: (value) => setState(() {}),
-          ),
-
-          // Video preview
-          if (videoId != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    child: Image.network(
-                      _defaultThumbnailFor(videoId),
-                      width: 120,
-                      height: 68,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 120,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.error_outline,
-                                size: 16,
-                                color: Colors.grey,
-                              ),
-                              Text(
-                                'Error',
-                                style: TextStyle(
-                                  fontSize: 8,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          width: 120,
-                          height: 68,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Center(
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Video ID: $videoId',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () async {
-                      final url = 'https://www.youtube.com/watch?v=$videoId';
-                      if (await canLaunchUrl(Uri.parse(url))) {
-                        await launchUrl(Uri.parse(url));
-                      }
-                    },
-                    icon: const Icon(Icons.open_in_new, size: 18),
-                    tooltip: 'Buka di YouTube',
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
 }

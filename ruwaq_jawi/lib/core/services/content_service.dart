@@ -31,7 +31,7 @@ class ContentService {
       
       return hasActive;
     } catch (e) {
-      print('Error checking premium access: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -46,12 +46,12 @@ class ContentService {
           })
           .eq('id', _userId);
     } catch (e) {
-      print('Error updating profile status: $e');
+      // Debug logging removed
     }
   }
 
   Future<List<Map<String, dynamic>>> getAccessibleKitab() async {
-    final hasAccess = await canAccessPremiumContent();
+    await canAccessPremiumContent();
 
     // For video kitabs, we now show all kitabs regardless of premium status
     // Access control is handled at the episode level
@@ -90,7 +90,7 @@ class ContentService {
       // Episode-level access control is handled separately
       return response;
     } catch (e) {
-      print('Error fetching kitab details: $e');
+      // Debug logging removed
       return null;
     }
   }
@@ -114,7 +114,7 @@ class ContentService {
       // 2. Episode is not premium OR user has active subscription
       return isActive && (!isPremium || hasActiveSubscription);
     } catch (e) {
-      print('Error checking episode access: $e');
+      // Debug logging removed
       return false;
     }
   }
@@ -142,7 +142,7 @@ class ContentService {
         'planName': response['subscription_plan_id'], // Can be mapped to display name if needed
       };
     } catch (e) {
-      print('Error getting subscription details: $e');
+      // Debug logging removed
       return {'hasSubscription': false, 'endDate': null, 'planType': null};
     }
   }

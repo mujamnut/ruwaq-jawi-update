@@ -28,11 +28,11 @@ class PdfCacheService {
       }
 
       if (kDebugMode) {
-        print('PDF Cache Service initialized at: ${_cacheDirectory!.path}');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error initializing PdfCacheService: $e');
+        // Debug logging removed
       }
     }
   }
@@ -71,7 +71,7 @@ class PdfCacheService {
       return file.existsSync();
     } catch (e) {
       if (kDebugMode) {
-        print('Error checking PDF cache: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -88,7 +88,7 @@ class PdfCacheService {
       return filePath;
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting cached PDF path: $e');
+        // Debug logging removed
       }
       return null;
     }
@@ -111,13 +111,13 @@ class PdfCacheService {
       // Check if already cached
       if (file.existsSync()) {
         if (kDebugMode) {
-          print('PDF already cached: $filePath');
+          // Debug logging removed
         }
         return filePath;
       }
 
       if (kDebugMode) {
-        print('Downloading PDF from: $pdfUrl');
+        // Debug logging removed
       }
 
       // Download PDF
@@ -144,9 +144,7 @@ class PdfCacheService {
         await _cacheBox.put(_metadataKey, updatedMetadata);
 
         if (kDebugMode) {
-          print(
-            'PDF cached successfully: $filePath (${response.bodyBytes.length} bytes)',
-          );
+          // Debug logging removed
         }
 
         return filePath;
@@ -155,7 +153,7 @@ class PdfCacheService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error downloading and caching PDF: $e');
+        // Debug logging removed
       }
       return null;
     }
@@ -176,7 +174,7 @@ class PdfCacheService {
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error updating last accessed: $e');
+        // Debug logging removed
       }
     }
   }
@@ -189,7 +187,7 @@ class PdfCacheService {
       return Map<String, Map<String, dynamic>>.from(metadata);
     } catch (e) {
       if (kDebugMode) {
-        print('Error getting all cached PDFs: $e');
+        // Debug logging removed
       }
       return {};
     }
@@ -208,7 +206,7 @@ class PdfCacheService {
       return totalSize;
     } catch (e) {
       if (kDebugMode) {
-        print('Error calculating cache size: $e');
+        // Debug logging removed
       }
       return 0;
     }
@@ -244,13 +242,13 @@ class PdfCacheService {
       await _cacheBox.put(_metadataKey, updatedMetadata);
 
       if (kDebugMode) {
-        print('PDF removed from cache: $pdfUrl');
+        // Debug logging removed
       }
 
       return true;
     } catch (e) {
       if (kDebugMode) {
-        print('Error removing PDF from cache: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -273,11 +271,11 @@ class PdfCacheService {
       await _cacheBox.delete(_metadataKey);
 
       if (kDebugMode) {
-        print('All PDF cache cleared');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error clearing PDF cache: $e');
+        // Debug logging removed
       }
     }
   }
@@ -318,12 +316,12 @@ class PdfCacheService {
         await _cacheBox.put(_metadataKey, updatedMetadata);
 
         if (kDebugMode) {
-          print('Cleaned ${keysToRemove.length} old PDFs from cache');
+          // Debug logging removed
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error cleaning old cache: $e');
+        // Debug logging removed
       }
     }
   }
@@ -336,7 +334,7 @@ class PdfCacheService {
       _cacheDirectory = null;
     } catch (e) {
       if (kDebugMode) {
-        print('Error closing PdfCacheService: $e');
+        // Debug logging removed
       }
     }
   }

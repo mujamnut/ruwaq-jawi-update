@@ -14,7 +14,6 @@ import 'widgets/admin_user_card.dart';
 import 'widgets/admin_users_empty_state.dart';
 import 'widgets/admin_users_error_view.dart';
 import 'widgets/admin_users_loading_list.dart';
-import 'widgets/admin_users_search_filters.dart';
 import 'widgets/admin_users_stats_bar.dart';
 
 class AdminUsersScreen extends StatefulWidget {
@@ -143,18 +142,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     return filtered;
   }
 
-  void _onSearchChanged(String value) {
-    setState(() {
-      _searchQuery = value;
-    });
-  }
-
-  void _onFilterChanged(String filter) {
-    setState(() {
-      _selectedFilter = filter;
-    });
-  }
-
   Future<void> _handleUserAction(UserProfile user, String action) async {
     switch (action) {
       case 'view':
@@ -273,104 +260,6 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         );
       }
     }
-  }
-
-  void _showAddAdminDialog() {
-    final TextEditingController emailController = TextEditingController();
-    final TextEditingController nameController = TextEditingController();
-    final TextEditingController passwordController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Tambah Admin Baharu'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama Penuh',
-                  border: OutlineInputBorder(),
-                  prefixIcon: HugeIcon(
-                    icon: HugeIcons.strokeRoundedUser,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: HugeIcon(
-                    icon: HugeIcons.strokeRoundedMail01,
-                    color: Colors.grey,
-                  ),
-                ),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Kata Laluan',
-                  border: OutlineInputBorder(),
-                  prefixIcon: HugeIcon(
-                    icon: HugeIcons.strokeRoundedLockPassword,
-                    color: Colors.grey,
-                  ),
-                ),
-                obscureText: true,
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.blue.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    HugeIcon(
-                      icon: HugeIcons.strokeRoundedInformationCircle,
-                      color: Colors.blue,
-                      size: 20,
-                    ),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Admin baharu akan mempunyai akses penuh ke sistem.',
-                        style: TextStyle(fontSize: 12, color: Colors.blue),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Batal'),
-          ),
-          ElevatedButton(
-            onPressed: () => _createAdminUser(
-              nameController.text,
-              emailController.text,
-              passwordController.text,
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-            ),
-            child: const Text('Tambah Admin'),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _createAdminUser(

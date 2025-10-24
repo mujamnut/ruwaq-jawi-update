@@ -1,0 +1,162 @@
+Analyzing admin...                                              
+
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\analytics\main_screen.dart:93:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\analytics\main_screen.dart:106:7 - avoid_print
+warning - The declaration '_buildUserAnalytics' isn't referenced - lib\features\admin\screens\analytics\main_screen.dart:740:10 - unused_element
+warning - The declaration '_buildContentAnalytics' isn't referenced - lib\features\admin\screens\analytics\main_screen.dart:803:10 - unused_element
+warning - Unused import: 'package:shadcn_ui/shadcn_ui.dart' - lib\features\admin\screens\categories\list_screen.dart:5:8 - unused_import
+warning - Unused import: '../../../../core/widgets/auto_generated_form.dart' - lib\features\admin\screens\categories\list_screen.dart:9:8 - unused_import
+warning - Unused import: '../../widgets/admin_bottom_nav.dart' - lib\features\admin\screens\categories\list_screen.dart:10:8 - unused_import
+   info - The private field _searchQuery could be 'final' - lib\features\admin\screens\categories\list_screen.dart:25:10 - prefer_final_fields
+warning - The declaration '_filteredCategories' isn't referenced - lib\features\admin\screens\categories\list_screen.dart:90:34 - unused_element
+warning - The declaration '_toggleCategoryStatus' isn't referenced - lib\features\admin\screens\categories\list_screen.dart:154:16 - unused_element
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\ebooks\list_screen.dart:77:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\ebooks\list_screen.dart:98:7 - avoid_print
+   info - Unnecessary use of 'toList' in a spread - lib\features\admin\screens\ebooks\list_screen.dart:330:28 - unnecessary_to_list_in_spreads
+warning - The declaration '_buildSearchBar' isn't referenced - lib\features\admin\screens\ebooks\list_screen.dart:559:10 - unused_element
+warning - The declaration '_buildStatsCard' isn't referenced - lib\features\admin\screens\ebooks\list_screen.dart:580:10 - unused_element
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\notifications\admin_notification_inbox_screen.dart:101:42 - use_build_context_synchronously
+warning - The value of the field '_users' isn't used - lib\features\admin\screens\notifications\notification_list_screen.dart:22:30 - unused_field
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\payments\payments_screen.dart:121:7 - avoid_print
+   info - The prefix 'CategoryModel' isn't a lower_case_with_underscores identifier - lib\features\admin\screens\search\search_screen.dart:6:51 - library_prefixes
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\subscriptions\subscription_list_screen.dart:133:7 - avoid_print
+warning - The value of the local variable 'isActive' isn't used - lib\features\admin\screens\subscriptions\subscription_list_screen.dart:464:21 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\subscriptions\subscription_list_screen.dart:719:7 - avoid_print
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\screens\users\detail_screen.dart:467:22 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\screens\users\detail_screen.dart:468:41 - deprecated_member_use
+warning - The declaration '_buildTabBar' isn't referenced - lib\features\admin\screens\users\detail_screen.dart:478:10 - unused_element
+warning - Unused import: 'widgets/admin_users_search_filters.dart' - lib\features\admin\screens\users\list_screen.dart:17:8 - unused_import
+warning - The declaration '_onSearchChanged' isn't referenced - lib\features\admin\screens\users\list_screen.dart:146:8 - unused_element
+warning - The declaration '_onFilterChanged' isn't referenced - lib\features\admin\screens\users\list_screen.dart:152:8 - unused_element
+warning - The declaration '_showAddAdminDialog' isn't referenced - lib\features\admin\screens\users\list_screen.dart:278:8 - unused_element
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\episode_form_screen.dart:243:7 - avoid_print
+warning - Dead code - lib\features\admin\screens\videos\episodes_screen.dart:158:52 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\features\admin\screens\videos\episodes_screen.dart:158:55 - dead_null_aware_expression
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:580:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:587:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:627:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:636:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:651:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:662:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:697:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:706:30 - use_build_context_synchronously
+warning - Dead code - lib\features\admin\screens\videos\episodes_screen.dart:764:52 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\features\admin\screens\videos\episodes_screen.dart:764:55 - dead_null_aware_expression
+warning - The left operand can't be null, so the right operand is never executed - lib\features\admin\screens\videos\episodes_screen.dart:766:68 - dead_null_aware_expression
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:993:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\episodes_screen.dart:1006:28 - use_build_context_synchronously
+warning - The declaration '_detectVideoDurationFromYouTube' isn't referenced - lib\features\admin\screens\videos\form_screen.dart:270:16 - unused_element
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:99:7 - avoid_print
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:308:23 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:461:27 - deprecated_member_use
+   info - 'activeColor' is deprecated and shouldn't be used. Use activeThumbColor or activeTrackColor instead. This feature was deprecated after v3.31.0-2.0.pre - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:513:27 - deprecated_member_use
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:923:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:938:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:939:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:940:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:941:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:942:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:945:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:948:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:962:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:980:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:981:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:997:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:998:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1001:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1002:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1007:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1008:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1009:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1014:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1015:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1016:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1017:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1024:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1031:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1038:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1051:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1052:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1058:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1059:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1060:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1061:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1082:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1098:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1099:7 - avoid_print
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1133:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1160:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1201:36 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1228:36 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1246:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1247:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1248:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1249:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_auto_form_screen.dart:1250:7 - avoid_print
+warning - Unused import: 'package:go_router/go_router.dart' - lib\features\admin\screens\videos\kitab_detail_screen.dart:4:8 - unused_import
+warning - The value of the field '_isSaving' isn't used - lib\features\admin\screens\videos\kitab_detail_screen.dart:31:8 - unused_field
+warning - The declaration '_addNewEpisode' isn't referenced - lib\features\admin\screens\videos\kitab_detail_screen.dart:115:8 - unused_element
+warning - The declaration '_saveChanges' isn't referenced - lib\features\admin\screens\videos\kitab_detail_screen.dart:128:16 - unused_element
+warning - The declaration '_buildPreviewSection' isn't referenced - lib\features\admin\screens\videos\kitab_detail_screen.dart:496:10 - unused_element
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:1181:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:1201:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:1214:42 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:1255:44 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\admin\screens\videos\kitab_detail_screen.dart:1264:44 - use_build_context_synchronously
+warning - Dead code - lib\features\admin\screens\videos\kitab_detail_screen.dart:1329:72 - dead_code
+warning - The left operand can't be null, so the right operand is never executed - lib\features\admin\screens\videos\kitab_detail_screen.dart:1329:75 - dead_null_aware_expression
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\kitab_detail_screen.dart:1331:32 - use_build_context_synchronously
+warning - The declaration '_buildEpisodeCard' isn't referenced - lib\features\admin\screens\videos\kitab_detail_screen.dart:1376:10 - unused_element
+   info - The import of 'package:flutter/foundation.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:3:8 - unnecessary_import
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:287:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:288:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:291:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:295:5 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:300:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:305:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:306:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:324:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:325:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:332:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:337:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:355:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:356:9 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:362:9 - avoid_print
+warning - The value of the local variable 'finalThumbnailUrl' isn't used - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:371:15 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:390:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:428:11 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:433:7 - avoid_print
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:435:21 - use_build_context_synchronously
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:437:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:439:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:440:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:441:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:444:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:446:7 - avoid_print
+   info - Uses 'await' on an instance of 'int', which is not a subtype of 'Future' - lib\features\admin\screens\videos\kitab_manual_form_screen.dart:1629:27 - await_only_futures
+   info - The prefix 'CategoryModel' isn't a lower_case_with_underscores identifier - lib\features\admin\screens\videos\list_screen.dart:12:51 - library_prefixes
+warning - Unused import: 'kitab_auto_form_screen.dart' - lib\features\admin\screens\videos\list_screen.dart:16:8 - unused_import
+   info - Invalid use of a private type in a public API - lib\features\admin\screens\videos\list_screen.dart:23:3 - library_private_types_in_public_api
+warning - The value of the field '_fabScaleAnimation' isn't used - lib\features\admin\screens\videos\list_screen.dart:38:26 - unused_field
+warning - The value of the field '_fabRotationAnimation' isn't used - lib\features\admin\screens\videos\list_screen.dart:39:26 - unused_field
+warning - The declaration '_buildSearchAndFilterSection' isn't referenced - lib\features\admin\screens\videos\list_screen.dart:450:10 - unused_element
+warning - The value of the local variable 'animationDelay' isn't used - lib\features\admin\screens\videos\list_screen.dart:778:19 - unused_local_variable
+warning - The declaration '_buildStatusBadge' isn't referenced - lib\features\admin\screens\videos\list_screen.dart:981:10 - unused_element
+warning - The declaration '_buildInfoChip' isn't referenced - lib\features\admin\screens\videos\list_screen.dart:1038:10 - unused_element
+warning - The declaration '_buildEnhancedPlaceholder' isn't referenced - lib\features\admin\screens\videos\list_screen.dart:1060:10 - unused_element
+warning - The value of the local variable 'activeVideos' isn't used - lib\features\admin\services\admin_content_service.dart:352:13 - unused_local_variable
+   info - Don't invoke 'print' in production code - lib\features\admin\services\admin_content_service.dart:368:7 - avoid_print
+   info - Don't invoke 'print' in production code - lib\features\admin\services\admin_content_service.dart:397:7 - avoid_print
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:87:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:93:11 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:102:28 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\shared\preview_management_screen.dart:113:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\widgets\shimmer_loading.dart:166:35 - deprecated_member_use
+warning - Dead code - lib\features\admin\widgets\youtube_preview_dialog.dart:580:13 - dead_code
+   info - Unnecessary braces in a string interpolation - lib\features\admin\widgets\youtube_preview_sheet.dart:157:39 - unnecessary_brace_in_string_interps
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\widgets\youtube_preview_sheet.dart:350:30 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\features\admin\widgets\youtube_preview_sheet.dart:355:28 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\widgets\youtube_preview_sheet.dart:365:22 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\features\admin\widgets\youtube_preview_sheet.dart:366:41 - deprecated_member_use
+warning - The value of the local variable 'isPending' isn't used - lib\features\admin\widgets\youtube_sync_loading_dialog.dart:304:25 - unused_local_variable
+

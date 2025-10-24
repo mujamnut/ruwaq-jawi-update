@@ -31,12 +31,12 @@ class AvatarService {
     bool forceRefresh = false,
   }) async {
     if (kDebugMode) {
-      print('AvatarService: getAvatarUrl called for email: $email, name: $name, size: $size, forceRefresh: $forceRefresh');
+      // Debug logging removed
     }
 
     if (email.isEmpty) {
       if (kDebugMode) {
-        print('AvatarService: Email is empty, returning initials avatar');
+        // Debug logging removed
       }
       return _getInitialsAvatarUrl(name, size);
     }
@@ -47,7 +47,7 @@ class AvatarService {
     if (!forceRefresh && _avatarCache.containsKey(cacheKey)) {
       final cachedUrl = _avatarCache[cacheKey]!;
       if (kDebugMode) {
-        print('AvatarService: Returning cached URL for $email: $cachedUrl');
+        // Debug logging removed
       }
       return cachedUrl;
     }
@@ -56,28 +56,28 @@ class AvatarService {
     try {
       final gravatarUrl = _getGravatarUrl(email, size);
       if (kDebugMode) {
-        print('AvatarService: Trying Gravatar URL: $gravatarUrl');
+        // Debug logging removed
       }
 
       final isValid = await _isValidImageUrl(gravatarUrl);
       if (kDebugMode) {
-        print('AvatarService: Gravatar URL validation result: $isValid');
+        // Debug logging removed
       }
 
       if (isValid) {
         _avatarCache[cacheKey] = gravatarUrl;
         if (kDebugMode) {
-          print('AvatarService: Gravatar is valid, caching and returning: $gravatarUrl');
+          // Debug logging removed
         }
         return gravatarUrl;
       } else {
         if (kDebugMode) {
-          print('AvatarService: Gravatar URL is not valid or no image found');
+          // Debug logging removed
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('AvatarService: Gravatar fetch failed for $email: $e');
+        // Debug logging removed
       }
     }
 
@@ -85,17 +85,17 @@ class AvatarService {
     try {
       final uiAvatarUrl = _getUIAvatarUrl(name ?? email, size);
       if (kDebugMode) {
-        print('AvatarService: Trying UI-Avatars API URL: $uiAvatarUrl');
+        // Debug logging removed
       }
 
       _avatarCache[cacheKey] = uiAvatarUrl;
       if (kDebugMode) {
-        print('AvatarService: UI-Avatars API successful, caching and returning: $uiAvatarUrl');
+        // Debug logging removed
       }
       return uiAvatarUrl;
     } catch (e) {
       if (kDebugMode) {
-        print('AvatarService: UI-Avatars API failed for $email: $e');
+        // Debug logging removed
       }
     }
 
@@ -103,7 +103,7 @@ class AvatarService {
     final initialsUrl = _getInitialsAvatarUrl(name, size);
     _avatarCache[cacheKey] = initialsUrl;
     if (kDebugMode) {
-      print('AvatarService: Using initials fallback: $initialsUrl');
+      // Debug logging removed
     }
     return initialsUrl;
   }
@@ -162,7 +162,7 @@ class AvatarService {
              response.headers['content-type']?.startsWith('image/') == true;
     } catch (e) {
       if (kDebugMode) {
-        print('AvatarService: Error checking image validity: $e');
+        // Debug logging removed
       }
       return false;
     }
@@ -195,7 +195,7 @@ class AvatarService {
       await getAvatarUrl(email: email, name: name, size: size);
     } catch (e) {
       if (kDebugMode) {
-        print('AvatarService: Failed to preload avatar for $email: $e');
+        // Debug logging removed
       }
     }
   }

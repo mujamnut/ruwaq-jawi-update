@@ -17,11 +17,11 @@ class ActivityTrackingService {
       });
 
       if (kDebugMode) {
-        print('✅ Updated last_seen_at for user: ${user.id}');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to update last_seen_at: $e');
+        // Debug logging removed
       }
     }
   }
@@ -54,11 +54,11 @@ class ActivityTrackingService {
 
       // Optional: Log to analytics table if you have one
       if (kDebugMode) {
-        print('📊 User action tracked: $action ${data != null ? data.toString() : ''}');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to track action: $e');
+        // Debug logging removed
       }
     }
   }

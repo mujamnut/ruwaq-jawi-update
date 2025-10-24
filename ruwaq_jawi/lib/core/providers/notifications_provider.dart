@@ -115,12 +115,12 @@ class NotificationsProvider with ChangeNotifier {
       if (response['created_at'] != null) {
         _userRegistrationDate = DateTime.parse(response['created_at']).toUtc();
         if (kDebugMode) {
-          print('👤 User registration date loaded: $_userRegistrationDate');
+          // Debug logging removed
         }
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to load user registration date: $e');
+        // Debug logging removed
       }
     }
   }
@@ -165,10 +165,9 @@ class NotificationsProvider with ChangeNotifier {
             ..addAll(legacyNotifications);
 
           if (kDebugMode) {
-            print('✅ Loaded ${enhancedNotifications.length} notifications with filtering');
-            print('📊 Enhanced breakdown: ${enhancedNotifications.where((n) => n.isPersonal).length} personal, '
-                  '${enhancedNotifications.where((n) => n.isGlobal).length} broadcast');
-            print('🔍 Filtering applied for user registered: $_userRegistrationDate');
+            // Debug logging removed
+            // Debug logging removed
+            // Debug logging removed
           }
 
           // Setup real-time subscription after initial load
@@ -181,19 +180,19 @@ class NotificationsProvider with ChangeNotifier {
         }
       } catch (e) {
         if (kDebugMode) {
-          print('⚠️ Enhanced system failed, falling back to legacy: $e');
+          // Debug logging removed
         }
       }
 
       // Enhanced system failed, no fallback available
       if (kDebugMode) {
-        print('❌ Enhanced notification system failed, no notifications loaded');
+        // Debug logging removed
       }
       _loading = false;
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error loading notifications: $e');
+        // Debug logging removed
       }
       _error = e.toString();
       _loading = false;
@@ -302,7 +301,7 @@ class NotificationsProvider with ChangeNotifier {
       ..subscribe();
 
     if (kDebugMode) {
-      print('🔔 Real-time notification subscription enabled for user: ${user.id}');
+      // Debug logging removed
     }
   }
 
@@ -312,7 +311,7 @@ class NotificationsProvider with ChangeNotifier {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
 
-      final newReadRecord = payload.newRecord as Map<String, dynamic>;
+      final newReadRecord = payload.newRecord;
 
       if (newReadRecord['user_id'] != user.id) return;
 
@@ -323,7 +322,7 @@ class NotificationsProvider with ChangeNotifier {
           .eq('id', newReadRecord['notification_id'])
           .single();
 
-      if (notificationData != null) {
+      if (notificationData.isNotEmpty) {
         // Create enhanced notification
         final enhancedNotification = EnhancedNotification.fromNewSystem(
           notification: notificationData,
@@ -334,7 +333,7 @@ class NotificationsProvider with ChangeNotifier {
         final shouldShow = await _shouldShowRealtimeNotification(enhancedNotification);
         if (!shouldShow) {
           if (kDebugMode) {
-            print('🚫 Real-time notification filtered out for new user: ${enhancedNotification.title}');
+            // Debug logging removed
           }
           return;
         }
@@ -347,16 +346,16 @@ class NotificationsProvider with ChangeNotifier {
         _inbox.insert(0, legacyNotification);
 
         if (kDebugMode) {
-          print('🔔 Real-time notification received: ${enhancedNotification.title}');
-          print('📅 Created at: ${enhancedNotification.createdAt.toIso8601String()}');
-          print('⏰ Time ago: ${enhancedNotification.timeAgo}');
+          // Debug logging removed
+          // Debug logging removed
+          // Debug logging removed
         }
 
         notifyListeners();
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error handling real-time notification: $e');
+        // Debug logging removed
       }
     }
   }
@@ -374,7 +373,7 @@ class NotificationsProvider with ChangeNotifier {
       return !shouldHide;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error checking real-time notification visibility: $e');
+        // Debug logging removed
       }
       // Fallback: show notification if there's an error
       return true;
@@ -387,7 +386,7 @@ class NotificationsProvider with ChangeNotifier {
       final user = _supabase.auth.currentUser;
       if (user == null) return;
 
-      final updatedRecord = payload.newRecord as Map<String, dynamic>;
+      final updatedRecord = payload.newRecord;
 
       if (updatedRecord['user_id'] != user.id) return;
 
@@ -436,13 +435,13 @@ class NotificationsProvider with ChangeNotifier {
       }
 
       if (kDebugMode) {
-        print('🔄 Real-time notification update: $notificationId isRead=$isRead');
+        // Debug logging removed
       }
 
       notifyListeners();
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error handling real-time notification update: $e');
+        // Debug logging removed
       }
     }
   }
@@ -521,9 +520,7 @@ class NotificationsProvider with ChangeNotifier {
 
           notifyListeners();
           if (kDebugMode) {
-            print(
-              '✅ Marked notification as read using enhanced system: $userNotificationId',
-            );
+            // Debug logging removed
           }
           return;
         }
@@ -531,12 +528,12 @@ class NotificationsProvider with ChangeNotifier {
 
       // Enhanced system only - no fallback to legacy operations
       if (kDebugMode) {
-        print('❌ Enhanced system mark as read failed, no fallback available');
+        // Debug logging removed
       }
       return;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ markAsRead error: $e');
+        // Debug logging removed
       }
     }
   }
@@ -564,9 +561,7 @@ class NotificationsProvider with ChangeNotifier {
           notifyListeners();
 
           if (kDebugMode) {
-            print(
-              '🗑️ Deleted notification using enhanced system: $userNotificationId',
-            );
+            // Debug logging removed
           }
           return;
         }
@@ -574,12 +569,12 @@ class NotificationsProvider with ChangeNotifier {
 
       // Enhanced system only - no fallback available
       if (kDebugMode) {
-        print('❌ Enhanced system delete failed, no fallback available');
+        // Debug logging removed
       }
       return;
     } catch (e) {
       if (kDebugMode) {
-        print('❌ deleteNotification error: $e');
+        // Debug logging removed
       }
     }
   }
@@ -601,7 +596,7 @@ class NotificationsProvider with ChangeNotifier {
       };
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to get notification config: $e');
+        // Debug logging removed
       }
       return {};
     }
@@ -612,11 +607,11 @@ class NotificationsProvider with ChangeNotifier {
     try {
       await EnhancedNotificationService.initializeConfiguration();
       if (kDebugMode) {
-        print('✅ Notification system initialized');
+        // Debug logging removed
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Failed to initialize notification system: $e');
+        // Debug logging removed
       }
     }
   }
@@ -624,7 +619,7 @@ class NotificationsProvider with ChangeNotifier {
   /// Force reload notifications with current user registration date
   Future<void> refreshWithFiltering() async {
     if (kDebugMode) {
-      print('🔄 Refreshing notifications with filtering...');
+      // Debug logging removed
     }
 
     // Clear cached registration date to force reload

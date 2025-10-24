@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hugeicons/hugeicons.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/models/user_profile.dart';
 import '../../../core/providers/auth_provider.dart';
@@ -23,7 +26,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: Colors.transparent,
+        backgroundColor: AppTheme.backgroundColor,
         foregroundColor: AppTheme.textPrimaryColor,
         title: const Text('Profil'),
         leading: IconButton(
@@ -44,28 +47,30 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
         ],
       ),
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
-          final UserProfile? profile = authProvider.userProfile;
-          final supabaseUser = authProvider.user;
+      body: SafeArea(
+        child: Consumer<AuthProvider>(
+          builder: (context, authProvider, _) {
+            final UserProfile? profile = authProvider.userProfile;
+            final supabaseUser = authProvider.user;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                _buildProfileHeaderSection(profile, supabaseUser),
-                const SizedBox(height: 16),
-                _buildAccountInfoCard(profile, supabaseUser),
-                const SizedBox(height: 16),
-                _buildQuickLinksCard(),
-                const SizedBox(height: 16),
-                _buildSystemInfoCard(),
-                const SizedBox(height: 16),
-                _buildDangerZoneCard(authProvider),
-              ],
-            ),
-          );
-        },
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildProfileHeaderSection(profile, supabaseUser),
+                  const SizedBox(height: 16),
+                  _buildAccountInfoCard(profile, supabaseUser),
+                  const SizedBox(height: 16),
+                  _buildQuickLinksCard(),
+                  const SizedBox(height: 16),
+                  _buildSystemInfoCard(),
+                  const SizedBox(height: 16),
+                  _buildDangerZoneCard(authProvider),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -79,31 +84,34 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
     return Column(
       children: [
-        CircleAvatar(
-          radius: 40,
-          backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
-          child: avatarUrl != null && avatarUrl.isNotEmpty
-              ? ClipOval(
-                  child: Image.network(
-                    avatarUrl,
-                    width: 80,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, _, __) => HugeIcon(
-                      icon: HugeIcons.strokeRoundedUser,
+        GestureDetector(
+          onTap: _handleUploadCustomAvatar,
+          child: CircleAvatar(
+            radius: 40,
+            backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.12),
+            child: avatarUrl != null && avatarUrl.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      avatarUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, _, __) => HugeIcon(
+                        icon: HugeIcons.strokeRoundedUser,
+                        color: AppTheme.primaryColor,
+                        size: 40.0,
+                      ),
+                    ),
+                  )
+                : Text(
+                    initials,
+                    style: const TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
                       color: AppTheme.primaryColor,
-                      size: 40.0,
                     ),
                   ),
-                )
-              : Text(
-                  initials,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryColor,
-                  ),
-                ),
+          ),
         ),
         const SizedBox(height: 16),
         Text(
@@ -420,52 +428,261 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     final nameController = TextEditingController(
       text: authProvider.userProfile?.fullName ?? '',
     );
-    final phoneController = TextEditingController(
-      text: authProvider.userProfile?.phoneNumber ?? '',
-    );
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Profil'),
-        content: Column(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Nama Penuh',
-                border: OutlineInputBorder(),
+            // Drag handle
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.borderColor,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: phoneController,
-              decoration: const InputDecoration(
-                labelText: 'Nombor Telefon',
-                border: OutlineInputBorder(),
+
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  Text(
+                    'Edit Nama',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textPrimaryColor,
+                        ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Name field
+                  TextField(
+                    controller: nameController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Nama Penuh',
+                      hintText: 'Masukkan nama penuh anda',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      prefixIcon: const HugeIcon(
+                        icon: HugeIcons.strokeRoundedUser,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Actions
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Batal'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            if (nameController.text.trim().isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Sila masukkan nama'),
+                                  backgroundColor: AppTheme.errorColor,
+                                ),
+                              );
+                              return;
+                            }
+
+                            try {
+                              await authProvider.updateProfile(
+                                fullName: nameController.text.trim(),
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Nama berjaya dikemaskini'),
+                                    backgroundColor: AppTheme.successColor,
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Gagal kemaskini: $e'),
+                                    backgroundColor: AppTheme.errorColor,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text('Simpan'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+      ),
+    );
+  }
+
+  Future<void> _handleUploadCustomAvatar() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+      if (!mounted) return;
+
+      _showLoadingDialog('Memuat naik avatar...');
+
+      final authProvider = context.read<AuthProvider>();
+      final userProfile = authProvider.userProfile;
+
+      if (userProfile == null) {
+        if (mounted) {
+          Navigator.pop(context);
+          _showErrorMessage('Profil pengguna tidak dijumpai');
+        }
+        return;
+      }
+
+      final userId = userProfile.id;
+      final file = File(image.path);
+      final fileExt = image.path.split('.').last;
+      final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final filePath = 'avatars/$fileName';
+
+      // Upload to Supabase Storage
+      await Supabase.instance.client.storage
+          .from('user-avatars')
+          .upload(filePath, file);
+
+      // Get public URL
+      final publicUrl = Supabase.instance.client.storage
+          .from('user-avatars')
+          .getPublicUrl(filePath);
+
+      // Update user profile
+      await authProvider.updateAvatar(publicUrl);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        _showSuccessMessage('Avatar berjaya dikemaskini!');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Close loading dialog
+      _showErrorMessage('Gagal muat naik avatar: $e');
+    }
+  }
+
+  void _showLoadingDialog(String message) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          content: Row(
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(width: 20),
+              Expanded(child: Text(message)),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Profil akan dikemaskini'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Simpan'),
-          ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  void _showSuccessMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.successColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  void _showErrorMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const HugeIcon(
+              icon: HugeIcons.strokeRoundedAlert02,
+              color: Colors.white,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }

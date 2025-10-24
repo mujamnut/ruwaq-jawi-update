@@ -155,7 +155,7 @@ class _AdminVideoEpisodesScreenState extends State<AdminVideoEpisodesScreen> {
   Widget _buildStatsHeader() {
     final totalDuration = _videos.fold<int>(
       0,
-      (sum, video) => sum + (video.durationMinutes ?? 0),
+      (sum, video) => sum + (video.durationMinutes),
     );
 
     return Container(
@@ -761,9 +761,9 @@ class _VideoFormDialogState extends State<_VideoFormDialog> {
     final video = widget.video!;
     _titleController.text = video.title;
     _descriptionController.text = video.description ?? '';
-    _videoIdController.text = video.youtubeVideoId ?? '';
+    _videoIdController.text = video.youtubeVideoId;
     _videoUrlController.text = video.youtubeVideoUrl ?? '';
-    _durationController.text = video.durationMinutes.toString() ?? '';
+    _durationController.text = video.durationMinutes.toString();
     _episodeController.text = video.partNumber.toString();
     _isActive = video.isActive;
   }

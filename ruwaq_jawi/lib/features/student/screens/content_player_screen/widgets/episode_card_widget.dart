@@ -218,6 +218,7 @@ class EpisodeCardWidget extends StatelessWidget {
                                 text: TextSpan(
                                   style: Theme.of(context).textTheme.titleSmall
                                       ?.copyWith(
+                                        fontSize: 14,
                                         fontWeight: isCurrentEpisode
                                             ? FontWeight.w600
                                             : FontWeight.w500,
@@ -232,6 +233,7 @@ class EpisodeCardWidget extends StatelessWidget {
                                           .textTheme
                                           .titleSmall
                                           ?.copyWith(
+                                            fontSize: 14,
                                             color: AppTheme.textSecondaryColor,
                                             fontWeight: FontWeight.w600,
                                           ),

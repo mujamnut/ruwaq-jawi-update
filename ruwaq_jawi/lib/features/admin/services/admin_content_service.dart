@@ -349,7 +349,6 @@ class AdminContentService {
       ).select('duration_minutes, is_active').eq('kitab_id', kitabId);
 
       final totalVideos = videos.length;
-      final activeVideos = videos.where((v) => v['is_active'] == true).length;
       final totalDurationMinutes = videos.fold<int>(
         0,
         (sum, video) => sum + (video['duration_minutes'] as int? ?? 0),
@@ -365,7 +364,6 @@ class AdminContentService {
           })
           .eq('id', kitabId);
     } catch (e) {
-      print('Error updating kitab video stats: $e');
     }
   }
 
@@ -394,7 +392,6 @@ class AdminContentService {
       // Update parent kitab stats
       await _updateKitabVideoStats(newKitabId);
     } catch (e) {
-      print('Error duplicating kitab videos: $e');
     }
   }
 

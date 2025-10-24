@@ -79,22 +79,15 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
 
   Future<void> _loadPlans() async {
     try {
-      print('🔥 SubscriptionScreen: Starting to load plans...');
       final paymentProvider = Provider.of<PaymentProvider>(
         context,
         listen: false,
       );
 
-      print(
-        '📱 SubscriptionScreen: Calling PaymentProvider.loadSubscriptionPlans()...',
-      );
       await paymentProvider.loadSubscriptionPlans();
 
       // Set initial plan selection after loading plans - default to 6 months (Best Value)
       final plans = paymentProvider.subscriptionPlans;
-      print(
-        '📋 SubscriptionScreen: Received ${plans.length} plans from PaymentProvider',
-      );
 
       if (plans.isNotEmpty && _selectedPlanId == null) {
         // Default to 6 months plan (monthly_premium)
@@ -103,21 +96,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen>
           orElse: () => plans.first,
         );
         _selectedPlanId = recommendedPlan.id;
-        print(
-          '✅ SubscriptionScreen: Selected initial plan (6 months): $_selectedPlanId',
-        );
-      } else if (plans.isEmpty) {
-        print('⚠️ SubscriptionScreen: No plans available');
-      }
-
-      // Check for any errors from PaymentProvider
-      if (paymentProvider.error != null) {
-        print(
-          '❌ SubscriptionScreen: PaymentProvider has error: ${paymentProvider.error}',
-        );
       }
     } catch (e) {
-      print('❌ SubscriptionScreen: Error loading plans: $e');
       // Don't rethrow to prevent ErrorBoundary conflicts during build
     }
   }
@@ -1075,8 +1055,6 @@ Last updated: January 2025''',
 
   void _handleSubscribe(SubscriptionPlan selectedPlan) async {
     try {
-      print('DEBUG: User clicked subscribe for plan ${selectedPlan.id}');
-
       final user = SupabaseService.currentUser;
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1100,10 +1078,6 @@ Last updated: January 2025''',
       final chosenPlan = availablePlans.firstWhere(
         (plan) => plan.id == _selectedPlanId,
         orElse: () => selectedPlan,
-      );
-
-      print(
-        'DEBUG: Selected plan: ${chosenPlan.id}, Price: RM${chosenPlan.price}',
       );
 
       // Show loading

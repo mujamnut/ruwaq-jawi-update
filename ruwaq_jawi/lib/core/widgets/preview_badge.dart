@@ -289,7 +289,7 @@ class AsyncPreviewBadge extends StatelessWidget {
         contentId: contentId,
       );
     } catch (e) {
-      print('Error loading preview: $e');
+      // Debug logging removed
       return null;
     }
   }

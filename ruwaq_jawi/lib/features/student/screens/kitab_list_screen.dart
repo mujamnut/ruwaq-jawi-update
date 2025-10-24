@@ -1233,7 +1233,7 @@ class _KitabListScreenState extends State<KitabListScreen>
   Future<bool> _isVideoKitabSaved(String videoKitabId) async {
     try {
       final savedItemsProvider = context.read<SavedItemsProvider>();
-      return await savedItemsProvider.isKitabSaved(videoKitabId);
+      return savedItemsProvider.isKitabSaved(videoKitabId);
     } catch (e) {
       debugPrint('Error checking if video kitab is saved: $e');
       return false;

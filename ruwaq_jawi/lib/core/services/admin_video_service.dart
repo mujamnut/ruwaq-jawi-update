@@ -86,7 +86,7 @@ class AdminVideoService {
       try {
         videoInfo = await _getYouTubeVideoInfo(youtubeVideoId);
       } catch (e) {
-        print('Warning: Tidak dapat mendapatkan info video dari YouTube: $e');
+        // Debug logging removed
       }
 
       // Set default values dari YouTube info jika ada
@@ -480,7 +480,7 @@ class AdminVideoService {
           })
           .eq('id', kitabId);
     } catch (e) {
-      print('Error updating kitab video stats: $e');
+      // Debug logging removed
     }
   }
 

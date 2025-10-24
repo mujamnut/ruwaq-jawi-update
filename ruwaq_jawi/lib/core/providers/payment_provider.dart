@@ -51,7 +51,7 @@ class PaymentProvider with ChangeNotifier {
       notifyListeners();
 
       // Print debug info
-      print('Creating payment with email: $email');
+      // Debug logging removed
 
       final result = await _paymentService.createBill(
         amount: amount,
@@ -83,7 +83,7 @@ class PaymentProvider with ChangeNotifier {
       final status = await _paymentService.getBillStatus(billCode);
 
       // 🔥 FIXED: Use centralized PaymentProcessingService instead of direct activation
-      print('PaymentProvider: Using centralized PaymentProcessingService for status check');
+      // Debug logging removed
 
       // Determine payment status from ToyyibPay response
       String? redirectStatus;
@@ -124,13 +124,13 @@ class PaymentProvider with ChangeNotifier {
           source: PaymentSource.redirect,
         );
 
-        print('PaymentProvider: Centralized processing result: ${result.success}');
-        print('PaymentProvider: Message: ${result.message}');
+        // Debug logging removed
+        // Debug logging removed
 
         // Refresh auth provider if payment was successful
         if (result.success && _authProvider != null) {
           await _authProvider!.refreshSubscriptionStatus();
-          print('PaymentProvider: Auth provider refreshed after centralized processing');
+          // Debug logging removed
         }
       }
 
@@ -154,18 +154,18 @@ class PaymentProvider with ChangeNotifier {
   /// Load available subscription plans from database
   Future<void> loadSubscriptionPlans() async {
     try {
-      print('🚀 PaymentProvider: Starting to load subscription plans...');
+      // Debug logging removed
       _isProcessing = true;
       _error = null;
       _safeNotifyListeners();
 
-      print('📡 PaymentProvider: Fetching plans from database...');
+      // Debug logging removed
       // Fetch subscription plans from database with enhanced error handling and retry mechanism
       final plansData = await SupabaseService.retryOperation<List<Map<String, dynamic>>>(
         () => _subscriptionService.getSubscriptionPlans().timeout(
           const Duration(seconds: 15),
           onTimeout: () {
-            print('⏰ PaymentProvider: Timeout while fetching plans, using fallback...');
+            // Debug logging removed
             throw Exception('Masa tamat semasa memuatkan pelan. Sila semak sambungan internet.');
           },
         ),
@@ -174,15 +174,15 @@ class PaymentProvider with ChangeNotifier {
         operationName: 'Load subscription plans',
       );
 
-      print('📦 PaymentProvider: Received ${plansData.length} plans from database');
+      // Debug logging removed
       if (plansData.isEmpty) {
-        print('⚠️ PaymentProvider: No plans found in database');
+        // Debug logging removed
         _error = 'Tiada pelan langganan dijumpai dalam pangkalan data';
         _safeNotifyListeners();
         return;
       }
 
-      print('🔄 PaymentProvider: Converting database records to SubscriptionPlan objects...');
+      // Debug logging removed
       // Convert database records to SubscriptionPlan objects
       _subscriptionPlans = plansData.map((planData) {
         try {
@@ -190,7 +190,7 @@ class PaymentProvider with ChangeNotifier {
           final durationDays = planData['duration_days'] as int;
           final price = double.parse(planData['price'].toString());
 
-          print('📋 PaymentProvider: Processing plan $planId - $durationDays days - RM$price');
+          // Debug logging removed
 
           return SubscriptionPlan(
             id: planId,
@@ -203,17 +203,17 @@ class PaymentProvider with ChangeNotifier {
             isActive: planData['is_active'] as bool,
           );
         } catch (e) {
-          print('❌ PaymentProvider: Error processing plan ${planData['id']}: $e');
+          // Debug logging removed
           throw Exception('Ralat memproses pelan ${planData['id']}: $e');
         }
       }).toList();
 
-      print('✅ PaymentProvider: Successfully loaded ${_subscriptionPlans.length} subscription plans');
-      print('📊 PaymentProvider: Plans: ${_subscriptionPlans.map((p) => '${p.name} (${p.id})').join(', ')}');
+      // Debug logging removed
+      // Debug logging removed
 
       _safeNotifyListeners();
     } catch (e) {
-      print('❌ PaymentProvider: Error loading subscription plans: $e');
+      // Debug logging removed
 
       // Enhanced error handling for different error types
       String errorMessage = 'Gagal memuatkan pelan langganan: ${e.toString()}';
@@ -238,7 +238,7 @@ class PaymentProvider with ChangeNotifier {
       // Don't rethrow to prevent ErrorBoundary conflicts
     } finally {
       _isProcessing = false;
-      print('🏁 PaymentProvider: Finished loading subscription plans (isProcessing: $_isProcessing)');
+      // Debug logging removed
       _safeNotifyListeners();
     }
   }
@@ -317,7 +317,7 @@ class PaymentProvider with ChangeNotifier {
 
       // Ensure phone number is valid
       final phone = userPhone.isNotEmpty ? userPhone : '60123456789';
-      print('Creating payment with phone: $phone'); // Debug log
+      // Debug logging removed // Debug log
 
       final result = await _paymentService.createBill(
         amount: plan.price,
@@ -340,7 +340,7 @@ class PaymentProvider with ChangeNotifier {
 
       // ✅ REMOVED: Payment record creation now handled by PaymentProcessingService
       // This eliminates duplicate payment records and race conditions
-      print('📝 PaymentProvider: Payment record creation delegated to PaymentProcessingService');
+      // Debug logging removed
 
       final payment = PaymentResponse(
         id: billCode,

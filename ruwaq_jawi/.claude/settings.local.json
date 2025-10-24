@@ -4,7 +4,14 @@
       "Bash(flutter analyze:*)",
       "Bash(find:*)",
       "Read(//c/Users/kumar/OneDrive/Desktop/RUWAQ JAWI/RUWAQ-JAWI-main/.github/workflows/**)",
-      "Bash(supabase:*)"
+      "Bash(supabase:*)",
+      "Read(//c/Users/Honor/OneDrive/Desktop/projek/ruwaq-jawi-update/**)",
+      "Bash(tree:*)",
+      "Bash(flutter clean:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(where:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []
