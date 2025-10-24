@@ -129,9 +129,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _navigateWithFadeOut(String route) async {
-    setState(() {
-      _fadeOut = true;
-    });
     await _fadeOutController.forward();
     if (mounted) context.go(route);
   }
