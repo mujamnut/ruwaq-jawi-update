@@ -15,5 +15,10 @@
     ],
     "deny": [],
     "ask": []
-  }
+  },
+  "env": {
+        "ANTHROPIC_AUTH_TOKEN": "9f7ab0b381dd415fb505af3e14717e64.EhoTCqquqbE4cfKu",
+        "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+        "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6"
+    }
 }
