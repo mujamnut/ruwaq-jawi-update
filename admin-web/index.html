@@ -1,0 +1,1175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LearnHub Admin | Content Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .glass {
+      background: radial-gradient(circle at top left, rgba(96,165,250,0.28), transparent 55%)
+                    ,radial-gradient(circle at bottom right, rgba(236,72,153,0.18), transparent 55%)
+                    ,rgba(15,23,42,0.92);
+      backdrop-filter: blur(18px);
+    }
+    .card {
+      background: radial-gradient(circle at top left, rgba(148,163,184,0.15), transparent 60%)
+                  ,rgba(15,23,42,0.98);
+      border: 1px solid rgba(148,163,184,0.18);
+    }
+    .gradient-border {
+      border-image: linear-gradient(to right, rgba(96,165,250,0.4), rgba(236,72,153,0.4)) 1;
+    }
+    .gradient-text {
+      background: linear-gradient(to right, #60a5fa, #c4b5fd, #fb7185);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #3b82f6, #6366f1);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+    }
+    .btn-ghost {
+      background: rgba(15,23,42,0.9);
+    }
+    .btn-ghost:hover {
+      background: rgba(30,64,175,0.55);
+    }
+    .tag-pill {
+      background: rgba(15,23,42,0.95);
+      border: 1px solid rgba(148,163,184,0.35);
+    }
+    .fade-in {
+      animation: fadeIn 0.35s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+  <!-- App Shell -->
+  <div class="flex min-h-screen">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed z-30 inset-y-0 left-0 w-72 bg-slate-950/95 border-r border-slate-800/80 backdrop-blur-xl flex flex-col transition-transform duration-300 ease-out lg:translate-x-0 -translate-x-full lg:static">
+      <!-- Logo -->
+      <div class="flex items-center gap-3 px-6 pt-5 pb-4 border-b border-slate-800/80">
+        <div class="h-9 w-9 rounded-2xl bg-gradient-to-tr from-blue-500 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg shadow-blue-500/40">
+          <span class="font-bold text-lg">L</span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-sm font-semibold tracking-wide gradient-text">LearnHub</span>
+          <span class="text-[11px] uppercase tracking-[.18em] text-slate-400">Admin Console</span>
+        </div>
+      </div>
+      <!-- Nav -->
+      <nav class="flex-1 overflow-y-auto no-scrollbar px-3 py-4 space-y-4 text-sm">
+        <div>
+          <p class="px-3 mb-2 text-[11px] font-medium tracking-[.18em] uppercase text-slate-500">Overview</p>
+          <button data-section="dashboard" class="nav-link flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-100 bg-slate-900/80 border border-slate-700 shadow-sm shadow-blue-500/20">
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 text-xs">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" />
+              </svg>
+            </span>
+            <div class="flex flex-col items-start">
+              <span class="font-medium text-[13px]">Dashboard</span>
+              <span class="text-[11px] text-slate-400">Insights & KPIs</span>
+            </div>
+          </button>
+        </div>
+        <div>
+          <p class="px-3 mb-2 text-[11px] font-medium tracking-[.18em] uppercase text-slate-500">Content</p>
+          <div class="space-y-1">
+            <button data-section="content" class="nav-link flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-900/70 hover:text-slate-50 transition-colors">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-xs border border-slate-700/80">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M4 4h16v14H4z" />
+                  <path d="M4 12h16" />
+                </svg>
+              </span>
+              <span class="font-medium text-[13px]">All Content</span>
+            </button>
+            <button data-section="library" class="nav-link flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-900/70 hover:text-slate-50 transition-colors">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-xs border border-slate-700/80">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M4 4h13v16H4z" />
+                  <path d="M9 4h3v16H9zM17 4h3v16h-3z" />
+                </svg>
+              </span>
+              <span class="font-medium text-[13px]">Video & eBook</span>
+            </button>
+            <button data-section="categories" class="nav-link flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-900/70 hover:text-slate-50 transition-colors">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-xs border border-slate-700/80">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M3 7h18M3 12h12M3 17h6" />
+                </svg>
+              </span>
+              <span class="font-medium text-[13px]">Categories</span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <p class="px-3 mb-2 text-[11px] font-medium tracking-[.18em] uppercase text-slate-500">People</p>
+          <div class="space-y-1">
+            <button data-section="students" class="nav-link flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-900/70 hover:text-slate-50 transition-colors">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-xs border border-slate-700/80">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M16 21v-2a4 4 0 0 0-3-3.87M9 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm7.5-3a2.5 2.5 0 1 1-5 0" />
+                  <path d="M3 20.9A6.5 6.5 0 0 1 9 15c.88 0 1.73.18 2.5.5" />
+                </svg>
+              </span>
+              <span class="font-medium text-[13px]">Students</span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <p class="px-3 mb-2 text-[11px] font-medium tracking-[.18em] uppercase text-slate-500">System</p>
+          <div class="space-y-1">
+            <button data-section="settings" class="nav-link flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-900/70 hover:text-slate-50 transition-colors">
+              <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-xs border border-slate-700/80">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.65 1.65 0 0 0 15 19.4a1.65 1.65 0 0 0-1 .6 1.65 1.65 0 0 0-.37 1.11V21a2 2 0 1 1-4 0v-.12A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82-.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-.6-1 1.65 1.65 0 0 0-1.11-.37H3a2 2 0 1 1 0-4h.12A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-.6 1.65 1.65 0 0 0 .37-1.11V3a2 2 0 1 1 4 0v.12A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 .6 1 1.65 1.65 0 0 0 1.11.37H21a2 2 0 1 1 0 4h-.12a1.65 1.65 0 0 0-1.11.37 1.65 1.65 0 0 0-.37 1.11V15Z" />
+                </svg>
+              </span>
+              <span class="font-medium text-[13px]">Settings</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <!-- Bottom user section -->
+      <div class="border-t border-slate-800/80 px-4 py-4 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="relative">
+            <div class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-blue-500 via-indigo-500 to-emerald-400 flex items-center justify-center text-xs font-semibold">
+              AD
+            </div>
+            <span class="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-slate-950/95"></span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-xs font-medium">Admin User</span>
+            <span class="text-[11px] text-slate-400">superadmin@learnhub.app</span>
+          </div>
+        </div>
+        <button class="p-2 rounded-xl bg-slate-900/90 hover:bg-slate-800/90 border border-slate-700/80 transition">
+          <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M16 17l5-5-5-5" />
+            <path d="M21 12H9" />
+            <path d="M4 19V5" />
+          </svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
+      <!-- Top bar -->
+      <header class="sticky top-0 z-20 glass border-b border-slate-800/80">
+        <div class="flex items-center justify-between px-4 sm:px-6 py-3 gap-3">
+          <!-- Left -->
+          <div class="flex items-center gap-3">
+            <button id="sidebarToggle" class="lg:hidden p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 text-slate-200">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 6h18M3 12h14M3 18h10" />
+              </svg>
+            </button>
+            <div class="flex flex-col">
+              <span class="text-xs uppercase tracking-[.18em] text-slate-400">Content Management</span>
+              <h1 class="text-sm sm:text-base font-semibold">Admin Workspace</h1>
+            </div>
+          </div>
+
+          <!-- Center search -->
+          <div class="flex-1 max-w-xl hidden md:flex items-center px-3 py-1.5 rounded-full border border-slate-700/80 bg-slate-900/80 shadow-sm shadow-slate-900/60">
+            <svg class="w-4 h-4 text-slate-400 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path d="M11 5a6 6 0 0 1 4.472 9.972l3.265 3.265-1.414 1.414-3.265-3.265A6 6 0 1 1 11 5Z" />
+            </svg>
+            <input id="globalSearch" type="text" placeholder="Search content, tags..." class="w-full bg-transparent border-0 focus:ring-0 text-xs text-slate-100 placeholder:text-slate-500" />
+            <div class="flex items-center gap-1 text-[10px] text-slate-400">
+              <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">Ctrl</span>
+              <span>+</span>
+              <span class="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700">K</span>
+            </div>
+          </div>
+
+          <!-- Right -->
+          <div class="flex items-center gap-2">
+            <button class="relative p-2 rounded-xl bg-slate-900/80 border border-slate-700/80 hover:bg-slate-800/90 transition">
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9Z" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span class="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-rose-500 border-2 border-slate-950/90"></span>
+            </button>
+            <button class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-xl btn-primary text-xs font-medium shadow-lg shadow-blue-500/30">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New Content
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Page Wrapper -->
+      <main class="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
+        <!-- Section: Dashboard -->
+        <section id="section-dashboard" class="space-y-4 fade-in">
+          <!-- Hero + Stats -->
+          <div class="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-4">
+            <!-- Overview Card -->
+            <div class="card rounded-2xl p-4 sm:p-5 shadow-xl shadow-blue-900/50">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[.18em] text-slate-400 mb-1">Today Snapshot</p>
+                  <h2 class="text-base sm:text-lg font-semibold">Welcome back, Admin</h2>
+                  <p class="text-xs text-slate-400 mt-1">Monitor what students are learning and keep your library up to date.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl btn-ghost border border-slate-700/80 text-[11px] font-medium">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>
+                    Live usage
+                  </button>
+                  <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80 text-[11px] font-medium hover:bg-slate-800/90">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path d="M5 4a2 2 0 0 0-2 2v3h2V6h3V4H5Zm11 0v2h3v3h2V6a2 2 0 0 0-2-2h-3Zm-8 8h8v2H8v-2Zm11 2h2v3a2 2 0 0 1-2 2h-3v-2h3v-3Zm-11 5v2H5a2 2 0 0 1-2-2v-3h2v3h3Z" />
+                    </svg>
+                    Export
+                  </button>
+                </div>
+              </div>
+              <!-- Stats -->
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div class="rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] text-slate-400">Total Content</span>
+                    <span class="px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-[10px] text-emerald-300 border border-emerald-500/40">+18%</span>
+                  </div>
+                  <p class="text-lg font-semibold">248</p>
+                  <p class="mt-0.5 text-[11px] text-slate-500">45 new this month</p>
+                </div>
+                <div class="rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] text-slate-400">Active Students</span>
+                    <span class="px-1.5 py-0.5 rounded-full bg-blue-500/10 text-[10px] text-blue-300 border border-blue-500/40">+8%</span>
+                  </div>
+                  <p class="text-lg font-semibold">1,942</p>
+                  <p class="mt-0.5 text-[11px] text-slate-500">218 online now</p>
+                </div>
+                <div class="rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] text-slate-400">Watch Time</span>
+                    <span class="px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-[10px] text-indigo-300 border border-indigo-500/40">+31%</span>
+                  </div>
+                  <p class="text-lg font-semibold">483h</p>
+                  <p class="mt-0.5 text-[11px] text-slate-500">Last 7 days</p>
+                </div>
+                <div class="rounded-xl border border-slate-700/80 bg-slate-950/80 p-3">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <span class="text-[11px] text-slate-400">Completion</span>
+                    <span class="px-1.5 py-0.5 rounded-full bg-amber-500/10 text-[10px] text-amber-300 border border-amber-500/40">74%</span>
+                  </div>
+                  <p class="text-lg font-semibold">+326</p>
+                  <p class="mt-0.5 text-[11px] text-slate-500">Finished lessons</p>
+                </div>
+              </div>
+              <!-- Quick filters -->
+              <div class="mt-4 flex flex-wrap gap-2 text-[11px]">
+                <span class="text-slate-400 mr-1.5">Focus:</span>
+                <button class="tag-pill px-3 py-1 rounded-full flex items-center gap-1 text-xs text-slate-100">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Engagement
+                </button>
+                <button class="tag-pill px-3 py-1 rounded-full flex items-center gap-1 text-xs text-slate-300">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span> New uploads
+                </button>
+                <button class="tag-pill px-3 py-1 rounded-full flex items-center gap-1 text-xs text-slate-300">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Low-performing
+                </button>
+              </div>
+            </div>
+
+            <!-- Activity Card -->
+            <div class="card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <p class="text-[11px] uppercase tracking-[.18em] text-slate-400 mb-1">Today Activity</p>
+                  <h3 class="text-sm font-semibold">Content timeline</h3>
+                </div>
+                <select class="text-[11px] bg-slate-900/80 border border-slate-700/80 rounded-lg px-2 py-1">
+                  <option>Today</option>
+                  <option>Last 7 days</option>
+                  <option>Last 30 days</option>
+                </select>
+              </div>
+              <div class="space-y-2 text-[11px] max-h-44 overflow-y-auto no-scrollbar">
+                <div class="flex items-center gap-2">
+                  <span class="w-1 h-9 rounded-full bg-emerald-400"></span>
+                  <div class="flex-1 p-2.5 rounded-xl bg-slate-900/80 border border-emerald-500/40">
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium text-xs">New video published</span>
+                      <span class="text-[10px] text-slate-400">2 min ago</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">"Intro to Data Structures" is now live in CS Fundamentals.</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-1 h-9 rounded-full bg-blue-400"></span>
+                  <div class="flex-1 p-2.5 rounded-xl bg-slate-900/80 border border-blue-500/40">
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium text-xs">eBook updated</span>
+                      <span class="text-[10px] text-slate-400">38 min ago</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">New chapter added to "Calculus Essentials".</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-1 h-9 rounded-full bg-amber-400"></span>
+                  <div class="flex-1 p-2.5 rounded-xl bg-slate-900/80 border border-amber-500/40">
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium text-xs">Low completion alert</span>
+                      <span class="text-[10px] text-slate-400">1h 12m ago</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">"Linear Algebra - Lecture 08" completion dropped below 40%.</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-1 h-9 rounded-full bg-rose-400"></span>
+                  <div class="flex-1 p-2.5 rounded-xl bg-slate-900/80 border border-rose-500/40">
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium text-xs">Content scheduled</span>
+                      <span class="text-[10px] text-slate-400">3h ago</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">4 new videos scheduled for "Python for Beginners".</p>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center justify-between text-[11px]">
+                <button class="inline-flex items-center gap-1 text-slate-300 hover:text-slate-50">
+                  View all logs
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                <div class="text-slate-400 flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Syncing with app…
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content table preview -->
+          <div class="card rounded-2xl p-4 sm:p-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <div>
+                <h3 class="text-sm font-semibold">Recent content</h3>
+                <p class="text-[11px] text-slate-400 mt-0.5">Quick view of what students see in the app.</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <select id="dashboardTypeFilter" class="text-[11px] bg-slate-900/80 border border-slate-700/80 rounded-lg px-2 py-1">
+                  <option value="all">All</option>
+                  <option value="video">Video only</option>
+                  <option value="ebook">eBook only</option>
+                </select>
+                <button class="px-3 py-1.5 rounded-xl btn-ghost border border-slate-700/80 text-[11px] font-medium">Manage all</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto no-scrollbar text-[11px]">
+              <table class="w-full text-left border-separate border-spacing-y-1.5">
+                <thead class="text-[10px] uppercase tracking-[.18em] text-slate-500">
+                  <tr>
+                    <th class="px-2 py-1.5">Title</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Type</th>
+                    <th class="px-2 py-1.5">Category</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Students</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Completion</th>
+                    <th class="px-2 py-1.5 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dashboardContentRows" class="text-xs"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: All Content -->
+        <section id="section-content" class="hidden space-y-4 fade-in">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p class="text-[11px] uppercase tracking-[.18em] text-slate-400 mb-1">Library</p>
+              <h2 class="text-base sm:text-lg font-semibold">All learning content</h2>
+              <p class="text-xs text-slate-400 mt-1">Manage videos, eBooks, and supplemental materials used in the app.</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="openCreateModal" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl btn-primary text-xs font-medium shadow-lg shadow-blue-500/30">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Add new
+              </button>
+              <button class="px-3 py-1.5 rounded-xl btn-ghost border border-slate-700/80 text-[11px] font-medium hidden sm:inline-flex">
+                Bulk actions
+              </button>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="card rounded-2xl p-3 sm:p-4">
+            <div class="flex flex-col md:flex-row md:items-center gap-3">
+              <div class="flex-1 flex items-center px-3 py-1.5 rounded-xl bg-slate-950/80 border border-slate-700/80">
+                <svg class="w-4 h-4 text-slate-400 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M11 5a6 6 0 0 1 4.472 9.972l3.265 3.265-1.414 1.414-3.265-3.265A6 6 0 1 1 11 5Z" />
+                </svg>
+                <input id="contentSearch" type="text" placeholder="Search by title, description, tags..." class="w-full bg-transparent border-0 focus:ring-0 text-xs text-slate-100 placeholder:text-slate-500" />
+              </div>
+              <div class="flex flex-wrap gap-2 text-[11px]">
+                <select id="contentTypeFilter" class="bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1">
+                  <option value="all">All types</option>
+                  <option value="video">Video</option>
+                  <option value="ebook">eBook</option>
+                </select>
+                <select id="contentCategoryFilter" class="bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1">
+                  <option value="all">All categories</option>
+                  <option value="math">Math</option>
+                  <option value="cs">Computer Science</option>
+                  <option value="business">Business</option>
+                  <option value="language">Language</option>
+                </select>
+                <select id="contentStatusFilter" class="bg-slate-950/80 border border-slate-700/80 rounded-xl px-2.5 py-1">
+                  <option value="all">Status: All</option>
+                  <option value="published">Published</option>
+                  <option value="draft">Draft</option>
+                  <option value="scheduled">Scheduled</option>
+                </select>
+                <button class="px-2.5 py-1 rounded-xl bg-slate-950/80 border border-blue-500/50 text-blue-300 flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M3 6h18M7 12h10M10 18h4" />
+                  </svg>
+                  Sort
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Content List -->
+          <div class="card rounded-2xl p-3 sm:p-4">
+            <div class="overflow-x-auto no-scrollbar text-[11px]">
+              <table class="w-full text-left border-separate border-spacing-y-1.5">
+                <thead class="text-[10px] uppercase tracking-[.18em] text-slate-500">
+                  <tr>
+                    <th class="px-2 py-1.5">
+                      <input type="checkbox" class="rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500" />
+                    </th>
+                    <th class="px-2 py-1.5">Title</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Type</th>
+                    <th class="px-2 py-1.5">Category</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Duration</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Students</th>
+                    <th class="px-2 py-1.5 whitespace-nowrap">Visibility</th>
+                    <th class="px-2 py-1.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="contentTableBody" class="text-xs"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section: Library (Video & eBook overview) -->
+        <section id="section-library" class="hidden space-y-4 fade-in">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p class="text-[11px] uppercase tracking-[.18em] text-slate-400 mb-1">Format overview</p>
+              <h2 class="text-base sm:text-lg font-semibold">Video & eBook performance</h2>
+              <p class="text-xs text-slate-400 mt-1">Compare engagement between videos and reading materials.</p>
+            </div>
+            <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl btn-primary text-xs font-medium shadow-lg shadow-blue-500/30">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New playlist
+            </button>
+          </div>
+          <div class="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
+            <!-- Chart -->
+            <div class="card rounded-2xl p-4 sm:p-5">
+              <div class="flex items-center justify-between mb-3">
+                <div>
+                  <h3 class="text-sm font-semibold">Weekly engagement</h3>
+                  <p class="text-[11px] text-slate-400 mt-0.5">Watch time vs reading time (hours).</p>
+                </div>
+                <select class="text-[11px] bg-slate-900/80 border border-slate-700/80 rounded-lg px-2 py-1">
+                  <option>This week</option>
+                  <option>Last week</option>
+                  <option>Last month</option>
+                </select>
+              </div>
+              <div class="h-52 sm:h-64">
+                <canvas id="engagementChart"></canvas>
+              </div>
+            </div>
+            <!-- Summary -->
+            <div class="card rounded-2xl p-4 sm:p-5 flex flex-col justify-between">
+              <div class="space-y-3 text-xs">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+                    <div>
+                      <p class="text-[11px] text-slate-400">Videos</p>
+                      <p class="text-sm font-semibold">328h watched</p>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/40 text-[10px]">+22% vs last week</span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <div>
+                      <p class="text-[11px] text-slate-400">eBooks</p>
+                      <p class="text-sm font-semibold">155h reading</p>
+                    </div>
+                  </div>
+                  <span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/40 text-[10px]">+14% vs last week</span>
+                </div>
+                <div class="mt-1">
+                  <p class="text-[11px] text-slate-400 mb-1">Top performing content</p>
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-xl bg-slate-900/90 flex items-center justify-center border border-slate-700/80">
+                          <svg class="w-3.5 h-3.5 text-blue-300" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        </span>
+                        <div>
+                          <p class="text-xs font-medium">Python for Beginners</p>
+                          <p class="text-[10px] text-slate-400">Video · 18 lessons</p>
+                        </div>
+                      </div>
+                      <span class="text-[11px] text-emerald-300">93% completion</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-xl bg-slate-900/90 flex items-center justify-center border border-slate-700/80">
+                          <svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M5 4h14v16H5z" />
+                            <path d="M9 4v16" />
+                          </svg>
+                        </span>
+                        <div>
+                          <p class="text-xs font-medium">Algebra Essentials</p>
+                          <p class="text-[10px] text-slate-400">eBook · 220 pages</p>
+                        </div>
+                      </div>
+                      <span class="text-[11px] text-emerald-300">4.8★ rating</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4 flex items-center justify-between text-[11px]">
+                <button class="inline-flex items-center gap-1 text-slate-300 hover:text-slate-50">
+                  Manage playlists
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+                <div class="flex gap-1.5">
+                  <span class="px-2 py-0.5 rounded-full bg-slate-900/80 border border-slate-700/80 text-slate-400">Auto-sync on</span>
+                  <span class="px-2 py-0.5 rounded-full bg-slate-900/80 border border-slate-700/80 text-slate-400">App v3.2</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section placeholders -->
+        <section id="section-categories" class="hidden fade-in">
+          <div class="card rounded-2xl p-4 sm:p-5">
+            <h2 class="text-base sm:text-lg font-semibold mb-1">Categories</h2>
+            <p class="text-xs text-slate-400 mb-3">Organize your videos and eBooks into subjects and tracks.</p>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+              <div class="rounded-xl bg-slate-950/90 border border-slate-700/80 p-3">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium">Mathematics</span>
+                  <span class="text-[10px] text-slate-400">42 items</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-2">Algebra, calculus, statistics and more.</p>
+                <button class="text-[11px] inline-flex items-center gap-1 text-slate-300 hover:text-slate-50">
+                  Edit
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M4 20h4l10-10-4-4L4 16Zm10-10 2 2" />
+                  </svg>
+                </button>
+              </div>
+              <div class="rounded-xl bg-slate-950/90 border border-slate-700/80 p-3">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium">Computer Science</span>
+                  <span class="text-[10px] text-slate-400">63 items</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-2">Programming, algorithms, data science.</p>
+                <button class="text-[11px] inline-flex items-center gap-1 text-slate-300 hover:text-slate-50">Edit</button>
+              </div>
+              <div class="rounded-xl bg-slate-950/90 border border-slate-700/80 p-3">
+                <div class="flex items-center justify-between mb-1">
+                  <span class="font-medium">Business</span>
+                  <span class="text-[10px] text-slate-400">27 items</span>
+                </div>
+                <p class="text-[11px] text-slate-400 mb-2">Marketing, finance, product management.</p>
+                <button class="text-[11px] inline-flex items-center gap-1 text-slate-300 hover:text-slate-50">Edit</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-students" class="hidden fade-in">
+          <div class="card rounded-2xl p-4 sm:p-5">
+            <h2 class="text-base sm:text-lg font-semibold mb-1">Students</h2>
+            <p class="text-xs text-slate-400 mb-3">Track how learners interact with your content.</p>
+            <p class="text-xs text-slate-400">This is a placeholder area. Integrate your user management or analytics here.</p>
+          </div>
+        </section>
+
+        <section id="section-settings" class="hidden fade-in">
+          <div class="card rounded-2xl p-4 sm:p-5 max-w-2xl">
+            <h2 class="text-base sm:text-lg font-semibold mb-1">Settings</h2>
+            <p class="text-xs text-slate-400 mb-3">Control how your content appears in the learning app.</p>
+            <form class="space-y-3 text-xs">
+              <div>
+                <label class="block text-[11px] mb-1 text-slate-300">Brand name</label>
+                <input type="text" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs" value="LearnHub" />
+              </div>
+              <div>
+                <label class="block text-[11px] mb-1 text-slate-300">Primary color</label>
+                <input type="color" class="w-16 h-8 rounded-lg border border-slate-700/80 bg-slate-950/90" value="#3b82f6" />
+              </div>
+              <div class="flex items-center gap-2">
+                <input id="autoPublish" type="checkbox" class="rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500" checked />
+                <label for="autoPublish" class="text-[11px] text-slate-300">Automatically publish content to the app when status is set to "Published"</label>
+              </div>
+              <button type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl btn-primary text-xs font-medium shadow-lg shadow-blue-500/30">
+                Save changes
+              </button>
+            </form>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- Create/Edit Content Modal -->
+  <div id="contentModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-950/70 backdrop-blur-xl">
+    <div class="max-w-lg w-full mx-4 card rounded-2xl p-4 sm:p-5 fade-in">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div>
+          <h3 id="modalTitle" class="text-sm font-semibold">Create content</h3>
+          <p class="text-[11px] text-slate-400 mt-0.5">Define how this item will appear in the learning app.</p>
+        </div>
+        <button id="closeModal" class="p-1.5 rounded-xl bg-slate-900/90 border border-slate-700/80">
+          <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="m6 6 12 12M6 18 18 6" />
+          </svg>
+        </button>
+      </div>
+      <form id="contentForm" class="space-y-3 text-xs">
+        <input type="hidden" id="contentId" />
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] mb-1 text-slate-300">Type</label>
+            <select id="formType" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs">
+              <option value="video">Video</option>
+              <option value="ebook">eBook</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] mb-1 text-slate-300">Category</label>
+            <select id="formCategory" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs">
+              <option value="math">Math</option>
+              <option value="cs">Computer Science</option>
+              <option value="business">Business</option>
+              <option value="language">Language</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] mb-1 text-slate-300">Title</label>
+          <input id="formTitle" type="text" required class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs" placeholder="e.g. Introduction to Calculus" />
+        </div>
+        <div>
+          <label class="block text-[11px] mb-1 text-slate-300">Short description</label>
+          <textarea id="formDescription" rows="2" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs resize-none" placeholder="What will students learn?"></textarea>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] mb-1 text-slate-300">Duration / pages</label>
+            <input id="formDuration" type="text" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs" placeholder="e.g. 12 min or 80 pages" />
+          </div>
+          <div>
+            <label class="block text-[11px] mb-1 text-slate-300">Status</label>
+            <select id="formStatus" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs">
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+              <option value="scheduled">Scheduled</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-[11px] mb-1 text-slate-300">Tags</label>
+          <input id="formTags" type="text" class="w-full bg-slate-950/90 border border-slate-700/80 rounded-lg px-3 py-2 text-xs" placeholder="comma-separated e.g. calculus,beginner,exam prep" />
+        </div>
+        <div class="flex items-center justify-between mt-4">
+          <button type="button" id="cancelModal" class="px-3 py-1.5 rounded-xl btn-ghost border border-slate-700/80 text-xs font-medium">
+            Cancel
+          </button>
+          <div class="flex items-center gap-2">
+            <button type="button" class="px-3 py-1.5 rounded-xl bg-slate-950/90 border border-slate-700/80 text-[11px] font-medium text-slate-300">
+              Save as draft
+            </button>
+            <button type="submit" class="px-3 py-1.5 rounded-xl btn-primary text-xs font-medium shadow-lg shadow-blue-500/30">
+              Save & publish
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    // Fake content data
+    const contentData = [
+      {
+        id: 1,
+        title: "Intro to Data Structures",
+        type: "video",
+        category: "cs",
+        duration: "18 min",
+        students: 612,
+        completion: 0.86,
+        status: "published",
+        visibility: "Visible",
+        tags: ["cs", "data structures"],
+      },
+      {
+        id: 2,
+        title: "Algebra Essentials - Chapter 1",
+        type: "ebook",
+        category: "math",
+        duration: "54 pages",
+        students: 428,
+        completion: 0.74,
+        status: "published",
+        visibility: "Visible",
+        tags: ["math", "algebra"],
+      },
+      {
+        id: 3,
+        title: "Python for Beginners - Lesson 03",
+        type: "video",
+        category: "cs",
+        duration: "24 min",
+        students: 921,
+        completion: 0.93,
+        status: "published",
+        visibility: "Featured",
+        tags: ["python", "beginner"],
+      },
+      {
+        id: 4,
+        title: "Business Strategy Basics",
+        type: "ebook",
+        category: "business",
+        duration: "112 pages",
+        students: 204,
+        completion: 0.58,
+        status: "draft",
+        visibility: "Hidden",
+        tags: ["business", "strategy"],
+      },
+      {
+        id: 5,
+        title: "Calculus – Limits & Continuity",
+        type: "video",
+        category: "math",
+        duration: "32 min",
+        students: 375,
+        completion: 0.41,
+        status: "published",
+        visibility: "Visible",
+        tags: ["math", "calculus"],
+      },
+      {
+        id: 6,
+        title: "Spanish Grammar Foundations",
+        type: "ebook",
+        category: "language",
+        duration: "88 pages",
+        students: 312,
+        completion: 0.69,
+        status: "scheduled",
+        visibility: "Scheduled",
+        tags: ["language", "spanish"],
+      },
+    ];
+
+    // Sidebar toggle (mobile)
+    const sidebar = document.getElementById("sidebar");
+    const sidebarToggle = document.getElementById("sidebarToggle");
+    if (sidebarToggle) {
+      sidebarToggle.addEventListener("click", () => {
+        const isHidden = sidebar.classList.contains("-translate-x-full");
+        sidebar.classList.toggle("-translate-x-full", !isHidden);
+      });
+    }
+
+    // Section navigation
+    const navLinks = document.querySelectorAll(".nav-link");
+    const sections = {
+      dashboard: document.getElementById("section-dashboard"),
+      content: document.getElementById("section-content"),
+      library: document.getElementById("section-library"),
+      categories: document.getElementById("section-categories"),
+      students: document.getElementById("section-students"),
+      settings: document.getElementById("section-settings"),
+    };
+
+    navLinks.forEach((link) => {
+      link.addEventListener("click", () => {
+        const target = link.getAttribute("data-section");
+        Object.values(sections).forEach((sec) => sec.classList.add("hidden"));
+        if (sections[target]) sections[target].classList.remove("hidden");
+        navLinks.forEach((l) => {
+          l.classList.remove("bg-slate-900/80", "border", "border-slate-700", "text-slate-100", "shadow-blue-500/20", "shadow-sm");
+          l.classList.add("text-slate-300");
+        });
+        link.classList.add("bg-slate-900/80", "border", "border-slate-700", "text-slate-100", "shadow-blue-500/20", "shadow-sm");
+        if (window.innerWidth < 1024) {
+          sidebar.classList.add("-translate-x-full");
+        }
+      });
+    });
+
+    // Render dashboard recent content
+    function renderDashboardTable(filterType = "all") {
+      const tbody = document.getElementById("dashboardContentRows");
+      tbody.innerHTML = "";
+      contentData
+        .filter((c) => filterType === "all" || c.type === filterType)
+        .slice(0, 6)
+        .forEach((c) => {
+          const row = document.createElement("tr");
+          row.className = "bg-slate-950/90 hover:bg-slate-900/90 transition border border-slate-800/80";
+          const statusBadge = (() => {
+            if (c.status === "published") return '<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/40 text-[10px]">Published</span>';
+            if (c.status === "draft") return '<span class="px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/80 text-[10px]">Draft</span>';
+            if (c.status === "scheduled") return '<span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/40 text-[10px]">Scheduled</span>';
+          })();
+          row.innerHTML = `
+            <td class="px-2 py-2">
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-xl bg-slate-900 flex items-center justify-center border border-slate-700/80">
+                  ${
+                    c.type === "video"
+                      ? '<svg class="w-3.5 h-3.5 text-blue-300" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+                      : '<svg class="w-3.5 h-3.5 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 4h14v16H5z" /><path d="M9 4v16" /></svg>'
+                  }
+                </div>
+                <div>
+                  <p class="text-xs font-medium">${c.title}</p>
+                  <p class="text-[10px] text-slate-500">${c.duration}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-2 py-2 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700/80 text-[10px] text-slate-200">
+                ${c.type === "video" ? "Video" : "eBook"}
+              </span>
+            </td>
+            <td class="px-2 py-2">${mapCategoryLabel(c.category)}</td>
+            <td class="px-2 py-2">${c.students.toLocaleString()}</td>
+            <td class="px-2 py-2 whitespace-nowrap">
+              <div class="flex items-center gap-2">
+                <div class="flex-1 h-1.5 rounded-full bg-slate-800">
+                  <div class="h-1.5 rounded-full bg-emerald-400" style="width:${Math.round(c.completion * 100)}%"></div>
+                </div>
+                <span>${Math.round(c.completion * 100)}%</span>
+              </div>
+            </td>
+            <td class="px-2 py-2 text-right">${statusBadge}</td>
+          `;
+          tbody.appendChild(row);
+        });
+    }
+
+    function mapCategoryLabel(cat) {
+      const map = { math: "Math", cs: "Computer Science", business: "Business", language: "Language" };
+      return map[cat] || cat;
+    }
+
+    // Render full content table
+    function renderContentTable(filters = {}) {
+      const tbody = document.getElementById("contentTableBody");
+      tbody.innerHTML = "";
+      const { type = "all", category = "all", status = "all", search = "" } = filters;
+      const searchLower = search.toLowerCase();
+
+      contentData
+        .filter((c) => (type === "all" || c.type === type))
+        .filter((c) => (category === "all" || c.category === category))
+        .filter((c) => (status === "all" || c.status === status))
+        .filter((c) => {
+          if (!searchLower) return true;
+          const combined = [c.title, c.tags.join(","), c.duration, mapCategoryLabel(c.category)].join(" ").toLowerCase();
+          return combined.includes(searchLower);
+        })
+        .forEach((c) => {
+          const row = document.createElement("tr");
+          row.className = "bg-slate-950/90 hover:bg-slate-900/90 transition border border-slate-800/80";
+          const statusBadge = (() => {
+            if (c.status === "published") return '<span class="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/40 text-[10px]">Published</span>';
+            if (c.status === "draft") return '<span class="px-2 py-0.5 rounded-full bg-slate-800/80 text-slate-300 border border-slate-700/80 text-[10px]">Draft</span>';
+            if (c.status === "scheduled") return '<span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/40 text-[10px]">Scheduled</span>';
+          })();
+          row.innerHTML = `
+            <td class="px-2 py-2">
+              <input type="checkbox" class="rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500" />
+            </td>
+            <td class="px-2 py-2">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-xl bg-slate-900 flex items-center justify-center border border-slate-700/80">
+                  ${
+                    c.type === "video"
+                      ? '<svg class="w-4 h-4 text-blue-300" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>'
+                      : '<svg class="w-4 h-4 text-emerald-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 4h14v16H5z" /><path d="M9 4v16" /></svg>'
+                  }
+                </div>
+                <div>
+                  <p class="text-xs font-medium">${c.title}</p>
+                  <p class="text-[10px] text-slate-500 truncate max-w-xs">${c.tags.join(", ")}</p>
+                </div>
+              </div>
+            </td>
+            <td class="px-2 py-2 whitespace-nowrap">
+              <span class="px-2 py-0.5 rounded-full bg-slate-900 border border-slate-700/80 text-[10px] text-slate-200">
+                ${c.type === "video" ? "Video" : "eBook"}
+              </span>
+            </td>
+            <td class="px-2 py-2">${mapCategoryLabel(c.category)}</td>
+            <td class="px-2 py-2 whitespace-nowrap">${c.duration}</td>
+            <td class="px-2 py-2 whitespace-nowrap">${c.students.toLocaleString()}</td>
+            <td class="px-2 py-2 whitespace-nowrap">${statusBadge}</td>
+            <td class="px-2 py-2 text-right">
+              <div class="inline-flex items-center gap-1">
+                <button data-id="${c.id}" class="edit-btn px-2 py-1 rounded-lg bg-slate-900 border border-slate-700/80 text-[10px] hover:bg-slate-800/90">
+                  Edit
+                </button>
+                <button data-id="${c.id}" class="delete-btn p-1 rounded-lg bg-slate-900 border border-slate-700/80 hover:bg-rose-900/60 text-rose-300">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M4 7h16" />
+                    <path d="M10 11v6M14 11v6" />
+                    <path d="M6 7h12l-1 12H7L6 7Z" />
+                    <path d="M9 7V5h6v2" />
+                  </svg>
+                </button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+      // Wire up edit/delete buttons
+      document.querySelectorAll(".edit-btn").forEach((btn) => {
+        btn.addEventListener("click", () => openModalForEdit(btn.getAttribute("data-id")));
+      });
+      document.querySelectorAll(".delete-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const id = Number(btn.getAttribute("data-id"));
+          const index = contentData.findIndex((c) => c.id === id);
+          if (index > -1 && confirm("Delete this content item?")) {
+            contentData.splice(index, 1);
+            applyContentFilters();
+            renderDashboardTable(document.getElementById("dashboardTypeFilter").value);
+          }
+        });
+      });
+    }
+
+    // Filters logic
+    function applyContentFilters() {
+      const type = document.getElementById("contentTypeFilter").value;
+      const category = document.getElementById("contentCategoryFilter").value;
+      const status = document.getElementById("contentStatusFilter").value;
+      const search = document.getElementById("contentSearch").value || "";
+      renderContentTable({ type, category, status, search });
+    }
+
+    document.getElementById("dashboardTypeFilter").addEventListener("change", (e) => {
+      renderDashboardTable(e.target.value);
+    });
+    document.getElementById("contentTypeFilter").addEventListener("change", applyContentFilters);
+    document.getElementById("contentCategoryFilter").addEventListener("change", applyContentFilters);
+    document.getElementById("contentStatusFilter").addEventListener("change", applyContentFilters);
+    document.getElementById("contentSearch").addEventListener("input", applyContentFilters);
+
+    // Global search focusing with Ctrl+K
+    document.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        document.getElementById("globalSearch").focus();
+      }
+    });
+
+    // Global search only highlights form field for now
+    document.getElementById("globalSearch").addEventListener("input", (e) => {
+      const value = e.target.value.trim();
+      if (value.length > 2) {
+        // Could trigger cross-section filtering; keep simple for demo
+      }
+    });
+
+    // Modal logic
+    const modal = document.getElementById("contentModal");
+    const openCreateModalBtn = document.getElementById("openCreateModal");
+    const closeModalBtn = document.getElementById("closeModal");
+    const cancelModalBtn = document.getElementById("cancelModal");
+    const contentForm = document.getElementById("contentForm");
+    const modalTitle = document.getElementById("modalTitle");
+    const contentIdField = document.getElementById("contentId");
+
+    function openModal() {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+    function closeModal() {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      contentForm.reset();
+      contentIdField.value = "";
+      modalTitle.textContent = "Create content";
+    }
+
+    openCreateModalBtn.addEventListener("click", () => {
+      modalTitle.textContent = "Create content";
+      openModal();
+    });
+    closeModalBtn.addEventListener("click", closeModal);
+    cancelModalBtn.addEventListener("click", closeModal);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeModal();
+    });
+
+    function openModalForEdit(id) {
+      const item = contentData.find((c) => c.id === Number(id));
+      if (!item) return;
+      modalTitle.textContent = "Edit content";
+      contentIdField.value = item.id;
+      document.getElementById("formType").value = item.type;
+      document.getElementById("formCategory").value = item.category;
+      document.getElementById("formTitle").value = item.title;
+      document.getElementById("formDescription").value = item.description || "";
+      document.getElementById("formDuration").value = item.duration;
+      document.getElementById("formStatus").value = item.status;
+      document.getElementById("formTags").value = item.tags.join(",");
+      openModal();
+    }
+
+    contentForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const id = contentIdField.value ? Number(contentIdField.value) : null;
+      const newItem = {
+        id: id || Date.now(),
+        title: document.getElementById("formTitle").value.trim(),
+        type: document.getElementById("formType").value,
+        category: document.getElementById("formCategory").value,
+        duration: document.getElementById("formDuration").value.trim() || (document.getElementById("formType").value === "video" ? "0 min" : "0 pages"),
+        students: id ? (contentData.find((c) => c.id === id)?.students || 0) : 0,
+        completion: id ? (contentData.find((c) => c.id === id)?.completion || 0) : 0,
+        status: document.getElementById("formStatus").value,
+        visibility: "Visible",
+        tags: (document.getElementById("formTags").value || "")
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      };
+      const existingIndex = contentData.findIndex((c) => c.id === newItem.id);
+      if (existingIndex > -1) {
+        contentData[existingIndex] = newItem;
+      } else {
+        contentData.unshift(newItem);
+      }
+      applyContentFilters();
+      renderDashboardTable(document.getElementById("dashboardTypeFilter").value);
+      closeModal();
+    });
+
+    // Chart.js setup
+    function initChart() {
+      const ctx = document.getElementById("engagementChart");
+      if (!ctx) return;
+      new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+          datasets: [
+            {
+              label: "Video watch time",
+              data: [42, 55, 60, 75, 80, 65, 51],
+              borderColor: "#60a5fa",
+              backgroundColor: "rgba(96,165,250,0.18)",
+              tension: 0.4,
+              fill: true,
+            },
+            {
+              label: "eBook reading time",
+              data: [20, 24, 29, 31, 38, 34, 28],
+              borderColor: "#34d399",
+              backgroundColor: "rgba(52,211,153,0.18)",
+              tension: 0.4,
+              fill: true,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: "#cbd5f5", font: { size: 10 } } },
+          },
+          scales: {
+            x: {
+              ticks: { color: "#64748b", font: { size: 10 } },
+              grid: { color: "rgba(15,23,42,0.8)" },
+            },
+            y: {
+              ticks: { color: "#64748b", font: { size: 10 } },
+              grid: { color: "rgba(15,23,42,0.8)" },
+            },
+          },
+        },
+      });
+    }
+
+    // Initial render
+    renderDashboardTable("all");
+    applyContentFilters();
+    initChart();
+  </script>
+</body>
+</html>

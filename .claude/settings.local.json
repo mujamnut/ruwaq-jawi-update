@@ -1,4 +1,9 @@
 {
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "5b5002f0f50e4f239b77ae070dd1c834.ZSTjt4CYseaxD5cT",
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6"
+  },
   "permissions": {
     "allow": [
       "mcp__supabase__list_tables",
@@ -91,7 +96,21 @@
       "Read(//c//**)",
       "Bash(for file in \"screens/payments/payments_screen.dart\" \"screens/subscriptions/subscription_list_screen.dart\" \"screens/videos/episode_form_screen.dart\" \"services/admin_content_service.dart\")",
       "Bash(move:*)",
-      "Bash(node remove_prints.js:*)"
+      "Bash(node remove_prints.js:*)",
+      "Bash(npx create-next-app@latest:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "mcp__supabase__get_publishable_keys",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(npx supabase auth signup:*)",
+      "Bash(nul)",
+      "Bash(node:*)",
+      "Bash(tasklist:*)"
     ],
     "deny": [],
     "ask": []
@@ -101,10 +120,5 @@
     "supabase",
     "shadcn",
     "hugeicons"
-  ],
-   "env": {
-        "ANTHROPIC_AUTH_TOKEN": "9f7ab0b381dd415fb505af3e14717e64.EhoTCqquqbE4cfKu",
-        "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
-        "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6"
-    }
+  ]
 }
