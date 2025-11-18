@@ -1,0 +1,447 @@
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+
+export interface ScheduledContent {
+  id: string
+  content_id: string
+  content_type: 'book' | 'video' | 'article' | 'audio'
+  content_title: string
+  content_author?: string
+  action: 'publish' | 'unpublish' | 'update' | 'archive' | 'delete' | 'notify'
+  scheduled_at: string
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  created_at: string
+  updated_at?: string
+  executed_at?: string
+  error_message?: string
+  retry_count: number
+  max_retries: number
+  notification_settings?: {
+    email: boolean
+    push: boolean
+    slack: boolean
+    custom_message?: string
+  }
+  conditions?: {
+    weekday?: number[]
+    time_range?: { start: string; end: string }
+    depends_on?: string[]
+  }
+  metadata?: Record<string, any>
+}
+
+export interface SchedulerStats {
+  total: number
+  pending: number
+  processing: number
+  completed: number
+  failed: number
+  cancelled: number
+  overdue: number
+  today: number
+  thisWeek: number
+  thisMonth: number
+}
+
+export interface ScheduleTemplate {
+  id: string
+  name: string
+  description: string
+  action: ScheduledContent['action']
+  content_type: ScheduledContent['content_type']
+  notification_settings: ScheduledContent['notification_settings']
+  conditions?: ScheduledContent['conditions']
+  max_retries: number
+}
+
+export function useContentScheduler() {
+  const [schedules, setSchedules] = useState<ScheduledContent[]>([])
+  const [loading, setLoading] = useState(false)
+  const [stats, setStats] = useState<SchedulerStats>({
+    total: 0,
+    pending: 0,
+    processing: 0,
+    completed: 0,
+    failed: 0,
+    cancelled: 0,
+    overdue: 0,
+    today: 0,
+    thisWeek: 0,
+    thisMonth: 0
+  })
+
+  // Fetch schedules
+  const fetchSchedules = useCallback(async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .select(`
+          *,
+          content:ebooks(id, title, author_id),
+          video_content:video_kitab(id, title, author_id)
+        `)
+        .order('scheduled_at', { ascending: true })
+
+      if (error) throw error
+
+      const transformedData: ScheduledContent[] = (data || []).map(item => ({
+        ...item,
+        content_title: item.content?.title || item.video_content?.title || 'Unknown Content',
+        content_author: item.content?.author_id || item.video_content?.author_id
+      }))
+
+      setSchedules(transformedData)
+      calculateStats(transformedData)
+    } catch (error) {
+      console.error('Failed to fetch schedules:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  // Calculate statistics
+  const calculateStats = useCallback((scheduleData: ScheduledContent[]) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const weekStart = new Date(today.setDate(today.getDate() - today.getDay()))
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const newStats: SchedulerStats = {
+      total: scheduleData.length,
+      pending: scheduleData.filter(s => s.status === 'pending').length,
+      processing: scheduleData.filter(s => s.status === 'processing').length,
+      completed: scheduleData.filter(s => s.status === 'completed').length,
+      failed: scheduleData.filter(s => s.status === 'failed').length,
+      cancelled: scheduleData.filter(s => s.status === 'cancelled').length,
+      overdue: scheduleData.filter(s =>
+        new Date(s.scheduled_at) < now && s.status === 'pending'
+      ).length,
+      today: scheduleData.filter(s =>
+        new Date(s.scheduled_at) >= today && new Date(s.scheduled_at) < new Date(today.getTime() + 24 * 60 * 60 * 1000)
+      ).length,
+      thisWeek: scheduleData.filter(s =>
+        new Date(s.scheduled_at) >= weekStart
+      ).length,
+      thisMonth: scheduleData.filter(s =>
+        new Date(s.scheduled_at) >= monthStart
+      ).length
+    }
+
+    setStats(newStats)
+  }, [])
+
+  // Create new schedule
+  const createSchedule = useCallback(async (scheduleData: Partial<ScheduledContent>) => {
+    try {
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .insert({
+          ...scheduleData,
+          status: 'pending',
+          retry_count: 0,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      await fetchSchedules()
+      return data
+    } catch (error) {
+      console.error('Failed to create schedule:', error)
+      throw error
+    }
+  }, [fetchSchedules])
+
+  // Update schedule
+  const updateSchedule = useCallback(async (id: string, updates: Partial<ScheduledContent>) => {
+    try {
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      await fetchSchedules()
+      return data
+    } catch (error) {
+      console.error('Failed to update schedule:', error)
+      throw error
+    }
+  }, [fetchSchedules])
+
+  // Delete schedule
+  const deleteSchedule = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('content_schedules')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      await fetchSchedules()
+    } catch (error) {
+      console.error('Failed to delete schedule:', error)
+      throw error
+    }
+  }, [fetchSchedules])
+
+  // Execute schedule manually
+  const executeSchedule = useCallback(async (id: string) => {
+    try {
+      const { error } = await supabase.rpc('execute_scheduled_content', {
+        schedule_id: id
+      })
+
+      if (error) throw error
+
+      await fetchSchedules()
+    } catch (error) {
+      console.error('Failed to execute schedule:', error)
+      throw error
+    }
+  }, [fetchSchedules])
+
+  // Cancel schedule
+  const cancelSchedule = useCallback(async (id: string) => {
+    try {
+      await updateSchedule(id, {
+        status: 'cancelled',
+        updated_at: new Date().toISOString()
+      })
+    } catch (error) {
+      console.error('Failed to cancel schedule:', error)
+      throw error
+    }
+  }, [updateSchedule])
+
+  // Retry failed schedule
+  const retrySchedule = useCallback(async (id: string) => {
+    try {
+      await updateSchedule(id, {
+        status: 'pending',
+        retry_count: 0,
+        error_message: null,
+        updated_at: new Date().toISOString()
+      })
+    } catch (error) {
+      console.error('Failed to retry schedule:', error)
+      throw error
+    }
+  }, [updateSchedule])
+
+  // Batch operations
+  const executeBatchAction = useCallback(async (scheduleIds: string[], action: 'execute' | 'cancel' | 'delete' | 'retry') => {
+    try {
+      const results = await Promise.allSettled(
+        scheduleIds.map(id => {
+          switch (action) {
+            case 'execute':
+              return executeSchedule(id)
+            case 'cancel':
+              return cancelSchedule(id)
+            case 'delete':
+              return deleteSchedule(id)
+            case 'retry':
+              return retrySchedule(id)
+            default:
+              return Promise.resolve()
+          }
+        })
+      )
+
+      const failed = results.filter(r => r.status === 'rejected')
+      if (failed.length > 0) {
+        console.error('Some batch operations failed:', failed)
+        throw new Error(`${failed.length} operations failed`)
+      }
+
+      await fetchSchedules()
+    } catch (error) {
+      console.error('Batch operation failed:', error)
+      throw error
+    }
+  }, [executeSchedule, cancelSchedule, deleteSchedule, retrySchedule, fetchSchedules])
+
+  // Get schedules by date range
+  const getSchedulesByDateRange = useCallback(async (startDate: Date, endDate: Date) => {
+    try {
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .select('*')
+        .gte('scheduled_at', startDate.toISOString())
+        .lte('scheduled_at', endDate.toISOString())
+        .order('scheduled_at', { ascending: true })
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Failed to fetch schedules by date range:', error)
+      throw error
+    }
+  }, [])
+
+  // Get overdue schedules
+  const getOverdueSchedules = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .select('*')
+        .lt('scheduled_at', new Date().toISOString())
+        .eq('status', 'pending')
+        .order('scheduled_at', { ascending: true })
+
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('Failed to fetch overdue schedules:', error)
+      throw error
+    }
+  }, [])
+
+  // Create recurring schedule
+  const createRecurringSchedule = useCallback(async (template: ScheduleTemplate, startDate: Date, endDate: Date, pattern: 'daily' | 'weekly' | 'monthly') => {
+    try {
+      const schedules: Partial<ScheduledContent>[] = []
+      let currentDate = new Date(startDate)
+
+      while (currentDate <= endDate) {
+        // Check if current date matches the pattern
+        let shouldSchedule = false
+
+        switch (pattern) {
+          case 'daily':
+            shouldSchedule = true
+            break
+          case 'weekly':
+            if (template.conditions?.weekday && template.conditions.weekday.includes(currentDate.getDay() + 1)) {
+              shouldSchedule = true
+            }
+            break
+          case 'monthly':
+            if (currentDate.getDate() === 1) { // First day of month
+              shouldSchedule = true
+            }
+            break
+        }
+
+        if (shouldSchedule) {
+          schedules.push({
+            content_id: template.content_id || '',
+            content_type: template.content_type,
+            action: template.action,
+            scheduled_at: currentDate.toISOString(),
+            status: 'pending',
+            retry_count: 0,
+            max_retries: template.max_retries,
+            notification_settings: template.notification_settings,
+            conditions: template.conditions,
+            created_at: new Date().toISOString()
+          })
+        }
+
+        // Move to next date
+        currentDate.setDate(currentDate.getDate() + 1)
+      }
+
+      // Batch insert schedules
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .insert(schedules)
+        .select()
+
+      if (error) throw error
+
+      await fetchSchedules()
+      return data
+    } catch (error) {
+      console.error('Failed to create recurring schedule:', error)
+      throw error
+    }
+  }, [fetchSchedules])
+
+  // Validate schedule time
+  const validateScheduleTime = useCallback((scheduledAt: string, conditions?: ScheduledContent['conditions']) => {
+    const scheduleDate = new Date(scheduledAt)
+    const now = new Date()
+
+    // Check if schedule is in the past
+    if (scheduleDate < now) {
+      return { valid: false, error: 'Schedule time cannot be in the past' }
+    }
+
+    // Check weekday conditions
+    if (conditions?.weekday && conditions.weekday.length > 0) {
+      const dayOfWeek = scheduleDate.getDay() + 1 // Convert to 1-7 (Monday-Sunday)
+      if (!conditions.weekday.includes(dayOfWeek)) {
+        return { valid: false, error: `Schedule day must be one of: ${conditions.weekday.join(', ')}` }
+      }
+    }
+
+    // Check time range conditions
+    if (conditions?.time_range) {
+      const scheduleTime = scheduleDate.toTimeString().slice(0, 5) // HH:MM format
+      const { start, end } = conditions.time_range
+
+      if (scheduleTime < start || scheduleTime > end) {
+        return { valid: false, error: `Schedule time must be between ${start} and ${end}` }
+      }
+    }
+
+    return { valid: true }
+  }, [])
+
+  // Real-time subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('content-schedules-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'content_schedules'
+        },
+        () => {
+          fetchSchedules()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [fetchSchedules])
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSchedules()
+  }, [fetchSchedules])
+
+  return {
+    schedules,
+    loading,
+    stats,
+    fetchSchedules,
+    createSchedule,
+    updateSchedule,
+    deleteSchedule,
+    executeSchedule,
+    cancelSchedule,
+    retrySchedule,
+    executeBatchAction,
+    getSchedulesByDateRange,
+    getOverdueSchedules,
+    createRecurringSchedule,
+    validateScheduleTime
+  }
+}

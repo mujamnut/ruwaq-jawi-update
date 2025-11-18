@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import QueryProvider from "@/components/query-provider"
-import Sidebar from "@/components/sidebar"
-import Header from "@/components/header"
+import DashboardLayout from "@/components/dashboard-layout"
 import {
   ArrowLeft,
   Upload,
@@ -13,7 +11,7 @@ import {
   BookOpen,
   FileText,
   Image
-} from "lucide-react"
+} from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 
 interface Category {
@@ -22,7 +20,6 @@ interface Category {
 }
 
 function NewBookContent() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -265,31 +262,22 @@ function NewBookContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-
+    <DashboardLayout
+      title="Add New Book"
+      subtitle="Create a new book entry"
+    >
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-        {/* Header */}
-        <Header
-          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title="Add New Book"
-          subtitle="Content Management"
-        />
-
-        {/* Main Content */}
         <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-          <div className="max-w-4xl mx-auto">
+          <div className="w-full">
             {/* Page Header */}
             <div className="card rounded-2xl p-4 sm:p-5 mb-4">
               <div className="flex items-center gap-3 mb-4">
-                <Link href="/books" className="p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800/90 transition">
-                  <ArrowLeft className="w-4 h-4 text-slate-300" />
+                <Link href="/books" className="p-2 rounded-xl bg-white/90 border border-gray-300/80 hover:bg-gray-100/90 transition">
+                  <ArrowLeft className="w-4 h-4 text-gray-700" />
                 </Link>
                 <div>
                   <h2 className="text-base sm:text-lg font-semibold">Add New Book</h2>
-                  <p className="text-xs text-slate-400">Create a new ebook entry</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Create a new ebook entry</p>
                 </div>
               </div>
             </div>
@@ -305,7 +293,7 @@ function NewBookContent() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Title *
                       </label>
                       <input
@@ -313,13 +301,13 @@ function NewBookContent() {
                         name="title"
                         value={formData.title}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
                         placeholder="Enter book title"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Author *
                       </label>
                       <input
@@ -327,13 +315,13 @@ function NewBookContent() {
                         name="author"
                         value={formData.author}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
                         placeholder="Enter author name"
                         required
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Description
                       </label>
                       <textarea
@@ -341,19 +329,19 @@ function NewBookContent() {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
                         placeholder="Enter book description"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Category *
                       </label>
                       <select
                         name="category_id"
                         value={formData.category_id}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
                         required
                       >
                         <option value="">Select a category</option>
@@ -380,11 +368,11 @@ function NewBookContent() {
                         name="is_premium"
                         checked={formData.is_premium}
                         onChange={handleInputChange}
-                        className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                        className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
                       />
                       <div>
-                        <span className="text-xs font-medium text-slate-200">Premium Book</span>
-                        <p className="text-[10px] text-slate-400">Requires paid subscription to access</p>
+                        <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Premium Book</span>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400">Requires paid subscription to access</p>
                       </div>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -393,11 +381,11 @@ function NewBookContent() {
                         name="is_active"
                         checked={formData.is_active}
                         onChange={handleInputChange}
-                        className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                        className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
                       />
                       <div>
-                        <span className="text-xs font-medium text-slate-200">Active</span>
-                        <p className="text-[10px] text-slate-400">Book is visible to users</p>
+                        <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Active</span>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400">Book is visible to users</p>
                       </div>
                     </label>
                   </div>
@@ -412,19 +400,19 @@ function NewBookContent() {
 
                   {/* PDF Upload */}
                   <div className="mb-4">
-                    <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                    <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                       PDF File
                     </label>
-                    <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
+                    <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
                       {pdfPreview ? (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
                               <FileText className="w-5 h-5 text-blue-400" />
                             </div>
                             <div>
-                              <p className="text-xs font-medium text-slate-200">{pdfPreview}</p>
-                              <p className="text-[10px] text-slate-400">PDF file</p>
+                              <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{pdfPreview}</p>
+                              <p className="text-[10px] text-gray-600 dark:text-gray-400">PDF file</p>
                             </div>
                           </div>
                           <button
@@ -446,12 +434,12 @@ function NewBookContent() {
                           />
                           <label
                             htmlFor="pdf-upload"
-                            className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                            className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                           >
                             <Upload className="w-4 h-4" />
                             Choose PDF File
                           </label>
-                          <p className="text-[10px] text-slate-500 mt-2">
+                          <p className="text-[10px] text-gray-500 mt-2">
                             Upload PDF format only (Max 10MB)
                           </p>
                         </div>
@@ -461,10 +449,10 @@ function NewBookContent() {
 
                   {/* Thumbnail Upload */}
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                    <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Thumbnail Image
                     </label>
-                    <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
+                    <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
                       {thumbnailPreview ? (
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
@@ -476,8 +464,8 @@ function NewBookContent() {
                               />
                             </div>
                             <div>
-                              <p className="text-xs font-medium text-slate-200">Thumbnail uploaded</p>
-                              <p className="text-[10px] text-slate-400">Image file</p>
+                              <p className="text-xs font-medium text-gray-800 dark:text-gray-200">Thumbnail uploaded</p>
+                              <p className="text-[10px] text-gray-600 dark:text-gray-400">Image file</p>
                             </div>
                           </div>
                           <button
@@ -499,12 +487,12 @@ function NewBookContent() {
                           />
                           <label
                             htmlFor="thumbnail-upload"
-                            className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                            className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                           >
                             <Image className="w-4 h-4" />
                             Choose Thumbnail
                           </label>
-                          <p className="text-[10px] text-slate-500 mt-2">
+                          <p className="text-[10px] text-gray-500 mt-2">
                             Upload JPG, PNG or GIF (Max 2MB)
                           </p>
                         </div>
@@ -517,14 +505,14 @@ function NewBookContent() {
                 {(uploading || uploadProgress > 0) && (
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-slate-300">
+                      <span className="text-xs text-gray-700">
                         {uploading ? 'Uploading files...' : 'Upload complete'}
                       </span>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-gray-600 dark:text-gray-400">
                         {uploadProgress}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-2">
+                    <div className="w-full bg-gray-200/50 rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-blue-500 to-emerald-500 h-2 rounded-full transition-all duration-300 ease-out"
                         style={{ width: `${uploadProgress}%` }}
@@ -534,10 +522,10 @@ function NewBookContent() {
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200/80">
                   <Link
                     href="/books"
-                    className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                    className="px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                   >
                     Cancel
                   </Link>
@@ -568,15 +556,10 @@ function NewBookContent() {
             </form>
           </div>
         </main>
-      </div>
-    </div>
+    </DashboardLayout>
   )
 }
 
 export default function NewBookPage() {
-  return (
-    <QueryProvider>
-      <NewBookContent />
-    </QueryProvider>
-  )
+  return <NewBookContent />
 }

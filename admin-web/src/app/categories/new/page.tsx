@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import QueryProvider from "@/components/query-provider"
-import Sidebar from "@/components/sidebar"
-import Header from "@/components/header"
+import DashboardLayout from "@/components/dashboard-layout"
 import {
   ArrowLeft,
   Save,
@@ -12,11 +10,11 @@ import {
   Upload,
   X,
   Image
-} from "lucide-react"
+} from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 
 function NewCategoryContent() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
 
@@ -140,31 +138,22 @@ function NewCategoryContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-
+    <DashboardLayout
+      title="Add New Category"
+      subtitle="Content Organization"
+    >
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-        {/* Header */}
-        <Header
-          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title="Add New Category"
-          subtitle="Content Organization"
-        />
-
-        {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-          <div className="max-w-2xl mx-auto">
+      <div className="px-4 sm:px-6 pb-8 pt-4">
+          <div className="w-full">
             {/* Page Header */}
             <div className="card rounded-2xl p-4 sm:p-5 mb-4">
               <div className="flex items-center gap-3 mb-4">
-                <Link href="/categories" className="p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800/90 transition">
-                  <ArrowLeft className="w-4 h-4 text-slate-300" />
+                <Link href="/categories" className="p-2 rounded-xl bg-white/90 border border-gray-300/80 hover:bg-gray-100/90 transition">
+                  <ArrowLeft className="w-4 h-4 text-gray-700" />
                 </Link>
                 <div>
                   <h2 className="text-base sm:text-lg font-semibold">Add New Category</h2>
-                  <p className="text-xs text-slate-400">Create a new content category</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Create a new content category</p>
                 </div>
               </div>
             </div>
@@ -180,7 +169,7 @@ function NewCategoryContent() {
                   </h3>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Category Name *
                       </label>
                       <input
@@ -188,13 +177,13 @@ function NewCategoryContent() {
                         name="name"
                         value={formData.name}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
                         placeholder="Enter category name"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Description
                       </label>
                       <textarea
@@ -202,12 +191,12 @@ function NewCategoryContent() {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
                         placeholder="Enter category description"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Sort Order
                       </label>
                       <input
@@ -216,10 +205,10 @@ function NewCategoryContent() {
                         value={formData.sort_order}
                         onChange={handleInputChange}
                         min="0"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
                         placeholder="Leave as 0 for automatic ordering"
                       />
-                      <p className="text-[10px] text-slate-500 mt-1">
+                      <p className="text-[10px] text-gray-500 mt-1">
                         Lower numbers appear first. Leave as 0 for automatic ordering.
                       </p>
                     </div>
@@ -232,7 +221,7 @@ function NewCategoryContent() {
                     <Image className="w-4 h-4 text-purple-400" />
                     Category Icon
                   </h3>
-                  <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
+                  <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
                     {iconPreview ? (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -244,8 +233,8 @@ function NewCategoryContent() {
                             />
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-slate-200">Icon uploaded</p>
-                            <p className="text-[10px] text-slate-400">Image file</p>
+                            <p className="text-xs font-medium text-gray-800 dark:text-gray-200">Icon uploaded</p>
+                            <p className="text-[10px] text-gray-600 dark:text-gray-400">Image file</p>
                           </div>
                         </div>
                         <button
@@ -267,15 +256,15 @@ function NewCategoryContent() {
                         />
                         <label
                           htmlFor="icon-upload"
-                          className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                          className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                         >
                           <Upload className="w-4 h-4" />
                           Choose Icon
                         </label>
-                        <p className="text-[10px] text-slate-500 mt-2">
+                        <p className="text-[10px] text-gray-500 mt-2">
                           Upload JPG, PNG or GIF (Max 1MB)
                         </p>
-                        <p className="text-[10px] text-slate-600 mt-1">
+                        <p className="text-[10px] text-gray-400 mt-1">
                           Optional - Used for category identification
                         </p>
                       </div>
@@ -296,21 +285,21 @@ function NewCategoryContent() {
                         name="is_active"
                         checked={formData.is_active}
                         onChange={handleInputChange}
-                        className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                        className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
                       />
                       <div>
-                        <span className="text-xs font-medium text-slate-200">Active</span>
-                        <p className="text-[10px] text-slate-400">Category is visible and can be used</p>
+                        <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Active</span>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400">Category is visible and can be used</p>
                       </div>
                     </label>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200/80">
                   <Link
                     href="/categories"
-                    className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                    className="px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                   >
                     Cancel
                   </Link>
@@ -335,16 +324,11 @@ function NewCategoryContent() {
               </div>
             </form>
           </div>
-        </main>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }
 
 export default function NewCategoryPage() {
-  return (
-    <QueryProvider>
-      <NewCategoryContent />
-    </QueryProvider>
-  )
+  return <NewCategoryContent />
 }

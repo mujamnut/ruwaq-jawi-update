@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import {
-  CheckSquare,
+  CheckSquare2,
   Square,
   Trash2,
   Download,
@@ -12,7 +12,8 @@ import {
   MoreHorizontal,
   Loader2
 } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '../lib/supabase'
+import { toast } from 'sonner'
 
 interface BulkOperationsProps<T> {
   selectedItems: string[]
@@ -72,11 +73,14 @@ export function BulkOperations<T extends { id: string; is_active?: boolean }>({
       // Clear selection after successful action
       onSelectionChange([])
 
+      // Show success message
+      toast.success(`Successfully ${action.label.toLowerCase()} ${selectedItems.length} item(s)`)
+
       // Refresh data
       onItemsUpdate()
     } catch (error) {
       console.error('Bulk action failed:', error)
-      alert('Failed to perform bulk action. Please try again.')
+      toast.error('Failed to perform bulk action. Please try again.')
     } finally {
       setActionLoading(null)
       setLoading(false)
@@ -93,7 +97,7 @@ export function BulkOperations<T extends { id: string; is_active?: boolean }>({
         action: async (ids: string[]) => {
           // Export functionality will be implemented separately
           console.log('Exporting items:', ids)
-          alert('Export functionality will be available soon!')
+          toast.info('Export functionality will be available soon!')
         },
         variant: 'secondary'
       }
@@ -281,25 +285,31 @@ export function BulkOperations<T extends { id: string; is_active?: boolean }>({
   return (
     <>
       {/* Select All Checkbox */}
-      <div className="flex items-center gap-3 p-3 rounded-lg bg-slate-900/80 border border-slate-700/80 mb-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 shadow-sm mb-4">
         <button
           onClick={handleSelectAll}
-          className="flex items-center gap-2 text-xs text-slate-300 hover:text-slate-100 transition-colors"
+          className="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 transition-colors"
         >
           {selectedItems.length === items.length ? (
-            <CheckSquare className="w-4 h-4 text-blue-400" />
+            <CheckSquare2
+              size={16}
+              className="text-blue-400 dark:text-blue-300"
+            />
           ) : (
-            <Square className="w-4 h-4" />
+            <Square
+              size={16}
+              className="text-gray-600 dark:text-gray-400"
+            />
           )}
           {selectedItems.length === items.length ? 'Deselect All' : 'Select All'}
           {selectedItems.length > 0 && selectedItems.length < items.length && (
-            <span className="text-slate-500">({selectedItems.length} selected)</span>
+            <span className="text-gray-500 dark:text-gray-400">({selectedItems.length} selected)</span>
           )}
         </button>
 
         {selectedItems.length > 0 && (
           <div className="flex items-center gap-2 ml-auto">
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
             </span>
 
@@ -315,10 +325,10 @@ export function BulkOperations<T extends { id: string; is_active?: boolean }>({
                     disabled={loading || isLoading}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                       action.variant === 'danger'
-                        ? 'bg-rose-600/10 border border-rose-500/40 text-rose-300 hover:bg-rose-600/20'
+                        ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30'
                         : action.variant === 'primary'
-                        ? 'bg-blue-600/10 border border-blue-500/40 text-blue-300 hover:bg-blue-600/20'
-                        : 'bg-slate-700/50 border border-slate-600/40 text-slate-300 hover:bg-slate-700/70'
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                        : 'bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-600'
                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                     title={action.label}
                   >

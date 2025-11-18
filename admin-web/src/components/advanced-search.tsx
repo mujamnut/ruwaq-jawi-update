@@ -43,10 +43,18 @@ export default function AdvancedSearch({
     // Fetch categories for filter dropdown
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/categories')
-        if (response.ok) {
-          const data = await response.json()
+        const { supabase } = await import('../lib/supabase')
+        const { data, error } = await supabase
+          .from('categories')
+          .select('name')
+          .eq('is_active', true)
+          .order('name')
+
+        if (data) {
           setCategories(data.map((cat: any) => cat.name))
+        }
+        if (error) {
+          console.error('Error fetching categories:', error)
         }
       } catch (error) {
         console.error('Error fetching categories:', error)
@@ -98,39 +106,39 @@ export default function AdvancedSearch({
       {/* Main Search Bar */}
       <div className="relative">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-600 w-4 h-4" />
           <input
             type="text"
             value={filters.query}
             onChange={(e) => setFilters(prev => ({ ...prev, query: e.target.value }))}
             onKeyPress={handleKeyPress}
             placeholder={placeholder}
-            className="w-full pl-10 pr-24 py-3 rounded-xl bg-slate-900/80 border border-slate-700/80 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+            className="w-full pl-10 pr-24 py-3 rounded-lg bg-white border border-gray-300 text-sm text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
-          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
+          <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
             {filters.query && (
               <button
                 onClick={() => setFilters(prev => ({ ...prev, query: '' }))}
-                className="p-1.5 rounded-lg hover:bg-slate-800/90 text-slate-400 hover:text-slate-200"
+                className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-gray-800 transition-colors"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
               </button>
             )}
             {showFilters && (
               <button
                 onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className={`p-1.5 rounded-lg transition-colors ${
+                className={`p-1.5 rounded-md transition-colors ${
                   hasActiveFilters
-                    ? 'bg-blue-600/20 border border-blue-500/40 text-blue-300'
-                    : 'hover:bg-slate-800/90 text-slate-400 hover:text-slate-200'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'hover:bg-gray-100 text-gray-600 hover:text-gray-800'
                 }`}
               >
-                <Filter className="w-3.5 h-3.5" />
+                <Filter className="w-4 h-4" />
               </button>
             )}
             <button
               onClick={handleSearch}
-              className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors"
+              className="px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-colors"
             >
               Search
             </button>
@@ -140,27 +148,27 @@ export default function AdvancedSearch({
 
       {/* Advanced Filters Panel */}
       {showFilters && isFilterOpen && (
-        <div className="mt-4 p-4 rounded-xl bg-slate-900/80 border border-slate-700/80">
+                <div className="mt-4 p-4 rounded-lg bg-white border border-gray-300">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-slate-200">Advanced Filters</h3>
+            <h3 className="text-sm font-semibold text-gray-800">Advanced Filters</h3>
             <button
               onClick={handleReset}
-              className="text-xs text-slate-400 hover:text-slate-200 transition-colors"
+              className="text-xs text-blue-600 hover:text-blue-700 transition-colors font-medium"
             >
               Reset all
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Content Type Filter */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Content Type
               </label>
               <select
                 value={filters.type}
-                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as any }))}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/60 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                onChange={(e) => setFilters(prev => ({ ...prev, type: e.target.value as SearchFilters['type'] }))}
+                className="w-full px-3 py-2 rounded-md bg-gray-50 border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Types</option>
                 <option value="book">Books</option>
@@ -172,13 +180,13 @@ export default function AdvancedSearch({
 
             {/* Status Filter */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Status
               </label>
               <select
                 value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as any }))}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/60 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value as SearchFilters['status'] }))}
+                className="w-full px-3 py-2 rounded-md bg-gray-50 border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -190,13 +198,13 @@ export default function AdvancedSearch({
 
             {/* Category Filter */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Category
               </label>
               <select
                 value={filters.category}
                 onChange={(e) => setFilters(prev => ({ ...prev, category: e.target.value }))}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/60 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                className="w-full px-3 py-2 rounded-md bg-gray-50 border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">All Categories</option>
                 {categories.map((category) => (
@@ -209,13 +217,13 @@ export default function AdvancedSearch({
 
             {/* Date Range Filter */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Date Range
               </label>
               <select
                 value={filters.dateRange}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value as any }))}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/60 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value as SearchFilters['dateRange'] }))}
+                className="w-full px-3 py-2 rounded-md bg-gray-50 border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -227,13 +235,13 @@ export default function AdvancedSearch({
 
             {/* Sort By Filter */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Sort By
               </label>
               <select
                 value={filters.sortBy}
-                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as any }))}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/60 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                onChange={(e) => setFilters(prev => ({ ...prev, sortBy: e.target.value as SearchFilters['sortBy'] }))}
+                className="w-full px-3 py-2 rounded-md bg-gray-50 border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="relevance">Relevance</option>
                 <option value="date">Date</option>
@@ -245,13 +253,13 @@ export default function AdvancedSearch({
 
             {/* Sort Order Filter */}
             <div>
-              <label className="block text-xs font-medium text-slate-300 mb-2">
+              <label className="block text-xs font-medium text-gray-700 mb-2">
                 Sort Order
               </label>
               <select
                 value={filters.sortOrder}
-                onChange={(e) => setFilters(prev => ({ ...prev, sortOrder: e.target.value as any }))}
-                className="w-full px-3 py-2 rounded-lg bg-slate-800/80 border border-slate-600/60 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                onChange={(e) => setFilters(prev => ({ ...prev, sortOrder: e.target.value as SearchFilters['sortOrder'] }))}
+                className="w-full px-3 py-2 rounded-md bg-gray-50 border border-gray-300 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="desc">Descending</option>
                 <option value="asc">Ascending</option>
@@ -261,51 +269,51 @@ export default function AdvancedSearch({
 
           {/* Active Filter Tags */}
           {hasActiveFilters && (
-            <div className="mt-4 pt-4 border-t border-slate-700/60">
+            <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex flex-wrap gap-2">
                 {filters.type !== 'all' && (
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-500/10 border border-blue-500/40 text-xs text-blue-300">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
                     <Tag className="w-3 h-3" />
                     Type: {filters.type}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, type: 'all' }))}
-                      className="ml-1 hover:text-blue-200"
+                      className="ml-1 hover:text-blue-900"
                     >
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 )}
                 {filters.status !== 'all' && (
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/40 text-xs text-emerald-300">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-medium">
                     <Clock className="w-3 h-3" />
                     Status: {filters.status}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, status: 'all' }))}
-                      className="ml-1 hover:text-emerald-200"
+                      className="ml-1 hover:text-green-900"
                     >
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 )}
                 {filters.category && (
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-purple-500/10 border border-purple-500/40 text-xs text-purple-300">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-medium">
                     <Tag className="w-3 h-3" />
                     {filters.category}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, category: '' }))}
-                      className="ml-1 hover:text-purple-200"
+                      className="ml-1 hover:text-purple-900"
                     >
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 )}
                 {filters.dateRange !== 'all' && (
-                  <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 border border-amber-500/40 text-xs text-amber-300">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-medium">
                     <Calendar className="w-3 h-3" />
                     {filters.dateRange}
                     <button
                       onClick={() => setFilters(prev => ({ ...prev, dateRange: 'all' }))}
-                      className="ml-1 hover:text-amber-200"
+                      className="ml-1 hover:text-amber-900"
                     >
                       <X className="w-3 h-3" />
                     </button>
@@ -317,9 +325,9 @@ export default function AdvancedSearch({
         </div>
       )}
 
-      {/* Quick Search Suggestions */}
+      {/* Quick Search Tips */}
       {filters.query && (
-        <div className="mt-2 text-xs text-slate-400">
+        <div className="mt-2 text-xs text-gray-600">
           Press Enter to search or click the Search button
         </div>
       )}

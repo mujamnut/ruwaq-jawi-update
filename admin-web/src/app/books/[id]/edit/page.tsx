@@ -3,10 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import QueryProvider from "@/components/query-provider"
-import Sidebar from "@/components/sidebar"
-import Header from "@/components/header"
-import AuthGuard from "@/components/auth-guard"
+import DashboardLayout from "@/components/dashboard-layout"
 import {
   ArrowLeft,
   Save,
@@ -15,9 +12,9 @@ import {
   BookOpen,
   FileText,
   Image,
-  AlertCircle,
+  AlertTriangle,
   CheckCircle
-} from "lucide-react"
+} from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 
 interface Book {
@@ -43,7 +40,6 @@ interface Category {
 function EditBookContent() {
   const params = useParams()
   const router = useRouter()
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -283,349 +279,315 @@ function EditBookContent() {
 
   if (notFound) {
     return (
-      <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-          <Header
-            onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            title="Book Not Found"
-            subtitle="Error"
-          />
-          <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-            <div className="card rounded-2xl p-8 text-center">
-              <AlertCircle className="w-16 h-16 text-rose-400 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-white mb-2">Book Not Found</h2>
-              <p className="text-slate-400 mb-6">The book you're looking for doesn't exist or has been deleted.</p>
-              <Link
-                href="/books"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Books
-              </Link>
-            </div>
-          </main>
+      <DashboardLayout title="Book Not Found" subtitle="Error">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="card rounded-2xl p-8 text-center max-w-md">
+            <AlertTriangle className="w-16 h-16 text-rose-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Book Not Found</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">The book you're looking for doesn't exist or has been deleted.</p>
+            <Link
+              href="/books"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Books
+            </Link>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-          <Header
-            onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            title="Edit Book"
-            subtitle="Loading..."
-          />
-          <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          </main>
+      <DashboardLayout title="Edit Book" subtitle="Loading...">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <AuthGuard requireRole="admin">
-      <QueryProvider>
-        <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-          <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
+    <DashboardLayout title="Edit Book" subtitle="Update book information and files">
+      <div className="px-4 sm:px-6 py-4">
+        {/* Page Header */}
+        <div className="card rounded-2xl p-4 sm:p-5 mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <Link href="/books" className="p-2 rounded-xl bg-white/90 border border-gray-300/80 hover:bg-gray-100/90 transition">
+              <ArrowLeft className="w-4 h-4 text-gray-700" />
+            </Link>
+            <div>
+              <h2 className="text-base sm:text-lg font-semibold">Edit Book</h2>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Update book information and files</p>
+            </div>
+          </div>
 
-          <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-            <Header
-              onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-              title="Edit Book"
-              subtitle="Content Management"
-            />
+          {/* Success/Error Messages */}
+          {success && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/40">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              <span className="text-sm text-emerald-300">Book updated successfully! Redirecting...</span>
+            </div>
+          )}
 
-            <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-              <div className="max-w-4xl mx-auto">
-                {/* Page Header */}
-                <div className="card rounded-2xl p-4 sm:p-5 mb-4">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Link href="/books" className="p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800/90 transition">
-                      <ArrowLeft className="w-4 h-4 text-slate-300" />
-                    </Link>
-                    <div>
-                      <h2 className="text-base sm:text-lg font-semibold">Edit Book</h2>
-                      <p className="text-xs text-slate-400">Update book information and files</p>
-                    </div>
+          {error && (
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
+              <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <span className="text-sm text-rose-300">{error}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="card rounded-2xl p-4 sm:p-5">
+          <div className="space-y-6">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-400" />
+                Basic Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                    placeholder="Enter book title"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Author *
+                  </label>
+                  <input
+                    type="text"
+                    name="author"
+                    value={formData.author}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                    placeholder="Enter author name"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
+                    placeholder="Enter book description"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    name="category_id"
+                    value={formData.category_id}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {window.categories?.map((category: Category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Settings */}
+            <div>
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <FileText className="w-4 h-4 text-green-400" />
+                Book Settings
+              </h3>
+              <div className="space-y-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_premium"
+                    checked={formData.is_premium}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                  />
+                  <div>
+                    <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Premium Book</span>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">Requires paid subscription to access</p>
                   </div>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_active"
+                    checked={formData.is_active}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                  />
+                  <div>
+                    <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Active</span>
+                    <p className="text-[10px] text-gray-600 dark:text-gray-400">Book is visible to users</p>
+                  </div>
+                </label>
+              </div>
+            </div>
 
-                  {/* Success/Error Messages */}
-                  {success && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/40">
-                      <CheckCircle className="w-4 h-4 text-emerald-400" />
-                      <span className="text-sm text-emerald-300">Book updated successfully! Redirecting...</span>
+            {/* File Uploads */}
+            <div>
+              <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-purple-400" />
+                File Uploads
+              </h3>
+
+              {/* PDF Upload */}
+              <div className="mb-4">
+                <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  PDF File
+                </label>
+                <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
+                  {pdfPreview ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
+                          <FileText className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-medium text-gray-800 dark:text-gray-200">{pdfPreview}</p>
+                          <p className="text-[10px] text-gray-600 dark:text-gray-400">PDF file</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removePdf}
+                        className="p-1.5 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
                     </div>
-                  )}
-
-                  {error && (
-                    <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
-                      <AlertCircle className="w-4 h-4 text-rose-400" />
-                      <span className="text-sm text-rose-300">{error}</span>
+                  ) : (
+                    <div className="text-center">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handlePdfChange}
+                        className="hidden"
+                        id="pdf-upload"
+                      />
+                      <label
+                        htmlFor="pdf-upload"
+                        className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
+                      >
+                        <Upload className="w-4 h-4" />
+                        {originalPdfUrl ? 'Replace PDF File' : 'Choose PDF File'}
+                      </label>
+                      <p className="text-[10px] text-gray-500 mt-2">
+                        Upload PDF format only (Max 10MB)
+                      </p>
                     </div>
                   )}
                 </div>
+              </div>
 
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="card rounded-2xl p-4 sm:p-5">
-                  <div className="space-y-6">
-                    {/* Basic Information */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <BookOpen className="w-4 h-4 text-blue-400" />
-                        Basic Information
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
-                            Title *
-                          </label>
-                          <input
-                            type="text"
-                            name="title"
-                            value={formData.title}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
-                            placeholder="Enter book title"
-                            required
+              {/* Thumbnail Upload */}
+              <div>
+                <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Thumbnail Image
+                </label>
+                <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
+                  {thumbnailPreview ? (
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden">
+                          <img
+                            src={thumbnailPreview}
+                            alt="Thumbnail preview"
+                            className="w-full h-full object-cover"
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
-                            Author *
-                          </label>
-                          <input
-                            type="text"
-                            name="author"
-                            value={formData.author}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
-                            placeholder="Enter author name"
-                            required
-                          />
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
-                            Description
-                          </label>
-                          <textarea
-                            name="description"
-                            value={formData.description}
-                            onChange={handleInputChange}
-                            rows={3}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none"
-                            placeholder="Enter book description"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
-                            Category *
-                          </label>
-                          <select
-                            name="category_id"
-                            value={formData.category_id}
-                            onChange={handleInputChange}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50"
-                            required
-                          >
-                            <option value="">Select a category</option>
-                            {window.categories?.map((category: Category) => (
-                              <option key={category.id} value={category.id}>
-                                {category.name}
-                              </option>
-                            ))}
-                          </select>
+                          <p className="text-xs font-medium text-gray-800 dark:text-gray-200">Thumbnail uploaded</p>
+                          <p className="text-[10px] text-gray-600 dark:text-gray-400">Image file</p>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Settings */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <FileText className="w-4 h-4 text-green-400" />
-                        Book Settings
-                      </h3>
-                      <div className="space-y-3">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="is_premium"
-                            checked={formData.is_premium}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
-                          />
-                          <div>
-                            <span className="text-xs font-medium text-slate-200">Premium Book</span>
-                            <p className="text-[10px] text-slate-400">Requires paid subscription to access</p>
-                          </div>
-                        </label>
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            name="is_active"
-                            checked={formData.is_active}
-                            onChange={handleInputChange}
-                            className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
-                          />
-                          <div>
-                            <span className="text-xs font-medium text-slate-200">Active</span>
-                            <p className="text-[10px] text-slate-400">Book is visible to users</p>
-                          </div>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* File Uploads */}
-                    <div>
-                      <h3 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <Upload className="w-4 h-4 text-purple-400" />
-                        File Uploads
-                      </h3>
-
-                      {/* PDF Upload */}
-                      <div className="mb-4">
-                        <label className="block text-[11px] font-medium text-slate-300 mb-2">
-                          PDF File
-                        </label>
-                        <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
-                          {pdfPreview ? (
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center">
-                                  <FileText className="w-5 h-5 text-blue-400" />
-                                </div>
-                                <div>
-                                  <p className="text-xs font-medium text-slate-200">{pdfPreview}</p>
-                                  <p className="text-[10px] text-slate-400">PDF file</p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={removePdf}
-                                className="p-1.5 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                              <input
-                                type="file"
-                                accept=".pdf"
-                                onChange={handlePdfChange}
-                                className="hidden"
-                                id="pdf-upload"
-                              />
-                              <label
-                                htmlFor="pdf-upload"
-                                className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
-                              >
-                                <Upload className="w-4 h-4" />
-                                {originalPdfUrl ? 'Replace PDF File' : 'Choose PDF File'}
-                              </label>
-                              <p className="text-[10px] text-slate-500 mt-2">
-                                Upload PDF format only (Max 10MB)
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Thumbnail Upload */}
-                      <div>
-                        <label className="block text-[11px] font-medium text-slate-300 mb-2">
-                          Thumbnail Image
-                        </label>
-                        <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
-                          {thumbnailPreview ? (
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-16 h-16 rounded-xl overflow-hidden">
-                                  <img
-                                    src={thumbnailPreview}
-                                    alt="Thumbnail preview"
-                                    className="w-full h-full object-cover"
-                                  />
-                                </div>
-                                <div>
-                                  <p className="text-xs font-medium text-slate-200">Thumbnail uploaded</p>
-                                  <p className="text-[10px] text-slate-400">Image file</p>
-                                </div>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={removeThumbnail}
-                                className="p-1.5 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30"
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="text-center">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleThumbnailChange}
-                                className="hidden"
-                                id="thumbnail-upload"
-                              />
-                              <label
-                                htmlFor="thumbnail-upload"
-                                className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
-                              >
-                                <Image className="w-4 h-4" />
-                                {originalThumbnailUrl ? 'Replace Thumbnail' : 'Choose Thumbnail'}
-                              </label>
-                              <p className="text-[10px] text-slate-500 mt-2">
-                                Upload JPG, PNG or GIF (Max 2MB)
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
-                      <Link
-                        href="/books"
-                        className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
-                      >
-                        Cancel
-                      </Link>
                       <button
-                        type="submit"
-                        disabled={saving || uploading}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        type="button"
+                        onClick={removeThumbnail}
+                        className="p-1.5 rounded-lg bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600/30"
                       >
-                        {saving || uploading ? (
-                          <>
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            {uploading ? 'Uploading...' : 'Saving...'}
-                          </>
-                        ) : (
-                          <>
-                            <Save className="w-4 h-4" />
-                            Update Book
-                          </>
-                        )}
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
-                  </div>
-                </form>
+                  ) : (
+                    <div className="text-center">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleThumbnailChange}
+                        className="hidden"
+                        id="thumbnail-upload"
+                      />
+                      <label
+                        htmlFor="thumbnail-upload"
+                        className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
+                      >
+                        <Image className="w-4 h-4" />
+                        {originalThumbnailUrl ? 'Replace Thumbnail' : 'Choose Thumbnail'}
+                      </label>
+                      <p className="text-[10px] text-gray-500 mt-2">
+                        Upload JPG, PNG or GIF (Max 2MB)
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </main>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200/80">
+              <Link
+                href="/books"
+                className="px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
+              >
+                Cancel
+              </Link>
+              <button
+                type="submit"
+                disabled={saving || uploading}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-medium hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {saving || uploading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {uploading ? 'Uploading...' : 'Saving...'}
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    Update Book
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
-      </QueryProvider>
-    </AuthGuard>
+        </form>
+      </div>
+    </DashboardLayout>
   )
 }
 

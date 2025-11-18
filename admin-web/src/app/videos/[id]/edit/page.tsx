@@ -1,12 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+
+// Type declaration for window.categories
+declare global {
+  interface Window {
+    categories?: any[]
+  }
+}
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import QueryProvider from "@/components/query-provider"
-import Sidebar from "@/components/sidebar"
-import Header from "@/components/header"
-import AuthGuard from "@/components/auth-guard"
+import DashboardLayout from "@/components/dashboard-layout"
 import {
   ArrowLeft,
   Save,
@@ -14,9 +18,9 @@ import {
   X,
   Video,
   Clock,
-  AlertCircle,
+  AlertTriangle,
   CheckCircle
-} from "lucide-react"
+} from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 
 interface VideoKitab {
@@ -25,7 +29,7 @@ interface VideoKitab {
   description: string
   category_id: string
   thumbnail_url: string
-  video_url: string
+  youtube_playlist_url: string
   duration: number
   is_premium: boolean
   is_active: boolean
@@ -41,7 +45,6 @@ interface Category {
 function EditVideoContent() {
   const params = useParams()
   const router = useRouter()
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -95,7 +98,7 @@ function EditVideoContent() {
         title: video.title,
         description: video.description,
         category_id: video.category_id,
-        video_url: video.video_url,
+        video_url: video.youtube_playlist_url,
         duration: video.duration || 0,
         is_premium: video.is_premium,
         is_active: video.is_active
@@ -218,15 +221,31 @@ function EditVideoContent() {
         }
       }
 
-      // Update video data
+      // Update video data - only include fields that should be updated
+      const updateData: any = {
+        title: formData.title,
+        description: formData.description,
+        category_id: formData.category_id,
+        youtube_playlist_url: formData.video_url,
+        duration: formData.duration || 0,
+        is_premium: formData.is_premium,
+        is_active: formData.is_active,
+        updated_at: new Date().toISOString()
+      }
+
+      // Only add video_id if it exists (extracted from YouTube URL)
+      if (videoId) {
+        updateData.video_id = videoId
+      }
+
+      // Only add thumbnail_url if it changed
+      if (thumbnailUrl !== originalThumbnailUrl) {
+        updateData.thumbnail_url = thumbnailUrl
+      }
+
       const { error } = await supabase
         .from('video_kitab')
-        .update({
-          ...formData,
-          video_id: videoId,
-          thumbnail_url: thumbnailUrl,
-          updated_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', params.id)
 
       if (error) throw error
@@ -240,7 +259,19 @@ function EditVideoContent() {
 
     } catch (error) {
       console.error('Error updating video:', error)
-      setError('Error updating video. Please try again.')
+
+      // Log detailed error information
+      if (error instanceof Error) {
+        console.error('Error message:', error.message)
+        console.error('Error stack:', error.stack)
+      }
+
+      // Log Supabase-specific error if available
+      if (typeof error === 'object' && error !== null) {
+        console.error('Supabase error:', JSON.stringify(error, null, 2))
+      }
+
+      setError(`Error updating video: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setSaving(false)
       setUploading(false)
@@ -249,77 +280,47 @@ function EditVideoContent() {
 
   if (notFound) {
     return (
-      <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-          <Header
-            onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            title="Video Not Found"
-            subtitle="Error"
-          />
-          <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-            <div className="card rounded-2xl p-8 text-center">
-              <AlertCircle className="w-16 h-16 text-rose-400 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-white mb-2">Video Not Found</h2>
-              <p className="text-slate-400 mb-6">The video you're looking for doesn't exist or has been deleted.</p>
-              <Link
-                href="/videos"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-medium hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
-              >
-                <ArrowLeft className="w-4 h-4" />
-                Back to Videos
-              </Link>
-            </div>
-          </main>
+      <DashboardLayout title="Video Not Found" subtitle="Error">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="card rounded-2xl p-8 text-center max-w-md">
+            <AlertTriangle className="w-16 h-16 text-rose-400 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Video Not Found</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">The video you're looking for doesn't exist or has been deleted.</p>
+            <Link
+              href="/videos"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white text-xs font-medium hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Videos
+            </Link>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-        <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-        <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-          <Header
-            onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-            title="Edit Video"
-            subtitle="Loading..."
-          />
-          <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-          </main>
+      <DashboardLayout title="Edit Video" subtitle="Loading...">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
-      </div>
+      </DashboardLayout>
     )
   }
 
   return (
-    <AuthGuard requireRole="admin">
-      <QueryProvider>
-        <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-          <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-
-          <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-            <Header
-              onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-              title="Edit Video Kitab"
-              subtitle="Video Content"
-            />
-
-            <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-              <div className="max-w-4xl mx-auto">
+    <DashboardLayout title="Edit Video Kitab" subtitle="Video Content">
+      <div className="px-4 sm:px-6 py-4">
                 {/* Page Header */}
                 <div className="card rounded-2xl p-4 sm:p-5 mb-4">
                   <div className="flex items-center gap-3 mb-4">
-                    <Link href="/videos" className="p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800/90 transition">
-                      <ArrowLeft className="w-4 h-4 text-slate-300" />
+                    <Link href="/videos" className="p-2 rounded-xl bg-white/90 border border-gray-300/80 hover:bg-gray-100/90 transition">
+                      <ArrowLeft className="w-4 h-4 text-gray-700" />
                     </Link>
                     <div>
                       <h2 className="text-base sm:text-lg font-semibold">Edit Video Kitab</h2>
-                      <p className="text-xs text-slate-400">Update video information and details</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Update video information and details</p>
                     </div>
                   </div>
 
@@ -333,7 +334,7 @@ function EditVideoContent() {
 
                   {error && (
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/40">
-                      <AlertCircle className="w-4 h-4 text-rose-400" />
+                      <AlertTriangle className="w-4 h-4 text-rose-400" />
                       <span className="text-sm text-rose-300">{error}</span>
                     </div>
                   )}
@@ -350,7 +351,7 @@ function EditVideoContent() {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                          <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Title *
                           </label>
                           <input
@@ -358,13 +359,13 @@ function EditVideoContent() {
                             name="title"
                             value={formData.title}
                             onChange={handleInputChange}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
                             placeholder="Enter video title"
                             required
                           />
                         </div>
                           <div className="md:col-span-2">
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                          <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                             YouTube URL
                           </label>
                           <input
@@ -372,12 +373,12 @@ function EditVideoContent() {
                             name="video_url"
                             value={formData.video_url}
                             onChange={handleInputChange}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
                             placeholder="https://youtube.com/watch?v=..."
                           />
                         </div>
                         <div className="md:col-span-2">
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                          <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Description
                           </label>
                           <textarea
@@ -385,19 +386,19 @@ function EditVideoContent() {
                             value={formData.description}
                             onChange={handleInputChange}
                             rows={3}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none"
                             placeholder="Enter video description"
                           />
                         </div>
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                          <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Category *
                           </label>
                           <select
                             name="category_id"
                             value={formData.category_id}
                             onChange={handleInputChange}
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
+                            className="w-full px-3 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
                             required
                           >
                             <option value="">Select a category</option>
@@ -419,7 +420,7 @@ function EditVideoContent() {
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                          <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                             Duration (seconds)
                           </label>
                           <input
@@ -428,7 +429,7 @@ function EditVideoContent() {
                             value={formData.duration}
                             onChange={handleInputChange}
                             min="0"
-                            className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50"
+                            className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50"
                             placeholder="0"
                           />
                         </div>
@@ -439,11 +440,11 @@ function EditVideoContent() {
                               name="is_premium"
                               checked={formData.is_premium}
                               onChange={handleInputChange}
-                              className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-purple-500 focus:ring-2 focus:ring-purple-500/50"
+                              className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-purple-500 focus:ring-2 focus:ring-purple-500/50"
                             />
                             <div>
-                              <span className="text-xs font-medium text-slate-200">Premium Video</span>
-                              <p className="text-[10px] text-slate-400">Requires paid subscription</p>
+                              <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Premium Video</span>
+                              <p className="text-[10px] text-gray-600 dark:text-gray-400">Requires paid subscription</p>
                             </div>
                           </label>
                           <label className="flex items-center gap-3 cursor-pointer">
@@ -452,11 +453,11 @@ function EditVideoContent() {
                               name="is_active"
                               checked={formData.is_active}
                               onChange={handleInputChange}
-                              className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-purple-500 focus:ring-2 focus:ring-purple-500/50"
+                              className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-purple-500 focus:ring-2 focus:ring-purple-500/50"
                             />
                             <div>
-                              <span className="text-xs font-medium text-slate-200">Active</span>
-                              <p className="text-[10px] text-slate-400">Video is visible to users</p>
+                              <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Active</span>
+                              <p className="text-[10px] text-gray-600 dark:text-gray-400">Video is visible to users</p>
                             </div>
                           </label>
                         </div>
@@ -469,7 +470,7 @@ function EditVideoContent() {
                         <Upload className="w-4 h-4 text-indigo-400" />
                         Video Thumbnail
                       </h3>
-                      <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
+                      <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
                         {thumbnailPreview ? (
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -481,8 +482,8 @@ function EditVideoContent() {
                                 />
                               </div>
                               <div>
-                                <p className="text-xs font-medium text-slate-200">Thumbnail uploaded</p>
-                                <p className="text-[10px] text-slate-400">Image file</p>
+                                <p className="text-xs font-medium text-gray-800 dark:text-gray-200">Thumbnail uploaded</p>
+                                <p className="text-[10px] text-gray-600 dark:text-gray-400">Image file</p>
                               </div>
                             </div>
                             <button
@@ -504,15 +505,15 @@ function EditVideoContent() {
                             />
                             <label
                               htmlFor="thumbnail-upload"
-                              className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                              className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                             >
                               <Upload className="w-4 h-4" />
                               Choose Thumbnail
                             </label>
-                            <p className="text-[10px] text-slate-500 mt-2">
+                            <p className="text-[10px] text-gray-500 mt-2">
                               Upload JPG, PNG or GIF (Max 2MB)
                             </p>
-                            <p className="text-[10px] text-slate-600 mt-1">
+                            <p className="text-[10px] text-gray-400 mt-1">
                               Optional - Used for video preview
                             </p>
                           </div>
@@ -521,10 +522,10 @@ function EditVideoContent() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200/80">
                       <Link
                         href="/videos"
-                        className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                        className="px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                       >
                         Cancel
                       </Link>
@@ -549,11 +550,7 @@ function EditVideoContent() {
                   </div>
                 </form>
               </div>
-            </main>
-          </div>
-        </div>
-      </QueryProvider>
-    </AuthGuard>
+    </DashboardLayout>
   )
 }
 

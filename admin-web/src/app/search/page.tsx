@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import Link from 'next/link'
-import QueryProvider from "@/components/query-provider"
-import Sidebar from "@/components/sidebar"
-import Header from "@/components/header"
-import AdvancedSearch from "@/components/advanced-search"
-import SearchResults from "@/components/search-results"
+import DashboardLayout from "@/components/dashboard-layout"
 import { supabase } from "@/lib/supabase"
 import { Search, Filter, ArrowLeft } from 'lucide-react'
+
+// Lazy load heavy search components
+const AdvancedSearch = lazy(() => import("@/components/advanced-search"))
+const SearchResults = lazy(() => import("@/components/search-results"))
 
 interface SearchFilters {
   query: string
@@ -37,7 +37,6 @@ interface SearchResult {
 }
 
 function SearchContent() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [totalResults, setTotalResults] = useState(0)
@@ -89,7 +88,7 @@ function SearchContent() {
         author: book.author,
         status: book.is_active ? 'published' : 'draft',
         views: Math.floor(Math.random() * 10000), // Mock data
-        rating: (Math.random() * 2 + 3).toFixed(1), // Mock data
+        rating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Mock data
         createdAt: book.created_at,
         updatedAt: book.updated_at,
         thumbnail: book.thumbnail_url,
@@ -122,10 +121,10 @@ function SearchContent() {
             type: 'video' as const,
             title: video.title,
             description: video.description,
-            author: null,
+            author: undefined,
             status: video.is_active ? 'published' : 'draft',
             views: Math.floor(Math.random() * 5000), // Mock data
-            rating: (Math.random() * 2 + 3).toFixed(1), // Mock data
+            rating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Mock data
             createdAt: video.created_at,
             updatedAt: video.updated_at,
             thumbnail: video.thumbnail_url,
@@ -162,7 +161,7 @@ function SearchContent() {
             description: category.description,
             status: category.is_active ? 'active' : 'inactive',
             views: Math.floor(Math.random() * 1000), // Mock data
-            rating: (Math.random() * 2 + 3).toFixed(1), // Mock data
+            rating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Mock data
             createdAt: category.created_at,
             updatedAt: category.updated_at,
             thumbnail: category.icon_url,
@@ -199,7 +198,7 @@ function SearchContent() {
             description: user.user_metadata?.bio || user.email,
             status: user.is_active ? 'active' : 'inactive',
             views: Math.floor(Math.random() * 500), // Mock data
-            rating: (Math.random() * 2 + 3).toFixed(1), // Mock data
+            rating: parseFloat((Math.random() * 2 + 3).toFixed(1)), // Mock data
             createdAt: user.created_at,
             updatedAt: user.updated_at,
             thumbnail: user.avatar_url,
@@ -281,28 +280,19 @@ function SearchContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-
+    <DashboardLayout
+      title="Advanced Search"
+      subtitle="Search across all content types"
+    >
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-        {/* Header */}
-        <Header
-          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title="Advanced Search"
-          subtitle="Search across all content types"
-        />
-
-        {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
+        <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gray-50 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-300">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 mb-6 text-xs text-slate-400">
-            <Link href="/" className="hover:text-slate-200 transition-colors">
+          <div className="flex items-center gap-2 mb-6 text-xs text-gray-600">
+            <Link href="/" className="hover:text-gray-800 transition-colors">
               Dashboard
             </Link>
             <span>/</span>
-            <span className="text-slate-200">Search</span>
+            <span className="text-gray-800">Search</span>
           </div>
 
           {/* Search Section */}
@@ -313,26 +303,38 @@ function SearchContent() {
                 <Search className="w-5 h-5 text-blue-400" />
                 <h2 className="text-lg font-semibold">Search Content</h2>
               </div>
-              <AdvancedSearch
-                onSearch={handleSearch}
-                placeholder="Search for books, videos, categories, or users..."
-                showFilters={true}
-              />
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-32">
+                  <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              }>
+                <AdvancedSearch
+                  onSearch={handleSearch}
+                  placeholder="Search for books, videos, categories, or users..."
+                  showFilters={true}
+                />
+              </Suspense>
             </div>
 
             {/* Results Section */}
             {hasSearched && (
               <div className="card rounded-2xl p-4 sm:p-5">
-                <SearchResults
-                  results={results}
-                  loading={loading}
-                  query={""} // Will be handled by AdvancedSearch component
-                  totalResults={totalResults}
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                  onItemClick={handleItemClick}
-                />
+                <Suspense fallback={
+                  <div className="flex items-center justify-center h-64">
+                    <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  </div>
+                }>
+                  <SearchResults
+                    results={results}
+                    loading={loading}
+                    query={""} // Will be handled by AdvancedSearch component
+                    totalResults={totalResults}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                    onItemClick={handleItemClick}
+                  />
+                </Suspense>
               </div>
             )}
 
@@ -340,16 +342,16 @@ function SearchContent() {
             {!hasSearched && (
               <div className="card rounded-2xl p-8 sm:p-12">
                 <div className="text-center">
-                  <div className="w-20 h-20 rounded-2xl bg-slate-900/80 border border-slate-700/80 flex items-center justify-center mx-auto mb-6">
-                    <Search className="w-10 h-10 text-slate-400" />
+                  <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-gray-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-slate-200 mb-3">
+                  <h2 className="text-xl font-semibold text-gray-800 mb-3">
                     Search Your Content
                   </h2>
-                  <p className="text-sm text-slate-400 mb-6 max-w-md mx-auto">
+                  <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
                     Use the search bar above to find books, videos, categories, or users. Apply filters to narrow down your results.
                   </p>
-                  <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-slate-500">
+                  <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-gray-500">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-emerald-400"></div>
                       <span>Books</span>
@@ -372,15 +374,10 @@ function SearchContent() {
             )}
           </div>
         </main>
-      </div>
-    </div>
+    </DashboardLayout>
   )
 }
 
 export default function SearchPage() {
-  return (
-    <QueryProvider>
-      <SearchContent />
-    </QueryProvider>
-  )
+  return <SearchContent />
 }

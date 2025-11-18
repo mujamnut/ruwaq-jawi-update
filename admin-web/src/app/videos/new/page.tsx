@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import QueryProvider from "@/components/query-provider"
-import Sidebar from "@/components/sidebar"
-import Header from "@/components/header"
+import DashboardLayout from "@/components/dashboard-layout"
 import {
   ArrowLeft,
   Save,
@@ -15,7 +13,7 @@ import {
   Image,
   Clock,
   User
-} from "lucide-react"
+} from 'lucide-react'
 import { supabase } from "@/lib/supabase"
 
 interface Category {
@@ -24,7 +22,6 @@ interface Category {
 }
 
 function NewVideoContent() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -115,8 +112,8 @@ function NewVideoContent() {
   const compressImage = async (file: File, maxWidth = 1920, maxHeight = 1080, quality = 0.8): Promise<File> => {
     return new Promise((resolve) => {
       const canvas = document.createElement('canvas')
-      const ctx = canvas.getContext('2d')!
-      const img = new Image()
+      const ctx = canvas.getContext('2d')
+      const img = document.createElement('img')
 
       img.onload = () => {
         // Calculate new dimensions
@@ -132,7 +129,9 @@ function NewVideoContent() {
         canvas.height = height
 
         // Draw and compress
-        ctx.drawImage(img, 0, 0, width, height)
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height)
+        }
 
         canvas.toBlob((blob) => {
           if (blob) {
@@ -265,8 +264,8 @@ function NewVideoContent() {
         title: formData.title.trim(),
         description: formData.description?.trim() || '',
         category_id: formData.category_id,
-        video_url: formData.video_url.trim(),
         youtube_playlist_id: parsedVideoId,
+        youtube_playlist_url: formData.video_url.trim(), // Use playlist_url for video URL
         total_duration_minutes: Math.floor(duration / 60),
         total_videos: 1, // Default value for single video
         duration: duration,
@@ -337,37 +336,27 @@ function NewVideoContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 antialiased">
-      {/* Sidebar */}
-      <Sidebar isCollapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(!sidebarCollapsed)} />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-0 ml-0">
-        {/* Header */}
-        <Header
-          onMenuToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          title="Add New Video"
-          subtitle="Video Content"
-        />
-
-        {/* Main Content */}
-        <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900">
-          <div className="max-w-4xl mx-auto">
+    <DashboardLayout
+      title="Add New Video"
+      subtitle="Video Content"
+    >
+      <main className="flex-1 px-4 sm:px-6 pb-8 pt-4 bg-gray-50 dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 transition-colors duration-300">
+          <div className="w-full">
             {/* Page Header */}
-            <div className="card rounded-2xl p-4 sm:p-5 mb-4">
+            <div className="card rounded-2xl p-4 sm:p-5 mb-4 bg-white dark:bg-slate-800/90 border border-gray-300/80 dark:border-slate-600/80">
               <div className="flex items-center gap-3 mb-4">
-                <Link href="/videos" className="p-2 rounded-xl bg-slate-900/90 border border-slate-700/80 hover:bg-slate-800/90 transition">
-                  <ArrowLeft className="w-4 h-4 text-slate-300" />
+                <Link href="/videos" className="p-2 rounded-xl bg-white/90 dark:bg-slate-700/90 border border-gray-300/80 dark:border-slate-600/80 hover:bg-gray-100/90 dark:hover:bg-slate-600/90 transition">
+                  <ArrowLeft className="w-4 h-4 text-gray-700 dark:text-gray-300" />
                 </Link>
                 <div>
-                  <h2 className="text-base sm:text-lg font-semibold">Add New Video</h2>
-                  <p className="text-xs text-slate-400">Create a new video kitab entry</p>
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Add New Video</h2>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Create a new video kitab entry</p>
                 </div>
               </div>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="card rounded-2xl p-4 sm:p-5">
+            <form onSubmit={handleSubmit} className="card rounded-2xl p-4 sm:p-5 bg-white dark:bg-slate-800/90 border border-gray-300/80 dark:border-slate-600/80">
               <div className="space-y-6">
                 {/* Basic Information */}
                 <div>
@@ -377,7 +366,7 @@ function NewVideoContent() {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 mb-2">
                         Title *
                       </label>
                       <input
@@ -385,13 +374,13 @@ function NewVideoContent() {
                         name="title"
                         value={formData.title}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
                         placeholder="Enter video title"
                         required
                       />
                     </div>
                       <div className="md:col-span-2">
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 mb-2">
                         Description
                       </label>
                       <textarea
@@ -399,19 +388,19 @@ function NewVideoContent() {
                         value={formData.description}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none"
                         placeholder="Enter video description"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Category *
                       </label>
                       <select
                         name="category_id"
                         value={formData.category_id}
                         onChange={handleInputChange}
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
                         required
                       >
                         <option value="">Select a category</option>
@@ -432,7 +421,7 @@ function NewVideoContent() {
                     Video URL
                   </h3>
                   <div>
-                    <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                    <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Video URL *
                     </label>
                     <input
@@ -440,11 +429,11 @@ function NewVideoContent() {
                       name="video_url"
                       value={formData.video_url}
                       onChange={handleInputChange}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
+                      className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50"
                       placeholder="https://youtube.com/watch?v=VIDEO_ID"
                       required
                     />
-                    <p className="text-[10px] text-slate-500 mt-1">
+                    <p className="text-[10px] text-gray-500 mt-1">
                       Supports YouTube, Vimeo, and other video platforms
                     </p>
                   </div>
@@ -458,7 +447,7 @@ function NewVideoContent() {
                   </h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Hours
                       </label>
                       <input
@@ -468,12 +457,12 @@ function NewVideoContent() {
                         onChange={handleInputChange}
                         min="0"
                         max="23"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Minutes
                       </label>
                       <input
@@ -483,12 +472,12 @@ function NewVideoContent() {
                         onChange={handleInputChange}
                         min="0"
                         max="59"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
                         placeholder="0"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-slate-300 mb-2">
+                      <label className="block text-[11px] font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Seconds
                       </label>
                       <input
@@ -498,12 +487,12 @@ function NewVideoContent() {
                         onChange={handleInputChange}
                         min="0"
                         max="59"
-                        className="w-full px-3 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
+                        className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-700/80 border border-gray-300/80 dark:border-slate-600/80 text-xs text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500/50"
                         placeholder="0"
                       />
                     </div>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">
+                  <p className="text-[10px] text-gray-500 mt-1">
                     Leave blank if duration should be auto-detected
                   </p>
                 </div>
@@ -521,11 +510,11 @@ function NewVideoContent() {
                         name="is_premium"
                         checked={formData.is_premium}
                         onChange={handleInputChange}
-                        className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                        className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
                       />
                       <div>
-                        <span className="text-xs font-medium text-slate-200">Premium Video</span>
-                        <p className="text-[10px] text-slate-400">Requires paid subscription to access</p>
+                        <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Premium Video</span>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400">Requires paid subscription to access</p>
                       </div>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -534,11 +523,11 @@ function NewVideoContent() {
                         name="is_active"
                         checked={formData.is_active}
                         onChange={handleInputChange}
-                        className="w-4 h-4 rounded bg-slate-900 border border-slate-700 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
+                        className="w-4 h-4 rounded bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 text-blue-500 focus:ring-2 focus:ring-blue-500/50"
                       />
                       <div>
-                        <span className="text-xs font-medium text-slate-200">Active</span>
-                        <p className="text-[10px] text-slate-400">Video is visible to users</p>
+                        <span className="text-xs font-medium text-gray-800 dark:text-gray-200">Active</span>
+                        <p className="text-[10px] text-gray-600 dark:text-gray-400">Video is visible to users</p>
                       </div>
                     </label>
                   </div>
@@ -550,7 +539,7 @@ function NewVideoContent() {
                     <Image className="w-4 h-4 text-orange-400" />
                     Thumbnail Image
                   </h3>
-                  <div className="border-2 border-dashed border-slate-700/80 rounded-xl p-4">
+                  <div className="border-2 border-dashed border-gray-300/80 rounded-xl p-4">
                     {thumbnailPreview ? (
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -562,8 +551,8 @@ function NewVideoContent() {
                             />
                           </div>
                           <div>
-                            <p className="text-xs font-medium text-slate-200">Thumbnail uploaded</p>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-xs font-medium text-gray-800">Thumbnail uploaded</p>
+                            <p className="text-[10px] text-gray-600">
                               {thumbnailFile
                                 ? `${(thumbnailFile.size / 1024 / 1024).toFixed(2)} MB`
                                 : 'Image file'
@@ -593,15 +582,15 @@ function NewVideoContent() {
                         />
                         <label
                           htmlFor="thumbnail-upload"
-                          className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                          className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                         >
                           <Upload className="w-4 h-4" />
                           Choose Thumbnail
                         </label>
-                        <p className="text-[10px] text-slate-500 mt-2">
+                        <p className="text-[10px] text-gray-500 mt-2">
                           Upload JPG, PNG or GIF (Max 2MB)
                         </p>
-                        <p className="text-[10px] text-slate-600 mt-1">
+                        <p className="text-[10px] text-gray-400 mt-1">
                           Optional - Used for video preview
                         </p>
                       </div>
@@ -613,14 +602,14 @@ function NewVideoContent() {
                 {(uploading || uploadProgress > 0) && (
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-slate-300">
+                      <span className="text-xs text-gray-700">
                         {uploading ? 'Processing video...' : 'Processing complete'}
                       </span>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-gray-600">
                         {uploadProgress}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-700/50 rounded-full h-2">
+                    <div className="w-full bg-gray-200/50 rounded-full h-2">
                       <div
                         className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all duration-300 ease-out"
                         style={{ width: `${uploadProgress}%` }}
@@ -630,10 +619,10 @@ function NewVideoContent() {
                 )}
 
                 {/* Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800/80">
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200/80">
                   <Link
                     href="/videos"
-                    className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-xs text-slate-300 hover:bg-slate-800/90 transition"
+                    className="px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-xs text-gray-700 hover:bg-gray-100/90 transition"
                   >
                     Cancel
                   </Link>
@@ -664,15 +653,10 @@ function NewVideoContent() {
             </form>
           </div>
         </main>
-      </div>
-    </div>
+    </DashboardLayout>
   )
 }
 
 export default function NewVideoPage() {
-  return (
-    <QueryProvider>
-      <NewVideoContent />
-    </QueryProvider>
-  )
+  return <NewVideoContent />
 }

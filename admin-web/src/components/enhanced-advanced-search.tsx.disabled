@@ -1,0 +1,1378 @@
+'use client'
+
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import {
+  Search,
+  Funnel,
+  X,
+  Calendar,
+  User,
+  Tag,
+  FileText,
+  Video,
+  Music,
+  Image,
+  Star,
+  TrendingUp,
+  Download,
+  Eye,
+  DollarSign,
+  Hash,
+  CaretDown,
+  CaretUp,
+  Plus,
+  Minus,
+  ArrowCounterClockwise,
+  Save,
+  Bookmark,
+  Clock,
+  BarChart3,
+  Zap,
+  Settings,
+  AlertTriangle,
+  CheckCircle,
+  Loader,
+  Sparkles,
+  Target,
+  Layers,
+  Globe,
+  Users
+} from 'lucide-react'
+import { Input } from './ui/input'
+import { Button } from './ui/button'
+import { Badge } from './ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
+import { Checkbox } from './ui/checkbox'
+import { Slider } from './ui/slider'
+import { Switch } from './ui/switch'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from './ui/collapsible'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Label } from './ui/label'
+import { Separator } from './ui/separator'
+import { Textarea } from './ui/textarea'
+import { RadioGroup, RadioGroupItem } from './ui/radio-group'
+import { supabase } from '../lib/supabase'
+
+export interface SearchFilter {
+  id: string
+  type: 'text' | 'select' | 'multiselect' | 'range' | 'date' | 'boolean' | 'radio'
+  field: string
+  label: string
+  placeholder?: string
+  options?: Array<{ value: string; label: string; icon?: React.ComponentType<{ className?: string }> }>
+  min?: number
+  max?: number
+  step?: number
+  defaultValue?: any
+  description?: string
+  group?: string
+}
+
+export interface SearchQuery {
+  searchTerm?: string
+  filters: Record<string, any>
+  sortBy: string
+  sortOrder: 'asc' | 'desc'
+  page: number
+  limit: number
+  searchMode?: 'exact' | 'fuzzy' | 'partial'
+  searchFields?: string[]
+}
+
+export interface SearchResult {
+  id: string
+  title: string
+  description?: string
+  type: 'book' | 'video' | 'article' | 'audio' | 'category' | 'user'
+  category?: string
+  author?: string
+  tags?: string[]
+  views?: number
+  rating?: number
+  revenue?: number
+  created_at: string
+  updated_at: string
+  premium?: boolean
+  status: string
+  relevance_score?: number
+  highlight?: Record<string, string[]>
+  [key: string]: any
+}
+
+export interface SavedSearch {
+  id: string
+  name: string
+  description?: string
+  query: SearchQuery
+  created_at: string
+  last_used?: string
+  usage_count: number
+  is_public?: boolean
+  tags?: string[]
+}
+
+export interface SearchTemplate {
+  id: string
+  name: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+  query: Partial<SearchQuery>
+  category: 'content' | 'users' | 'analytics' | 'moderation'
+}
+
+interface EnhancedAdvancedSearchProps {
+  onSearch: (query: SearchQuery) => Promise<{ results: SearchResult[], total: number }>
+  onResultsChange?: (results: SearchResult[], total: number) => void
+  savedSearches?: SavedSearch[]
+  onSaveSearch?: (name: string, query: SearchQuery, description?: string) => Promise<void>
+  onDeleteSavedSearch?: (id: string) => Promise<void>
+  onExportResults?: (results: SearchResult[]) => void
+  placeholder?: string
+  showSavedSearches?: boolean
+  showFilters?: boolean
+  showTemplates?: boolean
+  enableAI?: boolean
+  className?: string
+}
+
+export default function EnhancedAdvancedSearch({
+  onSearch,
+  onResultsChange,
+  savedSearches = [],
+  onSaveSearch,
+  onDeleteSavedSearch,
+  onExportResults,
+  placeholder = "Search content, authors, tags, or use advanced filters...",
+  showSavedSearches = true,
+  showFilters = true,
+  showTemplates = true,
+  enableAI = true,
+  className = ""
+}: EnhancedAdvancedSearchProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filters, setFilters] = useState<Record<string, any>>({})
+  const [sortBy, setSortBy] = useState('relevance')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [searchMode, setSearchMode] = useState<'exact' | 'fuzzy' | 'partial'>('fuzzy')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [totalResults, setTotalResults] = useState(0)
+  const [loading, setLoading] = useState(false)
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [savedSearchName, setSavedSearchName] = useState('')
+  const [savedSearchDescription, setSavedSearchDescription] = useState('')
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set())
+  const [searchHistory, setSearchHistory] = useState<string[]>([])
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null)
+
+  // SearchIcon templates
+  const searchTemplates: SearchTemplate[] = [
+    {
+      id: 'trending',
+      name: 'Trending Content',
+      description: 'Find popular and trending content',
+      icon: TrendingUp,
+      category: 'content',
+      query: {
+        filters: { min_views: 1000, time_range: '7d' },
+        sortBy: 'views',
+        sortOrder: 'desc'
+      }
+    },
+    {
+      id: 'premium',
+      name: 'Premium Content',
+      description: 'SearchIcon only premium content',
+      icon: Star,
+      category: 'content',
+      query: {
+        filters: { premium: true, status: 'active' },
+        sortBy: 'revenue'
+      }
+    },
+    {
+      id: 'low_rating',
+      name: 'Low Performance',
+      description: 'Find content that needs improvement',
+      icon: AlertTriangle,
+      category: 'analytics',
+      query: {
+        filters: { max_rating: 3.0, min_views: 100 },
+        sortBy: 'rating',
+        sortOrder: 'asc'
+      }
+    },
+    {
+      id: 'recent_drafts',
+      name: 'Recent Drafts',
+      description: 'Unpublished content from the last 30 days',
+      icon: FileText,
+      category: 'content',
+      query: {
+        filters: { status: 'draft', created_after: '30d' },
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      }
+    },
+    {
+      id: 'top_authors',
+      name: 'Top Authors',
+      description: 'Content from top-performing authors',
+      icon: Users,
+      category: 'users',
+      query: {
+        filters: { author_rating: 4.5, min_content: 5 },
+        sortBy: 'author_rating',
+        sortOrder: 'desc'
+      }
+    }
+  ]
+
+  // Define available filters
+  const availableFilters: SearchFilter[] = [
+    // Content Filters
+    {
+      id: 'content_type',
+      type: 'multiselect',
+      field: 'type',
+      label: 'Content Type',
+      group: 'content',
+      options: [
+        { value: 'book', label: 'Books', icon: FileText },
+        { value: 'video', label: 'Videos', icon: Video },
+        { value: 'article', label: 'Articles', icon: FileText },
+        { value: 'audio', label: 'Audio', icon: Music }
+      ]
+    },
+    {
+      id: 'category',
+      type: 'select',
+      field: 'category',
+      label: 'Category',
+      group: 'content',
+      options: [] // Will be populated dynamically
+    },
+    {
+      id: 'author',
+      type: 'select',
+      field: 'author',
+      label: 'Author',
+      group: 'content',
+      options: [] // Will be populated dynamically
+    },
+    {
+      id: 'status',
+      type: 'multiselect',
+      field: 'status',
+      label: 'Status',
+      group: 'content',
+      options: [
+        { value: 'active', label: 'Active', icon: CheckCircle },
+        { value: 'draft', label: 'Draft', icon: FileText },
+        { value: 'archived', label: 'Archived', icon: Archive },
+        { value: 'inactive', label: 'Inactive', icon: X }
+      ]
+    },
+    {
+      id: 'premium',
+      type: 'boolean',
+      field: 'premium',
+      label: 'Premium Content',
+      group: 'content',
+      description: 'Only include premium content'
+    },
+
+    // Performance Filters
+    {
+      id: 'rating_range',
+      type: 'range',
+      field: 'rating',
+      label: 'Rating Range',
+      group: 'performance',
+      min: 0,
+      max: 5,
+      step: 0.1,
+      defaultValue: [0, 5],
+      description: 'FunnelIcon by content rating'
+    },
+    {
+      id: 'views_range',
+      type: 'range',
+      field: 'views',
+      label: 'Views Range',
+      group: 'performance',
+      min: 0,
+      max: 1000000,
+      step: 1000,
+      defaultValue: [0, 1000000]
+    },
+    {
+      id: 'revenue_range',
+      type: 'range',
+      field: 'revenue',
+      label: 'Revenue Range ($)',
+      group: 'performance',
+      min: 0,
+      max: 10000,
+      step: 50,
+      defaultValue: [0, 10000]
+    },
+    {
+      id: 'downloads_range',
+      type: 'range',
+      field: 'downloads',
+      label: 'Downloads Range',
+      group: 'performance',
+      min: 0,
+      max: 100000,
+      step: 100,
+      defaultValue: [0, 100000]
+    },
+
+    // Date Filters
+    {
+      id: 'created_after',
+      type: 'date',
+      field: 'created_after',
+      label: 'Created After',
+      group: 'dates'
+    },
+    {
+      id: 'created_before',
+      type: 'date',
+      field: 'created_before',
+      label: 'Created Before',
+      group: 'dates'
+    },
+    {
+      id: 'updated_after',
+      type: 'date',
+      field: 'updated_after',
+      label: 'Updated After',
+      group: 'dates'
+    },
+    {
+      id: 'time_range',
+      type: 'radio',
+      field: 'time_range',
+      label: 'Time Period',
+      group: 'dates',
+      options: [
+        { value: 'today', label: 'Today' },
+        { value: '7d', label: 'Last 7 days' },
+        { value: '30d', label: 'Last 30 days' },
+        { value: '90d', label: 'Last 90 days' },
+        { value: '1y', label: 'Last year' },
+        { value: 'all', label: 'All time' }
+      ],
+      defaultValue: 'all'
+    },
+
+    // Text Filters
+    {
+      id: 'tags',
+      type: 'text',
+      field: 'tags',
+      label: 'Tags',
+      group: 'text',
+      placeholder: 'tag1, tag2, tag3',
+      description: 'Enter tags separated by commas'
+    },
+    {
+      id: 'description_contains',
+      type: 'text',
+      field: 'description_contains',
+      label: 'Description Contains',
+      group: 'text',
+      placeholder: 'Keywords in description'
+    },
+    {
+      id: 'language',
+      type: 'select',
+      field: 'language',
+      label: 'Language',
+      group: 'text',
+      options: [
+        { value: 'en', label: 'English' },
+        { value: 'ms', label: 'Bahasa Melayu' },
+        { value: 'ar', label: 'العربية' },
+        { value: 'other', label: 'Other' }
+      ]
+    }
+  ]
+
+  // Sort options
+  const sortOptions = [
+    { value: 'relevance', label: 'Relevance', icon: Target },
+    { value: 'created_at', label: 'Date Created', icon: Calendar },
+    { value: 'updated_at', label: 'Last Updated', icon: Clock },
+    { value: 'title', label: 'Title', icon: FileText },
+    { value: 'views', label: 'Views', icon: Eye },
+    { value: 'rating', label: 'Rating', icon: Star },
+    { value: 'revenue', label: 'Revenue', icon: DollarSign },
+    { value: 'downloads', label: 'Downloads', icon: Download },
+    { value: 'author', label: 'Author Name', icon: User }
+  ]
+
+  // Load search history from localStorage
+  useEffect(() => {
+    const history = localStorage.getItem('admin-enhanced-search-history')
+    if (history) {
+      setSearchHistory(JSON.parse(history))
+    }
+  }, [])
+
+  // Fetch dynamic filter options
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const [categoriesResult, authorsResult] = await Promise.all([
+          supabase.from('categories').select('id, name').eq('is_active', true).order('name'),
+          supabase.from('profiles').select('id, full_name').eq('role', 'author').limit(100)
+        ])
+
+        // Update category filter options
+        const categoryFilter = availableFilters.find(f => f.id === 'category')
+        if (categoryFilter && categoriesResult.data) {
+          categoryFilter.options = categoriesResult.data.map(cat => ({
+            value: cat.id,
+            label: cat.name
+          }))
+        }
+
+        // Update author filter options
+        const authorFilter = availableFilters.find(f => f.id === 'author')
+        if (authorFilter && authorsResult.data) {
+          authorFilter.options = authorsResult.data.map(author => ({
+            value: author.id,
+            label: author.full_name
+          }))
+        }
+      } catch (error) {
+        console.error('Failed to fetch filter options:', error)
+      }
+    }
+
+    fetchFilterOptions()
+  }, [])
+
+  // Group filters by category
+  const groupedFilters = useMemo(() => {
+    const groups: Record<string, SearchFilter[]> = {}
+    availableFilters.forEach(filter => {
+      const group = filter.group || 'other'
+      if (!groups[group]) groups[group] = []
+      groups[group].push(filter)
+    })
+    return groups
+  }, [availableFilters])
+
+  // Build search query
+  const buildSearchQuery = useCallback((): SearchQuery => {
+    const activeFiltersObj: Record<string, any> = {}
+
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' &&
+          (Array.isArray(value) ? value.length > 0 : true)) {
+        activeFiltersObj[key] = value
+      }
+    })
+
+    return {
+      searchTerm: searchTerm.trim() || undefined,
+      filters: activeFiltersObj,
+      sortBy,
+      sortOrder,
+      page: currentPage,
+      limit: 20,
+      searchMode,
+      searchFields: ['title', 'description', 'tags', 'author']
+    }
+  }, [searchTerm, filters, sortBy, sortOrder, currentPage, searchMode])
+
+  // Perform search
+  const performSearch = useCallback(async () => {
+    if (!searchTerm.trim() && Object.keys(filters).length === 0 && !selectedTemplate) {
+      setResults([])
+      setTotalResults(0)
+      onResultsChange?.([], 0)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const query = buildSearchQuery()
+      const { results: searchResults, total } = await onSearch(query)
+      setResults(searchResults)
+      setTotalResults(total)
+      onResultsChange?.(searchResults, total)
+
+      // Add to search history
+      if (searchTerm.trim()) {
+        const newHistory = [searchTerm.trim(), ...searchHistory.filter(h => h !== searchTerm.trim())].slice(0, 10)
+        setSearchHistory(newHistory)
+        localStorage.setItem('admin-enhanced-search-history', JSON.stringify(newHistory))
+      }
+    } catch (error) {
+      console.error('SearchIcon failed:', error)
+      setResults([])
+      setTotalResults(0)
+    } finally {
+      setLoading(false)
+    }
+  }, [searchTerm, filters, sortBy, sortOrder, currentPage, searchMode, selectedTemplate, buildSearchQuery, onSearch, onResultsChange, searchHistory])
+
+  // Auto-search with debounce
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchTerm.length >= 2 || Object.keys(filters).length > 0 || selectedTemplate) {
+        performSearch()
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, filters, sortBy, sortOrder, searchMode, selectedTemplate, performSearch])
+
+  // Get search suggestions
+  useEffect(() => {
+    const getSuggestions = async () => {
+      if (searchTerm.length < 2) {
+        setSuggestions([])
+        setShowSuggestions(false)
+        return
+      }
+
+      try {
+        // Mock suggestions - in production this would be an API call
+        const mockSuggestions = [
+          `${searchTerm} tutorial`,
+          `${searchTerm} guide`,
+          `${searchTerm} basics`,
+          `advanced ${searchTerm}`,
+          `${searchTerm} tips`,
+          `${searchTerm} for beginners`
+        ].filter(s => s.toLowerCase().includes(searchTerm.toLowerCase()))
+
+        setSuggestions(mockSuggestions.slice(0, 6))
+        setShowSuggestions(true)
+      } catch (error) {
+        setSuggestions([])
+      }
+    }
+
+    getSuggestions()
+  }, [searchTerm])
+
+  // Handle filter change
+  const handleFilterChange = (filterId: string, value: any) => {
+    const newFilters = { ...filters }
+
+    if (value === undefined || value === null || value === '' ||
+        (Array.isArray(value) && value.length === 0)) {
+      delete newFilters[filterId]
+      setActiveFilters(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(filterId)
+        return newSet
+      })
+    } else {
+      newFilters[filterId] = value
+      setActiveFilters(prev => new Set(prev).add(filterId))
+    }
+
+    setFilters(newFilters)
+    setCurrentPage(1)
+    setSelectedTemplate(null) // Clear template when filters are manually changed
+  }
+
+  // Clear all filters
+  const clearAllFilters = () => {
+    setFilters({})
+    setActiveFilters(new Set())
+    setCurrentPage(1)
+    setSelectedTemplate(null)
+    setSearchTerm('')
+  }
+
+  // Apply saved search
+  const applySavedSearch = (savedSearch: SavedSearch) => {
+    setSearchTerm(savedSearch.query.searchTerm || '')
+    setFilters(savedSearch.query.filters || {})
+    setSortBy(savedSearch.query.sortBy || 'relevance')
+    setSortOrder(savedSearch.query.sortOrder || 'desc')
+    setSearchMode(savedSearch.query.searchMode || 'fuzzy')
+    setCurrentPage(1)
+    setSelectedTemplate(null)
+  }
+
+  // Apply search template
+  const applyTemplate = (template: SearchTemplate) => {
+    setSelectedTemplate(template.id)
+    if (template.query.filters) {
+      setFilters(template.query.filters)
+    }
+    if (template.query.sortBy) {
+      setSortBy(template.query.sortBy)
+    }
+    if (template.query.sortOrder) {
+      setSortOrder(template.query.sortOrder)
+    }
+    setCurrentPage(1)
+  }
+
+  // Save current search
+  const saveCurrentSearch = async () => {
+    if (!savedSearchName.trim()) return
+
+    try {
+      await onSaveSearch?.(savedSearchName.trim(), buildSearchQuery(), savedSearchDescription.trim())
+      setSavedSearchName('')
+      setSavedSearchDescription('')
+      setShowSaveDialog(false)
+    } catch (error) {
+      console.error('Failed to save search:', error)
+    }
+  }
+
+  // Export results
+  const handleExport = () => {
+    onExportResults?.(results)
+  }
+
+  // Get content type icon
+  const getContentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'book': return <FileText className="w-4 h-4 text-blue-400" />
+      case 'video': return <Video className="w-4 h-4 text-purple-400" />
+      case 'article': return <FileText className="w-4 h-4 text-green-400" />
+      case 'audio': return <Music className="w-4 h-4 text-amber-400" />
+      case 'category': return <Layers className="w-4 h-4 text-pink-400" />
+      case 'user': return <User className="w-4 h-4 text-cyan-400" />
+      default: return <FileText className="w-4 h-4 text-gray-600" />
+    }
+  }
+
+  // Get filter group icon
+  const getGroupIcon = (group: string) => {
+    switch (group) {
+      case 'content': return <Layers className="w-4 h-4" />
+      case 'performance': return <BarChart3 className="w-4 h-4" />
+      case 'dates': return <Calendar className="w-4 h-4" />
+      case 'text': return <FileText className="w-4 h-4" />
+      default: return <Settings className="w-4 h-4" />
+    }
+  }
+
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {/* SearchIcon Header */}
+      <Card className="bg-white/50 border-gray-300/50">
+        <CardHeader className="pb-4">
+          {/* SearchIcon Templates */}
+          {showTemplates && !selectedTemplate && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-4 h-4 text-blue-400" />
+                <span className="text-sm font-medium text-gray-700">Quick Templates</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                {searchTemplates.map(template => {
+                  const Icon = template.icon
+                  return (
+                    <button
+                      key={template.id}
+                      onClick={() => applyTemplate(template)}
+                      className="flex items-center gap-2 p-3 rounded-lg bg-gray-100/50 hover:bg-gray-100/70 border border-gray-300/50 transition-colors text-left"
+                    >
+                      <Icon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-medium text-gray-900 truncate">
+                          {template.name}
+                        </div>
+                        <div className="text-xs text-gray-600 truncate">
+                          {template.description}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Active Template */}
+          {selectedTemplate && (
+            <div className="mb-4 p-3 rounded-lg bg-blue-500/10 border border-blue-500/40">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-medium text-blue-300">
+                    Template: {searchTemplates.find(t => t.id === selectedTemplate)?.name}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedTemplate(null)}
+                  className="text-blue-300 hover:text-blue-200 h-6 px-2"
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+              <Input
+                placeholder={placeholder}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                className="pl-10 pr-20 bg-gray-100/50 border-gray-300/50"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-600 hover:text-gray-700"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* SearchIcon Mode Toggle */}
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-gray-600">
+                      <Globe className="w-3 h-3 mr-1" />
+                      {searchMode === 'exact' ? 'Exact' : searchMode === 'fuzzy' ? 'Fuzzy' : 'Partial'}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => setSearchMode('exact')}>
+                      <Target className="w-4 h-4 mr-2" />
+                      Exact Match
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSearchMode('fuzzy')}>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Fuzzy Search
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSearchMode('partial')}>
+                      <Funnel className="w-4 h-4 mr-2" />
+                      Partial Match
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* SearchIcon Suggestions */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-gray-100 border border-gray-300/50 rounded-lg shadow-lg z-50">
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setSearchTerm(suggestion)
+                        setShowSuggestions(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-200/50 text-gray-700 text-sm first:rounded-t-lg last:rounded-b-lg flex items-center gap-2"
+                    >
+                      <Search className="w-3 h-3 text-gray-600" />
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-48 bg-gray-100/50 border-gray-300/50">
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const option = sortOptions.find(o => o.value === sortBy)
+                      const Icon = option?.icon
+                      return Icon ? <Icon className="w-4 h-4" /> : null
+                    })()}
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  {sortOptions.map(option => {
+                    const Icon = option.icon
+                    return (
+                      <SelectItem key={option.value} value={option.value}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          {option.label}
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="bg-gray-100/50 border-gray-300/50"
+              >
+                {sortOrder === 'asc' ? '↑' : '↓'}
+              </Button>
+
+              {showSavedSearches && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="bg-gray-100/50 border-gray-300/50">
+                      <Bookmark className="w-4 h-4 mr-2" />
+                      Saved
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-80">
+                    {savedSearches.length === 0 ? (
+                      <DropdownMenuItem disabled>
+                        No saved searches
+                      </DropdownMenuItem>
+                    ) : (
+                      savedSearches.map(saved => (
+                        <DropdownMenuItem
+                          key={saved.id}
+                          onClick={() => applySavedSearch(saved)}
+                          className="flex-col items-start p-3"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <div className="font-medium text-gray-900">{saved.name}</div>
+                            {onDeleteSavedSearch && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onDeleteSavedSearch(saved.id)
+                                }}
+                                className="ml-2 text-red-400 hover:text-red-300"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                          {saved.description && (
+                            <div className="text-xs text-gray-600 mt-1">{saved.description}</div>
+                          )}
+                          <div className="text-xs text-gray-600 mt-1">
+                            Used {saved.usage_count} times • {new Date(saved.created_at).toLocaleDateString()}
+                          </div>
+                        </DropdownMenuItem>
+                      ))
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowSaveDialog(true)}>
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Current SearchIcon
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              <Collapsible open={showAdvancedFilters} onOpenChange={setShowAdvancedFilters}>
+                <CollapsibleTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="bg-gray-100/50 border-gray-300/50"
+                  >
+                    <Funnel className="w-4 h-4 mr-2" />
+                    Filters
+                    {activeFilters.size > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {activeFilters.size}
+                      </Badge>
+                    )}
+                    {showAdvancedFilters ? (
+                      <CaretUp className="w-4 h-4 ml-2" />
+                    ) : (
+                      <CaretDown className="w-4 h-4 ml-2" />
+                    )}
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
+            </div>
+          </div>
+
+          {/* Active Filters */}
+          {activeFilters.size > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {Array.from(activeFilters).map(filterId => {
+                const filter = availableFilters.find(f => f.id === filterId)
+                if (!filter) return null
+
+                const getFilterDisplay = () => {
+                  const value = filters[filterId]
+                  if (filter.type === 'boolean') {
+                    return value ? filter.label : `Not ${filter.label}`
+                  }
+                  if (filter.type === 'range' && Array.isArray(value)) {
+                    return `${filter.label}: ${value[0]} - ${value[1]}`
+                  }
+                  if (Array.isArray(value)) {
+                    return `${filter.label}: ${value.length} selected`
+                  }
+                  return `${filter.label}: ${value}`
+                }
+
+                return (
+                  <Badge
+                    key={filterId}
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    {getFilterDisplay()}
+                    <button
+                      onClick={() => handleFilterChange(filterId, undefined)}
+                      className="ml-1 hover:text-gray-700"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )
+              })}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="text-xs text-gray-600 hover:text-gray-700 h-6"
+              >
+                <ArrowCounterClockwise className="w-3 h-3 mr-1" />
+                Clear All
+              </Button>
+            </div>
+          )}
+        </CardHeader>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && showFilters && (
+          <CardContent className="pt-0">
+            <Tabs defaultValue="content" className="w-full">
+              <TabsList className="grid w-full grid-cols-4">
+                {Object.keys(groupedFilters).map(group => (
+                  <TabsTrigger key={group} value={group} className="flex items-center gap-2">
+                    {getGroupIcon(group)}
+                    {group.charAt(0).toUpperCase() + group.slice(1)}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {Object.entries(groupedFilters).map(([group, groupFilters]) => (
+                <TabsContent key={group} value={group} className="space-y-4 mt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {groupFilters.map(filter => (
+                      <div key={filter.id} className="space-y-2">
+                        <Label className="text-sm text-gray-700 flex items-center gap-2">
+                          {filter.label}
+                          {filter.description && (
+                            <div className="group relative">
+                              <AlertTriangle className="w-3 h-3 text-gray-600" />
+                              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 bg-gray-100 text-xs text-gray-700 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                                {filter.description}
+                              </div>
+                            </div>
+                          )}
+                        </Label>
+
+                        {filter.type === 'select' && (
+                          <Select
+                            value={filters[filter.field] || ''}
+                            onValueChange={(value) => handleFilterChange(filter.field, value || undefined)}
+                          >
+                            <SelectTrigger className="bg-gray-100/50 border-gray-300/50">
+                              <SelectValue placeholder={`Select ${filter.label.toLowerCase()}`} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {filter.options?.map(option => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  <div className="flex items-center gap-2">
+                                    {option.icon && <option.icon className="w-4 h-4" />}
+                                    {option.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+
+                        {filter.type === 'multiselect' && (
+                          <div className="space-y-2 max-h-32 overflow-y-auto">
+                            {filter.options?.map(option => (
+                              <div key={option.value} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${filter.id}-${option.value}`}
+                                  checked={Array.isArray(filters[filter.field]) &&
+                                         filters[filter.field].includes(option.value)}
+                                  onCheckedChange={(checked) => {
+                                    const current = Array.isArray(filters[filter.field]) ? filters[filter.field] : []
+                                    if (checked) {
+                                      handleFilterChange(filter.field, [...current, option.value])
+                                    } else {
+                                      handleFilterChange(filter.field, current.filter((v: string) => v !== option.value))
+                                    }
+                                  }}
+                                />
+                                <Label htmlFor={`${filter.id}-${option.value}`} className="text-sm text-gray-700 flex items-center gap-2">
+                                  {option.icon && <option.icon className="w-4 h-4" />}
+                                  {option.label}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {filter.type === 'range' && (
+                          <div className="space-y-2">
+                            <Slider
+                              value={filters[filter.field] || filter.defaultValue || [filter.min || 0]}
+                              onValueChange={(value) => handleFilterChange(filter.field, value)}
+                              min={filter.min}
+                              max={filter.max}
+                              step={filter.step}
+                              className="w-full"
+                            />
+                            <div className="flex justify-between text-xs text-gray-600">
+                              <span>{filters[filter.field]?.[0] || filter.min || 0}</span>
+                              <span>{filters[filter.field]?.[1] || filter.max || 100}</span>
+                            </div>
+                          </div>
+                        )}
+
+                        {filter.type === 'date' && (
+                          <Input
+                            type="date"
+                            value={filters[filter.field] || ''}
+                            onChange={(e) => handleFilterChange(filter.field, e.target.value || undefined)}
+                            className="bg-gray-100/50 border-gray-300/50"
+                          />
+                        )}
+
+                        {filter.type === 'boolean' && (
+                          <Switch
+                            checked={filters[filter.field] || false}
+                            onCheckedChange={(checked) => handleFilterChange(filter.field, checked)}
+                          />
+                        )}
+
+                        {filter.type === 'text' && (
+                          <Input
+                            placeholder={filter.placeholder}
+                            value={filters[filter.field] || ''}
+                            onChange={(e) => handleFilterChange(filter.field, e.target.value || undefined)}
+                            className="bg-gray-100/50 border-gray-300/50"
+                          />
+                        )}
+
+                        {filter.type === 'radio' && (
+                          <RadioGroup
+                            value={filters[filter.field] || filter.defaultValue}
+                            onValueChange={(value) => handleFilterChange(filter.field, value)}
+                          >
+                            {filter.options?.map(option => (
+                              <div key={option.value} className="flex items-center space-x-2">
+                                <RadioGroupItem value={option.value} id={`${filter.id}-${option.value}`} />
+                                <Label htmlFor={`${filter.id}-${option.value}`} className="text-sm text-gray-700">
+                                  {option.label}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* SearchIcon Results */}
+      <div className="space-y-4">
+        {/* Results Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              Search Results
+            </h3>
+            <p className="text-sm text-gray-600">
+              {loading ? 'Searching...' : `${totalResults} results found`}
+              {selectedTemplate && (
+                <span className="ml-2 text-blue-400">
+                  (Template: {searchTemplates.find(t => t.id === selectedTemplate)?.name})
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {searchHistory.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="bg-gray-100/50 border-gray-300/50">
+                    <Clock className="w-4 h-4 mr-2" />
+                    Recent
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {searchHistory.map((term, index) => (
+                    <DropdownMenuItem
+                      key={index}
+                      onClick={() => setSearchTerm(term)}
+                    >
+                      <Clock className="w-4 h-4 mr-2" />
+                      {term}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {results.length > 0 && (
+              <Button variant="outline" size="sm" onClick={handleExport} className="bg-gray-100/50 border-gray-300/50">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader className="w-6 h-6 animate-spin text-blue-400 mr-2" />
+            <span className="text-gray-600">Searching...</span>
+          </div>
+        )}
+
+        {/* Results ListIcon */}
+        {!loading && results.length === 0 && (searchTerm || Object.keys(filters).length > 0 || selectedTemplate) && (
+          <div className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No results found</h3>
+            <p className="text-gray-600 mb-4">
+              Try adjusting your search terms or filters
+            </p>
+            <Button onClick={clearAllFilters} variant="outline">
+              Clear All Filters
+            </Button>
+          </div>
+        )}
+
+        {!loading && results.length > 0 && (
+          <>
+            <div className="grid gap-4">
+              {results.map((result) => (
+                <Card key={result.id} className="bg-white/50 border-gray-300/50 hover:bg-white/70 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      {getContentTypeIcon(result.type)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium text-gray-900 truncate">
+                            {result.highlight?.title ? (
+                              <span dangerouslySetInnerHTML={{
+                                __html: result.highlight.title[0].replace(
+                                  /<em>/g, '<mark class="bg-blue-500/20 text-blue-300 px-1 rounded">'
+                                ).replace(/<\/em>/g, '</mark>')
+                              }} />
+                            ) : (
+                              result.title
+                            )}
+                          </h4>
+                          {result.premium && (
+                            <Badge variant="outline" className="text-xs text-amber-400 border-amber-400/40">
+                              <DollarSign className="w-3 h-3 mr-1" />
+                              Premium
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className={
+                            result.status === 'active' ? 'text-emerald-400 border-emerald-400/40' :
+                            result.status === 'draft' ? 'text-amber-400 border-amber-400/40' :
+                            'text-gray-600 border-slate-400/40'
+                          }>
+                            {result.status}
+                          </Badge>
+                          {result.relevance_score && (
+                            <Badge variant="secondary" className="text-xs">
+                              {Math.round(result.relevance_score * 100)}% match
+                            </Badge>
+                          )}
+                        </div>
+
+                        {result.description && (
+                          <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                            {result.highlight?.description ? (
+                              <span dangerouslySetInnerHTML={{
+                                __html: result.highlight.description[0].replace(
+                                  /<em>/g, '<mark class="bg-blue-500/20 text-blue-300 px-1 rounded">'
+                                ).replace(/<\/em>/g, '</mark>')
+                              }} />
+                            ) : (
+                              result.description
+                            )}
+                          </p>
+                        )}
+
+                        <div className="flex items-center gap-4 text-xs text-gray-600">
+                          {result.author && (
+                            <span>by {result.author}</span>
+                          )}
+                          {result.category && (
+                            <span>Category: {result.category}</span>
+                          )}
+                          {result.views && (
+                            <span className="flex items-center gap-1">
+                              <Eye className="w-3 h-3" />
+                              {result.views.toLocaleString()}
+                            </span>
+                          )}
+                          {result.rating && (
+                            <span className="flex items-center gap-1">
+                              <Star className="w-3 h-3 text-amber-400" />
+                              {result.rating.toFixed(1)}
+                            </span>
+                          )}
+                          {result.revenue && (
+                            <span className="flex items-center gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              ${result.revenue.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+
+                        {result.tags && result.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {result.tags.slice(0, 3).map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                            {result.tags.length > 3 && (
+                              <Badge variant="secondary" className="text-xs">
+                                +{result.tags.length - 3}
+                              </Badge>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalResults > 20 && (
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {Math.ceil(totalResults / 20)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(Math.min(Math.ceil(totalResults / 20), currentPage + 1))}
+                  disabled={currentPage >= Math.ceil(totalResults / 20)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Save SearchIcon Dialog */}
+      {showSaveDialog && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="bg-white border-gray-300/50 w-full max-w-md">
+            <CardHeader>
+              <CardTitle className="text-gray-900">Save Search</CardTitle>
+              <CardDescription className="text-gray-600">
+                Save your current search criteria for future use
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="search-name" className="text-gray-700">Search Name</Label>
+                <Input
+                  id="search-name"
+                  placeholder="Enter a name for this search"
+                  value={savedSearchName}
+                  onChange={(e) => setSavedSearchName(e.target.value)}
+                  className="mt-2 bg-gray-100/50 border-gray-300/50"
+                />
+              </div>
+              <div>
+                <Label htmlFor="search-description" className="text-gray-700">Description (Optional)</Label>
+                <Textarea
+                  id="search-description"
+                  placeholder="Describe what this search finds"
+                  value={savedSearchDescription}
+                  onChange={(e) => setSavedSearchDescription(e.target.value)}
+                  className="mt-2 bg-gray-100/50 border-gray-300/50"
+                  rows={3}
+                />
+              </div>
+            </CardContent>
+            <div className="flex justify-end gap-2 p-6 pt-0">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSaveDialog(false)
+                  setSavedSearchName('')
+                  setSavedSearchDescription('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={saveCurrentSearch}
+                disabled={!savedSearchName.trim()}
+              >
+                Save Search
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+    </div>
+  )
+}

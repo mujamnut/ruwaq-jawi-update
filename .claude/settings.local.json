@@ -110,7 +110,19 @@
       "Bash(npx supabase auth signup:*)",
       "Bash(nul)",
       "Bash(node:*)",
-      "Bash(tasklist:*)"
+      "Bash(tasklist:*)",
+      "Bash(npx supabase start:*)",
+      "Bash(npx serve:*)",
+      "Bash(powershell:*)",
+      "Bash(npx tsc:*)",
+      "Bash(echo:*)",
+      "Bash(\"C:\\Users\\Honor\\OneDrive\\Desktop\\projek\\ruwaq-jawi-update\\admin-web\\src\\app\\admin-users\\page.tsx\")",
+      "Bash(src/components/advanced-search.tsx)",
+      "Bash(npx:*)",
+      "Bash(set:*)",
+      "Bash(npm search:*)",
+      "Bash(npm run build:*)",
+      "Bash(xargs sed:*)"
     ],
     "deny": [],
     "ask": []

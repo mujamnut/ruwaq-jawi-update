@@ -6,6 +6,31 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Remove default focus outlines and add custom focus styles */
+a:focus,
+button:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
+/* Custom focus styles for better accessibility */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Specifically for sidebar links */
+.sidebar-link:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -16,16 +41,25 @@
 }
 
 .glass {
-  background: radial-gradient(circle at top left, rgba(96,165,250,0.28), transparent 55%),
-              radial-gradient(circle at bottom right, rgba(236,72,153,0.18), transparent 55%),
-              rgba(15,23,42,0.92);
+  background: radial-gradient(circle at top left, rgba(96,165,250,0.08), transparent 55%),
+              radial-gradient(circle at bottom right, rgba(236,72,153,0.05), transparent 55%),
+              rgba(255,255,255,0.95);
   backdrop-filter: blur(18px);
+  border: 1px solid rgba(148,163,184,0.2);
 }
 
 .card {
-  background: radial-gradient(circle at top left, rgba(148,163,184,0.15), transparent 60%),
-              rgba(15,23,42,0.98);
+  background: radial-gradient(circle at top left, rgba(148,163,184,0.05), transparent 60%),
+              rgba(255,255,255,0.98);
   border: 1px solid rgba(148,163,184,0.18);
+}
+
+@layer components {
+  .dark .card {
+    background: radial-gradient(circle at top left, rgba(30, 41, 59, 0.1), transparent 60%),
+                  rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(71, 85, 105, 0.3);
+  }
 }
 
 .gradient-border {
@@ -48,15 +82,16 @@
 }
 
 .btn-ghost {
-  background: rgba(15,23,42,0.9);
+  background: rgba(255,255,255,0.9);
+  border: 1px solid rgba(148,163,184,0.3);
 }
 
 .btn-ghost:hover {
-  background: rgba(30,64,175,0.55);
+  background: rgba(249,250,251,0.95);
 }
 
 .tag-pill {
-  background: rgba(15,23,42,0.95);
+  background: rgba(255,255,255,0.95);
   border: 1px solid rgba(148,163,184,0.35);
 }
 
@@ -71,9 +106,44 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-white text-gray-900;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Dark mode styles */
+.dark-mode {
+  @apply bg-slate-950 text-gray-100;
+}
+
+.dark-mode .glass {
+  background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.8), transparent 55%),
+                radial-gradient(circle at bottom right, rgba(30, 41, 59, 0.7), transparent 55%),
+                rgba(15, 23, 42, 0.95);
+}
+
+.dark-mode .card {
+  background: radial-gradient(circle at top left, rgba(30, 41, 59, 0.1), transparent 60%),
+                rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.dark-mode .btn-ghost {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(71, 85, 105, 0.3);
+}
+
+.dark-mode .btn-ghost:hover {
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.dark-mode .tag-pill {
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(71, 85, 105, 0.35);
+}
+
+.dark-mode .mobile-nav {
+  @apply bg-gray-900 border-t border-gray-700/50;
 }
 
 @layer utilities {
@@ -96,5 +166,325 @@
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 3;
+  }
+
+  /* Mobile-specific utilities */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .mobile-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .mobile-safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  .mobile-safe-all {
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  /* Touch-friendly tap targets */
+  .mobile-tap-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Responsive text sizes */
+  .responsive-text-xs {
+    @apply text-xs;
+  }
+  .responsive-text-sm {
+    @apply text-sm;
+  }
+  .responsive-text-base {
+    @apply text-base;
+  }
+  .responsive-text-lg {
+    @apply text-lg;
+  }
+  .responsive-text-xl {
+    @apply text-xl;
+  }
+  .responsive-text-2xl {
+    @apply text-2xl;
+  }
+
+  /* Mobile grid adjustments */
+  .mobile-grid-1 {
+    @apply grid-cols-1;
+  }
+  .mobile-grid-2 {
+    @apply grid-cols-2;
+  }
+  .mobile-grid-3 {
+    @apply grid-cols-3;
+  }
+
+  /* Hide/show on mobile */
+  .mobile-hidden {
+    @apply hidden;
+  }
+  .mobile-block {
+    @apply block;
+  }
+  .mobile-flex {
+    @apply flex;
+  }
+  .mobile-inline {
+    @apply inline;
+  }
+  .mobile-inline-flex {
+    @apply inline-flex;
+  }
+
+  /* Tablet-specific adjustments */
+  .tablet-hidden {
+    @apply hidden md:block;
+  }
+  .tablet-block {
+    @apply block md:hidden;
+  }
+  .tablet-flex {
+    @apply flex md:hidden;
+  }
+
+  /* Desktop-only adjustments */
+  .desktop-hidden {
+    @apply hidden lg:block;
+  }
+  .desktop-block {
+    @apply block lg:hidden;
+  }
+  .desktop-flex {
+    @apply flex lg:hidden;
+  }
+
+  /* Mobile navigation */
+  .mobile-nav {
+    @apply fixed bottom-0 left-0 right-0 z-50;
+    @apply bg-white border-t border-gray-200/50;
+    @apply px-4 py-3;
+    @apply mobile-safe-bottom;
+  }
+
+  /* Mobile card adjustments */
+  .mobile-card {
+    @apply p-4 rounded-xl;
+  }
+
+  /* Mobile chart adjustments */
+  .mobile-chart {
+    @apply h-64;
+  }
+
+  /* Mobile table adjustments */
+  .mobile-table {
+    @apply text-xs;
+  }
+}
+
+/* Media query adjustments for better mobile experience */
+@media (max-width: 640px) {
+  /* Adjust spacing for mobile */
+  .container {
+    @apply px-4;
+  }
+
+  /* Stack grids on mobile */
+  .grid-cols-2 {
+    @apply grid-cols-1;
+  }
+  .grid-cols-3 {
+    @apply grid-cols-1;
+  }
+  .grid-cols-4 {
+    @apply grid-cols-2;
+  }
+
+  /* Adjust card padding on mobile */
+  .card {
+    @apply p-3 sm:p-4;
+  }
+
+  /* Adjust text sizes */
+  h1 {
+    @apply text-xl sm:text-2xl;
+  }
+  h2 {
+    @apply text-lg sm:text-xl;
+  }
+  h3 {
+    @apply text-base sm:text-lg;
+  }
+  h4 {
+    @apply text-sm sm:text-base;
+  }
+
+  /* Stack columns on mobile */
+  .mobile-stack-3 {
+    @apply grid-cols-1 lg:grid-cols-3;
+  }
+  .mobile-stack-4 {
+    @apply grid-cols-2 lg:grid-cols-4;
+  }
+  .mobile-stack-2 {
+    @apply grid-cols-1 lg:grid-cols-2;
+  }
+
+  /* Hide unnecessary elements on mobile */
+  .hide-mobile {
+    @apply hidden;
+  }
+
+  /* Make buttons full width on mobile */
+  .btn-mobile {
+    @apply w-full;
+  }
+
+  /* Adjust table for mobile */
+  table {
+    @apply text-xs;
+  }
+  thead {
+    @apply hidden;
+  }
+  tbody tr {
+    @apply block;
+    @apply border-b border-gray-200/50;
+  }
+  tbody td {
+    @apply block;
+    @apply text-left;
+    @apply pl-0;
+  }
+  tbody td::before {
+    content: attr(data-label);
+    @apply font-medium;
+    @apply text-gray-600;
+    @apply block;
+    @apply mb-1;
+  }
+
+  /* Adjust charts for mobile */
+  .recharts-wrapper {
+    @apply h-64;
+  }
+
+  /* Modal adjustments for mobile */
+  .modal-mobile {
+    @apply w-11/12 max-w-sm;
+    @apply mx-4;
+  }
+
+  /* Form adjustments for mobile */
+  .form-mobile {
+    @apply space-y-4;
+  }
+  .form-row {
+    @apply flex-col space-y-2;
+  }
+  .form-row > * {
+    @apply w-full;
+  }
+
+  /* Dashboard adjustments for mobile */
+  .stats-grid {
+    @apply grid-cols-1 sm:grid-cols-2;
+  }
+  .chart-grid {
+    @apply grid-cols-1;
+  }
+}
+
+/* Landscape mobile adjustments */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-nav {
+    @apply top-0 bottom-auto;
+    @apply px-4 py-2;
+  }
+  .mobile-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .mobile-safe-bottom {
+    padding-bottom: 0;
+  }
+}
+
+/* Touch device adjustments */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  button, a, input, select, textarea {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  /* Remove hover effects */
+  .no-hover-effect {
+    @apply bg-transparent !important;
+  }
+  .no-hover-color {
+    @apply text-inherit !important;
+  }
+
+  /* Active states for touch */
+  button:active,
+  a:active {
+    @apply bg-gray-100/80;
+  }
+}
+
+/* Mobile touch-friendly adjustments */
+@media (max-width: 640px) {
+  .mobile-touch {
+    @apply min-h-[44px] min-w-[44px];
+  }
+
+  .sidebar-mobile {
+    @apply fixed inset-y-0 left-0 z-50;
+    @apply bg-white border-r border-gray-200;
+    @apply transform -translate-x-full transition-transform;
+    @apply w-72;
+  }
+  .sidebar-mobile.open {
+    @apply translate-x-0;
+  }
+
+  .mobile-table {
+    @apply text-xs;
+  }
+  .mobile-table thead {
+    @apply hidden;
+  }
+  .mobile-table tbody tr {
+    @apply block border-b border-gray-200;
+  }
+  .mobile-table tbody td {
+    @apply block text-left pl-0;
+  }
+  .mobile-table tbody td::before {
+    content: attr(data-label);
+    @apply font-medium text-gray-600 block mb-1;
+  }
+}
+
+/* High contrast mode adjustments */
+@media (prefers-contrast: high) {
+  .card {
+    @apply border-2 border-gray-900;
+  }
+  .glass {
+    @apply backdrop-blur-none;
+    @apply bg-white;
+    @apply border border-gray-900;
   }
 }

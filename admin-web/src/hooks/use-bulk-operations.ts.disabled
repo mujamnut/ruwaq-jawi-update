@@ -1,0 +1,317 @@
+import { useState, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
+
+export interface BulkOperationResult {
+  success: boolean
+  processed: number
+  failed: number
+  errors: string[]
+  details?: any[]
+}
+
+export interface BulkActionConfig {
+  operation: 'delete' | 'archive' | 'unarchive' | 'publish' | 'unpublish' | 'categorize' | 'tag' | 'move' | 'duplicate' | 'price_update' | 'metadata_update'
+  itemType: 'ebooks' | 'video_kitab' | 'categories' | 'profiles'
+  items: any[]
+  params?: Record<string, any>
+}
+
+export function useBulkOperations() {
+  const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
+  const [currentOperation, setCurrentOperation] = useState<string | null>(null)
+
+  const executeBulkOperation = useCallback(async (config: BulkActionConfig): Promise<BulkOperationResult> => {
+    const { operation, itemType, items, params = {} } = config
+
+    if (items.length === 0) {
+      return {
+        success: false,
+        processed: 0,
+        failed: 0,
+        errors: ['No items selected']
+      }
+    }
+
+    setLoading(true)
+    setProgress(0)
+    setCurrentOperation(operation)
+
+    const result: BulkOperationResult = {
+      success: true,
+      processed: 0,
+      failed: 0,
+      errors: [],
+      details: []
+    }
+
+    const batchSize = 10 // Process items in batches of 10
+    const batches = []
+
+    for (let i = 0; i < items.length; i += batchSize) {
+      batches.push(items.slice(i, i + batchSize))
+    }
+
+    try {
+      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+        const batch = batches[batchIndex]
+
+        for (const item of batch) {
+          try {
+            let updateData: any = {}
+            let query = supabase.from(itemType)
+
+            switch (operation) {
+              case 'delete':
+                query = query.delete().eq('id', item.id)
+                break
+
+              case 'archive':
+                updateData = { status: 'archived', updated_at: new Date().toISOString() }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'unarchive':
+                updateData = { status: 'active', updated_at: new Date().toISOString() }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'publish':
+                updateData = { is_active: true, status: 'active', updated_at: new Date().toISOString() }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'unpublish':
+                updateData = { is_active: false, status: 'draft', updated_at: new Date().toISOString() }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'categorize':
+                updateData = { category_id: params.categoryId, updated_at: new Date().toISOString() }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'tag':
+                // For tags, we need to handle differently based on the table structure
+                if (params.tags && Array.isArray(params.tags)) {
+                  updateData = {
+                    tags: params.tags,
+                    updated_at: new Date().toISOString()
+                  }
+                  query = query.update(updateData).eq('id', item.id)
+                }
+                break
+
+              case 'price_update':
+                updateData = {
+                  price: params.price,
+                  updated_at: new Date().toISOString()
+                }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'metadata_update':
+                updateData = {
+                  ...params.metadata,
+                  updated_at: new Date().toISOString()
+                }
+                query = query.update(updateData).eq('id', item.id)
+                break
+
+              case 'duplicate':
+                // Create a copy of the item
+                const { id, created_at, updated_at, ...itemData } = item
+                const duplicatedData = {
+                  ...itemData,
+                  title: `${itemData.title} (Copy)`,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  views: 0,
+                  downloads: 0
+                }
+                query = supabase.from(itemType).insert(duplicatedData)
+                break
+
+              default:
+                throw new Error(`Unknown operation: ${operation}`)
+            }
+
+            const { data, error } = await query.select().single()
+
+            if (error) {
+              throw error
+            }
+
+            result.processed++
+            result.details?.push({
+              itemId: item.id,
+              status: 'success',
+              data,
+              timestamp: new Date().toISOString()
+            })
+
+          } catch (error) {
+            result.failed++
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            result.errors.push(`Item ${item.id}: ${errorMessage}`)
+            result.details?.push({
+              itemId: item.id,
+              status: 'failed',
+              error: errorMessage,
+              timestamp: new Date().toISOString()
+            })
+          }
+        }
+
+        // Update progress after each batch
+        const processedCount = (batchIndex + 1) * batchSize
+        const actualProgress = Math.min((processedCount / items.length) * 100, 100)
+        setProgress(actualProgress)
+
+        // Small delay to prevent overwhelming the database
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+
+      result.success = result.failed === 0
+
+    } catch (error) {
+      result.success = false
+      result.errors.push(`Batch operation failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setLoading(false)
+      setProgress(100)
+      setCurrentOperation(null)
+
+      // Reset progress after a short delay
+      setTimeout(() => {
+        setProgress(0)
+      }, 2000)
+    }
+
+    return result
+  }, [])
+
+  const exportItems = useCallback(async (items: any[], format: 'csv' | 'json' | 'excel' = 'csv'): Promise<Blob> => {
+    const data = items.map(item => ({
+      ID: item.id,
+      Title: item.title,
+      Type: item.type || 'Unknown',
+      Status: item.status,
+      Category: item.category || item.category_name || 'N/A',
+      Author: item.author || 'N/A',
+      Views: item.views || 0,
+      Revenue: item.revenue || 0,
+      Rating: item.rating || 0,
+      Created: new Date(item.created_at).toLocaleDateString(),
+      Updated: new Date(item.updated_at).toLocaleDateString(),
+      Tags: item.tags ? item.tags.join(', ') : '',
+      Premium: item.premium ? 'Yes' : 'No'
+    }))
+
+    switch (format) {
+      case 'json':
+        return new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+
+      case 'csv':
+        const headers = Object.keys(data[0] || {}).join(',')
+        const csvContent = [
+          headers,
+          ...data.map(row => Object.values(row).map(value => `"${value}"`).join(','))
+        ].join('\n')
+        return new Blob([csvContent], { type: 'text/csv' })
+
+      case 'excel':
+        // For Excel export, we'll return CSV format that can be opened in Excel
+        // In a real implementation, you might use a library like xlsx
+        const excelHeaders = Object.keys(data[0] || {}).join('\t')
+        const excelContent = [
+          excelHeaders,
+          ...data.map(row => Object.values(row).join('\t'))
+        ].join('\n')
+        return new Blob([excelContent], { type: 'application/vnd.ms-excel' })
+
+      default:
+        throw new Error(`Unsupported export format: ${format}`)
+    }
+  }, [])
+
+  const downloadFile = useCallback((blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, [])
+
+  const getOperationDescription = useCallback((operation: string, itemCount: number): string => {
+    const operationDescriptions: Record<string, string> = {
+      delete: `Delete ${itemCount} item(s) permanently`,
+      archive: `Archive ${itemCount} item(s)`,
+      unarchive: `Restore ${itemCount} archived item(s)`,
+      publish: `Publish ${itemCount} item(s)`,
+      unpublish: `Unpublish ${itemCount} item(s)`,
+      categorize: `Update category for ${itemCount} item(s)`,
+      tag: `Add tags to ${itemCount} item(s)`,
+      duplicate: `Create duplicates of ${itemCount} item(s)`,
+      price_update: `Update price for ${itemCount} item(s)`,
+      metadata_update: `Update metadata for ${itemCount} item(s)`
+    }
+
+    return operationDescriptions[operation] || `Process ${itemCount} item(s)`
+  }, [])
+
+  const validateOperation = useCallback((config: BulkActionConfig): string[] => {
+    const errors: string[] = []
+
+    if (!config.items || config.items.length === 0) {
+      errors.push('No items selected')
+    }
+
+    if (config.items.length > 1000) {
+      errors.push('Cannot process more than 1000 items at once')
+    }
+
+    // Validate specific operations
+    switch (config.operation) {
+      case 'categorize':
+        if (!config.params?.categoryId) {
+          errors.push('Category is required for categorization')
+        }
+        break
+
+      case 'price_update':
+        if (typeof config.params?.price !== 'number' || config.params.price < 0) {
+          errors.push('Valid price is required')
+        }
+        break
+
+      case 'tag':
+        if (!config.params?.tags || !Array.isArray(config.params.tags) || config.params.tags.length === 0) {
+          errors.push('Valid tags array is required')
+        }
+        break
+
+      case 'metadata_update':
+        if (!config.params?.metadata || typeof config.params.metadata !== 'object') {
+          errors.push('Valid metadata object is required')
+        }
+        break
+    }
+
+    return errors
+  }, [])
+
+  return {
+    loading,
+    progress,
+    currentOperation,
+    executeBulkOperation,
+    exportItems,
+    downloadFile,
+    getOperationDescription,
+    validateOperation
+  }
+}

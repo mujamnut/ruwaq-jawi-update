@@ -2,13 +2,66 @@ import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseServiceKey = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY!
+
+// Debug environment variables
+console.log('Environment check:', {
+  supabaseUrl: supabaseUrl ? 'SET' : 'MISSING',
+  supabaseAnonKey: supabaseAnonKey ? 'SET' : 'MISSING',
+  supabaseServiceKey: supabaseServiceKey ? 'SET' : 'MISSING',
+  allEnv: Object.keys(process.env).filter(k => k.includes('SUPABASE'))
+})
+
+console.log('API Keys preview:', {
+  supabaseUrl: supabaseUrl?.substring(0, 20) + '...',
+  supabaseAnonKey: supabaseAnonKey?.substring(0, 20) + '...',
+  supabaseServiceKey: supabaseServiceKey?.substring(0, 20) + '...'
+})
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+
+export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: false
+  }
+})
 
 // Database types
 export interface Database {
   public: {
     Tables: {
+      admin_users: {
+        Row: {
+          id: string
+          email: string
+          name: string
+          role: string
+          permissions: Record<string, any>
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          email: string
+          name: string
+          role?: string
+          permissions?: Record<string, any>
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          name?: string
+          role?: string
+          permissions?: Record<string, any>
+          is_active?: boolean
+          updated_at?: string
+        }
+      }
       ebooks: {
         Row: {
           id: string

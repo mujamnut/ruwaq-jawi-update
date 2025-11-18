@@ -1,0 +1,993 @@
+'use client'
+
+import { useState, useEffect, useMemo } from 'react'
+import {
+  Calendar,
+  Clock,
+  Plus,
+  Edit,
+  Trash2,
+  Archive,
+  Play,
+  Pause,
+  ArrowCounterClockwise,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Timer,
+  FileText,
+  Video,
+  Music,
+  Image,
+  Users,
+  BarChart3,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  ChevronUp,
+  Eye,
+  EyeClosed,
+  Copy,
+  Funnel,
+  Search,
+  Download,
+  Upload,
+  Zap,
+  Target,
+  TrendingUp,
+  CalendarDays,
+  Bell,
+  BellRing,
+  BellOff,
+  Save,
+  RotateCw,
+  List
+} from 'lucide-react'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Badge } from './ui/badge'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu'
+import { Checkbox } from './ui/checkbox'
+import { Switch } from './ui/switch'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog'
+import { Label } from './ui/label'
+import { Textarea } from './ui/textarea'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import { Separator } from './ui/separator'
+import { Progress } from './ui/progress'
+import { supabase } from '../lib/supabase'
+
+export interface ScheduledContent {
+  id: string
+  content_id: string
+  content_type: 'book' | 'video' | 'article' | 'audio'
+  content_title: string
+  content_author?: string
+  action: 'publish' | 'unpublish' | 'update' | 'archive' | 'delete' | 'notify'
+  scheduled_at: string
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled'
+  created_at: string
+  updated_at?: string
+  executed_at?: string
+  error_message?: string
+  retry_count: number
+  max_retries: number
+  notification_settings?: {
+    email: boolean
+    push: boolean
+    slack: boolean
+    custom_message?: string
+  }
+  conditions?: {
+    weekday?: number[]
+    time_range?: { start: string; end: string }
+    depends_on?: string[]
+  }
+  metadata?: Record<string, any>
+}
+
+export interface ContentSchedulerProps {
+  onScheduleUpdate?: (schedule: ScheduledContent) => void
+  onContentSelect?: (contentId: string, contentType: string) => void
+  className?: string
+}
+
+export default function ContentScheduler({
+  onScheduleUpdate,
+  onContentSelect,
+  className = ""
+}: ContentSchedulerProps) {
+  const [schedules, setSchedules] = useState<ScheduledContent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduledContent | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterAction, setFilterAction] = useState('all')
+  const [filterContentType, setFilterContentType] = useState('all')
+  const [currentView, setCurrentView] = useState<'list' | 'calendar' | 'timeline'>('list')
+  const [currentDate, setCurrentDate] = useState(new Date())
+
+  // Form states
+  const [formData, setFormData] = useState({
+    content_id: '',
+    content_type: 'book' as 'book' | 'video' | 'article' | 'audio',
+    action: 'publish' as 'publish' | 'unpublish' | 'update' | 'archive' | 'delete' | 'notify',
+    scheduled_at: '',
+    notification_email: true,
+    notification_push: false,
+    notification_slack: false,
+    custom_message: '',
+    max_retries: 3,
+    retry_delay: 5,
+    conditions_weekday: [] as number[],
+    conditions_time_start: '09:00',
+    conditions_time_end: '17:00'
+  })
+
+  // Fetch schedules
+  const fetchSchedules = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .select(`
+          *,
+          content:ebooks(id, title, author_id),
+          video_content:video_kitab(id, title, author_id)
+        `)
+        .order('scheduled_at', { ascending: true })
+
+      if (error) throw error
+
+      const transformedData: ScheduledContent[] = (data || []).map(item => ({
+        ...item,
+        content_title: item.content?.title || item.video_content?.title || 'Unknown Content',
+        content_author: item.content?.author_id || item.video_content?.author_id
+      }))
+
+      setSchedules(transformedData)
+    } catch (error) {
+      console.error('Failed to fetch schedules:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchSchedules()
+  }, [])
+
+  // Filter and search schedules
+  const filteredSchedules = useMemo(() => {
+    return schedules.filter(schedule => {
+      const matchesSearch = schedule.content_title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           schedule.action.toLowerCase().includes(searchTerm.toLowerCase())
+
+      const matchesStatus = filterStatus === 'all' || schedule.status === filterStatus
+      const matchesAction = filterAction === 'all' || schedule.action === filterAction
+      const matchesContentType = filterContentType === 'all' || schedule.content_type === filterContentType
+
+      return matchesSearch && matchesStatus && matchesAction && matchesContentType
+    })
+  }, [schedules, searchTerm, filterStatus, filterAction, filterContentType])
+
+  // Create new schedule
+  const createSchedule = async () => {
+    try {
+      const scheduleData = {
+        content_id: formData.content_id,
+        content_type: formData.content_type,
+        action: formData.action,
+        scheduled_at: formData.scheduled_at,
+        status: 'pending',
+        retry_count: 0,
+        max_retries: formData.max_retries,
+        notification_settings: {
+          email: formData.notification_email,
+          push: formData.notification_push,
+          slack: formData.notification_slack,
+          custom_message: formData.custom_message
+        },
+        conditions: {
+          weekday: formData.conditions_weekday.length > 0 ? formData.conditions_weekday : undefined,
+          time_range: {
+            start: formData.conditions_time_start,
+            end: formData.conditions_time_end
+          }
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .insert(scheduleData)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setSchedules(prev => [...prev, data])
+      setShowCreateDialog(false)
+      resetForm()
+      onScheduleUpdate?.(data)
+    } catch (error) {
+      console.error('Failed to create schedule:', error)
+    }
+  }
+
+  // Update schedule
+  const updateSchedule = async () => {
+    if (!selectedSchedule) return
+
+    try {
+      const updateData = {
+        content_id: formData.content_id,
+        content_type: formData.content_type,
+        action: formData.action,
+        scheduled_at: formData.scheduled_at,
+        max_retries: formData.max_retries,
+        notification_settings: {
+          email: formData.notification_email,
+          push: formData.notification_push,
+          slack: formData.notification_slack,
+          custom_message: formData.custom_message
+        },
+        conditions: {
+          weekday: formData.conditions_weekday.length > 0 ? formData.conditions_weekday : undefined,
+          time_range: {
+            start: formData.conditions_time_start,
+            end: formData.conditions_time_end
+          }
+        }
+      }
+
+      const { data, error } = await supabase
+        .from('content_schedules')
+        .update(updateData)
+        .eq('id', selectedSchedule.id)
+        .select()
+        .single()
+
+      if (error) throw error
+
+      setSchedules(prev => prev.map(s => s.id === data.id ? data : s))
+      setShowEditDialog(false)
+      setSelectedSchedule(null)
+      resetForm()
+      onScheduleUpdate?.(data)
+    } catch (error) {
+      console.error('Failed to update schedule:', error)
+    }
+  }
+
+  // Delete schedule
+  const deleteSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('content_schedules')
+        .delete()
+        .eq('id', scheduleId)
+
+      if (error) throw error
+
+      setSchedules(prev => prev.filter(s => s.id !== scheduleId))
+    } catch (error) {
+      console.error('Failed to delete schedule:', error)
+    }
+  }
+
+  // Execute schedule manually
+  const executeSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase.rpc('execute_scheduled_content', {
+        schedule_id: scheduleId
+      })
+
+      if (error) throw error
+
+      // Refresh schedules
+      fetchSchedules()
+    } catch (error) {
+      console.error('Failed to execute schedule:', error)
+    }
+  }
+
+  // Cancel schedule
+  const cancelSchedule = async (scheduleId: string) => {
+    try {
+      const { error } = await supabase
+        .from('content_schedules')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', scheduleId)
+
+      if (error) throw error
+
+      setSchedules(prev => prev.map(s =>
+        s.id === scheduleId
+          ? { ...s, status: 'cancelled' as const, updated_at: new Date().toISOString() }
+          : s
+      ))
+    } catch (error) {
+      console.error('Failed to cancel schedule:', error)
+    }
+  }
+
+  // Reset form
+  const resetForm = () => {
+    setFormData({
+      content_id: '',
+      content_type: 'book',
+      action: 'publish',
+      scheduled_at: '',
+      notification_email: true,
+      notification_push: false,
+      notification_slack: false,
+      custom_message: '',
+      max_retries: 3,
+      retry_delay: 5,
+      conditions_weekday: [],
+      conditions_time_start: '09:00',
+      conditions_time_end: '17:00'
+    })
+  }
+
+  // Load schedule into form for editing
+  const loadScheduleForEdit = (schedule: ScheduledContent) => {
+    setSelectedSchedule(schedule)
+    setFormData({
+      content_id: schedule.content_id,
+      content_type: schedule.content_type,
+      action: schedule.action,
+      scheduled_at: schedule.scheduled_at,
+      notification_email: schedule.notification_settings?.email || false,
+      notification_push: schedule.notification_settings?.push || false,
+      notification_slack: schedule.notification_settings?.slack || false,
+      custom_message: schedule.notification_settings?.custom_message || '',
+      max_retries: schedule.max_retries,
+      retry_delay: 5,
+      conditions_weekday: schedule.conditions?.weekday || [],
+      conditions_time_start: schedule.conditions?.time_range?.start || '09:00',
+      conditions_time_end: schedule.conditions?.time_range?.end || '17:00'
+    })
+    setShowEditDialog(true)
+  }
+
+  // Get status color and icon
+  const getStatusInfo = (status: ScheduledContent['status']) => {
+    switch (status) {
+      case 'pending':
+        return { color: 'text-amber-400 bg-amber-400/10 border-amber-400/40', icon: <Clock className="w-4 h-4" /> }
+      case 'processing':
+        return { color: 'text-blue-400 bg-blue-400/10 border-blue-400/40', icon: <RotateCw className="w-4 h-4 animate-spin" /> }
+      case 'completed':
+        return { color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/40', icon: <CheckCircle className="w-4 h-4" /> }
+      case 'failed':
+        return { color: 'text-red-400 bg-red-400/10 border-red-400/40', icon: <XCircle className="w-4 h-4" /> }
+      case 'cancelled':
+        return { color: 'text-gray-600 bg-slate-400/10 border-slate-400/40', icon: <AlertTriangle className="w-4 h-4" /> }
+      default:
+        return { color: 'text-gray-600 bg-slate-400/10 border-slate-400/40', icon: <Clock className="w-4 h-4" /> }
+    }
+  }
+
+  // Get action icon
+  const getActionIcon = (action: ScheduledContent['action']) => {
+    switch (action) {
+      case 'publish': return <Eye className="w-4 h-4" />
+      case 'unpublish': return <EyeClosed className="w-4 h-4" />
+      case 'update': return <Edit className="w-4 h-4" />
+      case 'archive': return <Archive className="w-4 h-4" />
+      case 'delete': return <Trash2 className="w-4 h-4" />
+      case 'notify': return <Bell className="w-4 h-4" />
+      default: return <Settings className="w-4 h-4" />
+    }
+  }
+
+  // Get content type icon
+  const getContentTypeIcon = (type: ScheduledContent['content_type']) => {
+    switch (type) {
+      case 'book': return <FileText className="w-4 h-4 text-blue-400" />
+      case 'video': return <Video className="w-4 h-4 text-purple-400" />
+      case 'article': return <FileText className="w-4 h-4 text-green-400" />
+      case 'audio': return <Music className="w-4 h-4 text-amber-400" />
+      default: return <FileText className="w-4 h-4 text-gray-600" />
+    }
+  }
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const total = schedules.length
+    const pending = schedules.filter(s => s.status === 'pending').length
+    const processing = schedules.filter(s => s.status === 'processing').length
+    const completed = schedules.filter(s => s.status === 'completed').length
+    const failed = schedules.filter(s => s.status === 'failed').length
+    const cancelled = schedules.filter(s => s.status === 'cancelled').length
+
+    return { total, pending, processing, completed, failed, cancelled }
+  }, [schedules])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <RotateCw className="w-6 h-6 animate-spin text-blue-400 mr-2" />
+        <span className="text-gray-600">Loading schedules...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className={`space-y-6 ${className}`}>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900">Content Scheduler</h2>
+          <p className="text-gray-600">
+            Schedule content publication and automated actions
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-gray-100/50 border border-gray-300/50 rounded-lg p-1">
+            <Button
+              variant={currentView === 'list' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('list')}
+            >
+              <List className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={currentView === 'calendar' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('calendar')}
+            >
+              <CalendarDays className="w-4 h-4" />
+            </Button>
+            <Button
+              variant={currentView === 'timeline' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setCurrentView('timeline')}
+            >
+              <Clock className="w-4 h-4" />
+            </Button>
+          </div>
+
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Schedule Content
+          </Button>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+        <Card className="bg-white/50 border-gray-300/50">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-xs text-gray-600">Total</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/50 border-gray-300/50">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-amber-400">{stats.pending}</div>
+            <div className="text-xs text-gray-600">Pending</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/50 border-gray-300/50">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-400">{stats.processing}</div>
+            <div className="text-xs text-gray-600">Processing</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/50 border-gray-300/50">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-emerald-400">{stats.completed}</div>
+            <div className="text-xs text-gray-600">Completed</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/50 border-gray-300/50">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-red-400">{stats.failed}</div>
+            <div className="text-xs text-gray-600">Failed</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-white/50 border-gray-300/50">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-gray-600">{stats.cancelled}</div>
+            <div className="text-xs text-gray-600">Cancelled</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card className="bg-white/50 border-gray-300/50">
+        <CardContent className="p-4">
+          <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-600" />
+                <Input
+                  placeholder="Search schedules..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 bg-gray-100/50 border-gray-300/50"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-32 bg-gray-100/50 border-gray-300/50">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterAction} onValueChange={setFilterAction}>
+                <SelectTrigger className="w-32 bg-gray-100/50 border-gray-300/50">
+                  <SelectValue placeholder="Action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="publish">Publish</SelectItem>
+                  <SelectItem value="unpublish">Unpublish</SelectItem>
+                  <SelectItem value="update">Update</SelectItem>
+                  <SelectItem value="archive">Archive</SelectItem>
+                  <SelectItem value="delete">Delete</SelectItem>
+                  <SelectItem value="notify">Notify</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={filterContentType} onValueChange={setFilterContentType}>
+                <SelectTrigger className="w-32 bg-gray-100/50 border-gray-300/50">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="book">Books</SelectItem>
+                  <SelectItem value="video">Videos</SelectItem>
+                  <SelectItem value="article">Articles</SelectItem>
+                  <SelectItem value="audio">Audio</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Schedules ListIcon */}
+      <div className="space-y-4">
+        {filteredSchedules.length === 0 ? (
+          <div className="text-center py-12">
+            <Calendar className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No schedules found</h3>
+            <p className="text-gray-600 mb-4">
+              {schedules.length === 0 ? 'No scheduled content yet.' : 'Try adjusting your filters.'}
+            </p>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Schedule Your First Content
+            </Button>
+          </div>
+        ) : (
+          filteredSchedules.map((schedule) => {
+            const statusInfo = getStatusInfo(schedule.status)
+            const isOverdue = new Date(schedule.scheduled_at) < new Date() && schedule.status === 'pending'
+
+            return (
+              <Card key={schedule.id} className={`bg-white/50 border-gray-300/50 ${isOverdue ? 'border-red-500/50' : ''}`}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      {getContentTypeIcon(schedule.content_type)}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h4 className="font-medium text-gray-900 truncate">
+                            {schedule.content_title}
+                          </h4>
+
+                          <div className="flex items-center gap-1">
+                            {getActionIcon(schedule.action)}
+                            <Badge variant="outline" className="capitalize">
+                              {schedule.action}
+                            </Badge>
+                          </div>
+
+                          <Badge className={`${statusInfo.color} border`}>
+                            {statusInfo.icon}
+                            <span className="ml-1">{schedule.status}</span>
+                          </Badge>
+
+                          {isOverdue && (
+                            <Badge variant="destructive">
+                              <AlertTriangle className="w-3 h-3 mr-1" />
+                              Overdue
+                            </Badge>
+                          )}
+
+                          {schedule.retry_count > 0 && (
+                            <Badge variant="outline" className="text-amber-400">
+                              <ArrowCounterClockwise className="w-3 h-3 mr-1" />
+                              Retry {schedule.retry_count}/{schedule.max_retries}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-3 h-3" />
+                            {new Date(schedule.scheduled_at).toLocaleDateString()}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {new Date(schedule.scheduled_at).toLocaleTimeString()}
+                          </div>
+                          {schedule.content_author && (
+                            <div className="flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {schedule.content_author}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Notification Settings */}
+                        {schedule.notification_settings && (
+                          <div className="flex items-center gap-2 text-xs text-gray-600">
+                            {schedule.notification_settings.email && <Bell className="w-3 h-3" />}
+                            {schedule.notification_settings.push && <BellRing className="w-3 h-3" />}
+                            {schedule.notification_settings.slack && <Zap className="w-3 h-3" />}
+                          </div>
+                        )}
+
+                        {/* Error Message */}
+                        {schedule.error_message && (
+                          <div className="mt-2 p-2 bg-red-500/10 border border-red-500/40 rounded text-xs text-red-300">
+                            Error: {schedule.error_message}
+                          </div>
+                        )}
+
+                        {/* Conditions */}
+                        {schedule.conditions && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            {schedule.conditions.weekday && schedule.conditions.weekday.length > 0 && (
+                              <span>Weekdays: {schedule.conditions.weekday.join(', ')} • </span>
+                            )}
+                            {schedule.conditions.time_range && (
+                              <span>Time: {schedule.conditions.time_range.start} - {schedule.conditions.time_range.end}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {schedule.status === 'pending' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => executeSchedule(schedule.id)}
+                          className="bg-emerald-500/10 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/20"
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Execute Now
+                        </Button>
+                      )}
+
+                      {schedule.status === 'failed' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => executeSchedule(schedule.id)}
+                          className="bg-amber-500/10 border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
+                        >
+                          <ArrowCounterClockwise className="w-3 h-3 mr-1" />
+                          Retry
+                        </Button>
+                      )}
+
+                      {(schedule.status === 'pending' || schedule.status === 'processing') && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => cancelSchedule(schedule.id)}
+                          className="bg-red-500/10 border-red-500/40 text-red-300 hover:bg-red-500/20"
+                        >
+                          <Pause className="w-3 h-3 mr-1" />
+                          Cancel
+                        </Button>
+                      )}
+
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <Settings className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => loadScheduleForEdit(schedule)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onContentSelect?.(schedule.content_id, schedule.content_type)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            Eye Content
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => deleteSchedule(schedule.id)}
+                            className="text-red-400 focus:text-red-300"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })
+        )}
+      </div>
+
+      {/* Create/Edit Schedule Dialog */}
+      <Dialog open={showCreateDialog || showEditDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowCreateDialog(false)
+          setShowEditDialog(false)
+          setSelectedSchedule(null)
+          resetForm()
+        }
+      }}>
+        <DialogContent className="bg-white border-gray-300/50 max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900">
+              {showEditDialog ? 'Edit Schedule' : 'Schedule Content'}
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              {showEditDialog ? 'Modify the scheduled content action.' : 'Set up automated content actions.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <Tabs defaultValue="basic" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="basic">Basic</TabsTrigger>
+                <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                <TabsTrigger value="conditions">Conditions</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="basic" className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="content-type">Content Type</Label>
+                    <Select
+                      value={formData.content_type}
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, content_type: value }))}
+                    >
+                      <SelectTrigger className="mt-2 bg-gray-100/50 border-gray-300/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="book">Book</SelectItem>
+                        <SelectItem value="video">Video</SelectItem>
+                        <SelectItem value="article">Article</SelectItem>
+                        <SelectItem value="audio">Audio</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="action">Action</Label>
+                    <Select
+                      value={formData.action}
+                      onValueChange={(value: any) => setFormData(prev => ({ ...prev, action: value }))}
+                    >
+                      <SelectTrigger className="mt-2 bg-gray-100/50 border-gray-300/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="publish">Publish</SelectItem>
+                        <SelectItem value="unpublish">Unpublish</SelectItem>
+                        <SelectItem value="update">Update</SelectItem>
+                        <SelectItem value="archive">Archive</SelectItem>
+                        <SelectItem value="delete">Delete</SelectItem>
+                        <SelectItem value="notify">Send Notification</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="content-id">Content ID</Label>
+                  <Input
+                    id="content-id"
+                    placeholder="Enter content ID"
+                    value={formData.content_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, content_id: e.target.value }))}
+                    className="mt-2 bg-gray-100/50 border-gray-300/50"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="scheduled-at">Schedule Date & Time</Label>
+                  <Input
+                    id="scheduled-at"
+                    type="datetime-local"
+                    value={formData.scheduled_at}
+                    onChange={(e) => setFormData(prev => ({ ...prev, scheduled_at: e.target.value }))}
+                    className="mt-2 bg-gray-100/50 border-gray-300/50"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="max-retries">Max Retries</Label>
+                  <Input
+                    id="max-retries"
+                    type="number"
+                    min="0"
+                    max="10"
+                    value={formData.max_retries}
+                    onChange={(e) => setFormData(prev => ({ ...prev, max_retries: parseInt(e.target.value) || 0 }))}
+                    className="mt-2 bg-gray-100/50 border-gray-300/50"
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="notifications" className="space-y-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notification-email">Email Notification</Label>
+                    <Switch
+                      id="notification-email"
+                      checked={formData.notification_email}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, notification_email: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notification-push">Push Notification</Label>
+                    <Switch
+                      id="notification-push"
+                      checked={formData.notification_push}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, notification_push: checked }))}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="notification-slack">Slack Notification</Label>
+                    <Switch
+                      id="notification-slack"
+                      checked={formData.notification_slack}
+                      onCheckedChange={(checked) => setFormData(prev => ({ ...prev, notification_slack: checked }))}
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="custom-message">Custom Message</Label>
+                    <Textarea
+                      id="custom-message"
+                      placeholder="Enter custom notification message (optional)"
+                      value={formData.custom_message}
+                      onChange={(e) => setFormData(prev => ({ ...prev, custom_message: e.target.value }))}
+                      className="mt-2 bg-gray-100/50 border-gray-300/50"
+                      rows={3}
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="conditions" className="space-y-4">
+                <div>
+                  <Label>Execute on specific weekdays</Label>
+                  <div className="grid grid-cols-7 gap-2 mt-2">
+                    {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                      <div key={day} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`weekday-${index}`}
+                          checked={formData.conditions_weekday.includes(index + 1)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setFormData(prev => ({
+                                ...prev,
+                                conditions_weekday: [...prev.conditions_weekday, index + 1]
+                              }))
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                conditions_weekday: prev.conditions_weekday.filter(d => d !== index + 1)
+                              }))
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`weekday-${index}`} className="text-xs text-gray-700">
+                          {day}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="time-start">Time Range Start</Label>
+                    <Input
+                      id="time-start"
+                      type="time"
+                      value={formData.conditions_time_start}
+                      onChange={(e) => setFormData(prev => ({ ...prev, conditions_time_start: e.target.value }))}
+                      className="mt-2 bg-gray-100/50 border-gray-300/50"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="time-end">Time Range End</Label>
+                    <Input
+                      id="time-end"
+                      type="time"
+                      value={formData.conditions_time_end}
+                      onChange={(e) => setFormData(prev => ({ ...prev, conditions_time_end: e.target.value }))}
+                      className="mt-2 bg-gray-100/50 border-gray-300/50"
+                    />
+                  </div>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCreateDialog(false)
+                setShowEditDialog(false)
+                setSelectedSchedule(null)
+                resetForm()
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={showEditDialog ? updateSchedule : createSchedule}>
+              {showEditDialog ? 'Update Schedule' : 'Create Schedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

@@ -28,7 +28,7 @@ export default function AuthGuard({ children, requireRole }: AuthGuardProps) {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-          <p className="text-sm text-slate-400 mt-4">Loading...</p>
+          <p className="text-sm text-gray-600 mt-4">Loading...</p>
         </div>
       </div>
     )
@@ -47,12 +47,12 @@ export default function AuthGuard({ children, requireRole }: AuthGuardProps) {
             <Shield className="w-8 h-8 text-rose-400" />
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Access Denied</h2>
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-gray-600 mb-4">
             You don't have permission to access this page.
           </p>
           <button
             onClick={() => router.push('/')}
-            className="px-4 py-2 rounded-xl bg-slate-900/80 border border-slate-700/80 text-sm text-slate-300 hover:bg-slate-800/90 transition-colors"
+            className="px-4 py-2 rounded-xl bg-white/80 border border-gray-300/80 text-sm text-gray-700 hover:bg-gray-100/90 transition-colors"
           >
             Go to Dashboard
           </button>
